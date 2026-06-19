@@ -8,7 +8,7 @@ Base = declarative_base()
 
 class Document(Base):
     __tablename__ = "documents"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     doc_id = Column(String, unique=True, nullable=False, index=True)
     filename = Column(String, nullable=False)
@@ -16,7 +16,7 @@ class Document(Base):
     uploaded_at = Column(DateTime, default=datetime.now)
     chunks_count = Column(Integer)
     file_size = Column(Integer, nullable=True)
-    
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -28,8 +28,13 @@ class Document(Base):
             "file_size": self.file_size
         }
 
-# Crear engine y session
-engine = create_engine(settings.SQLITE_DATABASE_URL)
+# En Render DATABASE_URL apunta a PostgreSQL; localmente usa SQLite.
+# PostgreSQL de Render usa el scheme "postgres://" (legacy); SQLAlchemy requiere "postgresql://".
+_db_url = settings.DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# PostgreSQL necesita pool_pre_ping para reconectar tras idle; SQLite no lo soporta.
+_engine_kwargs = {"pool_pre_ping": True} if _db_url.startswith("postgresql") else {}
+engine = create_engine(_db_url, **_engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Crear tablas

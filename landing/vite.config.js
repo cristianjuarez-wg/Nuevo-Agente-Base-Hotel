@@ -9,4 +9,16 @@ export default defineConfig({
     port: 5174,
     host: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Separar libs pesadas en chunks propios para mejor cacheo y carga inicial.
+        manualChunks: {
+          motion: ['framer-motion'],
+          markdown: ['react-markdown', 'remark-gfm'],
+          vendor: ['react', 'react-dom', 'axios', 'date-fns'],
+        },
+      },
+    },
+  },
 })

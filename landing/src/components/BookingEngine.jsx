@@ -29,7 +29,7 @@ function SearchForm({ search, setSearch, onSearch, loading, error }) {
 
   return (
     <form onSubmit={submit} className="mx-auto max-w-3xl">
-      <div className="grid grid-cols-1 gap-4 rounded-2xl bg-white p-5 shadow-card-lg sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl bg-white p-5 shadow-soft sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
         <div className="flex flex-col">
           <label htmlFor="checkIn" className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
             Check-in
@@ -126,9 +126,9 @@ function Results({ rooms, search, onPick, onBack }) {
       </button>
 
       {rooms.length === 0 ? (
-        <div className="rounded-2xl bg-white p-8 text-center shadow-card-lg">
+        <div className="rounded-2xl bg-white p-8 text-center shadow-soft">
           <BedDouble size={32} className="mx-auto mb-3 text-slatey" />
-          <p className="font-serif text-lg font-600 text-ink">Sin disponibilidad</p>
+          <p className="font-display text-lg font-600 text-ink">Sin disponibilidad</p>
           <p className="mt-1 text-sm text-slatey">
             No hay habitaciones para esas fechas y cantidad de huéspedes. Probá con otras fechas.
           </p>
@@ -138,16 +138,16 @@ function Results({ rooms, search, onPick, onBack }) {
           {rooms.map((r) => (
             <div
               key={r.id}
-              className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-card-lg sm:flex-row sm:items-center"
+              className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow-soft sm:flex-row sm:items-center"
             >
               <img
-                src={(r.images && r.images[0]) || 'https://lirp.cdn-website.com/02afd0e4/dms3rep/multi/opt/BRCHXHX_HAB_02-0b2b9eb8-1920w.jpg'}
+                src={(r.images && r.images[0]) || '/fotos/habitacion-vista-lago.jpg'}
                 alt={`Habitación ${r.room_type}`}
                 loading="lazy"
                 className="h-40 w-full rounded-xl object-cover sm:h-24 sm:w-36"
               />
               <div className="flex-1">
-                <h3 className="font-serif text-lg font-600 text-ink">{r.room_type}</h3>
+                <h3 className="font-display text-lg font-600 text-ink">{r.room_type}</h3>
                 <p className="text-xs text-slatey">
                   {r.bed_config} · hasta {r.capacity} huéspedes · {r.units_available} disponible(s)
                 </p>
@@ -156,7 +156,7 @@ function Results({ rooms, search, onPick, onBack }) {
                 </p>
               </div>
               <div className="text-right sm:w-44">
-                <p className="font-serif text-xl font-700 tabular-nums text-hilton-700">
+                <p className="font-display text-xl font-700 tabular-nums text-hilton-700">
                   USD {r.total_price_usd}
                 </p>
                 <p className="text-xs tabular-nums text-slatey">ARS {formatARS(r.total_price_ars)}</p>
@@ -188,17 +188,17 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
         <ArrowLeft size={16} /> Volver a habitaciones
       </button>
 
-      <div className="rounded-2xl bg-white p-6 shadow-card-lg">
+      <div className="rounded-2xl bg-white p-6 shadow-soft">
         <div className="mb-5 flex items-center justify-between border-b border-mist pb-4">
           <div>
-            <h3 className="font-serif text-lg font-600 text-ink">{room.room_type}</h3>
+            <h3 className="font-display text-lg font-600 text-ink">{room.room_type}</h3>
             <p className="text-xs text-slatey">
               {format(new Date(search.checkIn), 'dd/MM')} → {format(new Date(search.checkOut), 'dd/MM/yyyy')} ·{' '}
               {search.guests} {search.guests === 1 ? 'huésped' : 'huéspedes'}
             </p>
           </div>
           <div className="text-right">
-            <p className="font-serif text-lg font-700 tabular-nums text-hilton-700">USD {room.total_price_usd}</p>
+            <p className="font-display text-lg font-700 tabular-nums text-hilton-700">USD {room.total_price_usd}</p>
             <p className="text-xs tabular-nums text-slatey">ARS {formatARS(room.total_price_ars)}</p>
           </div>
         </div>
@@ -274,18 +274,18 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
 function Confirmation({ booking, onReset }) {
   return (
     <div className="mx-auto max-w-lg animate-fade-in text-center">
-      <div className="rounded-2xl bg-white p-8 shadow-card-lg">
+      <div className="rounded-2xl bg-white p-8 shadow-soft">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
           <Check size={32} />
         </div>
-        <h3 className="font-serif text-2xl font-700 text-ink">¡Reserva confirmada!</h3>
+        <h3 className="font-display text-2xl font-700 text-ink">¡Reserva confirmada!</h3>
         <p className="mt-2 text-sm text-slatey">
           Te esperamos en el Hampton by Hilton Bariloche, {booking.guest_name}.
         </p>
 
         <div className="my-6 rounded-xl border border-dashed border-hilton-200 bg-hilton-50 py-4">
           <p className="text-xs uppercase tracking-wide text-slatey">Código de reserva</p>
-          <p className="font-serif text-2xl font-700 tracking-wider text-hilton-700">{booking.code}</p>
+          <p className="font-display text-2xl font-700 tracking-wider text-hilton-700">{booking.code}</p>
         </div>
 
         <dl className="space-y-2 text-left text-sm">
@@ -392,16 +392,17 @@ export default function BookingEngine() {
   }
 
   return (
-    <section id="reservar" className="section-pad bg-gradient-to-br from-hilton-800 via-hilton-700 to-hilton-500">
-      <div className="container-x">
-        <header className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-sand-300">
-            Reservá tu estadía
-          </p>
-          <h2 className="font-serif text-3xl font-700 text-white sm:text-4xl">
+    <section id="reservar" className="section-pad relative overflow-hidden bg-hilton-900">
+      {/* Textura sutil de fondo */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-hilton-900 via-hilton-800 to-forest-600/40" />
+      <div className="container-x relative px-6 sm:px-10">
+        <header className="mx-auto mb-12 max-w-2xl text-center">
+          <p className="eyebrow-light">Reservá tu estadía</p>
+          <h2 className="mt-4 font-display text-4xl font-500 text-white sm:text-5xl">
             Disponibilidad en tiempo real
           </h2>
-          <p className="mt-3 text-base text-white/80">
+          <div className="rule mt-6 bg-sand-400/60" />
+          <p className="mt-6 text-base text-white/80">
             Elegí tus fechas y reservá al instante. Pago simulado para esta demostración.
           </p>
         </header>

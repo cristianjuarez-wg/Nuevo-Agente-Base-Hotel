@@ -12,6 +12,11 @@
     @apply bg-white text-ink font-sans antialiased;
   }
 
+  /* Titulares editoriales: mejor reparto de líneas */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
   /* Respeta usuarios con reduced-motion */
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -26,36 +31,64 @@
 }
 
 @layer components {
-  /* Botón primario de marca, touch target ≥44px */
+  /* Botón primario de marca — sobrio, editorial, touch target ≥44px */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-hilton px-6 py-3
-           text-sm font-semibold text-white shadow-card transition
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-hilton px-7 py-3
+           text-sm font-medium tracking-wide text-white transition
            hover:bg-hilton-700 active:scale-[0.98]
            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
            focus-visible:outline-hilton-400 disabled:cursor-not-allowed disabled:opacity-60;
     min-height: 44px;
   }
 
+  /* Botón secundario — contorno fino, sin relleno */
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-hilton-200
-           bg-white px-6 py-3 text-sm font-semibold text-hilton-700 shadow-card transition
-           hover:bg-hilton-50 active:scale-[0.98]
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink/20
+           bg-transparent px-7 py-3 text-sm font-medium tracking-wide text-ink transition
+           hover:border-ink/40 hover:bg-ink/[0.03] active:scale-[0.98]
            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
            focus-visible:outline-hilton-400;
     min-height: 44px;
   }
 
+  /* Botón "ghost" claro sobre fondos oscuros (hero) */
+  .btn-ghost-light {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/40
+           bg-white/5 px-7 py-3 text-sm font-medium tracking-wide text-white backdrop-blur
+           transition hover:bg-white/15 active:scale-[0.98]
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-white/60;
+    min-height: 44px;
+  }
+
+  /* Eyebrow: pequeño label superior de sección, espaciado editorial */
+  .eyebrow {
+    @apply text-xs font-medium uppercase tracking-eyebrow text-timber-500;
+  }
+  .eyebrow-light {
+    @apply text-xs font-medium uppercase tracking-eyebrow text-sand-300;
+  }
+
+  /* Línea divisoria fina centrada (separador editorial) */
+  .rule {
+    @apply mx-auto h-px w-12 bg-timber-300;
+  }
+
   .section-pad {
-    @apply px-5 py-16 sm:px-8 md:py-24;
+    @apply px-5 py-20 sm:px-8 md:py-28 lg:py-32;
   }
 
   /* El navbar fijo no debe tapar el inicio de la sección al saltar por anchor */
   section[id] {
-    scroll-margin-top: 72px;
+    scroll-margin-top: 80px;
   }
 
+  /* Contenedor estándar y uno más ancho para secciones a sangre */
   .container-x {
     @apply mx-auto w-full max-w-6xl;
+  }
+  .container-wide {
+    @apply mx-auto w-full max-w-7xl;
   }
 
   /* Markdown compacto dentro de las burbujas del chat */

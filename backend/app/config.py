@@ -10,11 +10,11 @@ class Settings(BaseSettings):
     # CORS — en producción usar dominios específicos, ej: "https://app.midominio.com,https://admin.midominio.com"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     
-    # Database (SQLite - documents.db tiene todas las tablas)
-    DATABASE_URL: str = "sqlite:///./documents.db"
-    
-    # Database Config (agregar al archivo existente)
-    SQLITE_DATABASE_URL: str = "sqlite:///./documents.db"
+    # Base de datos: SQLite local por defecto; en Render se sobreescribe con PostgreSQL.
+    DATABASE_URL: str = "sqlite:///./hotel.db"
+
+    # Alias legacy — apunta a DATABASE_URL para no romper imports existentes.
+    SQLITE_DATABASE_URL: str = "sqlite:///./hotel.db"
     
     # ChromaDB
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_db"

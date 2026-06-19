@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import Rooms from './components/Rooms'
+import About from './components/About'
 import BookingEngine from './components/BookingEngine'
 import Services from './components/Services'
 import Gallery from './components/Gallery'
@@ -31,6 +32,7 @@ export default function App() {
       <main>
         <Hero />
         <Rooms />
+        <About />
         <BookingEngine />
         <Services />
         <Gallery />

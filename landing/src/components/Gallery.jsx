@@ -1,48 +1,62 @@
-// Galería con imágenes reales del CDN del hotel.
+import Reveal from './motion/Reveal'
+
+// Galería con fotos profesionales reales del hotel (descargadas a public/fotos).
 const IMAGES = [
   {
-    src: 'https://lirp.cdn-website.com/02afd0e4/dms3rep/multi/opt/BRCHXHX_HAB_30-1920w.jpg',
-    alt: 'Habitación con vista del Hampton by Hilton Bariloche',
+    src: '/fotos/lobby.jpg',
+    alt: 'Lobby del Hampton by Hilton Bariloche con madera, piedra y diseño patagónico',
     span: 'sm:col-span-2 sm:row-span-2',
   },
   {
-    src: 'https://lirp.cdn-website.com/02afd0e4/dms3rep/multi/opt/BRCHXHX_HAB_02-0b2b9eb8-1920w.jpg',
-    alt: 'Habitación King del hotel',
+    src: '/fotos/lounge.jpg',
+    alt: 'Lounge con sillones de cuero y diseño cálido',
   },
   {
-    src: 'https://lirp.cdn-website.com/02afd0e4/dms3rep/multi/opt/BRCHXHX_HAB_11-8766d766-1920w.jpg',
-    alt: 'Habitación Twin del hotel',
+    src: '/fotos/bar.jpg',
+    alt: 'Lobby Bar del hotel con barra de madera y piedra',
+  },
+  {
+    src: '/fotos/habitacion-vista-lago.jpg',
+    alt: 'Habitación con vista al lago Nahuel Huapi',
+  },
+  {
+    src: '/fotos/estar.jpg',
+    alt: 'Estar con pared de piedra y mobiliario de madera',
+    span: 'sm:col-span-2',
   },
 ]
 
 export default function Gallery() {
   return (
-    <section id="galeria" className="section-pad bg-mist">
-      <div className="container-x">
-        <header className="mx-auto mb-12 max-w-2xl text-center">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-hilton-500">
-            Galería
-          </p>
-          <h2 className="font-serif text-3xl font-700 text-ink sm:text-4xl">
-            Conocé el hotel
+    <section id="galeria" className="section-pad bg-ink">
+      <div className="container-wide px-6 sm:px-10">
+        <Reveal className="mx-auto mb-16 max-w-2xl text-center">
+          <p className="eyebrow-light">Galería</p>
+          <h2 className="mt-4 font-display text-4xl font-500 text-white sm:text-5xl">
+            Un rincón de la Patagonia
           </h2>
-        </header>
+          <div className="rule mt-6 bg-sand-400/60" />
+        </Reveal>
 
-        <div className="grid auto-rows-[180px] grid-cols-1 gap-4 sm:grid-cols-3 sm:auto-rows-[200px]">
+        <Reveal
+          className="grid auto-rows-[200px] grid-cols-1 gap-4 sm:grid-cols-3 sm:auto-rows-[230px]"
+          y={32}
+        >
           {IMAGES.map((img) => (
-            <div
+            <figure
               key={img.src}
-              className={`overflow-hidden rounded-2xl shadow-card ${img.span || ''}`}
+              className={`group relative overflow-hidden rounded-2xl ${img.span || ''}`}
             >
               <img
                 src={img.src}
                 alt={img.alt}
                 loading="lazy"
-                className="h-full w-full object-cover transition duration-500 hover:scale-105"
+                className="h-full w-full object-cover transition-transform duration-[1.4s] ease-out group-hover:scale-[1.07]"
               />
-            </div>
+              <div className="absolute inset-0 bg-ink/10 transition-colors duration-500 group-hover:bg-ink/0" />
+            </figure>
           ))}
-        </div>
+        </Reveal>
       </div>
     </section>
   )
