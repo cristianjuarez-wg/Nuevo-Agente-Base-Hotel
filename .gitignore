@@ -1,0 +1,28 @@
+# Environment & secrets
+backend/.env
+**/.env
+**/.env.local
+
+# Python virtual environment
+backend/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*.egg-info/
+
+# Node
+landing/node_modules/
+landing/dist/
+
+# Databases & vector stores
+backend/hotel.db
+backend/chroma_db/
+backend/chroma_db_postsale/
+
+# Uploads & generated files
+backend/uploads/
+backend/vouchers/
+
+# OS
+.DS_Store
+Thumbs.db

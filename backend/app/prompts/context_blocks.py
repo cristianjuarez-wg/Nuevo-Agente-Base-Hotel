@@ -1,0 +1,149 @@
+"""
+Bloques de contexto que se inyectan dinámicamente en el system prompt principal.
+Cada función recibe los datos necesarios y devuelve el bloque de texto formateado.
+"""
+
+
+def build_lead_context_block(contact_name: str, contact_details: list[str]) -> str:
+    contact_info_str = "\n- ".join(contact_details)
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ INFORMACIÓN DE CONTACTO YA CAPTURADA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ya tienes los datos de contacto de {contact_name}:
+- {contact_info_str}
+
+🚫 NO VUELVAS A PEDIR ESTOS DATOS
+🚫 NO ofrezcas "coordinar para que te contacte un asesor"
+🚫 NO digas "me podrías compartir tu nombre y teléfono"
+🚫 NO preguntes "¿te gustaría que un asesor te contacte?"
+
+✅ El usuario YA proporcionó sus datos
+✅ Continúa ayudando con la información que necesita
+✅ Responde sus preguntas directamente
+
+Si el usuario pregunta algo, responde sin volver a solicitar contacto.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+
+
+def build_contact_request_block(main_interest: str) -> str:
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 SOLICITUD DE DATOS DE CONTACTO — INSTRUCCIONES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El usuario mostró interés genuino en: {main_interest}
+
+DEBES solicitar sus datos de contacto AL FINAL de tu respuesta,
+de forma INTEGRADA y natural — como una continuación del mismo mensaje,
+no como un bloque separado.
+
+REGLAS OBLIGATORIAS:
+1. Responde primero la consulta del usuario con toda la información relevante
+2. AL FINAL, en el mismo párrafo de cierre o como última oración, pide:
+   nombre completo, email y teléfono
+3. El tono debe ser CONTINUO — no cambies de tema bruscamente ni recomiences
+   con "¡Hola!" ni frases de bienvenida
+4. Hazlo UNA SOLA VEZ — si ya lo pediste antes en la conversación, no repitas
+
+EJEMPLO CORRECTO:
+"...tenemos el paquete X que incluye Y y Z. ¿Te gustaría que un asesor
+te contacte con más detalles? Si es así, pasame tu nombre, email y teléfono
+y te armamos una propuesta personalizada. 😊"
+
+EJEMPLO INCORRECTO (NO hacer):
+"...tenemos el paquete X.
+
+¡Hola! Me alegra que estés interesado. ¿Podrías compartir tu nombre,
+apellido, email y teléfono?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+
+
+def build_country_restrictions_block(countries_list: str) -> str:
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️⚠️⚠️ RESTRICCIÓN CRÍTICA DE DESTINOS - CUMPLIMIENTO OBLIGATORIO ⚠️⚠️⚠️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ PAÍSES CON OFERTAS DISPONIBLES (ÚNICOS PERMITIDOS):
+{countries_list}
+
+🚨 ADVERTENCIA CRÍTICA 🚨
+Si mencionas un país que NO está en la lista de arriba, tu respuesta será
+considerada INCORRECTA y puede generar confusión en el cliente.
+
+🚫 REGLAS NO NEGOCIABLES:
+1. SOLO menciona países de la lista de arriba - SIN EXCEPCIONES
+2. Si el contexto menciona un país sin oferta, IGNÓRALO completamente
+3. Si el cliente pregunta por un país sin oferta, responde:
+   "Actualmente no tenemos paquetes para [país], pero te puedo ofrecer opciones en: [países disponibles]"
+4. NO inventes ni asumas ofertas para países no listados
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦📦📦 REGLA CRÍTICA: NOMBRES COMPLETOS DE PAQUETES 📦📦📦
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANTE: Cuando menciones un paquete turístico:
+
+1. USA EL NOMBRE COMPLETO tal como aparece en el documento
+2. Si el paquete incluye múltiples países (ej: "Japón y Corea del Sur"),
+   menciona TODOS los países en el nombre
+3. NUNCA acortes el nombre con "..." o "-" o dejándolo incompleto
+
+EJEMPLO CORRECTO: "Japón y Corea del Sur - Todo Incluido"
+EJEMPLO INCORRECTO: "Japón y -" ❌
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CONTEXTO DE DOCUMENTOS:
+"""
+
+
+RELEVANCE_MEDIUM_BLOCK = """
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ IMPORTANTE: RELEVANCIA MEDIA - OFRECER COMO ALTERNATIVA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Los destinos en el contexto NO son exactamente lo que el usuario busca,
+pero son SIMILARES o RELACIONADOS.
+
+DEBES:
+1. Primero admitir: "No tengo paquetes específicos para [X]"
+2. Luego ofrecer: "Pero tengo destinos relacionados/similares como..."
+3. Explicar por qué son similares (mismo tipo: montañas, playa, cultura, etc.)
+
+EJEMPLO:
+Usuario busca: "Aconcagua"
+Tienes: Nepal (montañas)
+Respuesta: "No tengo paquetes específicos para el Aconcagua, pero tengo
+destinos de alta montaña como Nepal con trekking en el Himalaya. ¿Te interesa?"
+
+NO inventes que tienes el destino específico que busca.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+
+
+RELEVANCE_LOW_BLOCK = """
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 CRÍTICO: BAJA RELEVANCIA - NO HAY ALTERNATIVAS ADECUADAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NO tenemos información relevante para esta consulta.
+
+DEBES RESPONDER EXACTAMENTE:
+"Lamentablemente no tengo paquetes para [X] ni destinos similares en
+este momento. Nuestro catálogo se actualiza regularmente.
+
+¿Te gustaría que te muestre otros destinos disponibles o tienes algún
+otro destino en mente?"
+
+PROHIBIDO:
+- Inventar información o paquetes
+- Usar tu conocimiento general
+- Ofrecer destinos del contexto (no son relevantes)
+- Generar precios o detalles ficticios
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""

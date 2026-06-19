@@ -1,0 +1,282 @@
+"""
+Post-venta del HOTEL (adaptador mínimo sobre Booking).
+
+Reemplaza al PostSaleService de turismo (atado a SoldPackage, vuelos, proveedores,
+vouchers). Conserva el PATRÓN clave de Freeway:
+  - Gate determinístico: valida acceso por código de reserva (HTL-XXXX) antes del loop.
+  - Ticket de sesión: un HotelTicket por sesión de soporte contra una reserva.
+  - Escalado determinístico: el LLM ANALIZA, pero el código decide escalar/resolver.
+
+NO incluye: estado de vuelos, contacto de proveedores, vouchers (no aplican a un hotel
+single-property en esta demo).
+"""
+import json
+import re
+import secrets
+import string
+from typing import Dict, List, Optional
+
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.core.openai_client import get_async_openai
+from app.core.logging_config import get_logger
+from app.utils.timezone_utils import now_argentina
+from app.models.hotel import Booking, HotelTicket
+
+logger = get_logger(__name__)
+
+# Mismo patrón de código que el resto del sistema (HTL-XXXX, 4 alfanuméricos).
+_BOOKING_CODE_RE = re.compile(r"\bHTL-[A-Z0-9]{4}\b")
+
+
+def _extract_booking_code(text: str) -> Optional[str]:
+    m = _BOOKING_CODE_RE.search((text or "").upper())
+    return m.group(0) if m else None
+
+
+class HotelPostSaleService:
+    """Servicio de post-venta del hotel. Una instancia por request (lleva la db)."""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.client = get_async_openai()
+
+    # ------------------------------------------------------------------
+    # Validación de acceso (booking code)
+    # ------------------------------------------------------------------
+    def _find_booking(self, code: str) -> Optional[Booking]:
+        return (
+            self.db.query(Booking)
+            .filter(Booking.code == code.strip().upper())
+            .first()
+        )
+
+    def validate_access(
+        self, message: str, session_id: str, history: List[Dict] = None
+    ) -> Dict:
+        """Valida que el usuario tenga una reserva. Busca el código en el mensaje y,
+        si no está, en el historial reciente."""
+        code = _extract_booking_code(message)
+        if not code and history:
+            for msg in reversed(history):
+                if msg.get("role") == "user":
+                    prev = _extract_booking_code(msg.get("content", ""))
+                    if prev:
+                        code = prev
+                        break
+
+        if not code:
+            return {
+                "valid": False,
+                "message": (
+                    "Para ayudarte con tu reserva necesito tu código (formato HTL-XXXX). "
+                    "Lo encontrás en el email de confirmación de tu reserva."
+                ),
+            }
+
+        booking = self._find_booking(code)
+        if not booking:
+            return {
+                "valid": False,
+                "message": (
+                    f"No encuentro una reserva con el código {code}. "
+                    "¿Podés verificar que esté bien escrito?"
+                ),
+            }
+
+        return {"valid": True, "booking": booking, "code": code}
+
+    # ------------------------------------------------------------------
+    # Ticket de sesión
+    # ------------------------------------------------------------------
+    def _generate_ticket_number(self) -> str:
+        suffix = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        return f"HT-{suffix}"
+
+    def get_or_create_session_ticket(self, session_id: str, booking: Booking) -> HotelTicket:
+        ticket = (
+            self.db.query(HotelTicket)
+            .filter(
+                HotelTicket.session_id == session_id,
+                HotelTicket.status.in_(["open", "in_progress", "escalated"]),
+            )
+            .order_by(HotelTicket.created_at.desc())
+            .first()
+        )
+        if ticket:
+            return ticket
+
+        ticket = HotelTicket(
+            ticket_number=self._generate_ticket_number(),
+            booking_id=booking.id,
+            session_id=session_id,
+            subject=f"Consulta de {booking.guest_name} — reserva {booking.code}",
+            category="general",
+            priority="medium",
+            status="open",
+            description=f"Sesión de soporte iniciada para la reserva {booking.code}.",
+            escalated=0,
+        )
+        self.db.add(ticket)
+        self.db.commit()
+        self.db.refresh(ticket)
+        logger.info("Hotel support ticket created",
+                    ticket_number=ticket.ticket_number, session_id=session_id)
+        return ticket
+
+    # ------------------------------------------------------------------
+    # Contexto de la reserva (para el prompt del orquestador)
+    # ------------------------------------------------------------------
+    def build_booking_context(self, booking: Booking) -> str:
+        d = booking.to_dict()
+        return "\n".join([
+            f"INFORMACIÓN DE LA RESERVA {d['code']}:",
+            f"Huésped: {d['guest_name']}",
+            f"Habitación: {d.get('room_type', 'N/A')}",
+            f"Check-in: {d['check_in']} | Check-out: {d['check_out']} ({d['nights']} noche(s))",
+            f"Huéspedes: {d['guests']}",
+            f"Total: USD {d['total_price_usd']:.0f} / ARS {d['total_price_ars']:,.0f}",
+            f"Estado: {d['status']} | Pago: {d['payment_status']}",
+        ])
+
+    # ------------------------------------------------------------------
+    # Análisis de escalación (LLM analiza, código decide)
+    # ------------------------------------------------------------------
+    async def analyze_escalation(self, consulta: str, booking: Booking) -> Dict:
+        """Determina si la consulta se puede auto-resolver o requiere asesor humano.
+
+        Devuelve {requires_escalation, urgency_level, escalation_reason, category}.
+        Ante cualquier falla, escala por seguridad (no auto-resolver un caso serio).
+        """
+        prompt = (
+            "Sos el analista de soporte de un hotel. Clasificá la consulta de un huésped "
+            "que YA tiene una reserva confirmada y decidí si el concierge IA puede "
+            "resolverla solo o si debe ESCALAR a un asesor humano.\n\n"
+            "ESCALAR (requires_escalation=true) si la consulta implica: cambio de fechas, "
+            "cancelación, reembolso, reclamo, cobro, problema en la estadía, o cualquier "
+            "acción que modifique la reserva o comprometa dinero.\n"
+            "AUTO-RESOLVER (requires_escalation=false) si es informativa: horarios de "
+            "check-in/out, servicios incluidos, cómo llegar, qué incluye la reserva, "
+            "consultas sobre amenities.\n\n"
+            f"CONSULTA DEL HUÉSPED: \"{consulta}\"\n\n"
+            "Respondé SOLO un JSON: "
+            '{"requires_escalation": bool, "urgency_level": "baja|media|alta", '
+            '"escalation_reason": "...", "category": "info|change|cancel|complaint|general"}'
+        )
+        try:
+            resp = await self.client.chat.completions.create(
+                model=settings.OPENAI_MODEL_CLASSIFIER,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+                max_tokens=150,
+                response_format={"type": "json_object"},
+            )
+            data = json.loads(resp.choices[0].message.content)
+            return {
+                "requires_escalation": bool(data.get("requires_escalation", True)),
+                "urgency_level": data.get("urgency_level", "media"),
+                "escalation_reason": data.get("escalation_reason", ""),
+                "category": data.get("category", "general"),
+            }
+        except Exception as e:
+            logger.error("Hotel escalation analysis failed, escalando por seguridad", error=str(e))
+            return {
+                "requires_escalation": True,
+                "urgency_level": "alta",
+                "escalation_reason": "no se pudo analizar la consulta (falla del análisis)",
+                "category": "general",
+            }
+
+    # ------------------------------------------------------------------
+    # Acción determinística sobre el ticket
+    # ------------------------------------------------------------------
+    def apply_ticket_action(
+        self,
+        ticket: HotelTicket,
+        requires_escalation: bool,
+        response_text: str,
+        query: str,
+        analysis: Optional[Dict] = None,
+    ) -> str:
+        """Aplica el resultado al ticket. NO lo decide el LLM: lo decide este código
+        según el análisis de escalación. Devuelve el status final del ticket."""
+        # Actualizar subject/category/priority con la consulta real
+        if analysis:
+            ticket.category = analysis.get("category", ticket.category)
+            urgency = analysis.get("urgency_level", "media")
+            ticket.priority = {"baja": "low", "media": "medium", "alta": "high"}.get(urgency, "medium")
+        if query and ticket.description and "Sesión de soporte iniciada" in ticket.description:
+            ticket.description = query[:1000]
+
+        if requires_escalation:
+            ticket.status = "escalated"
+            ticket.escalated = 1
+            logger.warning("Hotel ticket escalated",
+                           ticket_number=ticket.ticket_number,
+                           reason=(analysis or {}).get("escalation_reason"))
+        else:
+            ticket.status = "resolved"
+            ticket.auto_resolved_by_agent = response_text[:2000]
+
+        self.db.commit()
+        return ticket.status
+
+    # ------------------------------------------------------------------
+    # GATE — preparación determinística del turno (espejo de run_gate de Freeway)
+    # ------------------------------------------------------------------
+    async def run_gate(
+        self, message: str, session_id: str, history: List[Dict] = None
+    ) -> Dict:
+        """Valida acceso y prepara el turno.
+
+        Returns:
+          - {"handled": True, "result": {...}}            → respuesta terminal (validación
+            fallida o solo-código → bienvenida); no sigue al orquestador.
+          - {"handled": False, "booking": Booking, "ticket": HotelTicket,
+             "query_to_process": str}                     → listo para el loop de tools.
+        """
+        validation = self.validate_access(message, session_id, history)
+        if not validation["valid"]:
+            return {"handled": True, "result": {
+                "response": validation["message"],
+                "requires_validation": True,
+                "ticket_created": False,
+            }}
+
+        booking = validation["booking"]
+
+        # Si el usuario solo dio el código, buscar su consulta real en el historial.
+        original_query = None
+        if history and _extract_booking_code(message):
+            for i in range(len(history) - 1, -1, -1):
+                if history[i].get("role") == "user":
+                    prev = history[i].get("content", "")
+                    if not _extract_booking_code(prev):
+                        original_query = prev
+                        break
+
+        query_to_process = original_query or message
+
+        # Solo código sin consulta concreta → bienvenida determinística.
+        if not original_query and _extract_booking_code(message) and message.strip().upper() == validation["code"]:
+            ticket = self.get_or_create_session_ticket(session_id, booking)
+            welcome = (
+                f"¡Hola {booking.guest_name}! 😊 Tengo tu reserva {booking.code} "
+                f"({booking.to_dict().get('room_type', '')}, check-in {booking.check_in}). "
+                "¿En qué puedo ayudarte con tu estadía?"
+            )
+            return {"handled": True, "result": {
+                "response": welcome,
+                "requires_more_info": True,
+                "ticket_created": True,
+                "ticket_number": ticket.ticket_number,
+            }}
+
+        ticket = self.get_or_create_session_ticket(session_id, booking)
+        return {
+            "handled": False,
+            "booking": booking,
+            "ticket": ticket,
+            "query_to_process": query_to_process,
+        }

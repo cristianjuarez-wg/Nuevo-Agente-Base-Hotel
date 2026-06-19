@@ -1,0 +1,79 @@
+{
+  "continents": {
+    "europa": {
+      "countries": ["españa", "francia", "italia", "alemania", "reino unido", "portugal", "grecia", "suiza", "países bajos", "bélgica", "austria", "república checa", "hungría", "polonia", "croacia", "noruega", "suecia", "dinamarca", "finlandia", "irlanda"],
+      "aliases": ["ue", "union europea", "viejo continente", "europa occidental", "europa del este"]
+    },
+    "asia": {
+      "countries": ["japón", "china", "tailandia", "india", "corea del sur", "vietnam", "indonesia", "filipinas", "singapur", "malasia", "camboya", "laos", "myanmar", "brunei", "taiwan", "hong kong", "macao", "nepal", "bután", "sri lanka"],
+      "aliases": ["oriente", "lejano oriente", "asia oriental", "sudeste asiático"]
+    },
+    "america del norte": {
+      "countries": ["estados unidos", "canadá", "méxico"],
+      "aliases": ["norteamerica", "america del norte", "usa", "norteamérica"]
+    },
+    "america del sur": {
+      "countries": ["argentina", "brasil", "chile", "perú", "colombia", "ecuador", "uruguay", "bolivia", "paraguay", "venezuela", "guyana", "surinam", "guyana francesa"],
+      "aliases": ["sudamerica", "america latina", "latinoamerica", "sudamérica", "américa del sur"]
+    },
+    "america central": {
+      "countries": ["costa rica", "panamá", "nicaragua", "honduras", "el salvador", "guatemala", "belice"],
+      "aliases": ["centroamerica", "américa central", "centroamérica"]
+    },
+    "caribe": {
+      "countries": ["cuba", "república dominicana", "jamaica", "puerto rico", "barbados", "bahamas", "trinidad y tobago", "martinica", "guadalupe", "aruba", "curaçao"],
+      "aliases": ["antillas", "islas del caribe"]
+    },
+    "africa": {
+      "countries": ["egipto", "marruecos", "sudáfrica", "kenia", "tanzania", "túnez", "argelia", "libia", "etiopía", "ghana", "senegal", "costa de marfil", "camerún", "nigeria", "zimbabue", "botswana", "namibia", "zambia"],
+      "aliases": ["continente africano", "áfrica"]
+    },
+    "oceania": {
+      "countries": ["australia", "nueva zelanda", "fiji", "polinesia francesa", "nueva caledonia", "vanuatu", "samoa", "tonga", "islas cook", "tahití"],
+      "aliases": ["oceanía", "pacífico", "australasia"]
+    },
+    "oriente medio": {
+      "countries": ["emiratos árabes unidos", "qatar", "arabia saudí", "omán", "kuwait", "bahrein", "jordania", "israel", "líbano", "turquía"],
+      "aliases": ["medio oriente", "golfo pérsico", "península arábiga"]
+    }
+  },
+  "country_aliases": {
+    "españa": ["spain", "peninsula iberica", "iberia"],
+    "francia": ["france"],
+    "estados unidos": ["usa", "eeuu", "us", "america", "united states", "estados unidos de america"],
+    "reino unido": ["uk", "inglaterra", "gran bretaña", "britain", "united kingdom"],
+    "alemania": ["germany", "deutschland"],
+    "italia": ["italy"],
+    "japón": ["japan", "nipón"],
+    "china": ["república popular china", "prc"],
+    "corea del sur": ["south korea", "korea del sur"],
+    "tailandia": ["thailand", "siam"],
+    "emiratos árabes unidos": ["uae", "emirates", "dubai", "abu dhabi"],
+    "nueva zelanda": ["new zealand"],
+    "república dominicana": ["dominican republic", "rd"],
+    "costa rica": ["cr"],
+    "sudáfrica": ["south africa", "rsa"]
+  },
+  "city_aliases": {
+    "nueva york": ["nyc", "big apple", "manhattan"],
+    "los angeles": ["la", "ciudad de los angeles"],
+    "las vegas": ["vegas", "sin city"],
+    "san francisco": ["sf", "frisco"],
+    "londres": ["london"],
+    "parís": ["paris"],
+    "roma": ["rome"],
+    "barcelona": ["bcn"],
+    "madrid": ["capital de españa"],
+    "tokio": ["tokyo"],
+    "kioto": ["kyoto"],
+    "bangkok": ["krung thep"],
+    "estambul": ["istanbul", "constantinopla"],
+    "dubái": ["dubai"],
+    "sidney": ["sydney"],
+    "melbourne": ["melb"],
+    "río de janeiro": ["rio", "cidade maravilhosa"],
+    "buenos aires": ["baires", "capital federal"],
+    "lima": ["ciudad de los reyes"],
+    "ciudad de méxico": ["cdmx", "df", "méxico df"]
+  }
+}

@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-white text-ink font-sans antialiased;
+  }
+
+  /* Respeta usuarios con reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Botón primario de marca, touch target ≥44px */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-hilton px-6 py-3
+           text-sm font-semibold text-white shadow-card transition
+           hover:bg-hilton-700 active:scale-[0.98]
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-hilton-400 disabled:cursor-not-allowed disabled:opacity-60;
+    min-height: 44px;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-hilton-200
+           bg-white px-6 py-3 text-sm font-semibold text-hilton-700 shadow-card transition
+           hover:bg-hilton-50 active:scale-[0.98]
+           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+           focus-visible:outline-hilton-400;
+    min-height: 44px;
+  }
+
+  .section-pad {
+    @apply px-5 py-16 sm:px-8 md:py-24;
+  }
+
+  /* El navbar fijo no debe tapar el inicio de la sección al saltar por anchor */
+  section[id] {
+    scroll-margin-top: 72px;
+  }
+
+  .container-x {
+    @apply mx-auto w-full max-w-6xl;
+  }
+
+  /* Markdown compacto dentro de las burbujas del chat */
+  .prose-chat > :first-child { margin-top: 0; }
+  .prose-chat > :last-child { margin-bottom: 0; }
+  .prose-chat p { margin: 0.35rem 0; }
+  .prose-chat ul { margin: 0.35rem 0; padding-left: 1.1rem; list-style: disc; }
+  .prose-chat ol { margin: 0.35rem 0; padding-left: 1.2rem; list-style: decimal; }
+  .prose-chat li { margin: 0.15rem 0; }
+  .prose-chat strong { font-weight: 600; }
+  .prose-chat a { color: #005aa9; text-decoration: underline; }
+  .prose-chat code {
+    background: #e8f2fb; padding: 0.05rem 0.3rem; border-radius: 0.3rem; font-size: 0.85em;
+  }
+}

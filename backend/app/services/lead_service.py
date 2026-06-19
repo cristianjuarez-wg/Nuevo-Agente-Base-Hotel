@@ -1,0 +1,843 @@
+"""
+Servicio de gestión inteligente de leads
+"""
+from sqlalchemy.orm import Session
+from app.models.database import SessionLocal
+from app.models.lead import Lead
+from app.services.lead_analyzer import lead_analyzer
+from app.services.contact_service import ContactService
+from app.core.logging_config import get_logger
+from typing import Dict, List, Optional, Tuple
+import re
+from datetime import datetime, timedelta, timezone
+from app.core.openai_client import get_async_openai
+from app.config import settings
+import json
+
+logger = get_logger(__name__)
+
+# Instancia global de ContactService
+contact_service = ContactService()
+
+class LeadService:
+    def __init__(self):
+        self.openai_client = get_async_openai()
+        logger.info("Lead service initialized")
+    
+    async def process_message_for_lead(
+        self,
+        db: Session,
+        message: str, 
+        session_id: str,
+        conversation_history: List[Dict],
+        travel_context: str = "",
+        geo_analysis: Dict = None
+    ) -> Tuple[Dict, bool]:
+        """
+        Procesa un mensaje para análisis de lead y determina acciones
+        
+        Args:
+            db: Sesión de base de datos
+            message: Mensaje del usuario
+            session_id: ID de sesión
+            conversation_history: Historial de conversación
+            travel_context: Contexto de viajes mencionados
+            geo_analysis: Análisis geográfico (continente, países, ciudades)
+            
+        Returns:
+            Tuple[Dict, bool]: (análisis_completo, debe_solicitar_contacto)
+        """
+        try:
+            # 1. Analizar intención con GPT (con análisis geográfico)
+            analysis = await lead_analyzer.analyze_lead_intent(
+                message, conversation_history, travel_context, geo_analysis
+            )
+            
+            # 2. Obtener o crear lead en base de datos
+            lead = self._get_or_create_lead(db, session_id)
+            
+            # 3. Actualizar lead con nuevo análisis
+            lead.update_from_analysis(analysis, travel_context)
+            
+            # 4. Extraer información de contacto si está presente (con historial)
+            logger.info("About to extract contact info",
+                       session_id=session_id,
+                       message_preview=message[:100])
+            
+            contact_info = await self._extract_contact_info(message, conversation_history)
+            
+            logger.info("Contact info extraction completed",
+                       session_id=session_id,
+                       contact_info_keys=list(contact_info.keys()) if contact_info else [],
+                       has_data=bool(contact_info))
+            
+            if contact_info:
+                logger.info("Adding contact info to lead",
+                           session_id=session_id,
+                           lead_id=lead.id,
+                           contact_data=contact_info)
+                
+                # Verificar estado ANTES de add_contact_info
+                logger.info("Lead state BEFORE add_contact_info",
+                           lead_id=lead.id,
+                           name_before=lead.name,
+                           last_name_before=lead.last_name,
+                           email_before=lead.email,
+                           phone_before=lead.phone)
+                
+                lead.add_contact_info(**contact_info)
+                
+                # Verificar estado DESPUÉS de add_contact_info
+                logger.info("Lead state AFTER add_contact_info",
+                           lead_id=lead.id,
+                           name_after=lead.name,
+                           last_name_after=lead.last_name,
+                           email_after=lead.email,
+                           phone_after=lead.phone)
+                
+                # 🆕 VISIÓN 360°: Crear/vincular Contact si hay teléfono
+                if contact_info.get('phone'):
+                    try:
+                        contact = contact_service.get_or_create_contact(
+                            phone=contact_info.get('phone'),
+                            name=contact_info.get('name'),
+                            last_name=contact_info.get('last_name'),
+                            email=contact_info.get('email'),
+                            db=db
+                        )
+                        
+                        if contact:
+                            # Vincular lead al contact
+                            lead.contact_id = contact.id
+                            
+                            # Vincular conversación al contact
+                            contact_service.link_conversation_by_session(
+                                session_id=session_id,
+                                contact_id=contact.id,
+                                db=db
+                            )
+                            
+                            # Incrementar contador de leads
+                            contact.increment_leads()
+                            
+                            # 🆕 VISIÓN 360°: Actualizar métricas completas del contact
+                            contact_service.update_contact_metrics(contact.id, db)
+                            
+                            logger.info("Lead linked to contact and metrics updated",
+                                       lead_id=lead.id,
+                                       contact_id=contact.id,
+                                       session_id=session_id)
+                    except Exception as e:
+                        logger.error("Error linking lead to contact",
+                                   lead_id=lead.id,
+                                   error=str(e))
+                
+                logger.info("Contact info extracted", 
+                           session_id=session_id,
+                           message_preview=message[:50] + "..." if len(message) > 50 else message,
+                           extracted_name=contact_info.get('name'),
+                           extracted_last_name=contact_info.get('last_name'),
+                           extracted_phone=contact_info.get('phone'),
+                           extracted_email=contact_info.get('email'),
+                           has_name=bool(contact_info.get('name')),
+                           has_last_name=bool(contact_info.get('last_name')),
+                           has_phone=bool(contact_info.get('phone')),
+                           has_email=bool(contact_info.get('email')))
+            
+            db.commit()
+            
+            # Verificar que el commit funcionó
+            logger.info("Database committed successfully", 
+                       session_id=session_id,
+                       lead_id=lead.id)
+            
+            # Refrescar el lead para ver el estado final
+            db.refresh(lead)
+            logger.info("Lead state AFTER commit and refresh",
+                       lead_id=lead.id,
+                       name_final=lead.name,
+                       last_name_final=lead.last_name,
+                       email_final=lead.email,
+                       phone_final=lead.phone)
+            
+            # 5. Determinar si debe solicitar contacto
+            should_request = lead_analyzer.should_request_contact(
+                analysis, len(conversation_history)
+            )
+            
+            # No solicitar si ya tiene contacto completo
+            if lead.is_complete_lead():
+                should_request = False
+            
+            # 6. Preparar respuesta completa
+            complete_analysis = {
+                **analysis,
+                "lead_id": lead.id,
+                "has_contact_info": lead.is_complete_lead(),
+                "priority_score": lead.get_priority_score(),
+                "should_request_contact": should_request,
+                "contact_message": None
+            }
+            
+            # 7. Generar mensaje de solicitud de contacto si es necesario
+            if should_request and analysis.get('main_interest'):
+                # Construir contexto conversacional para el LLM (últimos 4 mensajes)
+                conversation_context = ""
+                if conversation_history and len(conversation_history) > 0:
+                    recent_messages = conversation_history[-4:]
+                    context_parts = []
+                    for msg in recent_messages:
+                        role = "Usuario" if msg.get("role") == "user" else "Asistente"
+                        content = msg.get("content", "")[:200]  # Limitar longitud
+                        context_parts.append(f"{role}: {content}")
+                    conversation_context = "\n".join(context_parts)
+                
+                # Usar LLM para generar mensaje natural
+                complete_analysis["contact_message"] = await lead_analyzer.generate_contact_request_with_llm(
+                    analysis, 
+                    analysis.get('main_interest'),
+                    conversation_context
+                )
+                
+            logger.info("Lead processed successfully",
+                       session_id=session_id,
+                       lead_type=analysis.get('lead_type'),
+                       should_request_contact=should_request,
+                       has_complete_contact=lead.is_complete_lead())
+            
+            return complete_analysis, should_request
+                
+        except Exception as e:
+            logger.error("Error processing message for lead",
+                        session_id=session_id,
+                        message_length=len(message) if message else 0,
+                        error=str(e))
+            # Rollback en caso de error
+            db.rollback()
+            # Retornar análisis básico en caso de error
+            return {
+                "lead_type": "FRIO",
+                "interest_score": 1,
+                "contact_readiness": False,
+                "error": str(e)
+            }, False
+    
+    def _get_or_create_lead(self, db: Session, session_id: str) -> Lead:
+        """Obtiene lead existente o crea uno nuevo"""
+        from app.models.conversation import Conversation
+        
+        lead = db.query(Lead).filter(Lead.session_id == session_id).first()
+        
+        if not lead:
+            lead = Lead(
+                session_id=session_id,
+                lead_type="FRIO",
+                interest_score=1,
+                contact_readiness=False
+            )
+            db.add(lead)
+            db.flush()  # Para obtener el ID
+            
+            logger.info("New lead created", session_id=session_id, lead_id=lead.id)
+        
+        # ✅ SIEMPRE marcar lead_generated=1 en la conversación (nuevo o existente)
+        conversation = db.query(Conversation).filter(
+            Conversation.session_id == session_id
+        ).first()
+        
+        if conversation and conversation.lead_generated == 0:
+            conversation.lead_generated = 1
+            logger.info("Lead marked in conversation", 
+                       session_id=session_id, 
+                       lead_id=lead.id,
+                       conversation_id=conversation.id)
+        
+        return lead
+    
+    def _should_extract_contact_info(self, conversation_history: List[Dict]) -> bool:
+        """
+        Determina si el bot pidió información de contacto en el mensaje anterior
+        
+        Args:
+            conversation_history: Historial de la conversación
+            
+        Returns:
+            True si el bot pidió datos de contacto
+        """
+        if not conversation_history or len(conversation_history) < 2:
+            return False
+        
+        # Obtener último mensaje del bot
+        last_bot_message = None
+        for msg in reversed(conversation_history):
+            if msg.get('role') == 'assistant':
+                last_bot_message = msg.get('content', '').lower()
+                break
+        
+        if not last_bot_message:
+            return False
+        
+        # Patrones que indican que el bot pidió datos
+        contact_request_patterns = [
+            'compartir tu nombre',
+            'compartís tu nombre',
+            'tu nombre',
+            'datos de contacto',
+            'información de contacto',
+            'nombre, apellido, email',
+            'nombre y teléfono',
+            'nombre, apellido',
+            'me compartís',
+            'me podrías compartir',
+            'me das tu',
+        ]
+        
+        return any(pattern in last_bot_message for pattern in contact_request_patterns)
+    
+    def _calculate_name_confidence(
+        self,
+        potential_name: str,
+        message: str,
+        bot_requested: bool,
+        has_email: bool,
+        has_phone: bool
+    ) -> int:
+        """
+        Calcula score de confianza (0-100) de que el texto es un nombre real
+        
+        Args:
+            potential_name: Nombre potencial extraído
+            message: Mensaje completo
+            bot_requested: Si el bot pidió datos
+            has_email: Si el mensaje contiene email
+            has_phone: Si el mensaje contiene teléfono
+            
+        Returns:
+            Score de confianza (0-100)
+        """
+        score = 0
+        
+        # Factor 1: Formato del nombre (+30 puntos)
+        # Debe estar capitalizado correctamente
+        if re.match(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)+$', potential_name):
+            score += 30
+        
+        # Factor 2: Mensaje contiene email o teléfono (+25 puntos)
+        if has_email or has_phone:
+            score += 25
+        
+        # Factor 3: Bot pidió datos en mensaje anterior (+30 puntos)
+        if bot_requested:
+            score += 30
+        
+        # Factor 4: Longitud razonable (+10 puntos)
+        if 4 <= len(potential_name) <= 50:
+            score += 10
+        
+        # Factor 5: No contiene palabras MUY comunes (-50 puntos)
+        # Solo palabras que claramente NO son nombres
+        very_common_words = [
+            'todo', 'toda', 'todos', 'todas',
+            'bien', 'mal',
+            'si', 'no', 'ok', 'dale',
+            'claro', 'obvio', 'seguro',
+            'gracias', 'muchas',
+        ]
+        
+        name_lower = potential_name.lower()
+        for word in very_common_words:
+            if word in name_lower.split():
+                score -= 50
+                logger.debug("Name rejected - very common word",
+                           potential_name=potential_name,
+                           rejected_word=word)
+                break
+        
+        return max(0, min(100, score))
+    
+    async def _extract_name_with_ai(self, message: str) -> Optional[Dict]:
+        """
+        Usa OpenAI para extraer nombre de forma inteligente (sin regex hardcoded)
+        
+        Args:
+            message: Mensaje del usuario
+            
+        Returns:
+            Dict con 'name' y 'last_name' o None si no hay nombre
+        """
+        try:
+            prompt = f"""Extrae SOLO el nombre completo de la persona de este mensaje.
+
+Reglas estrictas:
+- Si hay un nombre de persona REAL, devuelve SOLO el nombre completo
+- Si NO hay nombre de persona, devuelve exactamente: NINGUNO
+- NO incluyas palabras como "mi nombre", "me llamo", etc.
+- NO incluyas emails, teléfonos, ni otros datos
+- NO incluyas expresiones comunes como "todo bien", "si claro", "ok", etc.
+- Solo nombres de personas reales
+
+Ejemplos:
+- "Mi nombre, Frank Kikino, email@test.com" → "Frank Kikino"
+- "Soy Juan Perez" → "Juan Perez"
+- "Todo bien, me interesa" → "NINGUNO"
+- "Si claro" → "NINGUNO"
+- "María González, 341-1234567" → "María González"
+
+Mensaje: "{message}"
+
+Nombre extraído:"""
+
+            response = await self.openai_client.chat.completions.create(
+                model=settings.OPENAI_MODEL_CLASSIFIER,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+                max_tokens=50,
+                timeout=30  # Timeout de 30 segundos para evitar esperas indefinidas
+            )
+            
+            extracted_name = response.choices[0].message.content.strip()
+            
+            logger.info("Name extraction with AI completed",
+                       message_preview=message[:100],
+                       extracted_name=extracted_name)
+            
+            # Si OpenAI dice que no hay nombre
+            if extracted_name.upper() == "NINGUNO" or not extracted_name:
+                return None
+            
+            # Separar nombre y apellido
+            name_parts = extracted_name.split()
+            if len(name_parts) >= 1:
+                result = {
+                    'name': name_parts[0],
+                    'last_name': ' '.join(name_parts[1:]) if len(name_parts) > 1 else None
+                }
+                
+                logger.info("Name successfully extracted with AI",
+                           full_name=extracted_name,
+                           name=result['name'],
+                           last_name=result.get('last_name'))
+                
+                return result
+            
+            return None
+            
+        except Exception as e:
+            logger.error("Error extracting name with AI",
+                        error=str(e),
+                        message_preview=message[:100])
+            return None
+    
+    async def _extract_contact_info(self, message: str, conversation_history: List[Dict] = None) -> Dict:
+        """
+        Extrae información de contacto del mensaje usando patrones inteligentes
+        
+        Args:
+            message: Mensaje del usuario
+            conversation_history: Historial de la conversación (opcional)
+            
+        Returns:
+            Dict con información de contacto encontrada
+        """
+        contact_info = {}
+        
+        # 🤖 EXTRACCIÓN INTELIGENTE DE NOMBRES CON OPENAI
+        # Verificar si debe extraer nombres (contexto conversacional)
+        bot_requested = False
+        if conversation_history:
+            bot_requested = self._should_extract_contact_info(conversation_history)
+        
+        # Detectar si hay email o teléfono (indica intención de compartir datos)
+        has_email = bool(re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', message))
+        has_phone = bool(re.search(r'[0-9]{3,}', message))
+        
+        # Solo intentar extraer nombre si:
+        # 1. El bot pidió datos, O
+        # 2. El mensaje contiene email/teléfono (indica intención de compartir)
+        should_extract_name = bot_requested or has_email or has_phone
+        
+        if should_extract_name:
+            logger.info("Attempting name extraction with AI",
+                       bot_requested=bot_requested,
+                       has_email=has_email,
+                       has_phone=has_phone)
+            
+            # Extraer nombre con OpenAI
+            name_data = await self._extract_name_with_ai(message)
+            
+            if name_data:
+                # Validar con scoring
+                full_name = name_data['name']
+                if name_data.get('last_name'):
+                    full_name += ' ' + name_data['last_name']
+                
+                confidence = self._calculate_name_confidence(
+                    full_name,
+                    message,
+                    bot_requested,
+                    has_email,
+                    has_phone
+                )
+                
+                logger.info("Name confidence score calculated",
+                           potential_name=full_name,
+                           confidence=confidence,
+                           bot_requested=bot_requested,
+                           has_email=has_email,
+                           has_phone=has_phone)
+                
+                # Aceptar si score >= 60
+                if confidence >= 60:
+                    contact_info['name'] = name_data['name']
+                    if name_data.get('last_name'):
+                        contact_info['last_name'] = name_data['last_name']
+                    
+                    logger.info("Name accepted after AI extraction and validation",
+                               name=contact_info['name'],
+                               last_name=contact_info.get('last_name'),
+                               confidence=confidence)
+                else:
+                    logger.info("Name rejected - low confidence score",
+                               potential_name=full_name,
+                               confidence=confidence,
+                               threshold=60)
+            else:
+                logger.debug("No name extracted by AI",
+                            message_preview=message[:100])
+        else:
+            logger.debug("Name extraction skipped - no context or contact data",
+                        bot_requested=bot_requested,
+                        has_email=has_email,
+                        has_phone=has_phone)
+        
+        # Extraer teléfono (intentar con regex primero)
+        phone_patterns = [
+            r'mi tel(?:éfono)?\s+es\s+([0-9\s\-\+\(\)]{8,20})',
+            r'mi número es\s+([0-9\s\-\+\(\)]{8,20})',
+            r'teléfono[:\s]+([0-9\s\-\+\(\)]{8,20})',
+            r'tel[:\s]+([0-9\s\-\+\(\)]{8,20})',
+            r'(\+?54\s?9?\s?[0-9\s\-]{8,15})',  # Formato argentino
+            r'([0-9]{3}\s?[0-9]{6,9})',  # Formato general
+            r'([0-9\s\-]{8,15})'  # Números generales
+        ]
+        
+        for pattern in phone_patterns:
+            match = re.search(pattern, message, re.IGNORECASE)
+            if match:
+                phone = re.sub(r'[^\d\+]', '', match.group(1))  # Limpiar formato
+                if len(phone) >= 8:  # Mínimo 8 dígitos
+                    contact_info['phone'] = match.group(1).strip()
+                    break
+        
+        # Extraer email (intentar con regex primero)
+        email_pattern = r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+        email_match = re.search(email_pattern, message)
+        if email_match:
+            contact_info['email'] = email_match.group(1).lower()
+        
+        # 🆕 FALLBACK: Si no se detectó email o teléfono con regex, usar LLM
+        if (not contact_info.get('email') or not contact_info.get('phone')) and (has_email or has_phone or bot_requested):
+            logger.info("Regex extraction incomplete, trying LLM fallback",
+                       has_email_regex=bool(contact_info.get('email')),
+                       has_phone_regex=bool(contact_info.get('phone')))
+            
+            llm_contact = await self._extract_contact_with_llm(message)
+            
+            # Completar con datos del LLM si regex no los encontró
+            if not contact_info.get('email') and llm_contact.get('email'):
+                contact_info['email'] = llm_contact['email']
+                logger.info("Email extracted by LLM fallback", email=contact_info['email'])
+            
+            if not contact_info.get('phone') and llm_contact.get('phone'):
+                contact_info['phone'] = llm_contact['phone']
+                logger.info("Phone extracted by LLM fallback", phone=contact_info['phone'])
+        
+        return contact_info
+    
+    async def _extract_contact_with_llm(self, message: str) -> Dict:
+        """
+        Extrae email y teléfono usando GPT-4o-mini como fallback
+        cuando regex no detecta formatos no estándar
+        """
+        try:
+            prompt = f"""Extrae la información de contacto del mensaje.
+
+Mensaje: "{message}"
+
+Responde en formato JSON:
+{{
+    "email": "email@example.com" o null,
+    "phone": "número de teléfono" o null
+}}
+
+REGLAS:
+- Email: Formato válido (usuario@dominio.ext)
+- Teléfono: Cualquier número de 7+ dígitos, incluir código de país si se menciona
+- Normalizar teléfono: remover espacios extras pero mantener formato legible
+- Si no encuentras algo, usa null
+
+Ejemplos:
+- "contactame al 11 1234 5678" → {{"phone": "11 1234 5678"}}
+- "mi cel es +54 9 11 1234-5678" → {{"phone": "+54 9 11 1234-5678"}}
+- "escribime a juan@gmail.com" → {{"email": "juan@gmail.com"}}
+
+Responde SOLO con el JSON."""
+            
+            response = await self.openai_client.chat.completions.create(
+                model=settings.OPENAI_MODEL_FAST,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                response_format={"type": "json_object"},
+                timeout=30
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            
+            logger.info("Contact info extracted with LLM",
+                       email=result.get('email'),
+                       phone=result.get('phone'),
+                       tokens_used=response.usage.total_tokens)
+            
+            return result
+            
+        except Exception as e:
+            logger.error("Error extracting contact with LLM",
+                        error=str(e),
+                        message_preview=message[:100])
+            return {}
+    
+    def get_lead_by_session(self, session_id: str) -> Optional[Dict]:
+        """Obtiene lead por session_id"""
+        db = SessionLocal()
+        try:
+            lead = db.query(Lead).filter(Lead.session_id == session_id).first()
+            return lead.to_dict() if lead else None
+        finally:
+            db.close()
+    
+    def get_active_leads(self, limit: int = 50) -> List[Dict]:
+        """Obtiene leads activos ordenados por prioridad"""
+        db = SessionLocal()
+        try:
+            leads = db.query(Lead).filter(
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).order_by(
+                Lead.updated_at.desc()
+            ).limit(limit).all()
+            
+            # Calcular prioridad y ordenar
+            lead_dicts = [lead.to_dict() for lead in leads]
+            lead_dicts.sort(key=lambda x: self._calculate_priority(x), reverse=True)
+            
+            return lead_dicts
+        finally:
+            db.close()
+    
+    def get_leads_by_type(self, lead_type: str) -> List[Dict]:
+        """Obtiene leads por tipo (CALIENTE, TIBIO, FRIO)"""
+        db = SessionLocal()
+        try:
+            leads = db.query(Lead).filter(
+                Lead.lead_type == lead_type,
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).order_by(Lead.updated_at.desc()).all()
+            
+            return [lead.to_dict() for lead in leads]
+        finally:
+            db.close()
+    
+    def get_leads_ready_for_contact(self) -> List[Dict]:
+        """Obtiene leads listos para ser contactados"""
+        db = SessionLocal()
+        try:
+            leads = db.query(Lead).filter(
+                Lead.contact_readiness == True,
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).order_by(Lead.updated_at.desc()).all()
+            
+            return [lead.to_dict() for lead in leads]
+        finally:
+            db.close()
+    
+    def update_lead_status(self, lead_id: int, status: str) -> bool:
+        """Actualiza el status de un lead"""
+        db = SessionLocal()
+        try:
+            lead = db.query(Lead).filter(Lead.id == lead_id).first()
+            if lead:
+                lead.status = status
+                lead.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                db.commit()
+                logger.info("Lead status updated", lead_id=lead_id, new_status=status)
+                return True
+            return False
+        finally:
+            db.close()
+    
+    def get_lead_stats(self) -> Dict:
+        """Obtiene estadísticas de leads"""
+        db = SessionLocal()
+        try:
+            total_leads = db.query(Lead).filter(
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).count()
+            active_leads = db.query(Lead).filter(
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).count()
+            
+            # Por tipo
+            calientes = db.query(Lead).filter(
+                Lead.lead_type == "CALIENTE",
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).count()
+            tibios = db.query(Lead).filter(
+                Lead.lead_type == "TIBIO",
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).count()
+            frios = db.query(Lead).filter(
+                Lead.lead_type == "FRIO",
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).count()
+            
+            # Con contacto completo
+            with_contact = db.query(Lead).filter(
+                Lead.name.isnot(None),
+                Lead.phone.isnot(None),
+                Lead.status == "active"
+            ).count()
+            
+            # Listos para contactar
+            ready_for_contact = db.query(Lead).filter(
+                Lead.contact_readiness == True,
+                Lead.status == "active",
+                Lead.name.isnot(None),
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
+            ).count()
+            
+            return {
+                "total_leads": total_leads,
+                "active_leads": active_leads,
+                "by_type": {
+                    "calientes": calientes,
+                    "tibios": tibios,
+                    "frios": frios
+                },
+                "with_complete_contact": with_contact,
+                "ready_for_contact": ready_for_contact,
+                "conversion_rate": (with_contact / active_leads * 100) if active_leads > 0 else 0
+            }
+        finally:
+            db.close()
+    
+    def _calculate_priority(self, lead_dict: Dict) -> float:
+        """Calcula prioridad de un lead para ordenamiento"""
+        classification = lead_dict.get('classification', {})
+        metadata = lead_dict.get('metadata', {})
+        contact_info = lead_dict.get('contact_info', {})
+        
+        score = classification.get('interest_score', 1)
+        
+        # Bonificaciones
+        if classification.get('lead_type') == 'CALIENTE':
+            score += 3
+        elif classification.get('lead_type') == 'TIBIO':
+            score += 1
+        
+        if contact_info.get('name') and contact_info.get('phone'):
+            score += 2
+        
+        if classification.get('contact_readiness'):
+            score += 1
+        
+        # Penalización por antigüedad (leads más recientes tienen prioridad)
+        if metadata.get('updated_at'):
+            try:
+                updated = datetime.fromisoformat(metadata['updated_at'].replace('Z', '+00:00'))
+                hours_old = (datetime.now(timezone.utc).replace(tzinfo=None) - updated.replace(tzinfo=None)).total_seconds() / 3600
+                if hours_old > 24:
+                    score -= min(hours_old / 24, 2)  # Máximo -2 puntos
+            except:
+                pass
+        
+        return max(score, 0)
+    
+    async def create_event_lead(
+        self,
+        db: Session,
+        session_id: str,
+        event_info: Dict,
+        contact_info: Dict
+    ):
+        """
+        Crea o actualiza lead con información de evento temporal
+        
+        Args:
+            db: Sesión de base de datos
+            session_id: ID de sesión
+            event_info: Info del evento (name, type, countries, year)
+            contact_info: Info de contacto (name, email, phone)
+            
+        Returns:
+            Lead creado/actualizado
+        """
+        try:
+            # Reutilizar método existente
+            lead = self._get_or_create_lead(db, session_id)
+            
+            # Agregar info de evento (campos nuevos)
+            lead.is_event_lead = True
+            lead.event_name = event_info.get("event_name")
+            lead.event_type = event_info.get("event_type")
+            
+            # Guardar países como JSON string
+            import json
+            if event_info.get("related_countries"):
+                lead.event_countries = json.dumps(event_info["related_countries"])
+            
+            lead.event_year = event_info.get("next_edition")
+            
+            # Actualizar main_interest con evento
+            lead.main_interest = f"{event_info.get('event_name')} {event_info.get('next_edition', '')}"
+            
+            # Usar método existente para agregar contacto
+            lead.add_contact_info(**contact_info)
+            
+            # Marcar como lead caliente (interés específico)
+            lead.lead_type = "CALIENTE"
+            lead.interest_score = 8
+            lead.contact_readiness = True
+            
+            db.commit()
+            
+            logger.info("Event lead created/updated",
+                       session_id=session_id,
+                       lead_id=lead.id,
+                       event_name=lead.event_name,
+                       has_contact=lead.is_complete_lead())
+            
+            return lead
+            
+        except Exception as e:
+            logger.error("Error creating event lead",
+                        session_id=session_id,
+                        error=str(e))
+            db.rollback()
+            raise
+
+# Instancia global del servicio de leads
+lead_service = LeadService()

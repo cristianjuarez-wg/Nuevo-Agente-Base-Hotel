@@ -1,0 +1,261 @@
+{
+  "_comment": "Jerarquía geográfica completa para detección inteligente de países",
+  "_version": "1.0",
+  "_created": "2025-11-05",
+  
+  "continents": {
+    "europa": {
+      "aliases": ["europe", "viejo continente", "ue", "union europea"],
+      "regions": {
+        "europa_del_sur": {
+          "aliases": ["southern europe", "mediterráneo"],
+          "countries": ["españa", "italia", "grecia", "portugal", "croacia"]
+        },
+        "europa_del_norte": {
+          "aliases": ["northern europe", "escandinavia", "países nórdicos"],
+          "countries": ["noruega", "suecia", "dinamarca", "finlandia", "islandia"]
+        },
+        "europa_occidental": {
+          "aliases": ["western europe"],
+          "countries": ["francia", "alemania", "países bajos", "bélgica", "suiza", "austria"]
+        },
+        "balticos": {
+          "aliases": ["países bálticos", "baltic states"],
+          "countries": ["estonia", "letonia", "lituania"]
+        }
+      }
+    },
+    "asia": {
+      "aliases": ["oriente", "lejano oriente"],
+      "regions": {
+        "asia_oriental": {
+          "aliases": ["east asia", "extremo oriente"],
+          "countries": ["japón", "china", "corea del sur", "taiwan"]
+        },
+        "sudeste_asiatico": {
+          "aliases": ["southeast asia", "indochina"],
+          "countries": ["tailandia", "vietnam", "camboya", "singapur", "malasia", "indonesia"]
+        },
+        "asia_meridional": {
+          "aliases": ["south asia", "subcontinente indio"],
+          "countries": ["india", "nepal", "sri lanka", "bután"]
+        },
+        "oriente_medio": {
+          "aliases": ["middle east", "golfo pérsico"],
+          "countries": ["emiratos árabes unidos", "qatar", "turquía", "jordania", "israel"]
+        }
+      }
+    },
+    "america": {
+      "aliases": ["americas", "nuevo mundo"],
+      "regions": {
+        "america_del_norte": {
+          "aliases": ["north america", "norteamérica"],
+          "countries": ["estados unidos", "canadá", "méxico"]
+        },
+        "america_central": {
+          "aliases": ["central america"],
+          "countries": ["costa rica", "panamá", "nicaragua", "guatemala"]
+        },
+        "america_del_sur": {
+          "aliases": ["south america", "sudamérica", "sudamerica", "america del sur", "sur", "el sur", "suramérica", "suramerica"],
+          "countries": ["brasil", "argentina", "chile", "perú", "colombia", "ecuador", "uruguay"]
+        }
+      }
+    },
+    "africa": {
+      "aliases": ["áfrica"],
+      "regions": {
+        "africa_del_norte": {
+          "aliases": ["north africa", "magreb"],
+          "countries": ["egipto", "marruecos", "túnez"]
+        },
+        "africa_austral": {
+          "aliases": ["southern africa"],
+          "countries": ["sudáfrica", "namibia", "botswana", "zimbabue"]
+        }
+      }
+    },
+    "oceania": {
+      "aliases": ["oceanía", "pacífico"],
+      "regions": {
+        "australasia": {
+          "aliases": [],
+          "countries": ["australia", "nueva zelanda"]
+        }
+      }
+    }
+  },
+  
+  "special_regions": {
+    "laponia": {
+      "type": "cross_border_region",
+      "description": "Región ártica del norte de Europa",
+      "primary_country": "finlandia",
+      "also_includes": ["suecia", "noruega"],
+      "keywords": ["auroras boreales", "northern lights", "santa claus", "papa noel", "papá noel", "santa", "navidad artica", "navidad en el artico", "renos", "trineo", "círculo polar", "nieve"],
+      "cities": ["rovaniemi", "kemi", "saariselkä", "kiruna", "tromsø"]
+    },
+    "patagonia": {
+      "type": "cross_border_region",
+      "description": "Región del sur de Sudamérica",
+      "primary_country": "argentina",
+      "also_includes": ["chile"],
+      "keywords": ["glaciares", "torres del paine", "el calafate", "ushuaia", "fin del mundo"],
+      "cities": ["el calafate", "ushuaia", "puerto natales", "punta arenas"]
+    },
+    "escandinavia": {
+      "type": "multi_country_region",
+      "description": "Región del norte de Europa",
+      "countries": ["noruega", "suecia", "dinamarca"],
+      "sometimes_includes": ["finlandia"],
+      "keywords": ["fiordos", "vikingos", "países nórdicos"]
+    },
+    "destinos_de_playa": {
+      "type": "theme_category",
+      "description": "Destinos con playas paradisíacas",
+      "countries_with_beaches": ["tailandia", "grecia", "españa", "brasil", "costa rica", "vietnam", "turquía", "egipto", "australia", "nueva zelanda"],
+      "keywords": ["playa", "beach", "playas", "beaches", "mar", "costa", "litoral", "arena", "sol y playa", "caribe", "mediterraneo", "océano", "costas", "playa paradisiaca", "paraiso tropical"]
+    }
+  },
+  
+  "city_to_country": {
+    "madrid": "españa",
+    "barcelona": "españa",
+    "sevilla": "españa",
+    "valencia": "españa",
+    "granada": "españa",
+    "bilbao": "españa",
+    "málaga": "españa",
+    "lisboa": "portugal",
+    "oporto": "portugal",
+    "porto": "portugal",
+    "faro": "portugal",
+    "sintra": "portugal",
+    "roma": "italia",
+    "venecia": "italia",
+    "florencia": "italia",
+    "milán": "italia",
+    "nápoles": "italia",
+    "pisa": "italia",
+    "verona": "italia",
+    "atenas": "grecia",
+    "santorini": "grecia",
+    "mykonos": "grecia",
+    "creta": "grecia",
+    "parís": "francia",
+    "niza": "francia",
+    "lyon": "francia",
+    "marsella": "francia",
+    "helsinki": "finlandia",
+    "rovaniemi": "finlandia",
+    "kemi": "finlandia",
+    "saariselkä": "finlandia",
+    "tallinn": "estonia",
+    "riga": "letonia",
+    "vilna": "lituania",
+    "tokio": "japón",
+    "kioto": "japón",
+    "osaka": "japón",
+    "hiroshima": "japón",
+    "pekín": "china",
+    "beijing": "china",
+    "shanghái": "china",
+    "shanghai": "china",
+    "xi'an": "china",
+    "bangkok": "tailandia",
+    "phuket": "tailandia",
+    "chiang mai": "tailandia",
+    "nueva delhi": "india",
+    "delhi": "india",
+    "agra": "india",
+    "jaipur": "india",
+    "mumbai": "india",
+    "katmandú": "nepal",
+    "kathmandu": "nepal",
+    "pokhara": "nepal",
+    "dubái": "emiratos árabes unidos",
+    "dubai": "emiratos árabes unidos",
+    "abu dhabi": "emiratos árabes unidos",
+    "nueva york": "estados unidos",
+    "new york": "estados unidos",
+    "los angeles": "estados unidos",
+    "las vegas": "estados unidos",
+    "san francisco": "estados unidos",
+    "miami": "estados unidos",
+    "orlando": "estados unidos",
+    "washington": "estados unidos",
+    "río de janeiro": "brasil",
+    "rio de janeiro": "brasil",
+    "san pablo": "brasil",
+    "são paulo": "brasil",
+    "brasilia": "brasil",
+    "salvador": "brasil",
+    "lima": "perú",
+    "cusco": "perú",
+    "cuzco": "perú",
+    "arequipa": "perú",
+    "buenos aires": "argentina",
+    "córdoba": "argentina",
+    "mendoza": "argentina",
+    "el calafate": "argentina",
+    "ushuaia": "argentina",
+    "santiago": "chile",
+    "valparaíso": "chile",
+    "san josé": "costa rica",
+    "el cairo": "egipto",
+    "luxor": "egipto",
+    "asuán": "egipto",
+    "ciudad del cabo": "sudáfrica",
+    "johannesburgo": "sudáfrica",
+    "sídney": "australia",
+    "sydney": "australia",
+    "melbourne": "australia",
+    "auckland": "nueva zelanda",
+    "estambul": "turquía",
+    "capadocia": "turquía",
+    "marrakech": "marruecos",
+    "casablanca": "marruecos"
+  },
+  
+  "landmark_to_country": {
+    "torre eiffel": "francia",
+    "louvre": "francia",
+    "arco del triunfo": "francia",
+    "versalles": "francia",
+    "coliseo": "italia",
+    "vaticano": "italia",
+    "torre de pisa": "italia",
+    "fontana di trevi": "italia",
+    "sagrada familia": "españa",
+    "alhambra": "españa",
+    "parque güell": "españa",
+    "museo del prado": "españa",
+    "palacio real": "españa",
+    "acrópolis": "grecia",
+    "partenón": "grecia",
+    "santa claus village": "finlandia",
+    "pueblo de santa claus": "finlandia",
+    "aldea de papá noel": "finlandia",
+    "círculo polar ártico": "finlandia",
+    "taj mahal": "india",
+    "gran muralla china": "china",
+    "ciudad prohibida": "china",
+    "guerreros de terracota": "china",
+    "monte fuji": "japón",
+    "templo kinkaku-ji": "japón",
+    "fushimi inari": "japón",
+    "machu picchu": "perú",
+    "cristo redentor": "brasil",
+    "estatua de la libertad": "estados unidos",
+    "gran cañón": "estados unidos",
+    "times square": "estados unidos",
+    "pirámides de giza": "egipto",
+    "esfinge": "egipto",
+    "burj khalifa": "emiratos árabes unidos",
+    "big ben": "reino unido",
+    "buckingham palace": "reino unido",
+    "torre de belém": "portugal",
+    "monasterio de los jerónimos": "portugal"
+  }
+}

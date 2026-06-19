@@ -1,0 +1,21 @@
+"""
+Constantes centralizadas del sistema
+"""
+from .categories import TICKET_CATEGORIES, CATEGORY_KEYWORDS, CATEGORY_PRIORITY
+from .priorities import PRIORITY_LEVELS, URGENCY_LEVELS
+from .keywords import URGENT_KEYWORDS, HIGH_KEYWORDS, ESCALATION_KEYWORDS
+from .status import TICKET_STATUS, LEAD_STATUS, TRIP_STATUS
+
+__all__ = [
+    'TICKET_CATEGORIES',
+    'CATEGORY_KEYWORDS',
+    'CATEGORY_PRIORITY',
+    'PRIORITY_LEVELS',
+    'URGENCY_LEVELS',
+    'URGENT_KEYWORDS',
+    'HIGH_KEYWORDS',
+    'ESCALATION_KEYWORDS',
+    'TICKET_STATUS',
+    'LEAD_STATUS',
+    'TRIP_STATUS',
+]

@@ -1,0 +1,3062 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "region": "Argentina",
+    "total_saludos": 200,
+    "total_despedidas": 200,
+    "description": "Variantes de saludos y despedidas para agente IA - optimizado para detección rápida sin LLM"
+  },
+  "saludos": [
+    {
+      "text": "hola",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "Hola",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "hola!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "Hola!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "holaa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "holaaa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "holaaaa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "holiii",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "holiiii",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "hola 👋",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "hola!",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "hola 😊",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "hola 🙂",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "hla",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "ola",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "buenos dias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenos días",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buen dia",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buen día",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenos dias!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenos días!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buen día 🌞",
+      "formality": "formal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenos días ☀️",
+      "formality": "formal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenas tardes",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenas tardes!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buena tarde",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenas tardes 🌅",
+      "formality": "formal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenas noches",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buena noche",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenas noches!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenas noches 🌙",
+      "formality": "formal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "che",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che que tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che qué tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che como andas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che cómo andas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che como estas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che cómo estás",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "che boludo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "que haces",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "qué hacés",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "que haces?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "qué hacés?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "como andas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "cómo andas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "como andas?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "cómo andás?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "todo bien?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "todo bien",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "como estas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "cómo estás",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "como estas?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "cómo estás?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "que tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "qué tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "que tal?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "qué tal?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "que tal todo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "qué tal todo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "hey",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "hey!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "heey",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "heeey",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "hey que tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "hey qué tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "epa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "epa!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "epa que tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "ey",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "ey!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "buenas",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "buenas!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "buenass",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "buenasss",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "buenas 👋",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "saludos",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "saludos!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "hola como estas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola cómo estás",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola como andas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "hola cómo andás",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "hola que tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola qué tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola! como estas?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola! cómo estás?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola buen dia",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola buen día",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "buen dia como estas",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "buen día cómo estás",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola, como va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "hola, cómo va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "como va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "cómo va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "como va todo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "cómo va todo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "que onda",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "qué onda",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "que onda?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "qué onda?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "ola k ase",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "hola q tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "hla q tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "q tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "q onda",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "cm estas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "cm andas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "hola che",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "hola loco",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "hola pa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "hola pibe",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "que contas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "qué contás",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "que me contas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "qué me contás",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "todo tranqui?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "todo tranca?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "como te va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "cómo te va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "hola! todo bien?",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "estimado/a",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "estimados",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "hola estimado",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "buenos dias, como esta",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "buenos días, cómo está",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "buen dia, como le va",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "buen día, cómo le va",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "permiso",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "disculpe",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "formal"
+    },
+    {
+      "text": "disculpa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "perdon",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "perdón",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico"
+    },
+    {
+      "text": "hola disculpa",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola disculpá",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "hola perdon",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "hola perdón",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "🙋",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "👋",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "😊",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "🙂",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "hola! como va eso",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "hola! cómo va eso",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "que decis",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "qué decís",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "como va la cosa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "cómo va la cosa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "ahi va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "respuesta"
+    },
+    {
+      "text": "ahí va",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "respuesta"
+    },
+    {
+      "text": "que linda",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "piropo"
+    },
+    {
+      "text": "que lindo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "piropo"
+    },
+    {
+      "text": "wenas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "wenass",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "holi",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "variante"
+    },
+    {
+      "text": "oli",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "holiwis",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "variante"
+    },
+    {
+      "text": "holis",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "variante"
+    },
+    {
+      "text": "buenasss tardes",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "buen diaaaa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "ke tal",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "ke ase",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "komo estas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "hi",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "extranjerismo"
+    },
+    {
+      "text": "hello",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "extranjerismo"
+    },
+    {
+      "text": "buenas vibras",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "variante"
+    },
+    {
+      "text": "hola! que haces por aca",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "hola! qué hacés por acá",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "como estas vos",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "cómo estás vos",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta",
+      "region_specific": true
+    },
+    {
+      "text": "buen dia! como amaneciste",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buen día! cómo amaneciste",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "hola papa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "hola pa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "hola maquina",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "hola máquina",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "argentino",
+      "region_specific": true
+    },
+    {
+      "text": "hola crack",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "informal"
+    },
+    {
+      "text": "hola genio",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "informal"
+    },
+    {
+      "text": "que mas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "qué más",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "pregunta"
+    },
+    {
+      "text": "holap",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "buenasss",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado"
+    },
+    {
+      "text": "hola! necesito info",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola necesito informacion",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola necesito información",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola! queria consultar",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola! quería consultar",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola, tengo una consulta",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola quisiera saber",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola me gustaria saber",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "hola me gustaría saber",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "consulta"
+    },
+    {
+      "text": "Helo!",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "que tul!",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Buenas! como estás?",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Que haces locura! Todo bien?",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Eyyy boy",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Hola loquillo!",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Hola viejo!",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Hola Bebé",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Hola bebé!",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Hola bebé",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    }
+  ],
+  "despedidas": [
+    {
+      "text": "chau",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico",
+      "region_specific": true
+    },
+    {
+      "text": "chau!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "basico",
+      "region_specific": true
+    },
+    {
+      "text": "chauu",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado",
+      "region_specific": true
+    },
+    {
+      "text": "chauuu",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado",
+      "region_specific": true
+    },
+    {
+      "text": "chaucito",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "diminutivo",
+      "region_specific": true
+    },
+    {
+      "text": "chau chau",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "repetido",
+      "region_specific": true
+    },
+    {
+      "text": "chau 👋",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji",
+      "region_specific": true
+    },
+    {
+      "text": "chau!",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji",
+      "region_specific": true
+    },
+    {
+      "text": "gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "graciass",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "graciasss",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "muchas gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "muchas gracias!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "muchisimas gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "muchísimas gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias por todo",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias por la info",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias por la información",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias por tu ayuda",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias loco",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "gracias che",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "gracias pa",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "gracias pibe",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "gracias maestro",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias crack",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias genio",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias maquina",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias máquina",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "grax",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "graxx",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "grcs",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": true,
+      "category": "typo"
+    },
+    {
+      "text": "gracias 🙏",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "gracias!",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "gracias 😊",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "con_emoji"
+    },
+    {
+      "text": "perfecto",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "perfecto!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "perfecto, gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "perfecto gracias!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "perfecto, muchas gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "excelente",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "excelente!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "excelente gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "excelente, gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "ok",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "ok!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "ok gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "ok, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "ok perfecto",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "ok, perfecto",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "ok, muchas gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "dale",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "dale!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "dalee",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado",
+      "region_specific": true
+    },
+    {
+      "text": "daleee",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "elongado",
+      "region_specific": true
+    },
+    {
+      "text": "dale gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "dale, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "dale perfecto",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "dale, perfecto",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "dale chau",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "dale, chau",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "genial",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "genial!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "genial gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "genial, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "barbaro",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "bárbaro",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "barbaro!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "bárbaro!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "barbaro gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "bárbaro, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "joya",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "joya!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion",
+      "region_specific": true
+    },
+    {
+      "text": "joya gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "joya, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "nos vemos",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "nos vemos!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "nos vemos pronto",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "nos vemos luego",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta luego",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta luego!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta pronto",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta pronto!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta la proxima",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta la próxima",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta despues",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta después",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta mañana",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "hasta manana",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "nos vemos mañana",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "nos vemos manana",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "adios",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "adiós",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "adios!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "adiós!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "bye",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "extranjerismo"
+    },
+    {
+      "text": "bye!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "extranjerismo"
+    },
+    {
+      "text": "byee",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "extranjerismo"
+    },
+    {
+      "text": "byeee",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "extranjerismo"
+    },
+    {
+      "text": "bye bye",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "extranjerismo"
+    },
+    {
+      "text": "saludos",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "saludos!",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "saludos cordiales",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "un saludo",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "listo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "listo!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "listo gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "listo, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "esta todo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "está todo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "esta todo, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "está todo, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "eso es todo",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "eso es todo gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "eso es todo, gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "nada mas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "nada más",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "nada mas gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "nada más, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "ya esta",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "ya está",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "ya esta, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "ya está, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "cierre"
+    },
+    {
+      "text": "👍",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "✅",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "👌",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "🙏",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "😊",
+      "formality": "informal",
+      "has_emoji": true,
+      "has_typo": false,
+      "category": "emoji_solo"
+    },
+    {
+      "text": "buen viaje",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "buen viaje!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que tengas buen viaje",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que tengas un buen viaje",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que tengas un excelente viaje",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "buen viaje y gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfruta",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfrutá",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "disfruta!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfrutá!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "disfruta el viaje",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfrutá el viaje",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "disfruta mucho",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfrutá mucho",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "disfruta muchisimo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfrutá muchísimo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "que la pases bien",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que la pases genial",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que la pases lindo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que lo pases lindo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que lo pases genial",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que lo disfrutes",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que lo disfrutes mucho",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "pasala bien",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "pasala genial",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "pasalo bien",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "pasalo genial",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que disfrutes",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que disfrutes mucho",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "pasala lindo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "pasalo lindo",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que te diviertas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que te diviertas mucho",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "divertite",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "divertite mucho",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "buen fin de semana",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "que tengas buen fin de semana",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buen finde",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "que tengas buen finde",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "buenas vacaciones",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que tengas buenas vacaciones",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "felices vacaciones",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfruta tus vacaciones",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "disfrutá tus vacaciones",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo",
+      "region_specific": true
+    },
+    {
+      "text": "que tengas lindas vacaciones",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "linda estadia",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "linda estadía",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que tengas linda estadia",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "que tengas linda estadía",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "turismo"
+    },
+    {
+      "text": "buen descanso",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "que descanses",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "que descanses bien",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "temporal"
+    },
+    {
+      "text": "que te vaya bien",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "que te vaya genial",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "que te vaya todo bien",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "despedida"
+    },
+    {
+      "text": "cualquier cosa me avisas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento"
+    },
+    {
+      "text": "cualquier cosa me decis",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "cualquier cosa me decís",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "cualquier duda me consultas",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento"
+    },
+    {
+      "text": "cualquier duda me consultás",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "aca estoy para lo que necesites",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento"
+    },
+    {
+      "text": "acá estoy para lo que necesites",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento"
+    },
+    {
+      "text": "me decis si necesitas algo mas",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento"
+    },
+    {
+      "text": "me decís si necesitás algo más",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "estoy a tu disposicion",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento"
+    },
+    {
+      "text": "estoy a tu disposición",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "ofrecimiento"
+    },
+    {
+      "text": "bueno, gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "bueno gracias por todo",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "muy bien, gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "todo claro",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "todo claro gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "todo claro, gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "entendido",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "entendido!",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "entendido, gracias",
+      "formality": "neutral",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "de acuerdo",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "afirmacion"
+    },
+    {
+      "text": "de acuerdo, gracias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "gracias y disculpa las molestias",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado"
+    },
+    {
+      "text": "gracias y disculpá las molestias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "combinado",
+      "region_specific": true
+    },
+    {
+      "text": "gracias por la atencion",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "gracias por la atención",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "agradezco tu ayuda",
+      "formality": "formal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "te agradezco",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "te agradezco mucho",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "mil gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "mil gracias!",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "un millon de gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "un millón de gracias",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento"
+    },
+    {
+      "text": "sos un genio",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "sos un crack",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "sos groso",
+      "formality": "informal",
+      "has_emoji": false,
+      "has_typo": false,
+      "category": "agradecimiento",
+      "region_specific": true
+    },
+    {
+      "text": "muchas gracias! saludos.",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "No me interesa, gracias",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    },
+    {
+      "text": "Muchas gracias! que tengas un buen día",
+      "formality": "neutral",
+      "category": "admin_approved",
+      "has_emoji": false,
+      "has_typo": false,
+      "region_specific": false
+    }
+  ]
+}
