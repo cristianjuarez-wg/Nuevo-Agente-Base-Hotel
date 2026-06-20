@@ -17,6 +17,9 @@ class Lead(Base):
     # 🆕 Vinculación con Contact (NUEVO - VISIÓN 360°)
     contact_id = Column(Integer, ForeignKey('contacts.id'), nullable=True, index=True)
     
+    # Canal de origen del lead: "whatsapp" | "web". Se deriva del session_id al crear.
+    channel = Column(String(20), nullable=True)
+
     # Información de contacto
     name = Column(String(255), nullable=True)
     last_name = Column(String(255), nullable=True)
@@ -85,6 +88,7 @@ class Lead(Base):
                 "created_at": self.created_at.isoformat() if self.created_at else None,
                 "updated_at": self.updated_at.isoformat() if self.updated_at else None,
                 "status": self.status,
+                "channel": self.channel,
                 "suggested_response_tone": self.suggested_response_tone,
                 "next_action": self.next_action,
                 "reasoning": self.reasoning

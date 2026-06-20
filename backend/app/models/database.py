@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, String, DateTime, Integer
+from sqlalchemy import create_engine, Column, String, DateTime, Integer, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -39,6 +39,38 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
+
+
+def ensure_column(table: str, column: str, ddl_type: str) -> None:
+    """Agrega una columna si la tabla ya existe sin ella (migración liviana e idempotente).
+
+    create_all() crea tablas nuevas pero NO altera tablas existentes. Para columnas
+    añadidas después (ej. leads.channel), este helper hace un ALTER TABLE solo si falta.
+    Funciona en SQLite y PostgreSQL. Si la tabla aún no existe, no hace nada (create_all
+    ya la habrá creado con la columna).
+    """
+    try:
+        inspector = inspect(engine)
+        if table not in inspector.get_table_names():
+            return
+        existing = {col["name"] for col in inspector.get_columns(table)}
+        if column in existing:
+            return
+        with engine.begin() as conn:
+            conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {ddl_type}'))
+    except Exception:
+        # Una migración fallida no debe impedir el arranque; se loguea en otra capa.
+        pass
+
+
+def run_light_migrations() -> None:
+    """Migraciones livianas de columnas agregadas tras el primer release.
+
+    Se invoca desde el startup de la app (lifespan), cuando todos los modelos ya
+    están importados y sus tablas creadas, para que el ALTER aplique a tablas reales.
+    """
+    ensure_column("leads", "channel", "VARCHAR(20)")
+
 
 def get_db():
     """Dependency para obtener sesión de DB"""

@@ -43,6 +43,7 @@ from app.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
 from app.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
+    build_whatsapp_contact_block,
 )
 
 logger = get_logger(__name__)
@@ -228,9 +229,21 @@ async def comercios_amigos(ctx: RunContextWrapper[HotelContext], rubro: str = ""
     return result.get("tool_result", "")
 
 
+@function_tool
+async def promos_vigentes(ctx: RunContextWrapper[HotelContext], consulta: str = "") -> str:
+    """Devuelve las promociones y ofertas especiales VIGENTES del hotel en este momento,
+    con descripción de cada una, el tipo de descuento y las condiciones.
+    Úsala SIEMPRE que el usuario pregunte sobre promociones, ofertas, descuentos,
+    4x3, 7x5, Stay & Park, tarifas especiales o 'qué promociones tienen'.
+    Devolvé los datos tal cual, sin inventar ni modificar ningún beneficio."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("promos_vigentes", {"consulta": consulta}, tool_ctx)
+    return result.get("tool_result", "")
+
+
 _TOOLS = [
     info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,
-    como_llegar, comercios_amigos,
+    como_llegar, comercios_amigos, promos_vigentes,
 ]
 
 
@@ -303,6 +316,8 @@ class HotelSDKOrchestrator:
             db, message, session_id, history, "", {}
         )
 
+        is_whatsapp = session_id.startswith("wa_")
+
         lead_block = ""
         if has_contact_info:
             contact_name = lead.name or "este usuario"
@@ -315,6 +330,11 @@ class HotelSDKOrchestrator:
             if lead.email:
                 details.append(f"Email: {lead.email}")
             lead_block = build_lead_context_block(contact_name, details)
+        elif is_whatsapp and lead.phone:
+            # WhatsApp: ya conocemos el teléfono. No lo pedimos; pedimos solo el nombre
+            # y ofrecemos usar/cambiar este número. (No depende de should_request_contact:
+            # apenas tengamos el teléfono pre-cargado conviene guiar así la reserva.)
+            lead_block = build_whatsapp_contact_block(lead.phone)
         elif should_request_contact:
             main_interest = lead_analysis.get("main_interest", "tu estadía")
             lead_block = build_contact_request_block(main_interest)

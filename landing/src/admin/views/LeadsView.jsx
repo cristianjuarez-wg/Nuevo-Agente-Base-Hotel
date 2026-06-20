@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, RefreshCw, Mail, Phone, Flame } from 'lucide-react'
+import { UserPlus, RefreshCw, Mail, Phone, Flame, MessageCircle, Globe } from 'lucide-react'
 import { listLeads } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate,
@@ -9,6 +9,14 @@ function TypeBadge({ type }) {
   const t = (type || '').toUpperCase()
   const map = { CALIENTE: 'red', TIBIO: 'amber', FRIO: 'blue' }
   return <Badge tone={map[t] || 'gray'}>{t || '—'}</Badge>
+}
+
+// Canal de origen del lead: WhatsApp (verde) o Web (gris).
+function ChannelBadge({ channel }) {
+  if (channel === 'whatsapp') {
+    return <Badge tone="green"><MessageCircle size={11} /> WhatsApp</Badge>
+  }
+  return <Badge tone="gray"><Globe size={11} /> Web</Badge>
 }
 
 function ScoreBar({ score }) {
@@ -40,6 +48,7 @@ function flatten(lead) {
     score: cl.interest_score,
     interest: ti.main_interest,
     status: md.status,
+    channel: md.channel,
     created_at: md.created_at,
   }
 }
@@ -70,6 +79,7 @@ export default function LeadsView() {
       </div>
     ) },
     { key: 'interest', label: 'Interés', render: (r) => r.interest || '—' },
+    { key: 'channel', label: 'Canal', render: (r) => <ChannelBadge channel={r.channel} /> },
     { key: 'type', label: 'Tipo', render: (r) => <TypeBadge type={r.type} /> },
     { key: 'score', label: 'Score', render: (r) => <ScoreBar score={r.score} /> },
     { key: 'created_at', label: 'Fecha', render: (r) => formatDate(r.created_at) },
@@ -79,7 +89,10 @@ export default function LeadsView() {
     <div>
       <div className="mb-2 flex items-center justify-between">
         <span className="font-medium text-ink">{r.name}</span>
-        <TypeBadge type={r.type} />
+        <div className="flex items-center gap-1.5">
+          <ChannelBadge channel={r.channel} />
+          <TypeBadge type={r.type} />
+        </div>
       </div>
       {r.interest && <p className="text-sm text-slatey">{r.interest}</p>}
       <div className="mt-2 space-y-0.5 text-xs text-slatey">

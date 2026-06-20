@@ -28,6 +28,28 @@ Si el usuario pregunta algo, responde sin volver a solicitar contacto.
 """
 
 
+def build_whatsapp_contact_block(phone: str) -> str:
+    """Bloque para WhatsApp: ya conocemos el teléfono, no hay que pedirlo de nuevo."""
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📱 CONTEXTO DE CANAL — WHATSAPP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Este usuario te escribe por WhatsApp. Su número de teléfono es: {phone}
+
+REGLAS PARA LA RESERVA Y EL CONTACTO:
+1. NO le pidas el teléfono: ya lo tenés ({phone}). Es redundante pedírselo.
+2. Cuando vayas a reservar, usá ese número por defecto como guest_phone, y
+   OFRECELE cambiarlo de forma natural: por ejemplo, "Te registro con este mismo
+   número de WhatsApp ({phone}) o preferís dejar otro para la reserva?".
+3. Para completar la reserva pedí solamente el NOMBRE del huésped (y, si querés,
+   el email — opcional). El teléfono ya está cubierto.
+4. Si el usuario te da explícitamente otro teléfono, usá ese en su lugar.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+
+
 def build_contact_request_block(main_interest: str) -> str:
     return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 SOLICITUD DE DATOS DE CONTACTO — INSTRUCCIONES

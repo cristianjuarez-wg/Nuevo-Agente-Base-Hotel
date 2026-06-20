@@ -229,11 +229,14 @@ class LeadService:
         lead = db.query(Lead).filter(Lead.session_id == session_id).first()
         
         if not lead:
+            # Canal derivado del session_id: el webhook de WhatsApp usa el prefijo "wa_".
+            channel = "whatsapp" if session_id.startswith("wa_") else "web"
             lead = Lead(
                 session_id=session_id,
                 lead_type="FRIO",
                 interest_score=1,
-                contact_readiness=False
+                contact_readiness=False,
+                channel=channel,
             )
             db.add(lead)
             db.flush()  # Para obtener el ID

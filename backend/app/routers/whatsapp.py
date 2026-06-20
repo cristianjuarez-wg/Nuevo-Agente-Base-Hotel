@@ -113,6 +113,17 @@ async def _process_and_reply(from_field: str, body: str, profile_name: str) -> N
         except Exception as e:  # noqa: BLE001 — no bloquear la respuesta por esto
             logger.warning("WhatsApp: no se pudo crear/vincular Contact", error=str(e))
 
+        # Pre-cargar el teléfono de WhatsApp en el Lead: ya conocemos el número, así el
+        # agente no necesita pedirlo (ver build_whatsapp_contact_block en el orquestador).
+        try:
+            from app.services.lead_service import lead_service
+            lead = lead_service._get_or_create_lead(db, session_id)
+            if not lead.phone:
+                lead.phone = phone
+                db.commit()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("WhatsApp: no se pudo pre-cargar teléfono en Lead", error=str(e))
+
         try:
             result = await asyncio.wait_for(
                 agent_service.chat(db, body, session_id),
