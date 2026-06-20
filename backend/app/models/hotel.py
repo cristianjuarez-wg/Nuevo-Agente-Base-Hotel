@@ -10,7 +10,7 @@ Reutilizan el `Base` y el `engine` de models/database.py (misma BD SQLite).
 """
 from sqlalchemy import Column, String, Integer, Float, Date, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, date
 
 from app.models.database import Base, engine
 
@@ -87,6 +87,27 @@ class Booking(Base):
 
     room = relationship("Room", back_populates="bookings")
 
+    def stay_status(self) -> str:
+        """Estado temporal de la estadía respecto a HOY (derivado, no se persiste).
+
+        Fuente única de verdad para Reservas, Pasajeros y Dashboard:
+          - "cancelled": la reserva está cancelada (prevalece sobre lo temporal).
+          - "checked_in": el huésped está alojado AHORA (check_in <= hoy <= check_out).
+          - "upcoming": la estadía es futura (check_in > hoy).
+          - "past": la estadía ya terminó (check_out < hoy).
+        """
+        if self.status == "cancelled":
+            return "cancelled"
+        today = date.today()
+        if self.check_in and self.check_out:
+            if self.check_in <= today <= self.check_out:
+                return "checked_in"
+            if self.check_in > today:
+                return "upcoming"
+            if self.check_out < today:
+                return "past"
+        return "upcoming"
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -95,6 +116,7 @@ class Booking(Base):
             "room_type": self.room.room_type if self.room else None,
             "contact_id": self.contact_id,
             "session_id": self.session_id,
+            "stay_status": self.stay_status(),
             "guest_name": self.guest_name,
             "guest_email": self.guest_email,
             "guest_phone": self.guest_phone,

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, Globe, ArrowRight, AlertTriangle,
+  CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, Globe, ArrowRight, AlertTriangle, BedDouble,
 } from 'lucide-react'
 import { listBookings, listLeads, getTicketStats } from '../../services/api'
-import { PageHeader, StatCard, Loading, Badge, formatARS, formatDate } from '../ui'
+import { PageHeader, StatCard, Loading, Badge, formatUSD, formatDate } from '../ui'
 
 export default function DashboardView({ go }) {
   const [data, setData] = useState(null)
@@ -22,7 +22,13 @@ export default function DashboardView({ go }) {
           .filter((b) => b.status !== 'cancelled')
           .reduce((sum, b) => sum + (b.total_price_usd || 0), 0)
         const fromAgent = bArr.filter((b) => b.source === 'agente').length
-        setData({ bookings: bArr, leads: lArr, tickets, revenueUsd, fromAgent })
+        // Huéspedes en casa hoy: reservas en curso (stay_status del backend).
+        const inHouse = bArr.filter((b) => b.stay_status === 'checked_in')
+        const guestsInHouse = inHouse.reduce((sum, b) => sum + (b.guests || 0) + (b.children || 0), 0)
+        setData({
+          bookings: bArr, leads: lArr, tickets, revenueUsd, fromAgent,
+          inHouseCount: inHouse.length, guestsInHouse,
+        })
       })
       .finally(() => setLoading(false))
   }, [])
@@ -36,9 +42,15 @@ export default function DashboardView({ go }) {
     <div>
       <PageHeader title="Dashboard" subtitle="Resumen de actividad del Hampton by Hilton Bariloche." />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
+        <StatCard
+          icon={BedDouble}
+          label={`En casa hoy${data.guestsInHouse ? ` · ${data.guestsInHouse} huésp.` : ''}`}
+          value={data.inHouseCount}
+          tone="green"
+        />
         <StatCard icon={CalendarCheck} label="Reservas totales" value={data.bookings.length} tone="hilton" />
-        <StatCard icon={DollarSign} label="Ingresos (USD)" value={`$${formatARS(data.revenueUsd)}`} tone="green" />
+        <StatCard icon={DollarSign} label="Ingresos (USD)" value={formatUSD(data.revenueUsd)} tone="green" />
         <StatCard icon={UserPlus} label="Leads captados" value={data.leads.length} tone="amber" />
         <StatCard icon={LifeBuoy} label="Tickets soporte" value={data.tickets.total} tone="hilton" />
       </div>
@@ -107,7 +119,7 @@ export default function DashboardView({ go }) {
                     {b.code} · {b.room_type} · {formatDate(b.check_in)}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-semibold tabular-nums text-hilton-700">USD {b.total_price_usd}</span>
+                <span className="shrink-0 text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(b.total_price_usd)}</span>
               </li>
             ))}
           </ul>

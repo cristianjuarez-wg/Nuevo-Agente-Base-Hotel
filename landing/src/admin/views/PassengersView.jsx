@@ -23,6 +23,7 @@ function flatten(c) {
     phone: c.phone_number,
     channel: c.channel,
     stays: m.purchases_made ?? 0,
+    inHouse: !!c.is_staying_now,
     last: c.last_interaction_date,
   }
 }
@@ -192,10 +193,18 @@ function DetailDrawer({ contactId, onClose }) {
   )
 }
 
+// Lee un contact_id del hash "#admin/pasajeros/{id}" (deep-link desde Reservas).
+function contactIdFromHash() {
+  const parts = window.location.hash.replace('#admin/', '').split('/')
+  const id = parts[1] ? parseInt(parts[1], 10) : null
+  return Number.isInteger(id) ? id : null
+}
+
 export default function PassengersView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState(null)
+  const [selected, setSelected] = useState(contactIdFromHash)
+  const [onlyInHouse, setOnlyInHouse] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -206,9 +215,25 @@ export default function PassengersView() {
   }
   useEffect(load, [])
 
+  // Soporta deep-link: si el hash trae un contact_id, abre su drawer.
+  useEffect(() => {
+    const onHash = () => setSelected(contactIdFromHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  const closeDrawer = () => {
+    setSelected(null)
+    // Limpia el id del hash para no reabrir al volver.
+    if (window.location.hash.startsWith('#admin/pasajeros/')) window.location.hash = 'admin/pasajeros'
+  }
+
   const columns = [
     { key: 'name', label: 'Huésped', render: (r) => (
-      <button onClick={() => setSelected(r.id)} className="font-medium text-hilton-700 hover:underline">{r.name}</button>
+      <div className="flex items-center gap-2">
+        <button onClick={() => setSelected(r.id)} className="font-medium text-hilton-700 hover:underline">{r.name}</button>
+        {r.inHouse && <Badge tone="green"><BedDouble size={11} className="mr-1" /> En casa</Badge>}
+      </div>
     ) },
     { key: 'contact', label: 'Contacto', render: (r) => (
       <div className="space-y-0.5 text-xs text-slatey">
@@ -241,6 +266,9 @@ export default function PassengersView() {
     </button>
   )
 
+  const inHouseCount = rows.filter((r) => r.inHouse).length
+  const visible = onlyInHouse ? rows.filter((r) => r.inHouse) : rows
+
   return (
     <div>
       <PageHeader
@@ -258,10 +286,35 @@ export default function PassengersView() {
         <EmptyState icon={Users} title="Aún no hay pasajeros"
                     desc="Cuando un huésped concrete una reserva, aparecerá acá con su historial." />
       ) : (
-        <ResponsiveTable columns={columns} rows={rows} renderCard={renderCard} />
+        <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => setOnlyInHouse(false)}
+              className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
+                !onlyInHouse ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+              }`}
+            >
+              Todos <span className="tabular-nums opacity-70">({rows.length})</span>
+            </button>
+            <button
+              onClick={() => setOnlyInHouse(true)}
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
+                onlyInHouse ? 'bg-green-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+              }`}
+            >
+              <BedDouble size={13} /> Alojados ahora <span className="tabular-nums opacity-70">({inHouseCount})</span>
+            </button>
+          </div>
+          {visible.length === 0 ? (
+            <EmptyState icon={BedDouble} title="Nadie alojado ahora"
+                        desc="No hay huéspedes en casa en este momento." />
+          ) : (
+            <ResponsiveTable columns={columns} rows={visible} renderCard={renderCard} />
+          )}
+        </>
       )}
 
-      {selected && <DetailDrawer contactId={selected} onClose={() => setSelected(null)} />}
+      {selected && <DetailDrawer contactId={selected} onClose={closeDrawer} />}
     </div>
   )
 }
