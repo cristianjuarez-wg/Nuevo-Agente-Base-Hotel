@@ -123,5 +123,24 @@ def seed():
         db.close()
 
 
+def _prepare_db():
+    """Crea tablas y aplica migraciones livianas ANTES de sembrar.
+
+    En Render la DB de PostgreSQL es nueva/incompleta y los seeds corren antes de que
+    arranque la app (donde normalmente corre run_light_migrations en el lifespan). Sin
+    esto, el seed consulta columnas que aún no existen (ej. rooms.status) y falla.
+    Importa todos los modelos para que create_all genere todas las tablas y FKs.
+    """
+    import importlib
+    import pkgutil
+    import app.models as models_pkg
+    for mod in pkgutil.iter_modules(models_pkg.__path__):
+        importlib.import_module(f"app.models.{mod.name}")
+    from app.models.database import Base, engine, run_light_migrations
+    Base.metadata.create_all(bind=engine)
+    run_light_migrations()
+
+
 if __name__ == "__main__":
+    _prepare_db()
     seed()

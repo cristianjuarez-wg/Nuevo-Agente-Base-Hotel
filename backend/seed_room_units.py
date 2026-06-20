@@ -102,20 +102,23 @@ def _backfill_bookings(db):
     print(f"[seed_units] backfill: {assigned} reservas activas/futuras asignadas a una unidad.")
 
 
-def _load_all_models():
-    """Importa todos los modelos para que SQLAlchemy resuelva las relationships/FKs.
+def _prepare_db():
+    """Importa todos los modelos, crea tablas y aplica migraciones livianas ANTES de sembrar.
 
-    El backfill consulta Booking, que arrastra FKs a contacts y la cadena de
-    relationships (Conversation→ConversationMessage, etc.). Importarlos todos evita
-    los errores de 'failed to locate a name' al correr el seed de forma aislada.
+    Resuelve relationships/FKs (Booking→contacts, Conversation→ConversationMessage, etc.)
+    y garantiza que room_units y las columnas nuevas (bookings.room_unit_id, rooms.status)
+    existan, ya que en Render los seeds corren antes del lifespan de la app.
     """
     import importlib
     import pkgutil
     import app.models as models_pkg
     for mod in pkgutil.iter_modules(models_pkg.__path__):
         importlib.import_module(f"app.models.{mod.name}")
+    from app.models.database import Base, engine, run_light_migrations
+    Base.metadata.create_all(bind=engine)
+    run_light_migrations()
 
 
 if __name__ == "__main__":
-    _load_all_models()
+    _prepare_db()
     seed_units()
