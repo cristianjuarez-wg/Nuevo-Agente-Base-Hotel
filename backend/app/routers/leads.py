@@ -194,6 +194,34 @@ async def update_lead_status(lead_id: int, status_update: LeadStatusUpdate):
             detail=f"Error actualizando status del lead: {str(e)}"
         )
 
+@router.delete("/{lead_id}")
+async def delete_lead(lead_id: int):
+    """Elimina un lead por su ID."""
+    try:
+        success = lead_service.delete_lead(lead_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Lead con ID {lead_id} no encontrado"
+            )
+
+        logger.info("Lead deleted", lead_id=lead_id)
+
+        return {
+            "success": True,
+            "message": f"Lead {lead_id} eliminado"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error deleting lead", lead_id=lead_id, error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error eliminando lead: {str(e)}"
+        )
+
 @router.get("/export/csv")
 async def export_leads_csv():
     """Exporta leads a formato CSV (para futuras implementaciones)"""

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, RefreshCw, Mail, Phone, Flame, MessageCircle, Globe } from 'lucide-react'
-import { listLeads } from '../../services/api'
+import { UserPlus, RefreshCw, Mail, Phone, Flame, MessageCircle, Globe, Trash2 } from 'lucide-react'
+import { listLeads, deleteLead } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate,
 } from '../ui'
@@ -56,6 +56,7 @@ function flatten(lead) {
 export default function LeadsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -68,6 +69,30 @@ export default function LeadsView() {
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  const handleDelete = async (r) => {
+    if (!window.confirm(`¿Eliminar el lead de ${r.name}? Esta acción no se puede deshacer.`)) return
+    setDeletingId(r.id)
+    try {
+      await deleteLead(r.id)
+      setRows((prev) => prev.filter((x) => x.id !== r.id))
+    } catch {
+      window.alert('No se pudo eliminar el lead. Intentá de nuevo.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const DeleteButton = ({ r }) => (
+    <button
+      onClick={() => handleDelete(r)}
+      disabled={deletingId === r.id}
+      title="Eliminar lead"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+    >
+      <Trash2 size={15} />
+    </button>
+  )
 
   const columns = [
     { key: 'name', label: 'Nombre', render: (r) => <span className="font-medium text-ink">{r.name}</span> },
@@ -83,6 +108,7 @@ export default function LeadsView() {
     { key: 'type', label: 'Tipo', render: (r) => <TypeBadge type={r.type} /> },
     { key: 'score', label: 'Score', render: (r) => <ScoreBar score={r.score} /> },
     { key: 'created_at', label: 'Fecha', render: (r) => formatDate(r.created_at) },
+    { key: 'actions', label: '', render: (r) => <DeleteButton r={r} /> },
   ]
 
   const renderCard = (r) => (
@@ -99,7 +125,10 @@ export default function LeadsView() {
         {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
         {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}
       </div>
-      <div className="mt-2"><ScoreBar score={r.score} /></div>
+      <div className="mt-2 flex items-center justify-between">
+        <ScoreBar score={r.score} />
+        <DeleteButton r={r} />
+      </div>
     </div>
   )
 

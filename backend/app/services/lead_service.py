@@ -682,6 +682,20 @@ Responde SOLO con el JSON."""
             return False
         finally:
             db.close()
+
+    def delete_lead(self, lead_id: int) -> bool:
+        """Elimina un lead por su ID. Devuelve True si existía y se borró."""
+        db = SessionLocal()
+        try:
+            lead = db.query(Lead).filter(Lead.id == lead_id).first()
+            if not lead:
+                return False
+            db.delete(lead)
+            db.commit()
+            logger.info("Lead deleted", lead_id=lead_id)
+            return True
+        finally:
+            db.close()
     
     def get_lead_stats(self) -> Dict:
         """Obtiene estadísticas de leads"""

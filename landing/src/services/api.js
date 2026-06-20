@@ -64,6 +64,11 @@ export async function listLeads() {
   return data.data ?? data.leads ?? data
 }
 
+export async function deleteLead(leadId) {
+  const { data } = await client.delete(`/api/leads/${leadId}`)
+  return data
+}
+
 export async function listTickets() {
   const { data } = await client.get('/api/hotel-tickets')
   return data.tickets ?? data
@@ -189,6 +194,63 @@ export async function extractFromDocument({ category, file, text }) {
   const { data } = await client.post('/api/knowledge/extract', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+  return data
+}
+
+// ── Promociones ─────────────────────────────────────────────────────────────
+
+export async function listPromotions() {
+  const { data } = await client.get('/api/promotions/')
+  return data.promotions ?? []
+}
+
+export async function savePromotion(payload, id) {
+  if (id) {
+    const { data } = await client.put(`/api/promotions/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/promotions/', payload)
+  return data
+}
+
+export async function patchPromotionStatus(id, status) {
+  const { data } = await client.patch(`/api/promotions/${id}/status`, { status })
+  return data
+}
+
+export async function deletePromotion(id) {
+  const { data } = await client.delete(`/api/promotions/${id}`)
+  return data
+}
+
+// ── Temas visuales del chat (Fase 4) ────────────────────────────────────────
+
+export async function getChatTheme() {
+  const { data } = await client.get('/api/chat/theme')
+  return data.theme ?? null
+}
+
+export async function listChatThemes() {
+  const { data } = await client.get('/api/chat-themes/')
+  return data.themes ?? []
+}
+
+export async function saveChatTheme(payload, id) {
+  if (id) {
+    const { data } = await client.put(`/api/chat-themes/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/chat-themes/', payload)
+  return data
+}
+
+export async function patchChatThemeStatus(id, status) {
+  const { data } = await client.patch(`/api/chat-themes/${id}/status`, { status })
+  return data
+}
+
+export async function deleteChatTheme(id) {
+  const { data } = await client.delete(`/api/chat-themes/${id}`)
   return data
 }
 
