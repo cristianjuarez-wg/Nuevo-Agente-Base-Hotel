@@ -18,7 +18,7 @@ services:
       - key: ALLOWED_ORIGINS
         value: "https://hotel-landing.onrender.com"
       - key: BASE_URL
-        value: "https://hotel-backend.onrender.com"
+        value: "https://hotel-backend-4xgz.onrender.com"
       - key: CHROMA_PERSIST_DIRECTORY
         value: /data/chroma_db
       - key: AGENT_PROFILE_PATH
@@ -41,7 +41,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE
-        value: "https://hotel-backend.onrender.com"
+        value: "https://hotel-backend-4xgz.onrender.com"
 
 # ── Base de datos PostgreSQL ──────────────────────────────────────────────
 databases:
