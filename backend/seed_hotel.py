@@ -17,8 +17,8 @@ HOTEL_NAME = "Hampton by Hilton Bariloche"
 ROOMS = [
     {
         "room_type": "King",
-        "description": "Habitación con amplia cama Hampton bed®, ideal para parejas o "
-                       "viajeros que buscan confort. Disponible con vista al lago o a la ciudad.",
+        "description": "Amplia cama Hampton bed®, ideal para parejas o viajeros que "
+                       "buscan confort.",
         "capacity": 3,  # 2 adultos + 1 (menor o cama extra)
         "base_price_usd": 120.0,
         "base_price_ars": 126000.0,
@@ -33,8 +33,8 @@ ROOMS = [
     },
     {
         "room_type": "Twin",
-        "description": "Habitación para no fumadores con dos camas singles. Perfecta para "
-                       "amigos o viajeros de negocios. Vista al lago o a la ciudad.",
+        "description": "Dos camas singles, para no fumadores. Perfecta para amigos o "
+                       "viajeros de negocios.",
         "capacity": 3,
         "base_price_usd": 110.0,
         "base_price_ars": 115500.0,
@@ -49,8 +49,7 @@ ROOMS = [
     },
     {
         "room_type": "Family Plan",
-        "description": "Habitación espaciosa para grupos familiares, con dos camas queen "
-                       "size Hampton bed®. Vista al lago o a la ciudad.",
+        "description": "Espaciosa para familias, con dos camas queen size Hampton bed®.",
         "capacity": 4,  # 2 adultos + 2 menores
         "base_price_usd": 165.0,
         "base_price_ars": 173250.0,
@@ -65,8 +64,8 @@ ROOMS = [
     },
     {
         "room_type": "Doble Twin Accesible",
-        "description": "Habitación accesible para personas con movilidad reducida, con dos "
-                       "camas Hampton bed®, ducha a ras de suelo y accesorios adaptados.",
+        "description": "Accesible para movilidad reducida: dos camas Hampton bed®, ducha "
+                       "a ras de suelo y accesorios adaptados.",
         "capacity": 3,
         "base_price_usd": 110.0,
         "base_price_ars": 115500.0,
@@ -83,12 +82,35 @@ ROOMS = [
 ]
 
 
+# Campos de catálogo que el seed mantiene sincronizados en habitaciones ya existentes
+# (no tocan reservas). Permite actualizar descripciones/precios/imágenes editando este
+# archivo y volviendo a correr el seed, sin borrar datos.
+_SYNC_FIELDS = ("description", "base_price_usd", "base_price_ars", "bed_config",
+                "view", "images", "amenities", "capacity", "total_units")
+
+
 def seed():
     db = SessionLocal()
     try:
         existing = db.query(Room).count()
         if existing > 0:
-            print(f"[seed] Ya hay {existing} habitaciones. No se hace nada (idempotente).")
+            # Idempotente para altas, pero SÍ sincroniza campos de catálogo editables.
+            updated = 0
+            for r in ROOMS:
+                room = db.query(Room).filter(Room.room_type == r["room_type"]).first()
+                if not room:
+                    db.add(Room(**r))
+                    updated += 1
+                    continue
+                changed = False
+                for f in _SYNC_FIELDS:
+                    if getattr(room, f) != r.get(f):
+                        setattr(room, f, r.get(f))
+                        changed = True
+                if changed:
+                    updated += 1
+            db.commit()
+            print(f"[seed] {existing} habitaciones ya existían; sincronizadas/creadas: {updated}.")
             return
         for r in ROOMS:
             db.add(Room(**r))
