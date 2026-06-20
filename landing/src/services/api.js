@@ -254,9 +254,94 @@ export async function deleteChatTheme(id) {
   return data
 }
 
+// ── Habitaciones (backoffice CRUD) ───────────────────────────────────────────
+
+export async function listRoomsAdmin() {
+  const { data } = await client.get('/api/admin/rooms')
+  return data   // { rooms: [...], exchange_rate: {...} }
+}
+
+export async function saveRoom(payload, id) {
+  if (id) {
+    const { data } = await client.put(`/api/admin/rooms/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/admin/rooms', payload)
+  return data
+}
+
+export async function patchRoomStatus(id, status) {
+  const { data } = await client.patch(`/api/admin/rooms/${id}/status`, { status })
+  return data
+}
+
+export async function deleteRoom(id) {
+  const { data } = await client.delete(`/api/admin/rooms/${id}`)
+  return data
+}
+
+// ── Tipo de cambio USD → ARS ─────────────────────────────────────────────────
+
+export async function getExchangeRate() {
+  const { data } = await client.get('/api/exchange-rate')
+  return data   // { current: {rate, mode, source, updated_at}, config: {...} }
+}
+
+export async function updateExchangeRate(payload) {
+  // payload: { mode?: "auto"|"manual", manual_rate?: number }
+  const { data } = await client.put('/api/exchange-rate', payload)
+  return data
+}
+
 // Config del agente (read-only): modelo, RAG, seguridad/rate-limit.
 export async function getAdminConfig() {
   const { data } = await client.get('/api/admin/config')
+  return data
+}
+
+// ── Analíticas (funnel, heatmap, canales) ────────────────────────────────────
+export async function getFunnel(channel) {
+  const { data } = await client.get('/api/analytics/funnel', {
+    params: channel && channel !== 'all' ? { channel } : {},
+  })
+  return data.data ?? data
+}
+
+export async function getHeatmap(channel, days = 30) {
+  const { data } = await client.get('/api/analytics/conversations/heatmap', {
+    params: { days, ...(channel && channel !== 'all' ? { channel } : {}) },
+  })
+  return data.data ?? data
+}
+
+export async function getChannelStats() {
+  const { data } = await client.get('/api/analytics/conversations/channels')
+  return data.data ?? data
+}
+
+// ── Pasajeros y Contactos (identidad 360°) ───────────────────────────────────
+export async function listPassengers() {
+  const { data } = await client.get('/api/contacts/passengers')
+  return data.passengers ?? data
+}
+
+export async function listLeadContacts() {
+  const { data } = await client.get('/api/contacts/leads-identity')
+  return data.leads ?? data
+}
+
+export async function getContactStats() {
+  const { data } = await client.get('/api/contacts/stats/overview')
+  return data
+}
+
+export async function getGuestProfile(contactId) {
+  const { data } = await client.get(`/api/contacts/${contactId}/profile`)
+  return data.profile ?? data
+}
+
+export async function updateGuestPreferences(contactId, preferences) {
+  const { data } = await client.patch(`/api/contacts/${contactId}/preferences`, { preferences })
   return data
 }
 

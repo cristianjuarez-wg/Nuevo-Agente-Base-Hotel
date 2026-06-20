@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel, Sparkles,
+  Users, BarChart3,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
+import HabitacionesView from './views/HabitacionesView'
 import LeadsView from './views/LeadsView'
+import PassengersView from './views/PassengersView'
+import AnalyticsView from './views/AnalyticsView'
 import TicketsView from './views/TicketsView'
 import AgentSection from './views/agente/AgentSection'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'analiticas', label: 'Analíticas', icon: BarChart3 },
   { id: 'reservas', label: 'Reservas', icon: CalendarCheck },
+  { id: 'habitaciones', label: 'Habitaciones', icon: Hotel },
+  { id: 'pasajeros', label: 'Pasajeros', icon: Users },
   { id: 'leads', label: 'Leads', icon: UserPlus },
   { id: 'tickets', label: 'Soporte', icon: LifeBuoy },
   { id: 'agente', label: 'Agente', icon: Sparkles },
@@ -75,7 +82,10 @@ export default function AdminApp() {
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {tab === 'dashboard' && <DashboardView go={go} />}
+          {tab === 'analiticas' && <AnalyticsView />}
           {tab === 'reservas' && <BookingsView />}
+          {tab === 'habitaciones' && <HabitacionesView />}
+          {tab === 'pasajeros' && <PassengersView />}
           {tab === 'leads' && <LeadsView />}
           {tab === 'tickets' && <TicketsView />}
           {tab === 'agente' && <AgentSection />}
