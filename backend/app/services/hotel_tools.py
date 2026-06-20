@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.services.rag_service import rag_service
 from app.services.reservation_service import get_availability, create_booking, get_booking
-from app.models.knowledge import KnowledgeEntry
+from app.models.knowledge import KnowledgeEntry, _payment_accounts
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -273,17 +273,44 @@ def _handle_info_pago(args: Dict, ctx: Dict) -> Dict:
     if medios:
         lines.append("Medios de pago: " + ", ".join(medios) + ".")
 
-    transfer_bits = []
-    if data.get("titular"):
-        transfer_bits.append(f"Titular: {data['titular']}")
-    if data.get("banco"):
-        transfer_bits.append(f"Banco: {data['banco']}")
-    if data.get("cbu"):
-        transfer_bits.append(f"CBU: {data['cbu']}")
-    if data.get("alias"):
-        transfer_bits.append(f"Alias: {data['alias']}")
-    if transfer_bits:
-        lines.append("Datos para transferencia bancaria:\n" + "\n".join(f"• {b}" for b in transfer_bits))
+    cuentas = _payment_accounts(data)  # default primero
+
+    # ¿El usuario pide explícitamente OTRA cuenta / otra moneda? Entonces mostramos todas.
+    consulta = (args.get("consulta") or "").lower()
+    pide_todas = any(
+        kw in consulta for kw in ("otra", "otras", "dólar", "dolar", "usd", "todas", "cuáles", "cuales")
+    )
+
+    def fmt_cuenta(c, etiqueta):
+        bits = []
+        if c.get("titular"):
+            bits.append(f"Titular: {c['titular']}")
+        if c.get("banco"):
+            bits.append(f"Banco: {c['banco']}")
+        if c.get("moneda"):
+            bits.append(f"Moneda: {c['moneda']}")
+        if c.get("cbu"):
+            bits.append(f"CBU: {c['cbu']}")
+        if c.get("alias"):
+            bits.append(f"Alias: {c['alias']}")
+        if not bits:
+            return None
+        return f"{etiqueta}:\n" + "\n".join(f"• {b}" for b in bits)
+
+    if cuentas:
+        if pide_todas and len(cuentas) > 1:
+            for i, c in enumerate(cuentas):
+                etiqueta = "Cuenta principal" if c.get("default") else f"Cuenta {i + 1}"
+                block = fmt_cuenta(c, etiqueta)
+                if block:
+                    lines.append(block)
+        else:
+            # Solo la cuenta principal (la primera, default).
+            block = fmt_cuenta(cuentas[0], "Datos para transferencia")
+            if block:
+                lines.append(block)
+            if len(cuentas) > 1:
+                lines.append("Si necesitás otra cuenta (por ejemplo en otra moneda), decímelo y te la paso.")
 
     if not lines:
         return {

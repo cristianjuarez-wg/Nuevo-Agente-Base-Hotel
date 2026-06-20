@@ -13,7 +13,7 @@ import hashlib
 import time
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, Query, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -71,6 +71,8 @@ async def list_entries(
     if category:
         q = q.filter(KnowledgeEntry.category == category)
     entries = q.order_by(KnowledgeEntry.category, KnowledgeEntry.id).all()
+    # Excluir documentos libres (tienen data.is_document); estos se listan en /documents.
+    entries = [e for e in entries if not (e.data or {}).get("is_document")]
     return {"entries": [e.to_dict() for e in entries], "total": len(entries)}
 
 
@@ -218,6 +220,141 @@ async def delete_place(place_id: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 # Subida de imágenes
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Documentos libres (PDF o texto pegado), con metadata estandarizada.
+# Se modelan como KnowledgeEntry con data.is_document=True para reutilizar el CRUD
+# y la re-ingesta. La categoría es de la lista fija (estandarizada).
+# ---------------------------------------------------------------------------
+@router.get("/documents")
+async def list_documents(db: Session = Depends(get_db)):
+    docs = (
+        db.query(KnowledgeEntry)
+        .filter(KnowledgeEntry.data.isnot(None))
+        .order_by(KnowledgeEntry.id.desc())
+        .all()
+    )
+    docs = [d for d in docs if (d.data or {}).get("is_document")]
+    return {"documents": [d.to_dict() for d in docs], "total": len(docs)}
+
+
+@router.post("/documents/upload")
+async def upload_document(
+    title: str = Form(...),
+    category: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Sube un PDF como documento libre: extrae su texto, lo ingesta y lo registra."""
+    if category not in KNOWLEDGE_CATEGORIES:
+        raise HTTPException(400, f"Categoría inválida. Válidas: {', '.join(KNOWLEDGE_CATEGORIES)}")
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext != ".pdf":
+        raise HTTPException(400, "Solo se permiten archivos PDF. Para otro texto, usá 'pegar texto'.")
+
+    content = await file.read()
+    if len(content) > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise HTTPException(413, f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
+
+    # Guardar temporal y extraer texto con el pdf_processor existente.
+    os.makedirs(settings.MEDIA_DIR, exist_ok=True)
+    tmp_path = os.path.join(settings.MEDIA_DIR, f"_doc_{hashlib.md5(content).hexdigest()[:12]}.pdf")
+    with open(tmp_path, "wb") as f:
+        f.write(content)
+    try:
+        from app.services.pdf_processor import pdf_processor
+        text = pdf_processor.extract_text(tmp_path)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+    if not text or not text.strip():
+        raise HTTPException(422, "No se pudo extraer texto del PDF (¿es un PDF escaneado sin OCR?).")
+
+    entry = KnowledgeEntry(
+        category=category, title=title.strip() or (file.filename or "Documento"),
+        content=text.strip(),
+        data={"is_document": True, "doc_kind": "pdf", "filename": file.filename},
+        status="active",
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    await knowledge_service.reingest(entry)
+    return entry.to_dict()
+
+
+class TextDocPayload(BaseModel):
+    title: str
+    category: str
+    text: str
+
+
+@router.post("/documents/text")
+async def upload_text_document(payload: TextDocPayload, db: Session = Depends(get_db)):
+    """Crea un documento libre a partir de texto pegado."""
+    if payload.category not in KNOWLEDGE_CATEGORIES:
+        raise HTTPException(400, f"Categoría inválida. Válidas: {', '.join(KNOWLEDGE_CATEGORIES)}")
+    if not payload.text.strip():
+        raise HTTPException(400, "El texto no puede estar vacío.")
+    entry = KnowledgeEntry(
+        category=payload.category, title=payload.title.strip() or "Documento",
+        content=payload.text.strip(),
+        data={"is_document": True, "doc_kind": "text"},
+        status="active",
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    await knowledge_service.reingest(entry)
+    return entry.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# Auto-completar formulario desde documento (GPT-4o-mini). Devuelve campos sugeridos;
+# el cliente revisa y corrige antes de guardar (no persiste nada acá).
+# ---------------------------------------------------------------------------
+@router.post("/extract")
+async def extract_from_document(
+    category: str = Form(...),
+    file: Optional[UploadFile] = File(None),
+    text: Optional[str] = Form(None),
+):
+    if category not in KNOWLEDGE_CATEGORIES:
+        raise HTTPException(400, f"Categoría inválida. Válidas: {', '.join(KNOWLEDGE_CATEGORIES)}")
+
+    doc_text = (text or "").strip()
+    if file is not None:
+        ext = os.path.splitext(file.filename or "")[1].lower()
+        if ext != ".pdf":
+            raise HTTPException(400, "Para subir archivo, debe ser PDF. O pegá el texto.")
+        content = await file.read()
+        if len(content) > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
+            raise HTTPException(413, f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
+        os.makedirs(settings.MEDIA_DIR, exist_ok=True)
+        tmp_path = os.path.join(settings.MEDIA_DIR, f"_ext_{hashlib.md5(content).hexdigest()[:12]}.pdf")
+        with open(tmp_path, "wb") as f:
+            f.write(content)
+        try:
+            from app.services.pdf_processor import pdf_processor
+            doc_text = pdf_processor.extract_text(tmp_path)
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+    if not doc_text.strip():
+        raise HTTPException(422, "No se pudo obtener texto del documento.")
+
+    from app.services.knowledge_extractor import extract_fields
+    fields = extract_fields(category, doc_text)
+    if not fields:
+        raise HTTPException(422, "No pude extraer datos de ese documento. Revisalo o cargá los campos a mano.")
+    return {"category": category, "fields": fields}
+
+
 @router.post("/upload-image")
 async def upload_image(file: UploadFile = File(...)):
     """Guarda una imagen en MEDIA_DIR y devuelve su URL pública (/media/<archivo>)."""

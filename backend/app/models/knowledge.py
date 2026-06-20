@@ -45,6 +45,31 @@ PLACE_CATEGORIES = (
 )
 
 
+def _payment_accounts(data: dict) -> list:
+    """Normaliza las cuentas bancarias de la entry de pagos.
+
+    Soporta el formato nuevo (data['cuentas'] = [ {titular, banco, cbu, alias, moneda,
+    default}, ... ]) y el viejo (campos sueltos titular/banco/cbu/alias en la raíz, que se
+    trata como una única cuenta default). Devuelve la lista ordenada con la default primero.
+    """
+    cuentas = data.get("cuentas")
+    if not cuentas:
+        # Retrocompat: campos sueltos en la raíz = una sola cuenta.
+        if any(data.get(k) for k in ("titular", "banco", "cbu", "alias")):
+            cuentas = [{
+                "titular": data.get("titular"),
+                "banco": data.get("banco"),
+                "cbu": data.get("cbu"),
+                "alias": data.get("alias"),
+                "moneda": data.get("moneda"),
+                "default": True,
+            }]
+        else:
+            cuentas = []
+    # Ordenar: la default primero.
+    return sorted(cuentas, key=lambda c: not c.get("default"))
+
+
 class KnowledgeEntry(Base):
     """Información estructurada del hotel, cargada por categoría desde el backoffice."""
     __tablename__ = "knowledge_entries"
@@ -78,17 +103,21 @@ class KnowledgeEntry(Base):
             medios = data.get("medios") or []
             if medios:
                 parts.append("Medios de pago aceptados: " + ", ".join(medios) + ".")
-            datos = []
-            if data.get("titular"):
-                datos.append(f"Titular: {data['titular']}")
-            if data.get("banco"):
-                datos.append(f"Banco: {data['banco']}")
-            if data.get("cbu"):
-                datos.append(f"CBU: {data['cbu']}")
-            if data.get("alias"):
-                datos.append(f"Alias: {data['alias']}")
-            if datos:
-                parts.append("Datos para transferencia — " + "; ".join(datos) + ".")
+            for cuenta in _payment_accounts(data):
+                bits = []
+                if cuenta.get("titular"):
+                    bits.append(f"Titular: {cuenta['titular']}")
+                if cuenta.get("banco"):
+                    bits.append(f"Banco: {cuenta['banco']}")
+                if cuenta.get("moneda"):
+                    bits.append(f"Moneda: {cuenta['moneda']}")
+                if cuenta.get("cbu"):
+                    bits.append(f"CBU: {cuenta['cbu']}")
+                if cuenta.get("alias"):
+                    bits.append(f"Alias: {cuenta['alias']}")
+                if bits:
+                    etiqueta = "Cuenta principal" if cuenta.get("default") else "Cuenta"
+                    parts.append(f"{etiqueta} para transferencia — " + "; ".join(bits) + ".")
         elif self.category == "faq":
             for item in data.get("items", []):
                 q = (item.get("q") or "").strip()

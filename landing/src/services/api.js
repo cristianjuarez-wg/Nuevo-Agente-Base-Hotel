@@ -157,6 +157,41 @@ export async function uploadKnowledgeImage(file) {
   return data
 }
 
+// Documentos libres (PDF o texto pegado) con categoría estandarizada.
+export async function listKnowledgeDocuments() {
+  const { data } = await client.get('/api/knowledge/documents')
+  return data.documents ?? data
+}
+
+export async function uploadKnowledgeDocument({ title, category, file }) {
+  const form = new FormData()
+  form.append('title', title)
+  form.append('category', category)
+  form.append('file', file)
+  const { data } = await client.post('/api/knowledge/documents/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+export async function uploadKnowledgeTextDocument({ title, category, text }) {
+  const { data } = await client.post('/api/knowledge/documents/text', { title, category, text })
+  return data
+}
+
+// Auto-completar formulario desde un documento (PDF o texto) con GPT-4o-mini.
+// Devuelve { category, fields } con los campos sugeridos (el usuario revisa antes de guardar).
+export async function extractFromDocument({ category, file, text }) {
+  const form = new FormData()
+  form.append('category', category)
+  if (file) form.append('file', file)
+  if (text) form.append('text', text)
+  const { data } = await client.post('/api/knowledge/extract', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
 // Config del agente (read-only): modelo, RAG, seguridad/rate-limit.
 export async function getAdminConfig() {
   const { data } = await client.get('/api/admin/config')
