@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react'
 import { getGreeting, sendMessage } from '../services/api'
+import RoomCard from './chat/RoomCard'
 
 // Session persistente por navegador (sobrevive recargas durante la demo).
 function getSessionId() {
@@ -99,7 +100,10 @@ export default function ChatWidget() {
       setBusy(true)
       try {
         const data = await sendMessage({ message: msg, sessionId: sessionId.current })
-        setMessages((m) => [...m, { role: 'assistant', content: data.response || '…' }])
+        setMessages((m) => [
+          ...m,
+          { role: 'assistant', content: data.response || '…', cards: data.cards || [] },
+        ])
       } catch {
         setMessages((m) => [
           ...m,
@@ -115,6 +119,19 @@ export default function ChatWidget() {
       }
     },
     [input, busy]
+  )
+
+  // Acción de una tarjeta: 'send_message' inyecta un mensaje al chat; 'open_url' abre link.
+  const handleCardAction = useCallback(
+    (action) => {
+      if (!action) return
+      if (action.kind === 'send_message' && action.message) {
+        send(action.message)
+      } else if (action.kind === 'open_url' && action.url) {
+        window.open(action.url, '_blank', 'noopener,noreferrer')
+      }
+    },
+    [send]
   )
 
   return (
@@ -166,9 +183,18 @@ export default function ChatWidget() {
           {/* Mensajes */}
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-white px-4 py-4">
             {messages.map((m, i) => (
-              <Bubble key={i} role={m.role}>
-                {m.content}
-              </Bubble>
+              <div key={i} className="space-y-2.5">
+                <Bubble role={m.role}>{m.content}</Bubble>
+                {m.cards?.length > 0 && (
+                  <div className="space-y-2.5">
+                    {m.cards.map((card, ci) =>
+                      card.type === 'room' ? (
+                        <RoomCard key={ci} card={card} onAction={handleCardAction} />
+                      ) : null
+                    )}
+                  </div>
+                )}
+              </div>
             ))}
 
             {busy && (

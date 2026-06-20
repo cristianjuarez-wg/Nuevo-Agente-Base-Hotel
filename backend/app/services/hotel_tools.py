@@ -109,6 +109,9 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
             f"Capacidad: {r['capacity']} pax."
         )
 
+    # Guardar las habitaciones en el ctx para que el orquestador arme las tarjetas del chat.
+    ctx["rooms_offered"] = rooms
+
     return {"tool_result": "\n".join(lines), "rooms": rooms}
 
 

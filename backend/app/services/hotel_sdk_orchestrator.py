@@ -71,6 +71,8 @@ class HotelContext:
         self.message = message
         self.history = history
         self.document_sources: List = []
+        # Habitaciones consultadas en este turno (para renderizar tarjetas en el chat).
+        self.rooms_offered: List[Dict] = []
 
     def as_tool_ctx(self) -> Dict:
         return {
@@ -78,10 +80,12 @@ class HotelContext:
             "message": self.message,
             "history": self.history,
             "document_sources": self.document_sources,
+            "rooms_offered": self.rooms_offered,
         }
 
     def absorb(self, tool_ctx: Dict):
         self.document_sources = tool_ctx.get("document_sources", self.document_sources)
+        self.rooms_offered = tool_ctx.get("rooms_offered", self.rooms_offered)
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +120,7 @@ async def consultar_disponibilidad(
         {"check_in": check_in, "check_out": check_out, "guests": guests},
         tool_ctx,
     )
+    ctx.context.absorb(tool_ctx)
     return result.get("tool_result", "")
 
 
@@ -345,6 +350,7 @@ class HotelSDKOrchestrator:
             "response": response_text,
             "has_context": bool(run_ctx.document_sources),
             "document_sources": run_ctx.document_sources,
+            "rooms_offered": run_ctx.rooms_offered,
             "tools_used": tools_used,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,

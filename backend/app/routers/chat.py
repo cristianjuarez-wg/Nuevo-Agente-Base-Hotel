@@ -46,6 +46,40 @@ def _format_uptime(seconds: float) -> str:
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
+# Imagen de respaldo cuando una habitación no tiene foto cargada.
+_ROOM_FALLBACK_IMG = "/fotos/habitacion-vista-lago.jpg"
+
+
+def _build_room_cards(rooms_offered: list) -> list:
+    """Arma tarjetas de habitación a partir de las habitaciones que ofreció la tool.
+
+    Determinístico: sale de los datos reales de disponibilidad, no del LLM. Cada tarjeta
+    lleva lo necesario para renderizar en el chat (imagen, tipo, precios, capacidad) y la
+    acción 'reservar' (que el front convierte en un mensaje al chat).
+    """
+    cards = []
+    for r in rooms_offered or []:
+        images = r.get("images") or []
+        image = images[0] if images else _ROOM_FALLBACK_IMG
+        cards.append({
+            "type": "room",
+            "title": r.get("room_type"),
+            "image": image,
+            "price_usd": r.get("total_price_usd"),
+            "price_ars": r.get("total_price_ars"),
+            "nights": r.get("nights"),
+            "capacity": r.get("capacity"),
+            "bed_config": r.get("bed_config"),
+            "view": r.get("view"),
+            "units_available": r.get("units_available"),
+            "action": {
+                "kind": "send_message",
+                "label": "Reservar esta habitación",
+                "message": f"Quiero reservar la habitación {r.get('room_type')}",
+            },
+        })
+    return cards
+
 @router.post("/message", response_model=ChatResponse)
 @limiter.limit(CHAT_RATE_LIMIT)
 async def send_message(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
@@ -127,13 +161,17 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         
         # Convertir resultado a formato de respuesta (schema flexible)
         geography_analysis = result.get("geography_analysis", {})
-        
+
         # SessionInfo ya viene en formato correcto desde agent_service
         session_info_data = result.get("session_info", {})
         session_info = SessionInfo(**session_info_data) if session_info_data else None
-        
+
+        # Tarjetas visuales (Fase 2): derivadas determinísticamente de las habitaciones
+        # que la tool consultar_disponibilidad ofreció en este turno.
+        cards = _build_room_cards(result.get("rooms_offered", []))
+
         processing_time = time.time() - start_time
-        
+
         response = ChatResponse(
             response=result["response"],
             has_context=result.get("has_context", False),
@@ -142,7 +180,8 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
             session_info=session_info,
             processing_time=f"{processing_time:.2f}s",
             error=result.get("error", False),
-            error_type=result.get("error_type")
+            error_type=result.get("error_type"),
+            cards=cards,
         )
         
         logger.info("Chat message processed successfully",
