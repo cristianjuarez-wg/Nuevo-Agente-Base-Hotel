@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Security & Rate Limiting
     MAX_FILE_SIZE_MB: int = 10
     RATE_LIMIT_ENABLED: bool = True
+    # Límite por IP en el endpoint del agente (protección contra abuso / gasto descontrolado).
+    RATE_LIMIT_PER_MINUTE: int = 20
+    RATE_LIMIT_PER_HOUR: int = 300
     
     # Retry & Circuit Breaker
     OPENAI_MAX_RETRIES: int = 3

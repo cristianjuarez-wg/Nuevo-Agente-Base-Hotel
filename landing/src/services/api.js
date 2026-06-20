@@ -74,4 +74,21 @@ export async function getTicketStats() {
   return data
 }
 
+// ── Consumo IA (tokens / USD) ────────────────────────────────────────────────
+export async function getUsageSummary() {
+  const { data } = await client.get('/api/usage/summary')
+  return data
+}
+
+export async function getUsageConfig() {
+  const { data } = await client.get('/api/usage/config')
+  return data
+}
+
+export async function updateUsageConfig(payload) {
+  // payload: { daily_limit_usd, monthly_limit_usd, enabled }
+  const { data } = await client.put('/api/usage/config', payload)
+  return data
+}
+
 export default client

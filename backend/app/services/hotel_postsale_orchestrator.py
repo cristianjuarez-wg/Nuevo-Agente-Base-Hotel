@@ -29,6 +29,7 @@ from app.config import settings
 from app.core.agent_profile import profile_manager
 from app.core.logging_config import get_logger
 from app.core.openai_client import get_async_openai
+from app.core.sdk_usage import extract_usage
 from app.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
 
 logger = get_logger(__name__)
@@ -116,6 +117,7 @@ async def relevancia_guardrail(
 # ---------------------------------------------------------------------------
 class HotelPostSaleSDKOrchestrator:
     def __init__(self):
+        self._model_name = settings.OPENAI_MODEL
         self._model = OpenAIChatCompletionsModel(
             model=settings.OPENAI_MODEL,
             openai_client=_sdk_client,
@@ -169,10 +171,12 @@ class HotelPostSaleSDKOrchestrator:
         from agents import InputGuardrailTripwireTriggered
 
         run_failed = False
+        usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
         try:
             result = await Runner.run(
                 agent, input=input_list, context=run_ctx, max_turns=MAX_TURNS,
             )
+            usage = extract_usage(result, model=self._model_name)
             response_text = result.final_output or ""
             tools_used = [
                 item.raw_item.name
@@ -226,6 +230,7 @@ class HotelPostSaleSDKOrchestrator:
             "can_auto_resolve": not requires_escalation,
             "tools_used": tools_used,
             "processing_time": f"{duration:.2f}s",
+            "usage": usage,
         }
 
 

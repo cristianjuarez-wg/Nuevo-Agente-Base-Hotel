@@ -9,6 +9,8 @@ from app.services.conversation_state_manager import conversation_state_manager
 from app.core.agent_profile import profile_manager
 from app.core.circuit_breaker import openai_circuit_breaker
 from app.core.logging_config import get_logger
+from app.core.sdk_usage import usage_from_completion
+from app.services import usage_service
 from app.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
 import time
 import uuid
@@ -214,17 +216,18 @@ class AgentService:
         
         return "\n".join(formatted)
     
-    async def _generate_casual_response(self, message: str, history: List[Dict]) -> str:
+    async def _generate_casual_response(self, message: str, history: List[Dict]) -> tuple[str, Dict]:
         """
         Genera respuesta natural para conversación casual
-        
+
         Args:
             message: Mensaje del usuario
             history: Historial de conversación
-            
+
         Returns:
-            Respuesta amigable y natural
+            (respuesta amigable, usage) — usage con los tokens consumidos.
         """
+        usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": settings.OPENAI_MODEL}
         try:
             # Formatear historial
             history_context = ""
@@ -248,21 +251,22 @@ class AgentService:
                 temperature=0.8,  # Más creativo para conversación casual
                 max_tokens=150
             )
-            
+
             casual_response = response.choices[0].message.content.strip()
-            
+            usage = usage_from_completion(response, model=settings.OPENAI_MODEL)
+
             logger.info("Casual response generated",
                        message=message[:50],
                        response_length=len(casual_response))
-            
-            return casual_response
-            
+
+            return casual_response, usage
+
         except Exception as e:
             logger.error("Error generating casual response",
                         error=str(e),
                         message=message[:50])
             # Fallback genérico
-            return "¡Hola! 😊 ¿En qué puedo ayudarte con tu estadía en el Hampton Bariloche?"
+            return "¡Hola! 😊 ¿En qué puedo ayudarte con tu estadía en el Hampton Bariloche?", usage
     
     def _validate_input(self, message: str, session_id: str) -> tuple[bool, str]:
         """Valida entrada del usuario"""
@@ -318,7 +322,20 @@ class AgentService:
             logger.info("Processing chat message",
                        session_id=session_id,
                        message_length=len(message))
-            
+
+            # 1.5. FRENO DE GASTO: si se superó el tope (diario/mensual) configurado,
+            # NO llamamos a OpenAI. Respondemos un mensaje amable. Cero gasto extra.
+            if usage_service.is_budget_exceeded(db):
+                logger.warning("Budget exceeded — refusing to call the agent",
+                               session_id=session_id)
+                return {
+                    "response": "El asistente no está disponible en este momento. "
+                                "Por favor, intentá de nuevo más tarde.",
+                    "has_context": False,
+                    "error": True,
+                    "error_type": "budget_exceeded",
+                }
+
             # 2. Obtener historial
             history = self._get_or_create_history(session_id, db=db)
             
@@ -345,6 +362,7 @@ class AgentService:
             # Una señal dura (código de reserva o sesión post-venta activa) SIEMPRE es
             # post-venta y se resuelve sin gastar el triage. En cualquier otro caso, el
             # triage agent del SDK (una sola pasada, con handoffs) desambigua el destino.
+            triage = {}  # usage del ruteo (vacío si hubo señal dura y no se invocó)
             if has_booking_code or has_active_postsale:
                 is_postsale = True
             else:
@@ -358,10 +376,29 @@ class AgentService:
                                message=message[:50])
                     # El triage solo rutea; la respuesta casual la genera SIEMPRE este
                     # método (única fuente con reglas de alcance: no recetas/tareas, etc.).
-                    response_text = await self._generate_casual_response(message, history)
+                    response_text, casual_usage = await self._generate_casual_response(message, history)
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})
                     self._update_session_metadata(session_id)
+
+                    # Persistir consumo de la respuesta casual (triage + completion).
+                    casual_tokens = (triage.get("usage", {}).get("total_tokens", 0)
+                                     + casual_usage.get("total_tokens", 0))
+                    try:
+                        self._save_message_to_db(
+                            db=db, session_id=session_id, role='user',
+                            content=message, context_type='pre_sale'
+                        )
+                        self._save_message_to_db(
+                            db=db, session_id=session_id, role='assistant',
+                            content=response_text, context_type='pre_sale',
+                            tokens_used=casual_tokens or None,
+                            model_used=casual_usage.get("model"),
+                        )
+                    except Exception as e:
+                        logger.error("Error saving casual messages to DB",
+                                     session_id=session_id, error=str(e))
+
                     total_duration = time.time() - start_time
                     return {
                         "response": response_text,
@@ -406,6 +443,21 @@ class AgentService:
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})
                     self._update_session_metadata(session_id)
+
+                    # Registrar consumo de tokens del turno post-venta (para panel y tope).
+                    ps_usage = orch_result.get("usage", {})
+                    if ps_usage.get("total_tokens"):
+                        try:
+                            self._save_message_to_db(
+                                db=db, session_id=session_id, role='assistant',
+                                content=response_text, context_type='post_sale',
+                                tokens_used=ps_usage.get("total_tokens"),
+                                model_used=ps_usage.get("model") or settings.OPENAI_MODEL,
+                            )
+                        except Exception as e:
+                            logger.error("Error saving postsale usage to DB",
+                                         session_id=session_id, error=str(e))
+
                     orch_result["session_info"] = self.get_session_info(session_id)
                     return orch_result
 
@@ -435,6 +487,11 @@ class AgentService:
             history.append({"role": "user", "content": message})
             history.append({"role": "assistant", "content": response_text})
 
+            # Tokens del turno = orquestador pre-venta + triage (si se invocó).
+            orch_usage = orch_result.get("usage", {})
+            turn_tokens = (orch_usage.get("total_tokens", 0)
+                           + triage.get("usage", {}).get("total_tokens", 0))
+
             # Persistir en DB (Visión 360°)
             try:
                 self._save_message_to_db(
@@ -444,8 +501,9 @@ class AgentService:
                 self._save_message_to_db(
                     db=db, session_id=session_id, role='assistant',
                     content=response_text, context_type='pre_sale',
+                    tokens_used=turn_tokens or None,
                     response_time_ms=int((time.time() - start_time) * 1000),
-                    model_used=settings.OPENAI_MODEL
+                    model_used=orch_usage.get("model") or settings.OPENAI_MODEL
                 )
             except Exception as e:
                 logger.error("Error saving messages to DB (tool agent)",

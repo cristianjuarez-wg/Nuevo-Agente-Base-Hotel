@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
+  LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel, Gauge,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
 import LeadsView from './views/LeadsView'
 import TicketsView from './views/TicketsView'
+import UsageView from './views/UsageView'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'reservas', label: 'Reservas', icon: CalendarCheck },
   { id: 'leads', label: 'Leads', icon: UserPlus },
   { id: 'tickets', label: 'Soporte', icon: LifeBuoy },
+  { id: 'consumo', label: 'Consumo IA', icon: Gauge },
 ]
 
 function currentTab() {
@@ -74,6 +76,7 @@ export default function AdminApp() {
           {tab === 'reservas' && <BookingsView />}
           {tab === 'leads' && <LeadsView />}
           {tab === 'tickets' && <TicketsView />}
+          {tab === 'consumo' && <UsageView />}
         </main>
       </div>
     </div>

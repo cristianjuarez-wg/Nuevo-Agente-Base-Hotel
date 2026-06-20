@@ -35,6 +35,7 @@ from app.utils.timezone_utils import now_argentina
 from app.core.agent_profile import profile_manager
 from app.core.logging_config import get_logger
 from app.core.openai_client import get_async_openai
+from app.core.sdk_usage import extract_usage
 from app.services.lead_service import lead_service
 from app.services.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
@@ -197,6 +198,7 @@ class HotelSDKOrchestrator:
     """Loop de tool calling de pre-venta del hotel sobre el OpenAI Agents SDK."""
 
     def __init__(self):
+        self._model_name = settings.OPENAI_MODEL
         self._model = OpenAIChatCompletionsModel(
             model=settings.OPENAI_MODEL,
             openai_client=_sdk_client,
@@ -284,6 +286,7 @@ class HotelSDKOrchestrator:
         # 4. Ejecutar el loop del SDK
         from agents import InputGuardrailTripwireTriggered
 
+        usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
         try:
             result = await Runner.run(
                 agent,
@@ -291,6 +294,7 @@ class HotelSDKOrchestrator:
                 context=run_ctx,
                 max_turns=MAX_TURNS,
             )
+            usage = extract_usage(result, model=self._model_name)
             response_text = result.final_output or ""
             tools_used = [
                 item.raw_item.name
@@ -329,6 +333,7 @@ class HotelSDKOrchestrator:
             "document_sources": run_ctx.document_sources,
             "tools_used": tools_used,
             "processing_time": f"{duration:.2f}s",
+            "usage": usage,
             "lead_analysis": {
                 "lead_type": lead_analysis.get("lead_type"),
                 "interest_score": lead_analysis.get("interest_score"),

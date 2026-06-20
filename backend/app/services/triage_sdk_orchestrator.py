@@ -35,6 +35,7 @@ from app.config import settings
 from app.core.agent_profile import profile_manager
 from app.core.logging_config import get_logger
 from app.core.openai_client import get_async_openai
+from app.core.sdk_usage import extract_usage
 
 logger = get_logger(__name__)
 
@@ -99,6 +100,7 @@ class TriageSDKOrchestrator:
     """Ruteo pre/post/casual sobre el SDK. Devuelve la ruta; no ejecuta el agente destino."""
 
     def __init__(self):
+        self._model_name = settings.OPENAI_MODEL_CLASSIFIER
         self._model = OpenAIChatCompletionsModel(
             model=settings.OPENAI_MODEL_CLASSIFIER,  # gpt-4o-mini: ruteo barato
             openai_client=_sdk_client,
@@ -124,6 +126,7 @@ class TriageSDKOrchestrator:
             }
         """
         start = time.time()
+        usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
 
         triage_agent = Agent(
             name="triage",
@@ -137,6 +140,7 @@ class TriageSDKOrchestrator:
 
         try:
             result = await Runner.run(triage_agent, input=input_list, max_turns=3)
+            usage = extract_usage(result, model=self._model_name)
             last_agent_name = getattr(result.last_agent, "name", "triage")
 
             if last_agent_name == _PREVENTA_MARKER.name:
@@ -161,6 +165,7 @@ class TriageSDKOrchestrator:
         return {
             "route": route,
             "processing_time": f"{duration:.2f}s",
+            "usage": usage,
         }
 
 

@@ -6,8 +6,10 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, postsale, learning, reservations, hotel_tickets
+from app.routers import chat, documents, admin, leads, analytics, postsale, learning, reservations, hotel_tickets, usage
 from app.config import settings
+from app.core.rate_limit import limiter
+from slowapi.errors import RateLimitExceeded
 from app.models.schemas import HealthResponse, HealthStatus, ServiceHealth
 from app.services.vector_store import get_vector_store
 from app.services.agent_service import agent_service
@@ -63,6 +65,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Rate limiter por IP (slowapi). Necesita registrarse en app.state.
+app.state.limiter = limiter
+
 # Middleware CORS — orígenes configurados vía ALLOWED_ORIGINS en .env
 _cors_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
@@ -88,6 +93,23 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "error": "Datos de entrada inválidos",
             "details": exc.errors(),
             "message": "Por favor, verifica los datos enviados y vuelve a intentar."
+        }
+    )
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Maneja el límite de peticiones por IP (429) con mensaje en español."""
+    logger.warning("Rate limit exceeded",
+                  path=request.url.path,
+                  client_ip=request.client.host if request.client else None,
+                  detail=str(exc.detail))
+
+    return JSONResponse(
+        status_code=429,
+        content={
+            "error": "Demasiadas solicitudes",
+            "message": "Estás enviando mensajes muy rápido. Por favor, esperá un momento e intentá de nuevo.",
+            "timestamp": datetime.now().isoformat()
         }
     )
 
@@ -161,6 +183,7 @@ app.include_router(postsale.router)
 app.include_router(learning.router)
 app.include_router(reservations.router)
 app.include_router(hotel_tickets.router)
+app.include_router(usage.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"

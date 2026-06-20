@@ -16,6 +16,7 @@ from app.services.rag_service import rag_service
 from app.services.metrics_service import metrics_service
 from app.core.agent_profile import profile_manager
 from app.core.logging_config import get_logger
+from app.core.rate_limit import limiter, CHAT_RATE_LIMIT
 import asyncio
 import time
 from datetime import datetime
@@ -46,7 +47,8 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
 
 @router.post("/message", response_model=ChatResponse)
-async def send_message(chat_request: ChatRequest, db: Session = Depends(get_db)):
+@limiter.limit(CHAT_RATE_LIMIT)
+async def send_message(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
     """Envía mensaje al agente y obtiene respuesta"""
     start_time = time.time()
     
