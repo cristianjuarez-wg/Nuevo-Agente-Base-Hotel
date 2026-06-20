@@ -41,6 +41,7 @@ humanfriendly==10.0
 idna==3.11
 importlib_metadata==8.7.0
 importlib_resources==6.5.2
+Jinja2==3.1.6
 jiter==0.11.1
 jsonpatch==1.33
 jsonpointer==3.0.0
@@ -105,6 +106,7 @@ pydantic-settings==2.6.1
 pydantic_core==2.46.4
 Pygments==2.19.2
 pypdf==5.1.0
+pytz==2024.2
 PyPika==0.48.9
 pyproject_hooks==1.2.0
 pyreadline3==3.5.4
@@ -145,6 +147,7 @@ webencodings==0.5.1
 websocket-client==1.9.0
 websockets==15.0.1
 wrapt==1.17.3
+xhtml2pdf==0.2.17
 xxhash==3.6.0
 yarl==1.22.0
 zipp==3.23.0
