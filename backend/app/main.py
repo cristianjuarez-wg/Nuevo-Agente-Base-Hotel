@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, kanban, postsale, providers, flight_monitoring, contacts, alerts, learning, reservations, hotel_tickets
+from app.routers import chat, documents, admin, leads, analytics, postsale, learning, reservations, hotel_tickets
 from app.config import settings
 from app.models.schemas import HealthResponse, HealthStatus, ServiceHealth
 from app.services.vector_store import get_vector_store
@@ -157,15 +157,10 @@ app.include_router(documents.router)
 app.include_router(admin.router)
 app.include_router(leads.router)
 app.include_router(analytics.router)
-app.include_router(kanban.router)
-app.include_router(postsale.router)  # 🆕 Router post-venta
-app.include_router(providers.router)  # 🆕 Router proveedores
-app.include_router(flight_monitoring.router)  # 🆕 Router monitoreo de vuelos
-app.include_router(contacts.router)  # 🆕 Router Visión 360° (contacts)
-app.include_router(alerts.router)  # 🆕 Router alertas proactivas
-app.include_router(learning.router)  # 🆕 Router auto-aprendizaje
-app.include_router(reservations.router)  # 🆕 Router motor de reserva (hotel)
-app.include_router(hotel_tickets.router)  # 🆕 Router tickets de soporte (hotel)
+app.include_router(postsale.router)
+app.include_router(learning.router)
+app.include_router(reservations.router)
+app.include_router(hotel_tickets.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"
