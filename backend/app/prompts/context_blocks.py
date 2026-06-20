@@ -3,6 +3,34 @@ Bloques de contexto que se inyectan dinámicamente en el system prompt principal
 Cada función recibe los datos necesarios y devuelve el bloque de texto formateado.
 """
 
+# Idiomas soportados por el agente (selector del chat). El LLM es multilingüe nativo:
+# alcanza con instruirlo. Las instrucciones del prompt siguen en español; lo único
+# que cambia es el idioma de la conversación con el huésped.
+LANGUAGE_NAMES = {"es": "Español", "en": "English", "pt": "Português", "fr": "Français"}
+
+
+def build_language_block(language: str) -> str:
+    """Instrucción de idioma de respuesta. Vacío para español (comportamiento por defecto)."""
+    lang = (language or "es").lower()
+    if lang == "es" or lang not in LANGUAGE_NAMES:
+        return ""
+    name = LANGUAGE_NAMES[lang]
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 IDIOMA DE RESPUESTA — {name} ({lang})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Estas instrucciones están en español, pero TODA tu conversación con el huésped debe ser
+100% en {name}: el saludo, las respuestas, las preguntas, las confirmaciones de reserva
+y los mensajes de error. NO mezcles idiomas.
+
+Los resultados de las herramientas (disponibilidad, confirmación de reserva, errores)
+pueden venir en español: TRADUCILOS/REFORMULALOS SIEMPRE a {name} antes de responder.
+Los datos neutrales (código de reserva HTL-XXXX, números, precios, fechas) se mantienen
+tal cual; solo el texto que los rodea va en {name}.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+
 
 def build_guest_profile_block(profile: dict) -> str:
     """Bloque de perfil del huésped recurrente/conocido para personalizar la charla.

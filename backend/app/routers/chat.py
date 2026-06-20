@@ -23,6 +23,37 @@ from datetime import datetime
 
 CHAT_TIMEOUT_SECONDS = 60
 
+# Mensajes de borde que llegan directo al usuario SIN pasar por el LLM (timeout, error).
+# Son los únicos textos fijos del endpoint que conviene traducir para coherencia.
+_EDGE_MESSAGES = {
+    "timeout": {
+        "es": "Lo siento, la respuesta tardó demasiado. Por favor, intentá de nuevo.",
+        "en": "Sorry, the response took too long. Please try again.",
+        "pt": "Desculpe, a resposta demorou demais. Por favor, tente novamente.",
+        "fr": "Désolé, la réponse a pris trop de temps. Veuillez réessayer.",
+    },
+    "error": {
+        "es": "Lo siento, ocurrió un error procesando tu mensaje. Por favor, intentá de nuevo.",
+        "en": "Sorry, an error occurred while processing your message. Please try again.",
+        "pt": "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.",
+        "fr": "Désolé, une erreur s'est produite lors du traitement de votre message. Veuillez réessayer.",
+    },
+}
+
+
+def _edge_message(key: str, language: str) -> str:
+    """Texto de borde (timeout/error) en el idioma activo, con fallback a español."""
+    return _EDGE_MESSAGES.get(key, {}).get((language or "es").lower(), _EDGE_MESSAGES[key]["es"])
+
+
+# Saludo inicial por idioma. Para "es" se usa el del perfil (profile_manager); para el
+# resto, estos saludos cortos (el saludo es lo único visible del greeting al cambiar idioma).
+_GREETINGS = {
+    "en": "Hi! I'm Aura, your virtual concierge at Hampton by Hilton Bariloche. How can I help you?",
+    "pt": "Olá! Sou a Aura, sua concierge virtual no Hampton by Hilton Bariloche. Como posso ajudar?",
+    "fr": "Bonjour ! Je suis Aura, votre concierge virtuelle au Hampton by Hilton Bariloche. Comment puis-je vous aider ?",
+}
+
 # Marca de arranque del proceso, para reportar uptime en /stats.
 _SERVICE_START = time.monotonic()
 
@@ -139,7 +170,7 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # Procesar mensaje con el agente (timeout para evitar esperas indefinidas)
         try:
             result = await asyncio.wait_for(
-                agent_service.chat(db, chat_request.message, chat_request.session_id),
+                agent_service.chat(db, chat_request.message, chat_request.session_id, chat_request.language),
                 timeout=CHAT_TIMEOUT_SECONDS,
             )
         except asyncio.TimeoutError:
@@ -147,7 +178,7 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                         session_id=chat_request.session_id,
                         timeout_seconds=CHAT_TIMEOUT_SECONDS)
             return ChatResponse(
-                response="Lo siento, la respuesta tardó demasiado. Por favor, intentá de nuevo.",
+                response=_edge_message("timeout", chat_request.language),
                 has_context=False,
                 geography_analysis={},
                 error=True,
@@ -358,15 +389,18 @@ async def clear_conversation(session_id: str):
         )
 
 @router.get("/greeting", response_model=GreetingResponse)
-async def get_greeting():
-    """Obtiene mensaje de saludo del agente"""
+async def get_greeting(lang: str = "es"):
+    """Obtiene mensaje de saludo del agente, en el idioma pedido (?lang=es|en|pt|fr)."""
     try:
-        logger.debug("Getting agent greeting")
-        
-        profile_info = profile_manager.get_profile_info()
-        
+        logger.debug("Getting agent greeting", lang=lang)
+
+        lang = (lang or "es").lower()
+        greeting = _GREETINGS.get(lang) if lang != "es" else None
+        if not greeting:
+            greeting = profile_manager.get_greeting()
+
         return GreetingResponse(
-            greeting=profile_manager.get_greeting(),
+            greeting=greeting,
             agent_name=profile_manager.get_agent_name(),
             capabilities=profile_manager.get_capabilities(),
             conversation_starters=profile_manager.get_conversation_starters()

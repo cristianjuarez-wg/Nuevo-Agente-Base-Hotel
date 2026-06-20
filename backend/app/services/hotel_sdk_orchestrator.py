@@ -45,6 +45,7 @@ from app.prompts.context_blocks import (
     build_contact_request_block,
     build_whatsapp_contact_block,
     build_guest_profile_block,
+    build_language_block,
 )
 
 logger = get_logger(__name__)
@@ -292,7 +293,7 @@ class HotelSDKOrchestrator:
         if not settings.DEBUG:
             set_tracing_disabled(False)
 
-    def _build_instructions(self, lead_block: str) -> str:
+    def _build_instructions(self, lead_block: str, language: str = "es") -> str:
         now = now_argentina()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
@@ -305,6 +306,7 @@ class HotelSDKOrchestrator:
             fecha_actual=fecha,
             hora_actual=hora,
             lead_block=lead_block,
+            language_block=build_language_block(language),
         )
 
     async def _build_lead_block(
@@ -383,7 +385,8 @@ class HotelSDKOrchestrator:
         return items
 
     async def run(
-        self, db: Session, message: str, session_id: str, history: List[Dict]
+        self, db: Session, message: str, session_id: str, history: List[Dict],
+        language: str = "es",
     ) -> Dict:
         """Procesa un turno de pre-venta del hotel con el SDK."""
         start = time.time()
@@ -394,7 +397,7 @@ class HotelSDKOrchestrator:
         )
 
         # 2. Construir el Agent
-        instructions = self._build_instructions(lead_block)
+        instructions = self._build_instructions(lead_block, language)
         agent = Agent[HotelContext](
             name=profile_manager.get_agent_name(),
             instructions=instructions,

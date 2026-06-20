@@ -34,15 +34,16 @@ export async function getBooking(code) {
 }
 
 // ── Chat del agente (Aura) ───────────────────────────────────────────────────
-export async function getGreeting() {
-  const { data } = await client.get('/api/chat/greeting')
+export async function getGreeting(lang = 'es') {
+  const { data } = await client.get('/api/chat/greeting', { params: { lang } })
   return data
 }
 
-export async function sendMessage({ message, sessionId }) {
+export async function sendMessage({ message, sessionId, language = 'es' }) {
   const { data } = await client.post('/api/chat/message', {
     message,
     session_id: sessionId,
+    language,
   })
   return data
 }

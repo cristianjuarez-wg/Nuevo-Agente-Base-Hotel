@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CalendarDays } from 'lucide-react'
+import { getStrings } from '../../i18n/chat'
 
 // Fecha de hoy en YYYY-MM-DD (para el min de los inputs).
 function todayISO() {
@@ -51,7 +52,8 @@ function Stepper({ label, hint, value, set, min = 0, max = 9 }) {
  * Selector compacto de fechas + huéspedes dentro del chat (Fase 2).
  * Al confirmar, compone un mensaje en lenguaje natural y lo inyecta vía onAction.
  */
-export default function DatePickerCard({ card, onAction }) {
+export default function DatePickerCard({ card, onAction, lang = 'es' }) {
+  const t = getStrings(lang)
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
   const [adults, setAdults] = useState(2)
@@ -72,15 +74,14 @@ export default function DatePickerCard({ card, onAction }) {
   }
 
   const confirm = () => {
-    if (!checkIn || !checkOut) { setError('Elegí las dos fechas.'); return }
-    if (checkOut <= checkIn) { setError('El check-out debe ser posterior al check-in.'); return }
+    if (!checkIn || !checkOut) { setError(t.errBothDates); return }
+    if (checkOut <= checkIn) { setError(t.errCheckout); return }
     setError('')
-    // Mensaje natural para el agente (incluye desglose de huéspedes).
-    const partes = [`${adults} adulto${adults !== 1 ? 's' : ''}`]
-    if (children) partes.push(`${children} niño${children !== 1 ? 's' : ''}`)
-    if (infants) partes.push(`${infants} bebé${infants !== 1 ? 's' : ''} en cuna`)
-    const msg =
-      `Quiero consultar disponibilidad del ${checkIn} al ${checkOut} para ${partes.join(', ')}.`
+    // Mensaje natural para el agente (incluye desglose de huéspedes), en el idioma activo.
+    const partes = [t.adultsWord(adults)]
+    if (children) partes.push(t.childrenWord(children))
+    if (infants) partes.push(t.infantsWord(infants))
+    const msg = t.availabilityMsg(checkIn, checkOut, partes.join(', '))
     onAction?.({ kind: 'send_message', message: msg })
   }
 
@@ -88,14 +89,14 @@ export default function DatePickerCard({ card, onAction }) {
     <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-card">
       <div className="flex items-center gap-2 bg-linen px-4 py-2.5">
         <CalendarDays size={16} className="text-hilton-600" />
-        <p className="text-sm font-medium text-ink">{card.title || 'Elegí tus fechas'}</p>
+        <p className="text-sm font-medium text-ink">{t.pickDates}</p>
       </div>
 
       <div className="space-y-3 p-4">
         {/* Fechas */}
         <div className="grid grid-cols-2 gap-2.5">
           <label className="block">
-            <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">Check-in</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.checkIn}</span>
             <input
               type="date" value={checkIn} min={todayISO()}
               onChange={(e) => onCheckIn(e.target.value)}
@@ -103,7 +104,7 @@ export default function DatePickerCard({ card, onAction }) {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">Check-out</span>
+            <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.checkOut}</span>
             <input
               type="date" value={checkOut} min={minOut}
               onChange={(e) => setCheckOut(e.target.value)}
@@ -115,18 +116,18 @@ export default function DatePickerCard({ card, onAction }) {
         {/* Contador de noches en vivo + aviso si la estadía es larga */}
         {nights > 0 && (
           <div className={`flex items-center gap-1.5 text-xs ${nights > 14 ? 'text-amber-600' : 'text-slatey'}`}>
-            <span className="font-medium">{nights} {nights === 1 ? 'noche' : 'noches'}</span>
-            {nights > 14 && <span>· estadía larga, ¿es correcto?</span>}
+            <span className="font-medium">{nights} {nights === 1 ? t.night : t.nights}</span>
+            {nights > 14 && <span>{t.longStay}</span>}
           </div>
         )}
 
         {/* Huéspedes */}
         <div className="space-y-2 rounded-xl border border-stone-200 p-3">
-          <Stepper label="Adultos" value={adults} set={setAdults} min={1} />
+          <Stepper label={t.adults} value={adults} set={setAdults} min={1} />
           <div className="h-px bg-stone-100" />
-          <Stepper label="Niños" hint="3 a 17 años" value={children} set={setChildren} />
+          <Stepper label={t.children} hint={t.childrenHint} value={children} set={setChildren} />
           <div className="h-px bg-stone-100" />
-          <Stepper label="Bebés" hint="0 a 2, en cuna" value={infants} set={setInfants} />
+          <Stepper label={t.infants} hint={t.infantsHint} value={infants} set={setInfants} />
         </div>
 
         {error && <p className="text-xs text-red-600">{error}</p>}
@@ -135,8 +136,8 @@ export default function DatePickerCard({ card, onAction }) {
           onClick={confirm}
           className="w-full rounded-xl bg-hilton-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-700 active:scale-[0.99]"
         >
-          {card.action?.label || 'Ver disponibilidad'}
-          {nights > 0 ? ` · ${nights} ${nights === 1 ? 'noche' : 'noches'}` : ''}
+          {t.seeAvailability}
+          {nights > 0 ? ` · ${nights} ${nights === 1 ? t.night : t.nights}` : ''}
         </button>
       </div>
     </div>

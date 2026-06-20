@@ -220,13 +220,14 @@ class AgentService:
         
         return "\n".join(formatted)
     
-    async def _generate_casual_response(self, message: str, history: List[Dict]) -> tuple[str, Dict]:
+    async def _generate_casual_response(self, message: str, history: List[Dict], language: str = "es") -> tuple[str, Dict]:
         """
         Genera respuesta natural para conversación casual
 
         Args:
             message: Mensaje del usuario
             history: Historial de conversación
+            language: idioma de respuesta (es | en | pt | fr)
 
         Returns:
             (respuesta amigable, usage) — usage con los tokens consumidos.
@@ -241,13 +242,17 @@ class AgentService:
                     f"{'Usuario' if msg['role'] == 'user' else 'Asistente'}: {msg['content'][:200]}"
                     for msg in recent
                 ])
-            
+
             history_section = f"Historial de la conversación:\n{history_context}" if history_context else ""
             prompt = CASUAL_RESPONSE_SYSTEM.format(
                 agent_name=profile_manager.get_agent_name(),
                 history_section=history_section,
                 message=message,
             )
+            from app.prompts.context_blocks import build_language_block
+            lang_block = build_language_block(language)
+            if lang_block:
+                prompt = prompt + "\n" + lang_block
 
             response = await self.client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
@@ -297,14 +302,15 @@ class AgentService:
         """Obtiene o crea instancia de PostSaleService"""
         return PostSaleService(db)
     
-    async def chat(self, db: Session, message: str, session_id: str) -> Dict:
+    async def chat(self, db: Session, message: str, session_id: str, language: str = "es") -> Dict:
         """
         Procesa mensaje del usuario y genera respuesta
-        
+
         Args:
             db: Sesión de base de datos
             message: Mensaje del usuario
             session_id: ID de sesión
+            language: idioma de respuesta (es | en | pt | fr). Default es.
         """
         start_time = time.time()
         tokens_used: Optional[int] = None
@@ -380,7 +386,7 @@ class AgentService:
                                message=message[:50])
                     # El triage solo rutea; la respuesta casual la genera SIEMPRE este
                     # método (única fuente con reglas de alcance: no recetas/tareas, etc.).
-                    response_text, casual_usage = await self._generate_casual_response(message, history)
+                    response_text, casual_usage = await self._generate_casual_response(message, history, language)
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})
                     self._update_session_metadata(session_id)
@@ -484,7 +490,7 @@ class AgentService:
             # PRE-VENTA: delega al orquestador del HOTEL (Agents SDK). Post-venta, estado
             # conversacional y casual ya se resolvieron arriba.
             from app.services.hotel_sdk_orchestrator import hotel_sdk_orchestrator
-            orch_result = await hotel_sdk_orchestrator.run(db, message, session_id, history)
+            orch_result = await hotel_sdk_orchestrator.run(db, message, session_id, history, language)
             response_text = orch_result["response"]
 
             # Actualizar historial en memoria

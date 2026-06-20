@@ -6,12 +6,18 @@ from enum import Enum
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=1000, description="Mensaje del usuario")
     session_id: str = Field(..., min_length=8, max_length=64, description="ID único de sesión")
-    
+    language: str = Field("es", description="Idioma de respuesta: es | en | pt | fr")
+
     @validator('message')
     def validate_message(cls, v):
         if not v.strip():
             raise ValueError('El mensaje no puede estar vacío')
         return v.strip()
+
+    @validator('language')
+    def validate_language(cls, v):
+        v = (v or "es").lower()
+        return v if v in {"es", "en", "pt", "fr"} else "es"
     
     @validator('session_id')
     def validate_session_id(cls, v):

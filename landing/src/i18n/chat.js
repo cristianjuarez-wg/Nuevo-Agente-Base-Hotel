@@ -1,0 +1,169 @@
+// i18n del widget de chat (Aura). Tabla pequeña y acotada a la UI del chat.
+// El agente (LLM) responde en el idioma elegido; esto cubre los textos fijos del front.
+
+export const LANGUAGES = [
+  { code: 'es', label: 'Español', short: 'ES' },
+  { code: 'en', label: 'English', short: 'EN' },
+  { code: 'pt', label: 'Português', short: 'PT' },
+  { code: 'fr', label: 'Français', short: 'FR' },
+]
+
+const STRINGS = {
+  es: {
+    fab: 'Hablá con Aura',
+    subtitle: 'Concierge virtual · en línea',
+    online: 'en línea',
+    placeholder: 'Escribí tu mensaje…',
+    reset: 'Reiniciar conversación',
+    close: 'Cerrar chat',
+    language: 'Idioma',
+    errorReply: 'Disculpá, tuve un problema para responder. ¿Podés intentarlo de nuevo en un momento?',
+    greetingFallback: '¡Hola! Soy Aura, la concierge virtual del Hampton by Hilton Bariloche. ¿En qué puedo ayudarte?',
+    // Date picker
+    pickDates: 'Elegí tus fechas',
+    checkIn: 'Check-in',
+    checkOut: 'Check-out',
+    adults: 'Adultos',
+    children: 'Niños',
+    childrenHint: '3 a 17 años',
+    infants: 'Bebés',
+    infantsHint: '0 a 2, en cuna',
+    night: 'noche',
+    nights: 'noches',
+    longStay: '· estadía larga, ¿es correcto?',
+    seeAvailability: 'Ver disponibilidad',
+    errBothDates: 'Elegí las dos fechas.',
+    errCheckout: 'El check-out debe ser posterior al check-in.',
+    // Mensaje compuesto para el agente
+    availabilityMsg: (ci, co, who) => `Quiero consultar disponibilidad del ${ci} al ${co} para ${who}.`,
+    adultsWord: (n) => `${n} adulto${n !== 1 ? 's' : ''}`,
+    childrenWord: (n) => `${n} niño${n !== 1 ? 's' : ''}`,
+    infantsWord: (n) => `${n} bebé${n !== 1 ? 's' : ''} en cuna`,
+    // Room card
+    bookRoom: 'Reservar esta habitación',
+    bookRoomMsg: (room) => `Quiero reservar la habitación ${room}.`,
+    upTo: 'Hasta',
+    total: 'Total',
+    stay: 'estadía',
+  },
+  en: {
+    fab: 'Chat with Aura',
+    subtitle: 'Virtual concierge · online',
+    online: 'online',
+    placeholder: 'Type your message…',
+    reset: 'Restart conversation',
+    close: 'Close chat',
+    language: 'Language',
+    errorReply: 'Sorry, I had trouble responding. Could you try again in a moment?',
+    greetingFallback: "Hi! I'm Aura, the virtual concierge at Hampton by Hilton Bariloche. How can I help you?",
+    pickDates: 'Choose your dates',
+    checkIn: 'Check-in',
+    checkOut: 'Check-out',
+    adults: 'Adults',
+    children: 'Children',
+    childrenHint: 'ages 3 to 17',
+    infants: 'Infants',
+    infantsHint: '0 to 2, in crib',
+    night: 'night',
+    nights: 'nights',
+    longStay: '· long stay, is that right?',
+    seeAvailability: 'Check availability',
+    errBothDates: 'Please pick both dates.',
+    errCheckout: 'Check-out must be after check-in.',
+    availabilityMsg: (ci, co, who) => `I'd like to check availability from ${ci} to ${co} for ${who}.`,
+    adultsWord: (n) => `${n} adult${n !== 1 ? 's' : ''}`,
+    childrenWord: (n) => `${n} child${n !== 1 ? 'ren' : ''}`,
+    infantsWord: (n) => `${n} infant${n !== 1 ? 's' : ''} in crib`,
+    bookRoom: 'Book this room',
+    bookRoomMsg: (room) => `I'd like to book the ${room} room.`,
+    upTo: 'Up to',
+    total: 'Total',
+    stay: 'stay',
+  },
+  pt: {
+    fab: 'Fale com a Aura',
+    subtitle: 'Concierge virtual · online',
+    online: 'online',
+    placeholder: 'Escreva sua mensagem…',
+    reset: 'Reiniciar conversa',
+    close: 'Fechar chat',
+    language: 'Idioma',
+    errorReply: 'Desculpe, tive um problema para responder. Pode tentar de novo em um instante?',
+    greetingFallback: 'Olá! Sou a Aura, a concierge virtual do Hampton by Hilton Bariloche. Como posso ajudar?',
+    pickDates: 'Escolha suas datas',
+    checkIn: 'Check-in',
+    checkOut: 'Check-out',
+    adults: 'Adultos',
+    children: 'Crianças',
+    childrenHint: '3 a 17 anos',
+    infants: 'Bebês',
+    infantsHint: '0 a 2, no berço',
+    night: 'noite',
+    nights: 'noites',
+    longStay: '· estadia longa, está correto?',
+    seeAvailability: 'Ver disponibilidade',
+    errBothDates: 'Escolha as duas datas.',
+    errCheckout: 'O check-out deve ser posterior ao check-in.',
+    availabilityMsg: (ci, co, who) => `Quero consultar disponibilidade de ${ci} a ${co} para ${who}.`,
+    adultsWord: (n) => `${n} adulto${n !== 1 ? 's' : ''}`,
+    childrenWord: (n) => `${n} criança${n !== 1 ? 's' : ''}`,
+    infantsWord: (n) => `${n} bebê${n !== 1 ? 's' : ''} no berço`,
+    bookRoom: 'Reservar este quarto',
+    bookRoomMsg: (room) => `Quero reservar o quarto ${room}.`,
+    upTo: 'Até',
+    total: 'Total',
+    stay: 'estadia',
+  },
+  fr: {
+    fab: 'Discuter avec Aura',
+    subtitle: 'Concierge virtuelle · en ligne',
+    online: 'en ligne',
+    placeholder: 'Écrivez votre message…',
+    reset: 'Réinitialiser la conversation',
+    close: 'Fermer le chat',
+    language: 'Langue',
+    errorReply: "Désolé, j'ai eu un problème pour répondre. Pouvez-vous réessayer dans un instant ?",
+    greetingFallback: "Bonjour ! Je suis Aura, la concierge virtuelle du Hampton by Hilton Bariloche. Comment puis-je vous aider ?",
+    pickDates: 'Choisissez vos dates',
+    checkIn: 'Arrivée',
+    checkOut: 'Départ',
+    adults: 'Adultes',
+    children: 'Enfants',
+    childrenHint: '3 à 17 ans',
+    infants: 'Bébés',
+    infantsHint: '0 à 2, en berceau',
+    night: 'nuit',
+    nights: 'nuits',
+    longStay: '· long séjour, est-ce correct ?',
+    seeAvailability: 'Voir les disponibilités',
+    errBothDates: 'Choisissez les deux dates.',
+    errCheckout: 'Le départ doit être postérieur à l\'arrivée.',
+    availabilityMsg: (ci, co, who) => `Je voudrais vérifier les disponibilités du ${ci} au ${co} pour ${who}.`,
+    adultsWord: (n) => `${n} adulte${n !== 1 ? 's' : ''}`,
+    childrenWord: (n) => `${n} enfant${n !== 1 ? 's' : ''}`,
+    infantsWord: (n) => `${n} bébé${n !== 1 ? 's' : ''} en berceau`,
+    bookRoom: 'Réserver cette chambre',
+    bookRoomMsg: (room) => `Je voudrais réserver la chambre ${room}.`,
+    upTo: "Jusqu'à",
+    total: 'Total',
+    stay: 'séjour',
+  },
+}
+
+export function getStrings(lang) {
+  return STRINGS[lang] || STRINGS.es
+}
+
+// Idioma inicial: localStorage > navegador (si en/pt/fr) > es.
+export function detectInitialLang() {
+  try {
+    const saved = localStorage.getItem('aura_lang')
+    if (saved && STRINGS[saved]) return saved
+  } catch { /* ignore */ }
+  const nav = (navigator.language || 'es').slice(0, 2).toLowerCase()
+  return STRINGS[nav] ? nav : 'es'
+}
+
+export function persistLang(lang) {
+  try { localStorage.setItem('aura_lang', lang) } catch { /* ignore */ }
+}
