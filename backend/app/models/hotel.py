@@ -63,7 +63,9 @@ class Booking(Base):
 
     check_in = Column(Date, nullable=False, index=True)
     check_out = Column(Date, nullable=False, index=True)
-    guests = Column(Integer, nullable=False, default=1)
+    guests = Column(Integer, nullable=False, default=1)       # adultos (compatibilidad)
+    children = Column(Integer, nullable=False, default=0)     # niños 3-17 (cuentan ocupación)
+    infants = Column(Integer, nullable=False, default=0)      # bebés 0-2 en cuna (NO ocupan)
     nights = Column(Integer, nullable=False, default=1)
     total_price_usd = Column(Float, nullable=False)
     total_price_ars = Column(Float, nullable=False)
@@ -90,6 +92,8 @@ class Booking(Base):
             "check_in": self.check_in.isoformat() if self.check_in else None,
             "check_out": self.check_out.isoformat() if self.check_out else None,
             "guests": self.guests,
+            "children": self.children or 0,
+            "infants": self.infants or 0,
             "nights": self.nights,
             "total_price_usd": self.total_price_usd,
             "total_price_ars": self.total_price_ars,
@@ -153,3 +157,33 @@ Base.metadata.create_all(
     bind=engine,
     tables=[Room.__table__, Booking.__table__, HotelTicket.__table__],
 )
+
+
+def _ensure_booking_columns():
+    """Migración ligera idempotente: agrega columnas nuevas a `bookings` si faltan.
+
+    `create_all` no altera tablas existentes. En bases ya creadas (Render/PostgreSQL,
+    SQLite local) agregamos children/infants con ADD COLUMN IF NOT EXISTS-equivalente,
+    tolerando ambos motores. Evita tener que configurar Alembic para un cambio menor.
+    """
+    from sqlalchemy import inspect, text
+
+    try:
+        inspector = inspect(engine)
+        existing = {c["name"] for c in inspector.get_columns("bookings")}
+        to_add = []
+        if "children" not in existing:
+            to_add.append("children")
+        if "infants" not in existing:
+            to_add.append("infants")
+        if not to_add:
+            return
+        with engine.begin() as conn:
+            for col in to_add:
+                conn.execute(text(f"ALTER TABLE bookings ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0"))
+    except Exception:
+        # No bloquear el arranque por la migración; las columnas tienen default en el modelo.
+        pass
+
+
+_ensure_booking_columns()

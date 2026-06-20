@@ -44,6 +44,11 @@ export default function RoomCard({ card, onAction }) {
 
       {/* Cuerpo */}
       <div className="p-3.5">
+        {card.description && (
+          <p className="mb-2 line-clamp-2 text-xs leading-relaxed text-slatey">
+            {card.description}
+          </p>
+        )}
         <ul className="flex flex-wrap gap-x-3.5 gap-y-1 text-[11px] text-slatey">
           {card.capacity != null && (
             <li className="inline-flex items-center gap-1">
@@ -64,11 +69,16 @@ export default function RoomCard({ card, onAction }) {
 
         <div className="mt-3 flex items-end justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-slatey">Total estadía</p>
+            <p className="text-[10px] uppercase tracking-wide text-slatey">
+              Total {nights ? `· ${nights} ${nights === 1 ? 'noche' : 'noches'}` : 'estadía'}
+            </p>
             <p className="font-display text-lg font-700 leading-none text-ink tabular-nums">
               USD {Math.round(card.price_usd)}
             </p>
-            <p className="text-[11px] tabular-nums text-slatey">ARS {formatARS(card.price_ars)}</p>
+            <p className="text-[11px] tabular-nums text-slatey">
+              ARS {formatARS(card.price_ars)}
+              {card.price_usd_night ? ` · USD ${Math.round(card.price_usd_night)}/noche` : ''}
+            </p>
           </div>
         </div>
 

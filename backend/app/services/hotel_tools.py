@@ -62,6 +62,8 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
     check_in_str = (args.get("check_in") or "").strip()
     check_out_str = (args.get("check_out") or "").strip()
     guests = int(args.get("guests") or 1)
+    children = int(args.get("children") or 0)
+    infants = int(args.get("infants") or 0)
 
     if not check_in_str or not check_out_str:
         return {
@@ -83,22 +85,45 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
             )
         }
 
+    # Blindaje contra interpretación errónea de fechas por el LLM: una estadía de hotel es
+    # de pocas noches. Un rango enorme (ej. el LLM cambió el mes del check-out) produciría
+    # precios absurdos. Antes que mostrar eso, pedimos confirmar las fechas.
+    nights_requested = (check_out - check_in).days
+    if nights_requested > 30:
+        logger.warning("Rango de fechas sospechoso en disponibilidad",
+                       check_in=check_in_str, check_out=check_out_str, nights=nights_requested)
+        return {
+            "tool_result": (
+                f"Verifico las fechas: del {check_in} al {check_out} son {nights_requested} "
+                "noches, que es una estadía muy larga. ¿Me confirmás las fechas de check-in y "
+                "check-out, por favor? Así te muestro la disponibilidad correcta."
+            )
+        }
+
     try:
-        rooms = get_availability(db, check_in, check_out, guests)
+        rooms = get_availability(db, check_in, check_out, guests, children)
     except ValueError as e:
         return {"tool_result": str(e)}
+
+    # Descripción legible de la composición de huéspedes.
+    partes = [f"{guests} adulto(s)"]
+    if children:
+        partes.append(f"{children} niño(s)")
+    if infants:
+        partes.append(f"{infants} bebé(s) en cuna")
+    composicion = ", ".join(partes)
 
     if not rooms:
         return {
             "tool_result": (
-                f"No hay habitaciones disponibles para {guests} huésped(es) "
+                f"No hay habitaciones disponibles para {composicion} "
                 f"entre el {check_in} y el {check_out}. "
                 "¿Querés probar otras fechas?"
             )
         }
 
     lines = [
-        f"Habitaciones disponibles para {guests} huésped(es), "
+        f"Habitaciones disponibles para {composicion}, "
         f"{rooms[0].get('nights')} noche(s) ({check_in} → {check_out}):\n"
     ]
     for r in rooms:
@@ -133,6 +158,8 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
     guest_email = (args.get("guest_email") or "").strip() or None
     guest_phone = (args.get("guest_phone") or "").strip() or None
     guests = int(args.get("guests") or 1)
+    children = int(args.get("children") or 0)
+    infants = int(args.get("infants") or 0)
 
     # Validación de campos obligatorios antes de tocar la BD
     missing = []
@@ -172,6 +199,8 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
         guest_email=guest_email,
         guest_phone=guest_phone,
         guests=guests,
+        children=children,
+        infants=infants,
         source="agente",
     )
 

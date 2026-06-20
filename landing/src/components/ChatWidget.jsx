@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm'
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react'
 import { getGreeting, sendMessage } from '../services/api'
 import RoomCard from './chat/RoomCard'
+import DatePickerCard from './chat/DatePickerCard'
 
 // Session persistente por navegador (sobrevive recargas durante la demo).
 function getSessionId() {
@@ -187,11 +188,13 @@ export default function ChatWidget() {
                 <Bubble role={m.role}>{m.content}</Bubble>
                 {m.cards?.length > 0 && (
                   <div className="space-y-2.5">
-                    {m.cards.map((card, ci) =>
-                      card.type === 'room' ? (
-                        <RoomCard key={ci} card={card} onAction={handleCardAction} />
-                      ) : null
-                    )}
+                    {m.cards.map((card, ci) => {
+                      if (card.type === 'room')
+                        return <RoomCard key={ci} card={card} onAction={handleCardAction} />
+                      if (card.type === 'date_picker')
+                        return <DatePickerCard key={ci} card={card} onAction={handleCardAction} />
+                      return null
+                    })}
                   </div>
                 )}
               </div>

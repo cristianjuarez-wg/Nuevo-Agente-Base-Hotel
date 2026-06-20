@@ -109,15 +109,20 @@ async def consultar_disponibilidad(
     check_in: str,
     check_out: str,
     guests: int = 1,
+    children: int = 0,
+    infants: int = 0,
 ) -> str:
     """Consulta qué tipos de habitación están disponibles para un rango de fechas y
     cantidad de huéspedes, con el precio total en USD y ARS. Úsala SIEMPRE que el usuario
     quiera reservar o pregunte por disponibilidad/precios para fechas concretas.
-    Las fechas deben estar en formato YYYY-MM-DD."""
+    Las fechas deben estar en formato YYYY-MM-DD.
+    `guests` = adultos (18+). `children` = niños (3-17, cuentan para la capacidad).
+    `infants` = bebés (0-2, van en cuna y NO cuentan para la capacidad de la habitación)."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool(
         "consultar_disponibilidad",
-        {"check_in": check_in, "check_out": check_out, "guests": guests},
+        {"check_in": check_in, "check_out": check_out, "guests": guests,
+         "children": children, "infants": infants},
         tool_ctx,
     )
     ctx.context.absorb(tool_ctx)
@@ -134,6 +139,8 @@ async def crear_reserva(
     guest_email: str = "",
     guest_phone: str = "",
     guests: int = 1,
+    children: int = 0,
+    infants: int = 0,
 ) -> str:
     """Crea una reserva confirmada y devuelve el código de reserva (HTL-XXXX).
     Llamala SOLO cuando ya tengas TODOS estos datos confirmados por el usuario:
@@ -151,6 +158,8 @@ async def crear_reserva(
             "guest_email": guest_email,
             "guest_phone": guest_phone,
             "guests": guests,
+            "children": children,
+            "infants": infants,
         },
         tool_ctx,
     )

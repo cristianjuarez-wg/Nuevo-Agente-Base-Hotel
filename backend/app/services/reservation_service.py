@@ -61,19 +61,22 @@ def list_rooms(db: Session) -> List[Dict]:
 
 
 def get_availability(
-    db: Session, check_in: date, check_out: date, guests: int = 1
+    db: Session, check_in: date, check_out: date, guests: int = 1, children: int = 0,
 ) -> List[Dict]:
     """Tipos de habitación disponibles en el rango, con precio total calculado.
 
     Devuelve solo habitaciones con capacidad suficiente y unidades libres.
+    OCUPACIÓN = adultos (`guests`) + niños (`children`). Los bebés/infantes NO cuentan
+    para la capacidad (van en cuna) y por eso no son un parámetro acá.
     """
     if check_out <= check_in:
         raise ValueError("check_out debe ser posterior a check_in")
 
+    occupancy = guests + max(children, 0)
     nights = _nights_between(check_in, check_out)
     results: List[Dict] = []
 
-    rooms = db.query(Room).filter(Room.capacity >= guests).all()
+    rooms = db.query(Room).filter(Room.capacity >= occupancy).all()
     for room in rooms:
         booked = _units_booked(db, room.id, check_in, check_out)
         units_left = room.total_units - booked
@@ -104,6 +107,8 @@ def create_booking(
     guest_email: Optional[str] = None,
     guest_phone: Optional[str] = None,
     guests: int = 1,
+    children: int = 0,
+    infants: int = 0,
     source: str = "web",
 ) -> Dict:
     """Crea una reserva si hay disponibilidad. Pago SIMULADO → payment_status='paid'.
@@ -130,10 +135,11 @@ def create_booking(
     if room is None:
         return {"error": "No se encontró ese tipo de habitación."}
 
-    if room.capacity < guests:
+    occupancy = guests + max(children, 0)
+    if room.capacity < occupancy:
         return {
             "error": f"La habitación '{room.room_type}' admite hasta {room.capacity} "
-            f"huéspedes (se pidieron {guests})."
+            f"huéspedes (se pidieron {occupancy}, sin contar bebés en cuna)."
         }
 
     # Validación determinística de disponibilidad
@@ -153,6 +159,8 @@ def create_booking(
         check_in=check_in,
         check_out=check_out,
         guests=guests,
+        children=max(children, 0),
+        infants=max(infants, 0),
         nights=nights,
         total_price_usd=round(room.base_price_usd * nights, 2),
         total_price_ars=round(room.base_price_ars * nights, 2),

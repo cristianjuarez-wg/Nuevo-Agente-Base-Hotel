@@ -50,6 +50,41 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 _ROOM_FALLBACK_IMG = "/fotos/habitacion-vista-lago.jpg"
 
 
+def _date_picker_card() -> dict:
+    """Tarjeta de selección de fechas + huéspedes que el front renderiza como controles."""
+    return {
+        "type": "date_picker",
+        "title": "Elegí las fechas de tu estadía",
+        "action": {
+            "kind": "send_message",
+            "label": "Ver disponibilidad",
+            # El front compone el message real con las fechas elegidas.
+        },
+    }
+
+
+# Señales en la respuesta del agente de que está pidiendo fechas/huéspedes.
+_DATE_REQUEST_HINTS = (
+    "fecha", "check-in", "check in", "checkin", "qué día", "que dia",
+    "cuándo", "cuando", "disponibilidad para",
+)
+
+
+def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool) -> bool:
+    """Decide si adjuntar el selector de fechas.
+
+    Lo ofrecemos cuando el agente está PIDIENDO fechas: no mostró habitaciones en este
+    turno (no llamó a consultar_disponibilidad) y su texto menciona fechas/check-in.
+    Así el usuario elige con el picker en vez de tipear.
+    """
+    if has_room_cards:
+        return False
+    if "consultar_disponibilidad" in (tools_used or []):
+        return False
+    text = (response_text or "").lower()
+    return any(h in text for h in _DATE_REQUEST_HINTS)
+
+
 def _build_room_cards(rooms_offered: list) -> list:
     """Arma tarjetas de habitación a partir de las habitaciones que ofreció la tool.
 
@@ -64,9 +99,11 @@ def _build_room_cards(rooms_offered: list) -> list:
         cards.append({
             "type": "room",
             "title": r.get("room_type"),
+            "description": r.get("description"),
             "image": image,
             "price_usd": r.get("total_price_usd"),
             "price_ars": r.get("total_price_ars"),
+            "price_usd_night": r.get("base_price_usd"),
             "nights": r.get("nights"),
             "capacity": r.get("capacity"),
             "bed_config": r.get("bed_config"),
@@ -169,6 +206,12 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # Tarjetas visuales (Fase 2): derivadas determinísticamente de las habitaciones
         # que la tool consultar_disponibilidad ofreció en este turno.
         cards = _build_room_cards(result.get("rooms_offered", []))
+
+        # Si el agente está pidiendo fechas y no mostró habitaciones, ofrecemos el selector.
+        if _should_offer_datepicker(result.get("response", ""),
+                                    result.get("tools_used", []),
+                                    has_room_cards=bool(cards)):
+            cards = [_date_picker_card()]
 
         processing_time = time.time() - start_time
 
