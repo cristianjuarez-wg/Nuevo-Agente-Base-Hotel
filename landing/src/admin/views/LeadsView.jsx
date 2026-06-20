@@ -1,22 +1,14 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, RefreshCw, Mail, Phone, Flame, MessageCircle, Globe, Trash2 } from 'lucide-react'
+import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2 } from 'lucide-react'
 import { listLeads, deleteLead } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate,
 } from '../ui'
 
 function TypeBadge({ type }) {
   const t = (type || '').toUpperCase()
   const map = { CALIENTE: 'red', TIBIO: 'amber', FRIO: 'blue' }
   return <Badge tone={map[t] || 'gray'}>{t || '—'}</Badge>
-}
-
-// Canal de origen del lead: WhatsApp (verde) o Web (gris).
-function ChannelBadge({ channel }) {
-  if (channel === 'whatsapp') {
-    return <Badge tone="green"><MessageCircle size={11} /> WhatsApp</Badge>
-  }
-  return <Badge tone="gray"><Globe size={11} /> Web</Badge>
 }
 
 function ScoreBar({ score }) {
@@ -48,7 +40,7 @@ function flatten(lead) {
     score: cl.interest_score,
     interest: ti.main_interest,
     status: md.status,
-    channel: md.channel,
+    origin: md.origin,
     created_at: md.created_at,
   }
 }
@@ -104,7 +96,7 @@ export default function LeadsView() {
       </div>
     ) },
     { key: 'interest', label: 'Interés', render: (r) => r.interest || '—' },
-    { key: 'channel', label: 'Canal', render: (r) => <ChannelBadge channel={r.channel} /> },
+    { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'type', label: 'Tipo', render: (r) => <TypeBadge type={r.type} /> },
     { key: 'score', label: 'Score', render: (r) => <ScoreBar score={r.score} /> },
     { key: 'created_at', label: 'Fecha', render: (r) => formatDate(r.created_at) },
@@ -116,7 +108,7 @@ export default function LeadsView() {
       <div className="mb-2 flex items-center justify-between">
         <span className="font-medium text-ink">{r.name}</span>
         <div className="flex items-center gap-1.5">
-          <ChannelBadge channel={r.channel} />
+          <OriginBadge origin={r.origin} />
           <TypeBadge type={r.type} />
         </div>
       </div>

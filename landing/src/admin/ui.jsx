@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react'
+import { Loader2, Bot, Globe, User } from 'lucide-react'
 
 // Formato unificado (única fuente de verdad en lib/format.js).
 export { formatNumber, formatUSD, formatARS, formatDate, formatDateTime } from '../lib/format'
@@ -47,6 +47,29 @@ export function Badge({ children, tone = 'gray' }) {
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone]}`}>
       {children}
     </span>
+  )
+}
+
+// Origen unificado de una reserva/lead/pasajero. El icono Bot marca que intervino la IA
+// (Aura); Globe = el huésped reservó solo en el sitio; User = carga manual del equipo.
+// Recibe la `key` que ya resuelve el backend (origin.key). Mismo look en todo el backoffice.
+const ORIGIN_MAP = {
+  aura_whatsapp: { tone: 'green', icon: Bot, label: 'WhatsApp' },
+  aura_web: { tone: 'blue', icon: Bot, label: 'ChatWeb' },
+  web: { tone: 'gray', icon: Globe, label: 'Sitio web' },
+  manual: { tone: 'amber', icon: User, label: 'Manual' },
+}
+
+export function OriginBadge({ origin }) {
+  // Acepta el objeto origin completo o solo la key.
+  const key = typeof origin === 'string' ? origin : origin?.key
+  const o = ORIGIN_MAP[key] || ORIGIN_MAP.web
+  const Icon = o.icon
+  const label = (typeof origin === 'object' && origin?.label) || o.label
+  return (
+    <Badge tone={o.tone}>
+      <Icon size={11} className="mr-1" /> {label}
+    </Badge>
   )
 }
 

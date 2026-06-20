@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
-  Users, RefreshCw, Mail, Phone, MessageCircle, Globe, X, BedDouble, CalendarCheck,
+  Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
   Repeat, DollarSign, Star, Loader2,
 } from 'lucide-react'
 import { listPassengers, getGuestProfile, updateGuestPreferences } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate, formatUSD,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD,
 } from '../ui'
-
-function ChannelBadge({ channel }) {
-  if (channel === 'whatsapp') return <Badge tone="green"><MessageCircle size={11} /> WhatsApp</Badge>
-  return <Badge tone="gray"><Globe size={11} /> Web</Badge>
-}
 
 function flatten(c) {
   const m = c.metrics || {}
@@ -21,7 +16,7 @@ function flatten(c) {
     name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Sin nombre',
     email: c.email,
     phone: c.phone_number,
-    channel: c.channel,
+    origin: c.origin,
     stays: m.purchases_made ?? 0,
     inHouse: !!c.is_staying_now,
     last: c.last_interaction_date,
@@ -117,7 +112,7 @@ function DetailDrawer({ contactId, onClose }) {
         <header className="flex items-center justify-between border-b border-hilton-100 bg-white px-5 py-4">
           <div className="min-w-0">
             <h2 className="truncate font-serif text-lg font-700 text-ink">{name}</h2>
-            {profile?.channel && <div className="mt-0.5"><ChannelBadge channel={profile.channel} /></div>}
+            {profile?.origin && <div className="mt-0.5"><OriginBadge origin={profile.origin} /></div>}
           </div>
           <button onClick={onClose} aria-label="Cerrar"
                   className="flex h-10 w-10 items-center justify-center rounded-lg text-slatey hover:bg-mist">
@@ -250,7 +245,7 @@ export default function PassengersView() {
         {!r.phone && !r.email && '—'}
       </div>
     ) },
-    { key: 'channel', label: 'Canal', render: (r) => <ChannelBadge channel={r.channel} /> },
+    { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'stays', label: 'Estadías', render: (r) => <span className="tabular-nums font-medium text-ink">{r.stays}</span> },
     { key: 'last', label: 'Última actividad', render: (r) => formatDate(r.last) },
     { key: 'actions', label: '', render: (r) => (
@@ -262,7 +257,7 @@ export default function PassengersView() {
     <button onClick={() => setSelected(r.id)} className="w-full text-left">
       <div className="mb-2 flex items-center justify-between">
         <span className="font-medium text-ink">{r.name}</span>
-        <ChannelBadge channel={r.channel} />
+        <OriginBadge origin={r.origin} />
       </div>
       <div className="space-y-0.5 text-xs text-slatey">
         {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}

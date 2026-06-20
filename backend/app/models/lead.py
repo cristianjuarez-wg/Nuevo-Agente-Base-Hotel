@@ -19,6 +19,10 @@ class Lead(Base):
     
     # Canal de origen del lead: "whatsapp" | "web". Se deriva del session_id al crear.
     channel = Column(String(20), nullable=True)
+    # Preparatorias para distinguir leads generados por humanos (teléfono/mostrador) a
+    # futuro. Hoy todo lead lo genera Aura; no se setean aún.
+    generated_by = Column(String(20), nullable=True)   # default conceptual: "aura"
+    created_by = Column(String(120), nullable=True)    # autor humano (futuro)
 
     # Información de contacto
     name = Column(String(255), nullable=True)
@@ -61,7 +65,12 @@ class Lead(Base):
     
     # 🆕 Relationship (NUEVO - VISIÓN 360°)
     contact = relationship("Contact", back_populates="leads")
-    
+
+    def origin(self) -> Dict:
+        """Origen unificado del lead (mismo vocabulario que las reservas)."""
+        from app.core.origin import origin_from_channel
+        return origin_from_channel(self.channel, self.generated_by or "aura")
+
     def to_dict(self) -> Dict:
         """Convierte el lead a diccionario"""
         return {
@@ -89,6 +98,7 @@ class Lead(Base):
                 "updated_at": self.updated_at.isoformat() if self.updated_at else None,
                 "status": self.status,
                 "channel": self.channel,
+                "origin": self.origin(),
                 "suggested_response_tone": self.suggested_response_tone,
                 "next_action": self.next_action,
                 "reasoning": self.reasoning

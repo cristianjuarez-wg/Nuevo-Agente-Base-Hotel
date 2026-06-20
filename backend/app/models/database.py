@@ -77,6 +77,11 @@ def run_light_migrations() -> None:
     ensure_column("bookings", "session_id", "VARCHAR(255)")
     # Habitación física asignada a la reserva (Fase 2: unidades numeradas).
     ensure_column("bookings", "room_unit_id", "INTEGER")
+    # Origen de dos dimensiones (preparatorias para carga humana futura).
+    ensure_column("bookings", "generated_by", "VARCHAR(20)")
+    ensure_column("bookings", "created_by", "VARCHAR(120)")
+    ensure_column("leads", "generated_by", "VARCHAR(20)")
+    ensure_column("leads", "created_by", "VARCHAR(120)")
     # Canal de la conversación (web/whatsapp) para analíticas segmentadas.
     ensure_column("conversations", "channel", "VARCHAR(20)")
     # Perfil extensible del huésped (gustos, servicios, familia) en JSON.

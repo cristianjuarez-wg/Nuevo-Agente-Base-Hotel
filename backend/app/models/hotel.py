@@ -117,10 +117,20 @@ class Booking(Base):
     payment_status = Column(String, nullable=False, default="paid")
 
     source = Column(String, nullable=False, default="web")  # "web" | "agente"
+    # Origen de DOS DIMENSIONES (preparatorias para carga humana futura):
+    #   generated_by: "aura" (IA) | "human" (equipo). created_by: empleado que la cargó.
+    # Hoy no se setean (todo es Aura); el origen se deriva de source+session_id.
+    generated_by = Column(String(20), nullable=True)   # default conceptual: "aura"
+    created_by = Column(String(120), nullable=True)    # autor humano (futuro)
     created_at = Column(DateTime, default=datetime.now)
 
     room = relationship("Room", back_populates="bookings")
     room_unit = relationship("RoomUnit", back_populates="bookings")
+
+    def origin(self) -> dict:
+        """Origen unificado de la reserva (icono+etiqueta consistentes en el backoffice)."""
+        from app.core.origin import origin_from_booking
+        return origin_from_booking(self.source, self.session_id, self.generated_by)
 
     def stay_status(self) -> str:
         """Estado temporal de la estadía respecto a HOY (derivado, no se persiste).
@@ -168,6 +178,7 @@ class Booking(Base):
             "status": self.status,
             "payment_status": self.payment_status,
             "source": self.source,
+            "origin": self.origin(),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

@@ -440,9 +440,12 @@ class ContactService:
             except Exception:
                 prefs = {}
 
+        from app.core.origin import origin_from_channel
+        _channel = self.get_channel(contact_id, db)
         return {
             "contact": contact.to_dict(),
-            "channel": self.get_channel(contact_id, db),
+            "channel": _channel,
+            "origin": origin_from_channel(_channel),
             "is_staying_now": active is not None,
             "active_stay": active.to_dict() if active else None,
             "stays_count": len(bookings),

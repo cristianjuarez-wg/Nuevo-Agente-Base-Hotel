@@ -1,21 +1,9 @@
 import { useEffect, useState } from 'react'
-import { CalendarCheck, Globe, Bot, RefreshCw, BedDouble, Clock, CheckCircle2 } from 'lucide-react'
+import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2 } from 'lucide-react'
 import { listBookings } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatUSD, formatARS, formatDate,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatUSD, formatARS, formatDate,
 } from '../ui'
-
-function SourceBadge({ source }) {
-  return source === 'agente' ? (
-    <Badge tone="blue">
-      <Bot size={12} className="mr-1" /> Agente
-    </Badge>
-  ) : (
-    <Badge tone="gray">
-      <Globe size={12} className="mr-1" /> Web
-    </Badge>
-  )
-}
 
 // Estado temporal de la estadía (derivado en el backend como stay_status).
 function StayBadge({ stay }) {
@@ -121,7 +109,7 @@ export default function BookingsView() {
     { key: 'total', label: 'Total', render: (r) => (
       <span className="tabular-nums">{formatUSD(r.total_price_usd)} <span className="text-slatey">/ {formatARS(r.total_price_ars)}</span></span>
     ) },
-    { key: 'source', label: 'Origen', render: (r) => <SourceBadge source={r.source} /> },
+    { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
   ]
 
@@ -139,7 +127,7 @@ export default function BookingsView() {
       <p className="mt-1 text-xs text-slatey">{formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)</p>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>
-        <SourceBadge source={r.source} />
+        <OriginBadge origin={r.origin} />
       </div>
     </div>
   )

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, Globe, ArrowRight, AlertTriangle, BedDouble,
+  CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, ArrowRight, AlertTriangle, BedDouble,
 } from 'lucide-react'
 import { listBookings, listLeads, getTicketStats } from '../../services/api'
-import { PageHeader, StatCard, Loading, Badge, formatUSD, formatDate } from '../ui'
+import { PageHeader, StatCard, Loading, OriginBadge, formatUSD, formatDate } from '../ui'
 
 export default function DashboardView({ go }) {
   const [data, setData] = useState(null)
@@ -109,11 +109,7 @@ export default function DashboardView({ go }) {
                 <div className="min-w-0">
                   <p className="flex items-center gap-2 font-medium text-ink">
                     {b.guest_name}
-                    {b.source === 'agente' ? (
-                      <Badge tone="blue"><Bot size={11} className="mr-1" />Agente</Badge>
-                    ) : (
-                      <Badge tone="gray"><Globe size={11} className="mr-1" />Web</Badge>
-                    )}
+                    <OriginBadge origin={b.origin} />
                   </p>
                   <p className="truncate text-xs text-slatey">
                     {b.code} · {b.room_type} · {formatDate(b.check_in)}

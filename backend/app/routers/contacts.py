@@ -122,11 +122,14 @@ async def list_contacts(
 
 
 def _contact_row(contact, db) -> dict:
-    """Fila de contacto enriquecida con canal y si está alojado hoy (para las tablas)."""
+    """Fila de contacto enriquecida con canal, origen y si está alojado hoy."""
     from app.models.hotel import Booking
+    from app.core.origin import origin_from_channel
     from datetime import date
     row = contact.to_dict()
-    row["channel"] = contact_service.get_channel(contact.id, db)
+    channel = contact_service.get_channel(contact.id, db)
+    row["channel"] = channel
+    row["origin"] = origin_from_channel(channel)
     today = date.today()
     row["is_staying_now"] = db.query(Booking).filter(
         Booking.contact_id == contact.id,
