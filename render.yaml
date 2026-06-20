@@ -25,6 +25,12 @@ services:
         value: /data/uploads_img
       - key: AGENT_PROFILE_PATH
         value: ./data/agent_profiles/hotel.json
+      - key: TWILIO_ACCOUNT_SID
+        sync: false          # se carga manualmente en el dashboard de Render
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        value: "whatsapp:+14155238886"
       - key: DEBUG
         value: "false"
       - key: LOG_LEVEL

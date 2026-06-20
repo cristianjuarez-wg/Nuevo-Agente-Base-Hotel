@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     USE_AGENTS_SDK_POSTVENTA: bool = True  # postsale_sdk_orchestrator (post-venta)
     USE_AGENTS_SDK_TRIAGE: bool = True     # triage_sdk_orchestrator (ruteo pre/post/casual)
 
+    # WhatsApp (Twilio Sandbox) — canal opcional para la demo.
+    # Si las credenciales no están, el webhook queda inactivo y el resto del backend
+    # arranca normal (los defaults None evitan romper el entorno local).
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_WHATSAPP_FROM: str = "whatsapp:+14155238886"  # número del sandbox de Twilio
+    WHATSAPP_MAX_ROOM_CARDS: int = 3  # cuántas habitaciones (con foto) enviar por WhatsApp
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000

@@ -135,6 +135,7 @@ tenacity==9.0.0
 tiktoken==0.12.0
 tokenizers==0.22.1
 tqdm==4.67.1
+twilio==9.4.1
 typer==0.20.0
 typing-inspect==0.9.0
 typing-inspection==0.4.2
