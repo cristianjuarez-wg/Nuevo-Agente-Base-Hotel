@@ -135,7 +135,12 @@ function DetailDrawer({ contactId, onClose }) {
               {profile.is_staying_now && (
                 <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
                   <BedDouble size={16} /> Alojado actualmente
-                  {profile.active_stay?.code && <span className="tabular-nums">· {profile.active_stay.code}</span>}
+                  {profile.active_stay?.room_number && (
+                    <span className="rounded bg-green-600 px-2 py-0.5 text-xs font-semibold tabular-nums text-white">
+                      Hab. {profile.active_stay.room_number}
+                    </span>
+                  )}
+                  {profile.active_stay?.code && <span className="tabular-nums opacity-80">· {profile.active_stay.code}</span>}
                 </div>
               )}
 
@@ -166,7 +171,10 @@ function DetailDrawer({ contactId, onClose }) {
                     {profile.stays.map((s) => (
                       <div key={s.code} className="flex items-center justify-between border-b border-mist/60 pb-2 text-sm last:border-0 last:pb-0">
                         <div>
-                          <p className="font-medium text-ink">{s.room_type}</p>
+                          <p className="font-medium text-ink">
+                            {s.room_type}
+                            {s.room_number && <span className="ml-1.5 text-xs font-semibold tabular-nums text-hilton-600">N° {s.room_number}</span>}
+                          </p>
                           <p className="text-xs text-slatey tabular-nums">
                             {formatDate(s.check_in)} → {formatDate(s.check_out)}
                           </p>

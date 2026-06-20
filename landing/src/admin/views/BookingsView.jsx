@@ -110,7 +110,12 @@ export default function BookingsView() {
   const columns = [
     { key: 'code', label: 'Código', render: (r) => <span className="font-semibold text-hilton-700">{r.code}</span> },
     { key: 'guest_name', label: 'Huésped', render: (r) => <GuestName r={r} /> },
-    { key: 'room_type', label: 'Habitación' },
+    { key: 'room_type', label: 'Habitación', render: (r) => (
+      <span>
+        {r.room_type}
+        {r.room_number && <span className="ml-1.5 rounded bg-hilton-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-hilton-700">N° {r.room_number}</span>}
+      </span>
+    ) },
     { key: 'stay', label: 'Estadía', render: (r) => `${formatDate(r.check_in)} → ${formatDate(r.check_out)}` },
     { key: 'stay_status', label: 'Situación', render: (r) => <StayBadge stay={r.stay_status} /> },
     { key: 'total', label: 'Total', render: (r) => (
@@ -127,7 +132,10 @@ export default function BookingsView() {
         <StayBadge stay={r.stay_status} />
       </div>
       <GuestName r={r} />
-      <p className="text-sm text-slatey">{r.room_type}</p>
+      <p className="text-sm text-slatey">
+        {r.room_type}
+        {r.room_number && <span className="ml-1.5 font-semibold tabular-nums text-hilton-700">· N° {r.room_number}</span>}
+      </p>
       <p className="mt-1 text-xs text-slatey">{formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)</p>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>

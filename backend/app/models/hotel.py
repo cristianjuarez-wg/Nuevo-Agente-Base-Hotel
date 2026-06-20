@@ -33,6 +33,7 @@ class Room(Base):
     status = Column(String, nullable=False, default="active") # "active" | "inactive"
 
     bookings = relationship("Booking", back_populates="room")
+    units = relationship("RoomUnit", back_populates="room", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
@@ -51,6 +52,36 @@ class Room(Base):
         }
 
 
+class RoomUnit(Base):
+    """Habitación física individual (unidad) de un tipo. Ej: King 101, King 102…
+
+    Una `Room` (tipo) agrupa N `RoomUnit`. A diferencia de `total_units` (un contador),
+    cada unidad tiene número propio y puede asignarse a una reserva concreta, lo que
+    permite saber en qué habitación está cada huésped (recepción/housekeeping).
+    """
+    __tablename__ = "room_units"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False, index=True)
+    number = Column(String(10), nullable=False, index=True)  # "101", "201", "001"…
+    floor = Column(Integer, nullable=True)
+    # available / maintenance / blocked  (las dos últimas la sacan del inventario vendible)
+    status = Column(String(20), nullable=False, default="available")
+
+    room = relationship("Room", back_populates="units")
+    bookings = relationship("Booking", back_populates="room_unit")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "room_id": self.room_id,
+            "room_type": self.room.room_type if self.room else None,
+            "number": self.number,
+            "floor": self.floor,
+            "status": self.status,
+        }
+
+
 class Booking(Base):
     """Reserva de una habitación para un rango de fechas."""
     __tablename__ = "bookings"
@@ -58,6 +89,9 @@ class Booking(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, nullable=False, index=True)  # ej "HTL-7F3A"
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False, index=True)
+
+    # Unidad física asignada (King 101…). Nullable: reservas históricas o aún sin asignar.
+    room_unit_id = Column(Integer, ForeignKey("room_units.id"), nullable=True, index=True)
 
     # Identidad del huésped (Visión 360°): la reserva pertenece a un Contact.
     # session_id da trazabilidad a la conversación de chat que la originó.
@@ -86,6 +120,7 @@ class Booking(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     room = relationship("Room", back_populates="bookings")
+    room_unit = relationship("RoomUnit", back_populates="bookings")
 
     def stay_status(self) -> str:
         """Estado temporal de la estadía respecto a HOY (derivado, no se persiste).
@@ -114,6 +149,8 @@ class Booking(Base):
             "code": self.code,
             "room_id": self.room_id,
             "room_type": self.room.room_type if self.room else None,
+            "room_unit_id": self.room_unit_id,
+            "room_number": self.room_unit.number if self.room_unit else None,
             "contact_id": self.contact_id,
             "session_id": self.session_id,
             "stay_status": self.stay_status(),
@@ -186,7 +223,7 @@ class HotelTicket(Base):
 # que solo resuelven si sus modelos están importados, y acá no queremos depender de ese orden.
 Base.metadata.create_all(
     bind=engine,
-    tables=[Room.__table__, Booking.__table__, HotelTicket.__table__],
+    tables=[Room.__table__, RoomUnit.__table__, Booking.__table__, HotelTicket.__table__],
 )
 
 

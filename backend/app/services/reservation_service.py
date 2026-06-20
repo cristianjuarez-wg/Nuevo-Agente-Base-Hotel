@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from sqlalchemy import or_
 
-from app.models.hotel import Room, Booking
+from app.models.hotel import Room, Booking, RoomUnit
 from app.services import exchange_rate_service
 from app.core.logging_config import get_logger
 
@@ -60,6 +60,46 @@ def _units_booked(db: Session, room_id: int, check_in: date, check_out: date) ->
         .count()
     )
     return overlapping
+
+
+def _free_units(db: Session, room: Room, check_in: date, check_out: date) -> List[RoomUnit]:
+    """Unidades FÍSICAS de un tipo libres en el rango (status available + sin solape).
+
+    Una unidad está libre si su status es 'available' y no tiene ninguna reserva
+    (no cancelada) que solape el rango pedido.
+    """
+    units = (
+        db.query(RoomUnit)
+        .filter(RoomUnit.room_id == room.id, RoomUnit.status == "available")
+        .order_by(RoomUnit.number.asc())
+        .all()
+    )
+    if not units:
+        return []
+    # IDs de unidades ocupadas por solape en ese rango.
+    occupied = {
+        b.room_unit_id
+        for b in db.query(Booking).filter(
+            Booking.room_id == room.id,
+            Booking.room_unit_id.isnot(None),
+            Booking.check_in < check_out,
+            Booking.check_out > check_in,
+            ~Booking.status.in_(_NON_BLOCKING_STATUSES),
+        )
+    }
+    return [u for u in units if u.id not in occupied]
+
+
+def _units_left(db: Session, room: Room, check_in: date, check_out: date) -> int:
+    """Disponibilidad del tipo en el rango.
+
+    Si el tipo ya tiene unidades físicas sembradas → cuenta unidades libres reales.
+    Si aún no las tiene (transición) → cae al cálculo legacy total_units − ocupadas.
+    """
+    has_units = db.query(RoomUnit).filter(RoomUnit.room_id == room.id).first() is not None
+    if has_units:
+        return len(_free_units(db, room, check_in, check_out))
+    return room.total_units - _units_booked(db, room.id, check_in, check_out)
 
 
 def list_rooms(db: Session, include_inactive: bool = False) -> List[Dict]:
@@ -109,8 +149,7 @@ def get_availability(
         .all()
     )
     for room in rooms:
-        booked = _units_booked(db, room.id, check_in, check_out)
-        units_left = room.total_units - booked
+        units_left = _units_left(db, room, check_in, check_out)
         if units_left <= 0:
             continue
         info = room.to_dict()
@@ -175,12 +214,19 @@ def create_booking(
             f"huéspedes (se pidieron {occupancy}, sin contar bebés en cuna)."
         }
 
-    # Validación determinística de disponibilidad
-    booked = _units_booked(db, room.id, check_in, check_out)
-    if room.total_units - booked <= 0:
-        return {
-            "error": f"No hay disponibilidad de '{room.room_type}' para esas fechas."
-        }
+    # Validación determinística de disponibilidad + auto-asignación de unidad física.
+    # Si el tipo tiene unidades sembradas, tomamos la primera libre y la asignamos.
+    # Si no (transición), validamos por conteo legacy y la reserva queda sin unidad.
+    has_units = db.query(RoomUnit).filter(RoomUnit.room_id == room.id).first() is not None
+    assigned_unit = None
+    if has_units:
+        free = _free_units(db, room, check_in, check_out)
+        if not free:
+            return {"error": f"No hay disponibilidad de '{room.room_type}' para esas fechas."}
+        assigned_unit = free[0]  # primera libre (orden por número)
+    else:
+        if room.total_units - _units_booked(db, room.id, check_in, check_out) <= 0:
+            return {"error": f"No hay disponibilidad de '{room.room_type}' para esas fechas."}
 
     nights = _nights_between(check_in, check_out)
     rate = exchange_rate_service.get_current_rate(db)["rate"]
@@ -211,6 +257,7 @@ def create_booking(
     booking = Booking(
         code=_generate_booking_code(),
         room_id=room.id,
+        room_unit_id=assigned_unit.id if assigned_unit else None,
         contact_id=contact_id,
         session_id=session_id,
         guest_name=guest_name.strip(),

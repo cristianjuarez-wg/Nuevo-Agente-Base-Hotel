@@ -75,6 +75,8 @@ def run_light_migrations() -> None:
     # Identidad 360°: vincular reserva → contacto + trazabilidad a la conversación.
     ensure_column("bookings", "contact_id", "INTEGER")
     ensure_column("bookings", "session_id", "VARCHAR(255)")
+    # Habitación física asignada a la reserva (Fase 2: unidades numeradas).
+    ensure_column("bookings", "room_unit_id", "INTEGER")
     # Canal de la conversación (web/whatsapp) para analíticas segmentadas.
     ensure_column("conversations", "channel", "VARCHAR(20)")
     # Perfil extensible del huésped (gustos, servicios, familia) en JSON.
