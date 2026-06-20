@@ -368,14 +368,30 @@ class ContactService:
         return q.all()
 
     def get_channel(self, contact_id: int, db: Session) -> Optional[str]:
-        """Canal preferente del contacto: el del último Lead asociado (whatsapp/web)."""
+        """Canal preferente del contacto: del último Lead, o derivado de sus reservas.
+
+        Un pasajero puede no tener Lead (reservó directo); en ese caso inferimos el
+        canal de la reserva: session_id "wa_" → whatsapp, si no → web.
+        """
         lead = (
             db.query(Lead)
             .filter(Lead.contact_id == contact_id)
             .order_by(Lead.created_at.desc())
             .first()
         )
-        return lead.channel if lead and lead.channel else None
+        if lead and lead.channel:
+            return lead.channel
+
+        from app.models.hotel import Booking
+        booking = (
+            db.query(Booking)
+            .filter(Booking.contact_id == contact_id)
+            .order_by(Booking.created_at.desc())
+            .first()
+        )
+        if booking:
+            return "whatsapp" if (booking.session_id or "").startswith("wa_") else "web"
+        return None
 
     def get_guest_profile(self, contact_id: int, db: Session) -> Dict:
         """Perfil 360° del huésped DERIVADO de sus reservas + preferencias guardadas.
