@@ -18,7 +18,10 @@ from sqlalchemy.orm import Session
 
 from app.services.rag_service import rag_service
 from app.services.reservation_service import get_availability, create_booking, get_booking
-from app.models.knowledge import KnowledgeEntry, _payment_accounts
+from app.models.knowledge import KnowledgeEntry, Place, _payment_accounts
+from app.core.hotel_location import (
+    HOTEL_ADDRESS, HOTEL_AIRPORT, directions_url, near_hotel_search_url, is_far_origin,
+)
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -355,6 +358,135 @@ def _handle_info_pago(args: Dict, ctx: Dict) -> Dict:
     return {"tool_result": "\n".join(lines), "found": True}
 
 
+def _handle_como_llegar(args: Dict, ctx: Dict) -> Dict:
+    """Arma un link de Google Maps con la ruta pedida (sin API key).
+
+    - destino vacío (o el hotel) + origen presente → ruta DESDE el origen HACIA el hotel
+      (ej. "Soy de Rosario, ¿cómo llego?"). Si el origen es lejano, agrega nota aérea.
+    - destino presente → ruta DESDE el hotel HACIA el destino (ej. "ruta al Cerro Otto",
+      "a cuánto estoy del Centro Cívico").
+    El tiempo/distancia los muestra Google Maps al abrir el link; no se inventan acá.
+    """
+    destino = (args.get("destino") or "").strip()
+    origen = (args.get("origen") or "").strip()
+    medio = (args.get("medio") or "auto").strip().lower()
+    mode = "walking" if medio in ("caminando", "a pie", "walking", "pie") else "driving"
+
+    destino_es_hotel = destino == "" or any(
+        kw in destino.lower() for kw in ("hotel", "hampton", "libertad 290")
+    )
+
+    # Caso 1: llegar AL hotel desde una ciudad/origen.
+    if destino_es_hotel and origen:
+        url = directions_url(origen, HOTEL_ADDRESS, mode)
+        lines = [
+            f"Te dejo la ruta desde {origen} hasta el hotel (Libertad 290, Bariloche):",
+            url,
+        ]
+        if is_far_origin(origen):
+            lines.append(
+                f"\nSi venís de lejos, la opción más rápida suele ser volar al "
+                f"{HOTEL_AIRPORT}: el hotel queda a unos 20 minutos del aeropuerto. "
+                f"Si preferís manejar, el link de arriba te arma la ruta en auto."
+            )
+        return {"tool_result": "\n".join(lines), "found": True}
+
+    # Caso 2: ir DESDE el hotel hacia un destino (o entre dos puntos si hay ambos).
+    if destino:
+        if origen:
+            url = directions_url(origen, f"{destino} Bariloche", mode)
+            intro = f"Ruta desde {origen} hasta {destino}:"
+        else:
+            url = directions_url(HOTEL_ADDRESS, f"{destino} Bariloche", mode)
+            intro = f"Te paso la ruta desde el hotel hasta {destino}:"
+        return {
+            "tool_result": (
+                f"{intro}\n{url}\n\n"
+                "Al abrir el link, Google Maps te muestra la distancia y el tiempo estimado "
+                "desde tu ubicación."
+            ),
+            "found": True,
+        }
+
+    # Sin datos suficientes: pedir aclaración.
+    return {
+        "tool_result": (
+            "¿A dónde querés ir o desde dónde venís? Decime el lugar (por ejemplo "
+            "'Cerro Otto', 'Centro Cívico') o tu ciudad de origen y te armo la ruta."
+        ),
+        "found": False,
+    }
+
+
+def _format_wa_link(whatsapp: str) -> Optional[str]:
+    """Convierte un número de WhatsApp en link wa.me (solo dígitos)."""
+    if not whatsapp:
+        return None
+    digits = "".join(c for c in whatsapp if c.isdigit())
+    return f"https://wa.me/{digits}" if digits else None
+
+
+def _handle_comercios_amigos(args: Dict, ctx: Dict) -> Dict:
+    """Lista los comercios amigos (gastronomía con acuerdo) cargados en el backoffice.
+
+    Determinístico: consulta la tabla `places` (is_partner=True, activos). Si no hay
+    para el rubro pedido, devuelve un link de búsqueda genérica en Google Maps.
+    """
+    db = ctx.get("db")
+    rubro = (args.get("rubro") or args.get("query") or "").strip()
+
+    if db is None:
+        return {"tool_result": "No pude acceder a la base de comercios en este momento.", "found": False}
+
+    q = db.query(Place).filter(
+        Place.is_partner == True,  # noqa: E712
+        Place.status == "active",
+    )
+    partners = q.order_by(Place.name).all()
+
+    # Filtro suave por rubro sobre nombre/categoría/descripción (si el usuario lo pidió).
+    if rubro and partners:
+        rl = rubro.lower()
+        filtered = [
+            p for p in partners
+            if rl in (p.name or "").lower()
+            or rl in (p.category or "").lower()
+            or rl in (p.description or "").lower()
+        ]
+        # Si el filtro deja todo vacío, mostramos igual todos los amigos (mejor que nada).
+        partners_to_show = filtered or partners
+    else:
+        partners_to_show = partners
+
+    if partners_to_show:
+        lines = ["Estos son nuestros comercios amigos con beneficios para huéspedes:\n"]
+        for p in partners_to_show:
+            bits = [f"**{p.name}**"]
+            if p.discount:
+                bits.append(f"🎁 {p.discount}")
+            if p.address:
+                bits.append(f"📍 {p.address}")
+            if p.phone:
+                bits.append(f"📞 {p.phone}")
+            wa = _format_wa_link(p.whatsapp)
+            if wa:
+                bits.append(f"💬 WhatsApp: {wa}")
+            if p.maps_url:
+                bits.append(f"🗺️ {p.maps_url}")
+            lines.append(" · ".join(bits))
+        return {"tool_result": "\n".join(lines), "found": True}
+
+    # Fallback: sin comercios amigos para ese rubro → búsqueda genérica en Maps.
+    termino = rubro or "restaurantes"
+    return {
+        "tool_result": (
+            f"Por ahora no tengo comercios amigos cargados para eso, pero podés ver "
+            f"opciones de {termino} cerca del hotel acá:\n{near_hotel_search_url(termino)}"
+        ),
+        "found": True,
+    }
+
+
 # ---------------------------------------------------------------------------
 # DISPATCHER
 # ---------------------------------------------------------------------------
@@ -365,6 +497,8 @@ _DISPATCH = {
     "crear_reserva": _handle_crear_reserva,
     "consultar_reserva": _handle_consultar_reserva,
     "info_pago": _handle_info_pago,
+    "como_llegar": _handle_como_llegar,
+    "comercios_amigos": _handle_comercios_amigos,
 }
 
 

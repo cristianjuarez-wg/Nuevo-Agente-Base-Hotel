@@ -189,7 +189,49 @@ async def info_pago(ctx: RunContextWrapper[HotelContext], consulta: str = "") ->
     return result.get("tool_result", "")
 
 
-_TOOLS = [info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago]
+@function_tool
+async def como_llegar(
+    ctx: RunContextWrapper[HotelContext],
+    destino: str = "",
+    origen: str = "",
+    medio: str = "auto",
+) -> str:
+    """Arma la ruta en Google Maps y devuelve el link para llegar de un punto a otro.
+    Úsala cuando el usuario pregunte cómo llegar a algún lugar, pida una ruta, pregunte
+    a cuánto está de un punto (ej. Centro Cívico, Cerro Otto, terminal de ómnibus), o
+    cómo llegar al hotel desde su ciudad.
+    - `destino`: a dónde quiere ir (ej. "Cerro Otto"). Vacío o "el hotel" = ir al hotel.
+    - `origen`: desde dónde sale (ej. "Rosario"). Vacío = desde el hotel.
+    - `medio`: "auto" (por defecto) o "caminando".
+    SIEMPRE compartí el link de Maps que devuelve la herramienta. NUNCA inventes la
+    distancia ni el tiempo: eso lo muestra Google Maps al abrir el link."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool(
+        "como_llegar",
+        {"destino": destino, "origen": origen, "medio": medio},
+        tool_ctx,
+    )
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def comercios_amigos(ctx: RunContextWrapper[HotelContext], rubro: str = "") -> str:
+    """Devuelve los comercios amigos del hotel (gastronomía, heladerías, chocolaterías,
+    restaurantes con acuerdo) y sus beneficios/descuentos para huéspedes.
+    Úsala cuando el usuario pida recomendaciones de dónde comer, lugares con descuento,
+    heladerías, chocolaterías o restaurantes cerca del hotel.
+    `rubro` (opcional): tipo de comercio que busca (ej. "heladería", "restaurante").
+    Si no hay comercios amigos para ese rubro, la herramienta devuelve un link de
+    búsqueda en Google Maps; compartilo igual."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("comercios_amigos", {"rubro": rubro}, tool_ctx)
+    return result.get("tool_result", "")
+
+
+_TOOLS = [
+    info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,
+    como_llegar, comercios_amigos,
+]
 
 
 # ---------------------------------------------------------------------------

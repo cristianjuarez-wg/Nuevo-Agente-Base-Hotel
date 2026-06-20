@@ -53,6 +53,11 @@ class PlacePayload(BaseModel):
     address: Optional[str] = None
     price_info: Optional[str] = None
     status: Optional[str] = "active"
+    # Comercios amigos (acuerdos del hotel).
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    discount: Optional[str] = None
+    is_partner: Optional[bool] = False
 
 
 class StatusUpdate(BaseModel):
@@ -164,6 +169,10 @@ async def create_place(payload: PlacePayload, db: Session = Depends(get_db)):
         address=(payload.address or "").strip() or None,
         price_info=(payload.price_info or "").strip() or None,
         status=payload.status or "active",
+        phone=(payload.phone or "").strip() or None,
+        whatsapp=(payload.whatsapp or "").strip() or None,
+        discount=(payload.discount or "").strip() or None,
+        is_partner=bool(payload.is_partner),
     )
     db.add(place)
     db.commit()
@@ -186,6 +195,10 @@ async def update_place(place_id: int, payload: PlacePayload, db: Session = Depen
     place.maps_url = (payload.maps_url or "").strip() or None
     place.address = (payload.address or "").strip() or None
     place.price_info = (payload.price_info or "").strip() or None
+    place.phone = (payload.phone or "").strip() or None
+    place.whatsapp = (payload.whatsapp or "").strip() or None
+    place.discount = (payload.discount or "").strip() or None
+    place.is_partner = bool(payload.is_partner)
     if payload.status:
         place.status = payload.status
     db.commit()

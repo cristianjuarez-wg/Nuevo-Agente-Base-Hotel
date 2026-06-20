@@ -140,10 +140,13 @@ export default function KnowledgeView() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-ink">{p.name}</p>
+                <p className="flex items-center gap-2 truncate font-medium text-ink">
+                  <span className="truncate">{p.name}</span>
+                  {p.is_partner && <Badge tone="green">Amigo</Badge>}
+                </p>
                 <p className="truncate text-xs capitalize text-slatey">
                   {PLACE_CATEGORIES.find((c) => c.id === p.category)?.label || p.category}
-                  {p.price_info ? ` · ${p.price_info}` : ''}
+                  {p.discount ? ` · ${p.discount}` : p.price_info ? ` · ${p.price_info}` : ''}
                 </p>
               </div>
               {p.maps_url && (
@@ -504,6 +507,10 @@ function PlaceModal({ place, onClose, onSaved }) {
     maps_url: place.maps_url || '',
     address: place.address || '',
     price_info: place.price_info || '',
+    phone: place.phone || '',
+    whatsapp: place.whatsapp || '',
+    discount: place.discount || '',
+    is_partner: place.is_partner || false,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -558,6 +565,28 @@ function PlaceModal({ place, onClose, onSaved }) {
         <div>
           <Label>Imagen</Label>
           <ImageInput value={form.image_url} onChange={(v) => set('image_url', v)} />
+        </div>
+
+        {/* Comercio amigo: acuerdo con descuento + contacto que el agente recomienda */}
+        <div className="rounded-xl border border-hilton-100 bg-hilton-50/40 p-4">
+          <label className="flex cursor-pointer items-center gap-2.5">
+            <input
+              type="checkbox" checked={form.is_partner}
+              onChange={(e) => set('is_partner', e.target.checked)}
+              className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-500"
+            />
+            <span className="text-sm font-medium text-ink">Es comercio amigo (con acuerdo)</span>
+          </label>
+          {form.is_partner && (
+            <div className="mt-4 space-y-3">
+              <Field label="Descuento para huéspedes" value={form.discount} onChange={(v) => set('discount', v)} placeholder="Ej: 15% en efectivo" />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Teléfono" value={form.phone} onChange={(v) => set('phone', v)} placeholder="+54 294 …" />
+                <Field label="WhatsApp" value={form.whatsapp} onChange={(v) => set('whatsapp', v)} placeholder="5492944000000" />
+              </div>
+              <p className="text-xs text-slatey">El agente recomendará este comercio con su descuento y contacto.</p>
+            </div>
+          )}
         </div>
       </div>
 

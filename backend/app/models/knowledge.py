@@ -19,10 +19,13 @@ Ambas exponen:
 Reutilizan el `Base`/`engine` de models/database.py (misma BD; SQLite local / PostgreSQL
 en Render). Las tablas se crean con create_all(tables=[...]) explícito, igual que hotel.py.
 """
-from sqlalchemy import Column, String, Integer, Text, DateTime, JSON
+from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, Boolean, text
 from datetime import datetime
 
 from app.models.database import Base, engine
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 # Categorías válidas para las entradas estructuradas (formularios del backoffice).
@@ -159,6 +162,13 @@ class Place(Base):
     price_info = Column(String, nullable=True)    # texto libre, ej "Desde USD 50"
     status = Column(String, nullable=False, default="active", index=True)
 
+    # Comercios amigos (acuerdos del hotel): contacto + descuento. Nullables para
+    # no afectar a los lugares/excursiones existentes que no son comercios.
+    phone = Column(String, nullable=True)         # teléfono de contacto
+    whatsapp = Column(String, nullable=True)      # número de WhatsApp (solo dígitos / +54...)
+    discount = Column(String, nullable=True)      # texto libre, ej "15% en efectivo"
+    is_partner = Column(Boolean, nullable=False, default=False, index=True)  # comercio amigo / con acuerdo
+
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -170,10 +180,18 @@ class Place(Base):
         parts = [self.name.strip()] if self.name else []
         if self.description:
             parts.append(self.description.strip())
+        if self.is_partner:
+            parts.append("Comercio amigo del hotel (con acuerdo para huéspedes).")
+        if self.discount:
+            parts.append(f"Descuento para huéspedes: {self.discount}")
         if self.address:
             parts.append(f"Dirección: {self.address}")
         if self.price_info:
             parts.append(f"Precio: {self.price_info}")
+        if self.phone:
+            parts.append(f"Teléfono: {self.phone}")
+        if self.whatsapp:
+            parts.append(f"WhatsApp: {self.whatsapp}")
         if self.maps_url:
             parts.append(f"Ubicación en Google Maps: {self.maps_url}")
         return "\n\n".join(p for p in parts if p)
@@ -188,6 +206,10 @@ class Place(Base):
             "maps_url": self.maps_url,
             "address": self.address,
             "price_info": self.price_info,
+            "phone": self.phone,
+            "whatsapp": self.whatsapp,
+            "discount": self.discount,
+            "is_partner": bool(self.is_partner),
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -200,3 +222,41 @@ Base.metadata.create_all(
     bind=engine,
     tables=[KnowledgeEntry.__table__, Place.__table__],
 )
+
+
+def _ensure_place_partner_columns() -> None:
+    """Agrega de forma idempotente las columnas de 'comercio amigo' a `places`.
+
+    `create_all` crea tablas nuevas pero NO altera tablas ya existentes. En entornos
+    donde `places` ya estaba creada (ej. Render/Postgres), las columnas phone/whatsapp/
+    discount/is_partner no existirían. Este ALTER las agrega si faltan. Compatible con
+    SQLite (sin IF NOT EXISTS) y Postgres (con IF NOT EXISTS), atrapando errores por
+    columna ya presente.
+    """
+    is_sqlite = engine.dialect.name == "sqlite"
+    # (columna, tipo SQL). El tipo es genérico y válido en ambos motores.
+    columns = [
+        ("phone", "VARCHAR"),
+        ("whatsapp", "VARCHAR"),
+        ("discount", "VARCHAR"),
+        ("is_partner", "BOOLEAN DEFAULT 0" if is_sqlite else "BOOLEAN DEFAULT FALSE"),
+    ]
+    with engine.begin() as conn:
+        for name, sql_type in columns:
+            if is_sqlite:
+                # SQLite no soporta ADD COLUMN IF NOT EXISTS: intentamos y si ya existe falla.
+                try:
+                    conn.execute(text(f"ALTER TABLE places ADD COLUMN {name} {sql_type}"))
+                except Exception:
+                    pass  # columna ya existe
+            else:
+                try:
+                    conn.execute(
+                        text(f"ALTER TABLE places ADD COLUMN IF NOT EXISTS {name} {sql_type}")
+                    )
+                except Exception as e:
+                    logger.warning("No se pudo agregar columna a places",
+                                   column=name, error=str(e))
+
+
+_ensure_place_partner_columns()
