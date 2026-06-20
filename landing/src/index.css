@@ -104,3 +104,76 @@
     background: #e8f2fb; padding: 0.05rem 0.3rem; border-radius: 0.3rem; font-size: 0.85em;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Efectos animados sutiles del chat (temas estacionales — Fase 4).
+   Capa decorativa: pointer-events:none, baja opacidad, detrás de las burbujas.
+   Todo en transform/opacity (GPU). Se desactiva con prefers-reduced-motion.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.chat-fx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;          /* las burbujas van con z-index relativo por encima */
+}
+.chat-fx > * { position: absolute; will-change: transform, opacity; }
+
+/* Partícula que cae (copos de nieve) */
+.fx-fall {
+  top: -8%;
+  border-radius: 9999px;
+  animation: fxFall linear infinite;
+}
+@keyframes fxFall {
+  0%   { transform: translateY(-10%) translateX(0); opacity: 0; }
+  10%  { opacity: var(--fx-opacity, 0.4); }
+  90%  { opacity: var(--fx-opacity, 0.4); }
+  100% { transform: translateY(620px) translateX(var(--fx-drift, 12px)); opacity: 0; }
+}
+
+/* Destello que titila en el lugar (luces doradas de Navidad) */
+.fx-twinkle {
+  border-radius: 9999px;
+  animation: fxTwinkle ease-in-out infinite;
+}
+@keyframes fxTwinkle {
+  0%, 100% { transform: scale(0.6); opacity: 0; }
+  50%      { transform: scale(1);   opacity: var(--fx-opacity, 0.6); }
+}
+
+/* Partícula que flota hacia arriba (hojas / destellos de verano) */
+.fx-rise {
+  bottom: -8%;
+  border-radius: 9999px;
+  animation: fxRise linear infinite;
+}
+@keyframes fxRise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  15%  { opacity: var(--fx-opacity, 0.4); }
+  85%  { opacity: var(--fx-opacity, 0.4); }
+  100% { transform: translateY(-600px) translateX(var(--fx-drift, -14px)); opacity: 0; }
+}
+
+/* Conejito que asoma desde la esquina inferior, saluda y se esconde */
+.fx-bunny {
+  bottom: 0;
+  left: 10px;
+  font-size: 30px;
+  line-height: 1;
+  transform: translateY(120%);
+  animation: fxBunny 20s ease-in-out infinite;
+}
+@keyframes fxBunny {
+  0%, 84%   { transform: translateY(120%) rotate(0deg); }      /* escondido */
+  88%       { transform: translateY(8%) rotate(-6deg); }       /* asoma */
+  90%       { transform: translateY(0%) rotate(6deg); }        /* saluda */
+  92%       { transform: translateY(0%) rotate(-6deg); }
+  94%       { transform: translateY(8%) rotate(4deg); }
+  100%      { transform: translateY(120%) rotate(0deg); }       /* se esconde */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-fx { display: none !important; }
+}

@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Users, BedDouble, Mountain, ArrowRight } from 'lucide-react'
 import { getRooms } from '../services/api'
+import { formatUSD, formatARS } from '../lib/format'
 import Reveal, { RevealGroup, RevealItem } from './motion/Reveal'
 
 const FALLBACK_IMG = '/fotos/habitacion-vista-lago.jpg'
-
-function formatARS(n) {
-  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
-}
 
 function RoomCard({ room }) {
   const img = (room.images && room.images[0]) || FALLBACK_IMG
@@ -32,11 +29,11 @@ function RoomCard({ room }) {
           <div>
             <p className="text-[10px] uppercase tracking-eyebrow text-white/70">Desde / noche</p>
             <p className="font-display text-2xl font-600 leading-none tabular-nums">
-              USD {room.base_price_usd}
+              {formatUSD(room.base_price_usd)}
             </p>
           </div>
           <p className="pb-1 text-xs tabular-nums text-white/80">
-            ARS {formatARS(room.base_price_ars)}
+            {formatARS(room.base_price_ars)}
           </p>
         </div>
       </div>

@@ -1,17 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Coins, DollarSign, CalendarDays, ShieldAlert } from 'lucide-react'
 import { getUsageSummary } from '../../services/api'
-import { PageHeader, StatCard, Loading } from '../ui'
+import { PageHeader, StatCard, Loading, formatNumber, formatUSD } from '../ui'
 
-function formatTokens(n) {
-  if (n == null) return '—'
-  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
-}
-
-function formatUsd(n) {
-  if (n == null) return '—'
-  return `$${Number(n).toFixed(4)}`
-}
+const formatTokens = (n) => formatNumber(n, 0)
+const formatUsd = (n) => formatUSD(n, 4)
 
 export default function UsageView() {
   const [summary, setSummary] = useState(null)

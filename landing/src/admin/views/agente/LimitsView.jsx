@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Gauge, Save, ShieldCheck } from 'lucide-react'
-import { getUsageSummary, getUsageConfig, updateUsageConfig, getAdminConfig } from '../../../services/api'
-import { PageHeader, Loading, Badge } from '../../ui'
+import { Gauge, Save, ShieldCheck, DollarSign, RefreshCw, Loader2 } from 'lucide-react'
+import {
+  getUsageSummary, getUsageConfig, updateUsageConfig, getAdminConfig,
+  getExchangeRate, updateExchangeRate,
+} from '../../../services/api'
+import { PageHeader, Loading, Badge, formatARS, formatDateTime } from '../../ui'
 
 export default function LimitsView() {
   const [loading, setLoading] = useState(true)
@@ -59,6 +62,10 @@ export default function LimitsView() {
         title="Límites y seguridad"
         subtitle="Protegé la cuenta del agente: topes de gasto y límite de mensajes por usuario."
       />
+
+      {/* Tipo de cambio USD → ARS */}
+      <ExchangeRatePanel />
+
 
       {/* Topes de gasto */}
       <div className="rounded-2xl bg-white p-5 shadow-card">
@@ -151,6 +158,141 @@ export default function LimitsView() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Panel del tipo de cambio USD → ARS ──────────────────────────────────────
+
+function ExchangeRatePanel() {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [savedMsg, setSavedMsg] = useState('')
+  const [current, setCurrent] = useState(null)   // { rate, mode, source, updated_at }
+  const [mode, setMode] = useState('auto')
+  const [manualRate, setManualRate] = useState('')
+
+  const load = () => {
+    setLoading(true)
+    getExchangeRate()
+      .then((d) => {
+        setCurrent(d.current || null)
+        setMode(d.config?.mode || 'auto')
+        setManualRate(d.config?.manual_rate ?? '')
+      })
+      .catch(() => setCurrent(null))
+      .finally(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  const save = async () => {
+    if (mode === 'manual' && (manualRate === '' || isNaN(Number(manualRate)) || Number(manualRate) <= 0)) {
+      setSavedMsg('Ingresá un valor manual válido.')
+      setTimeout(() => setSavedMsg(''), 4000)
+      return
+    }
+    setSaving(true)
+    setSavedMsg('')
+    try {
+      const d = await updateExchangeRate({
+        mode,
+        manual_rate: mode === 'manual' ? Number(manualRate) : (manualRate === '' ? null : Number(manualRate)),
+      })
+      setCurrent(d.current || null)
+      setSavedMsg('Cotización guardada.')
+    } catch {
+      setSavedMsg('No se pudo guardar. Intentá de nuevo.')
+    } finally {
+      setSaving(false)
+      setTimeout(() => setSavedMsg(''), 4000)
+    }
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl bg-white p-5 shadow-card">
+      <div className="mb-4 flex items-center gap-2">
+        <DollarSign size={18} className="text-hilton-600" />
+        <h2 className="font-serif text-lg font-600 text-ink">Tipo de cambio (USD → ARS)</h2>
+        {current && (
+          <Badge tone={current.mode === 'manual' ? 'amber' : 'green'}>
+            {current.mode === 'manual' ? 'Manual' : 'Automático'}
+          </Badge>
+        )}
+      </div>
+
+      <p className="mb-4 text-sm text-slatey">
+        Los precios se cargan en USD; el valor en pesos se calcula con esta cotización. En modo
+        automático se toma el dólar oficial (venta); en manual, el valor que fijes vos.
+      </p>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-slatey">
+          <Loader2 size={15} className="animate-spin" /> Cargando…
+        </div>
+      ) : (
+        <>
+          {/* Cotización vigente */}
+          {current && (
+            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-mist/60 px-4 py-3">
+              <span className="font-display text-2xl font-700 tabular-nums text-ink">
+                {formatARS(current.rate)}
+              </span>
+              <span className="text-xs text-slatey">por dólar</span>
+              <span className="text-xs text-slatey">· {current.source}</span>
+              {current.updated_at && (
+                <span className="text-xs text-slatey">· act. {formatDateTime(current.updated_at)}</span>
+              )}
+            </div>
+          )}
+
+          {/* Selector de modo */}
+          <div className="mb-4 inline-flex rounded-xl border border-hilton-200 p-1">
+            <button
+              onClick={() => setMode('auto')}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
+                mode === 'auto' ? 'bg-hilton-600 text-white' : 'text-slatey hover:text-ink'
+              }`}
+            >
+              Automático
+            </button>
+            <button
+              onClick={() => setMode('manual')}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
+                mode === 'manual' ? 'bg-hilton-600 text-white' : 'text-slatey hover:text-ink'
+              }`}
+            >
+              Manual
+            </button>
+          </div>
+
+          {mode === 'manual' ? (
+            <label className="block max-w-xs">
+              <span className="mb-1 block text-sm font-medium text-ink">Valor fijo (ARS por USD)</span>
+              <input
+                type="number" min="0" step="0.01" inputMode="decimal"
+                value={manualRate} onChange={(e) => setManualRate(e.target.value)}
+                placeholder="1050"
+                className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              />
+            </label>
+          ) : (
+            <p className="flex items-center gap-1.5 text-sm text-slatey">
+              <RefreshCw size={14} /> La cotización se actualiza sola desde el dólar oficial (se cachea ~15 min).
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center gap-3">
+            <button
+              onClick={save} disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+            >
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+              {saving ? 'Guardando…' : 'Guardar cotización'}
+            </button>
+            {savedMsg && <span className="text-sm text-slatey">{savedMsg}</span>}
+          </div>
+        </>
+      )}
     </div>
   )
 }

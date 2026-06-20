@@ -4,15 +4,13 @@ import {
   CalendarDays, Users, Search, ArrowLeft, Check, Loader2, BedDouble, AlertCircle,
 } from 'lucide-react'
 import { getAvailability, createBooking } from '../services/api'
+import { formatUSD, formatARS, formatDate } from '../lib/format'
 
 function todayISO() {
   return format(new Date(), 'yyyy-MM-dd')
 }
 function tomorrowISO() {
   return format(addDays(new Date(), 1), 'yyyy-MM-dd')
-}
-function formatARS(n) {
-  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
 }
 
 // ── Paso 1: búsqueda de fechas ───────────────────────────────────────────────
@@ -157,9 +155,9 @@ function Results({ rooms, search, onPick, onBack }) {
               </div>
               <div className="text-right sm:w-44">
                 <p className="font-display text-xl font-700 tabular-nums text-hilton-700">
-                  USD {r.total_price_usd}
+                  {formatUSD(r.total_price_usd)}
                 </p>
-                <p className="text-xs tabular-nums text-slatey">ARS {formatARS(r.total_price_ars)}</p>
+                <p className="text-xs tabular-nums text-slatey">{formatARS(r.total_price_ars)}</p>
                 <button onClick={() => onPick(r)} className="btn-primary mt-2 w-full px-4 py-2.5 text-xs">
                   Elegir
                 </button>
@@ -198,8 +196,8 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
             </p>
           </div>
           <div className="text-right">
-            <p className="font-display text-lg font-700 tabular-nums text-hilton-700">USD {room.total_price_usd}</p>
-            <p className="text-xs tabular-nums text-slatey">ARS {formatARS(room.total_price_ars)}</p>
+            <p className="font-display text-lg font-700 tabular-nums text-hilton-700">{formatUSD(room.total_price_usd)}</p>
+            <p className="text-xs tabular-nums text-slatey">{formatARS(room.total_price_ars)}</p>
           </div>
         </div>
 
@@ -295,16 +293,16 @@ function Confirmation({ booking, onReset }) {
           </div>
           <div className="flex justify-between">
             <dt className="text-slatey">Check-in</dt>
-            <dd className="font-medium text-ink">{booking.check_in}</dd>
+            <dd className="font-medium text-ink">{formatDate(booking.check_in)}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-slatey">Check-out</dt>
-            <dd className="font-medium text-ink">{booking.check_out}</dd>
+            <dd className="font-medium text-ink">{formatDate(booking.check_out)}</dd>
           </div>
           <div className="flex justify-between border-t border-mist pt-2">
             <dt className="text-slatey">Total</dt>
             <dd className="font-semibold tabular-nums text-hilton-700">
-              USD {booking.total_price_usd} / ARS {formatARS(booking.total_price_ars)}
+              {formatUSD(booking.total_price_usd)} / {formatARS(booking.total_price_ars)}
             </dd>
           </div>
         </dl>

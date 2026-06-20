@@ -1,19 +1,7 @@
 import { Loader2 } from 'lucide-react'
 
-export function formatARS(n) {
-  if (n == null) return '—'
-  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n)
-}
-
-export function formatDate(iso) {
-  if (!iso) return '—'
-  try {
-    const d = new Date(iso)
-    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  } catch {
-    return iso
-  }
-}
+// Formato unificado (única fuente de verdad en lib/format.js).
+export { formatNumber, formatUSD, formatARS, formatDate, formatDateTime } from '../lib/format'
 
 export function PageHeader({ title, subtitle, right }) {
   return (
