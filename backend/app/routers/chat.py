@@ -69,17 +69,25 @@ _DATE_REQUEST_HINTS = (
     "cuándo", "cuando", "disponibilidad para",
 )
 
+# Tools que indican que el usuario YA pasó la etapa de elegir fechas: mostró
+# disponibilidad, creó o consultó una reserva. En esos turnos NO se ofrece el
+# date picker aunque la respuesta mencione "fecha" (ej. al confirmar una reserva
+# el agente dice "Fechas: del 12 al 15…", lo que no debe reabrir el selector).
+_BOOKING_FLOW_TOOLS = ("consultar_disponibilidad", "crear_reserva", "consultar_reserva")
+
 
 def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool) -> bool:
     """Decide si adjuntar el selector de fechas.
 
-    Lo ofrecemos cuando el agente está PIDIENDO fechas: no mostró habitaciones en este
-    turno (no llamó a consultar_disponibilidad) y su texto menciona fechas/check-in.
-    Así el usuario elige con el picker en vez de tipear.
+    Lo ofrecemos cuando el agente está PIDIENDO fechas al inicio del flujo: no mostró
+    habitaciones ni tocó ninguna tool de reserva en este turno, y su texto menciona
+    fechas/check-in. Así el usuario elige con el picker en vez de tipear, sin que el
+    selector reaparezca tras confirmar o consultar una reserva.
     """
     if has_room_cards:
         return False
-    if "consultar_disponibilidad" in (tools_used or []):
+    used = tools_used or []
+    if any(t in used for t in _BOOKING_FLOW_TOOLS):
         return False
     text = (response_text or "").lower()
     return any(h in text for h in _DATE_REQUEST_HINTS)
