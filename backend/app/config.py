@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # ChromaDB
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_db"
     CHROMA_COLLECTION_NAME: str = "travel_documents"
+
+    # Almacenamiento de imágenes subidas desde el backoffice (repositorio de conocimiento).
+    # En Render apuntar al disco persistente: MEDIA_DIR=/data/uploads_img
+    MEDIA_DIR: str = "./uploads_img"
     
     # OpenAI Config
     OPENAI_MODEL: str = "gpt-4o"  # Modelo principal para generación de respuestas

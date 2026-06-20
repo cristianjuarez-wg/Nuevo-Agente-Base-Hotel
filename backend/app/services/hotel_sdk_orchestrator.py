@@ -161,7 +161,21 @@ async def consultar_reserva(ctx: RunContextWrapper[HotelContext], code: str) -> 
     return result.get("tool_result", "")
 
 
-_TOOLS = [info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva]
+@function_tool
+async def info_pago(ctx: RunContextWrapper[HotelContext], consulta: str = "") -> str:
+    """Devuelve los datos EXACTOS de pago y transferencia bancaria del hotel: medios de
+    pago aceptados, y para transferencias el titular, banco, CBU y alias.
+    Úsala SOLO cuando el usuario pregunte específicamente cómo pagar, dónde/cómo transferir,
+    pida el CBU, el alias o los datos bancarios. Para cualquier OTRA consulta del hotel
+    (servicios, habitaciones, políticas, ubicación) usá `info_hotel`, no esta.
+    El parámetro `consulta` es la pregunta del usuario (opcional, informativo).
+    Devolvé los datos tal cual, sin inventar ni alterar."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("info_pago", {"consulta": consulta}, tool_ctx)
+    return result.get("tool_result", "")
+
+
+_TOOLS = [info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago]
 
 
 # ---------------------------------------------------------------------------

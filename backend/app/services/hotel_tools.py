@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.services.rag_service import rag_service
 from app.services.reservation_service import get_availability, create_booking, get_booking
+from app.models.knowledge import KnowledgeEntry
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -236,6 +237,65 @@ def _handle_consultar_reserva(args: Dict, ctx: Dict) -> Dict:
     }
 
 
+def _handle_info_pago(args: Dict, ctx: Dict) -> Dict:
+    """Devuelve los DATOS EXACTOS de pago/transferencia cargados en el repositorio.
+
+    Determinístico a propósito: el CBU/alias/titular son datos sensibles que NO deben
+    salir de una búsqueda semántica difusa. Lee la KnowledgeEntry activa de categoría
+    'pagos' y devuelve sus datos textuales para que el agente los comunique sin inventar.
+    """
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    entry = (
+        db.query(KnowledgeEntry)
+        .filter(KnowledgeEntry.category == "pagos", KnowledgeEntry.status == "active")
+        .order_by(KnowledgeEntry.updated_at.desc())
+        .first()
+    )
+
+    if not entry:
+        return {
+            "tool_result": (
+                "No tengo cargados los datos de pago en este momento. "
+                "Para coordinar el pago podés contactarnos al +54 294-474-6200 "
+                "o en info@hamptonbariloche.com."
+            )
+        }
+
+    data = entry.data or {}
+    lines = []
+    if entry.content:
+        lines.append(entry.content.strip())
+
+    medios = data.get("medios") or []
+    if medios:
+        lines.append("Medios de pago: " + ", ".join(medios) + ".")
+
+    transfer_bits = []
+    if data.get("titular"):
+        transfer_bits.append(f"Titular: {data['titular']}")
+    if data.get("banco"):
+        transfer_bits.append(f"Banco: {data['banco']}")
+    if data.get("cbu"):
+        transfer_bits.append(f"CBU: {data['cbu']}")
+    if data.get("alias"):
+        transfer_bits.append(f"Alias: {data['alias']}")
+    if transfer_bits:
+        lines.append("Datos para transferencia bancaria:\n" + "\n".join(f"• {b}" for b in transfer_bits))
+
+    if not lines:
+        return {
+            "tool_result": (
+                "Tengo registrada información de pagos pero está incompleta. "
+                "Por favor contactanos para coordinar el pago."
+            )
+        }
+
+    return {"tool_result": "\n".join(lines), "found": True}
+
+
 # ---------------------------------------------------------------------------
 # DISPATCHER
 # ---------------------------------------------------------------------------
@@ -245,6 +305,7 @@ _DISPATCH = {
     "consultar_disponibilidad": _handle_consultar_disponibilidad,
     "crear_reserva": _handle_crear_reserva,
     "consultar_reserva": _handle_consultar_reserva,
+    "info_pago": _handle_info_pago,
 }
 
 

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, postsale, learning, reservations, hotel_tickets, usage
+from app.routers import chat, documents, admin, leads, analytics, postsale, learning, reservations, hotel_tickets, usage, knowledge
 from app.config import settings
 from app.core.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
@@ -184,11 +184,18 @@ app.include_router(learning.router)
 app.include_router(reservations.router)
 app.include_router(hotel_tickets.router)
 app.include_router(usage.router)
+app.include_router(knowledge.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"
 vouchers_dir.mkdir(exist_ok=True)
 app.mount("/vouchers", StaticFiles(directory=str(vouchers_dir)), name="vouchers")
+
+# Montar directorio de medios (imágenes del repositorio de conocimiento).
+# En Render, MEDIA_DIR apunta al disco persistente (/data/uploads_img).
+media_dir = Path(settings.MEDIA_DIR)
+media_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
 
 # Endpoints principales
 @app.get("/", response_model=HealthResponse)

@@ -183,5 +183,5 @@ def get_booking(db: Session, code: str) -> Optional[Dict]:
 
 def list_bookings(db: Session) -> List[Dict]:
     """Todas las reservas (para el backoffice)."""
-    bookings = db.query(Booking).order_by(Booking.created_at.desc()).all()
+    bookings = db.query(Booking).order_by(Booking.check_in.asc()).all()
     return [b.to_dict() for b in bookings]

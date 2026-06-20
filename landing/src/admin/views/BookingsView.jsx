@@ -43,6 +43,7 @@ export default function BookingsView() {
     { key: 'total', label: 'Total', render: (r) => (
       <span className="tabular-nums">USD {r.total_price_usd} <span className="text-slatey">/ ARS {formatARS(r.total_price_ars)}</span></span>
     ) },
+    { key: 'created_at', label: 'Creado', render: (r) => r.created_at ? formatDate(r.created_at) : '—' },
     { key: 'source', label: 'Origen', render: (r) => <SourceBadge source={r.source} /> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
   ]

@@ -39,6 +39,10 @@ al usuario ANTES de llamarla. Devuelve un código de reserva (HTL-XXXX) que deb�
 claramente al huésped.
 - `consultar_reserva`: cuando el usuario quiera ver o confirmar una reserva existente y te \
 dé un código HTL-XXXX.
+- `info_pago`: OBLIGATORIO ejecutarla SIEMPRE que el usuario pregunte cómo pagar, sobre \
+transferencias, pida el CBU, el alias, los datos bancarios o el titular de la cuenta. \
+Devolvé los datos EXACTOS tal como los entrega la herramienta: NUNCA inventes ni modifiques \
+un CBU, alias o dato bancario.
 
 REGLAS ESENCIALES:
 1. SOLO ofrecé información que provenga de las herramientas. NUNCA inventes habitaciones, \

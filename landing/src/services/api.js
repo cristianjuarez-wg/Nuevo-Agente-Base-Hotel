@@ -91,4 +91,79 @@ export async function updateUsageConfig(payload) {
   return data
 }
 
+// ── Repositorio de conocimiento (Agente) ─────────────────────────────────────
+// Entradas estructuradas por categoría (pagos, checkin, cancelacion, mascotas, servicios, faq, general)
+export async function listKnowledgeEntries(category) {
+  const { data } = await client.get('/api/knowledge/entries', {
+    params: category ? { category } : {},
+  })
+  return data.entries ?? data
+}
+
+export async function saveKnowledgeEntry(payload, id) {
+  // payload: { category, title, content, data, status }
+  if (id) {
+    const { data } = await client.put(`/api/knowledge/entries/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/knowledge/entries', payload)
+  return data
+}
+
+export async function setKnowledgeEntryStatus(id, status) {
+  const { data } = await client.patch(`/api/knowledge/entries/${id}/status`, { status })
+  return data
+}
+
+export async function deleteKnowledgeEntry(id) {
+  const { data } = await client.delete(`/api/knowledge/entries/${id}`)
+  return data
+}
+
+// Lugares / excursiones
+export async function listPlaces(category) {
+  const { data } = await client.get('/api/knowledge/places', {
+    params: category ? { category } : {},
+  })
+  return data.places ?? data
+}
+
+export async function savePlace(payload, id) {
+  if (id) {
+    const { data } = await client.put(`/api/knowledge/places/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/knowledge/places', payload)
+  return data
+}
+
+export async function setPlaceStatus(id, status) {
+  const { data } = await client.patch(`/api/knowledge/places/${id}/status`, { status })
+  return data
+}
+
+export async function deletePlace(id) {
+  const { data } = await client.delete(`/api/knowledge/places/${id}`)
+  return data
+}
+
+// Subida de imagen → devuelve { url } (ruta /media/...). Se prefija con API_BASE para mostrarla.
+export async function uploadKnowledgeImage(file) {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await client.post('/api/knowledge/upload-image', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+// Config del agente (read-only): modelo, RAG, seguridad/rate-limit.
+export async function getAdminConfig() {
+  const { data } = await client.get('/api/admin/config')
+  return data
+}
+
+// Base del backend, para resolver rutas /media/... a URLs absolutas.
+export const MEDIA_BASE = API_BASE
+
 export default client

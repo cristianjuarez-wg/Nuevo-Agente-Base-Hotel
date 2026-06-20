@@ -21,6 +21,8 @@ services:
         value: "https://hotel-backend-4xgz.onrender.com"
       - key: CHROMA_PERSIST_DIRECTORY
         value: /data/chroma_db
+      - key: MEDIA_DIR
+        value: /data/uploads_img
       - key: AGENT_PROFILE_PATH
         value: ./data/agent_profiles/hotel.json
       - key: DEBUG

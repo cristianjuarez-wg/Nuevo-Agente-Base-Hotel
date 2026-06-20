@@ -44,7 +44,9 @@ async def get_current_config():
             },
             "security_config": {
                 "max_file_size_mb": settings.MAX_FILE_SIZE_MB,
-                "rate_limit_enabled": settings.RATE_LIMIT_ENABLED
+                "rate_limit_enabled": settings.RATE_LIMIT_ENABLED,
+                "rate_limit_per_minute": settings.RATE_LIMIT_PER_MINUTE,
+                "rate_limit_per_hour": settings.RATE_LIMIT_PER_HOUR
             }
         }
         
