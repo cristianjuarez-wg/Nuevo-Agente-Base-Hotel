@@ -49,6 +49,10 @@ class Contact(Base):
     # Estado y clasificación
     contact_type = Column(String(20), default='lead')  # 'lead', 'customer', 'both'
     is_active = Column(Boolean, default=True)
+
+    # Perfil extensible del huésped (gustos, servicios usados, familia, tags) como JSON.
+    # Se persiste sobre TEXT (ver migración) y se serializa con json.dumps/loads.
+    preferences = Column(Text, nullable=True)
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)

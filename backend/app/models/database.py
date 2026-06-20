@@ -70,6 +70,37 @@ def run_light_migrations() -> None:
     están importados y sus tablas creadas, para que el ALTER aplique a tablas reales.
     """
     ensure_column("leads", "channel", "VARCHAR(20)")
+    ensure_column("chat_themes", "effect", "VARCHAR(20)")
+    ensure_column("rooms", "status", "VARCHAR(20)")
+    # Identidad 360°: vincular reserva → contacto + trazabilidad a la conversación.
+    ensure_column("bookings", "contact_id", "INTEGER")
+    ensure_column("bookings", "session_id", "VARCHAR(255)")
+    # Canal de la conversación (web/whatsapp) para analíticas segmentadas.
+    ensure_column("conversations", "channel", "VARCHAR(20)")
+    # Perfil extensible del huésped (gustos, servicios, familia) en JSON.
+    ensure_column("contacts", "preferences", "TEXT")
+    # Backfill: las filas creadas antes de agregar la columna quedan en NULL.
+    _backfill("rooms", "status", "active")
+    # Conversaciones previas a la columna: asumimos canal web (no había WhatsApp).
+    _backfill("conversations", "channel", "web")
+
+
+def _backfill(table: str, column: str, value: str) -> None:
+    """Asigna `value` a las filas donde `column` quedó NULL (tras un ALTER ADD COLUMN)."""
+    try:
+        inspector = inspect(engine)
+        if table not in inspector.get_table_names():
+            return
+        existing = {col["name"] for col in inspector.get_columns(table)}
+        if column not in existing:
+            return
+        with engine.begin() as conn:
+            conn.execute(
+                text(f"UPDATE {table} SET {column} = :v WHERE {column} IS NULL"),
+                {"v": value},
+            )
+    except Exception:
+        pass
 
 
 def get_db():

@@ -229,32 +229,36 @@ class MetricsService:
                 "period": "hourly"
             }
     
-    def get_heatmap_data(self, db: Session, days: int = 7) -> Dict:
+    def get_heatmap_data(self, db: Session, days: int = 7, channel: str = None) -> Dict:
         """
         Obtiene datos para heatmap de actividad (día × hora)
         Excluye conversaciones de post-venta
-        
+
         Args:
             db: Sesión de base de datos
             days: Número de días a analizar (default: 7)
-        
+            channel: Filtro opcional por canal ("web" | "whatsapp"); None = todos
+
         Returns:
             Dict con datos formateados para heatmap
         """
         try:
             now = now_argentina()
             start_time = now - timedelta(days=days)
-            
+
             # Consulta agrupada por día de semana y hora
             # dow: 0=Domingo, 1=Lunes, ..., 6=Sábado
-            heatmap_data = db.query(
+            query = db.query(
                 extract('dow', Conversation.started_at).label('day_of_week'),
                 extract('hour', Conversation.started_at).label('hour'),
                 func.count(Conversation.id).label('count')
             ).filter(
                 Conversation.started_at >= start_time,
                 Conversation.context_type != 'post_sale'  # Excluir soporte
-            ).group_by('day_of_week', 'hour').all()
+            )
+            if channel in ("web", "whatsapp"):
+                query = query.filter(Conversation.channel == channel)
+            heatmap_data = query.group_by('day_of_week', 'hour').all()
             
             # Mapeo de días (PostgreSQL/SQLite usan 0=Domingo)
             days_map = {
@@ -317,95 +321,52 @@ class MetricsService:
     
     def get_conversations_by_channel(self, db: Session) -> Dict:
         """
-        Obtiene distribución de conversaciones por canal
-        Asigna aleatoriamente a: Web Chat, Instagram, WhatsApp
-        Excluye conversaciones de post-venta
-        
+        Distribución REAL de conversaciones por canal (web / whatsapp).
+        Cuenta sobre Conversation.channel. Excluye post-venta.
+
         Args:
             db: Sesión de base de datos
-        
+
         Returns:
             Dict con distribución por canal
         """
         try:
-            import random
-            
-            # Obtener todas las conversaciones (excluir post-venta)
-            conversations = db.query(Conversation).filter(
+            rows = db.query(
+                Conversation.channel,
+                func.count(Conversation.id)
+            ).filter(
                 Conversation.context_type != 'post_sale'
-            ).all()
-            
-            total = len(conversations)
-            
-            if total == 0:
-                return {
-                    "channels": [
-                        {"name": "Web Chat", "count": 0, "percentage": 0},
-                        {"name": "Instagram", "count": 0, "percentage": 0},
-                        {"name": "WhatsApp", "count": 0, "percentage": 0}
-                    ],
-                    "total_conversations": 0
+            ).group_by(Conversation.channel).all()
+
+            # Normalizar: las conversaciones sin canal seteado se asumen "web".
+            counts = {"web": 0, "whatsapp": 0}
+            for channel, count in rows:
+                key = channel if channel in ("web", "whatsapp") else "web"
+                counts[key] += count
+
+            total = counts["web"] + counts["whatsapp"]
+            labels = {"web": "Web", "whatsapp": "WhatsApp"}
+            channels = [
+                {
+                    "name": labels[key],
+                    "channel": key,
+                    "count": counts[key],
+                    "percentage": round((counts[key] / total * 100), 1) if total > 0 else 0,
                 }
-            
-            # Definir pesos para distribución realista
-            # Web Chat: 70-75%, Instagram: 15-20%, WhatsApp: 10-15%
-            weights = {
-                "Web Chat": 0.72,    # 72%
-                "Instagram": 0.18,   # 18%
-                "WhatsApp": 0.10     # 10%
-            }
-            
-            # Asignar conversaciones aleatoriamente con pesos
-            channels_count = {
-                "Web Chat": 0,
-                "Instagram": 0,
-                "WhatsApp": 0
-            }
-            
-            # Usar seed basado en el total para consistencia en la demo
-            random.seed(total)
-            
-            for _ in range(total):
-                # Selección aleatoria ponderada
-                rand = random.random()
-                if rand < weights["Web Chat"]:
-                    channels_count["Web Chat"] += 1
-                elif rand < weights["Web Chat"] + weights["Instagram"]:
-                    channels_count["Instagram"] += 1
-                else:
-                    channels_count["WhatsApp"] += 1
-            
-            # Formatear resultado
-            channels = []
-            for channel_name in ["Web Chat", "Instagram", "WhatsApp"]:
-                count = channels_count[channel_name]
-                percentage = round((count / total * 100), 1) if total > 0 else 0
-                channels.append({
-                    "name": channel_name,
-                    "count": count,
-                    "percentage": percentage
-                })
-            
-            logger.info("Conversations by channel calculated",
-                       total=total,
-                       web_chat=channels_count["Web Chat"],
-                       instagram=channels_count["Instagram"],
-                       whatsapp=channels_count["WhatsApp"])
-            
-            return {
-                "channels": channels,
-                "total_conversations": total
-            }
-            
+                for key in ("web", "whatsapp")
+            ]
+
+            logger.info("Conversations by channel (real)", total=total, **counts)
+            return {"channels": channels, "total_conversations": total}
+
         except Exception as e:
             logger.error("Error getting conversations by channel", error=str(e))
             return {
                 "channels": [
-                    {"name": "Web Chat", "count": 0, "percentage": 0},
-                    {"name": "Instagram", "count": 0, "percentage": 0},
-                    {"name": "WhatsApp", "count": 0, "percentage": 0}
+                    {"name": "Web", "channel": "web", "count": 0, "percentage": 0},
+                    {"name": "WhatsApp", "channel": "whatsapp", "count": 0, "percentage": 0},
                 ],
-                "total_conversations": 0
+                "total_conversations": 0,
             }
     
     def get_popular_packages(self, db: Session, limit: int = 10) -> List[Dict]:
@@ -673,6 +634,79 @@ class MetricsService:
                 "total_tickets": 0, "escalated_tickets": 0, "auto_resolved_tickets": 0,
                 "open_tickets": 0, "escalation_rate": 0.0, "auto_resolution_rate": 0.0,
             }
+
+    def get_funnel(self, db: Session, channel: str = None) -> Dict:
+        """Embudo REAL conversaciones → leads → reservas, opcionalmente por canal.
+
+        Usa datos persistidos (no sesiones en memoria):
+          - Conversaciones: tabla conversations (excluye post-venta).
+          - Leads: tabla leads.
+          - Reservas: tabla bookings vinculadas a un Contact (contact_id NOT NULL),
+            no canceladas. El canal de la reserva se infiere del Lead/Conversation del
+            mismo Contact, o del session_id de la reserva si lo tiene.
+        """
+        from app.models.hotel import Booking
+        from app.models.contact import Contact
+        try:
+            ch = channel if channel in ("web", "whatsapp") else None
+
+            # 1) Conversaciones (pre-venta)
+            conv_q = db.query(func.count(Conversation.id)).filter(
+                Conversation.context_type != 'post_sale'
+            )
+            if ch:
+                conv_q = conv_q.filter(Conversation.channel == ch)
+            conversations = conv_q.scalar() or 0
+
+            # 2) Leads (ya tienen channel)
+            lead_q = db.query(func.count(Lead.id))
+            if ch:
+                lead_q = lead_q.filter(Lead.channel == ch)
+            leads = lead_q.scalar() or 0
+
+            # 3) Reservas vinculadas a Contact, no canceladas.
+            book_q = db.query(func.count(Booking.id)).filter(
+                Booking.status != "cancelled",
+                Booking.contact_id.isnot(None),
+            )
+            if ch:
+                # Canal de la reserva: por session_id (wa_ = whatsapp) cuando exista,
+                # con fallback a "web" para reservas sin session de WhatsApp.
+                if ch == "whatsapp":
+                    book_q = book_q.filter(Booking.session_id.like("wa_%"))
+                else:  # web
+                    book_q = book_q.filter(
+                        (Booking.session_id.is_(None)) | (~Booking.session_id.like("wa_%"))
+                    )
+            reservations = book_q.scalar() or 0
+
+            def rate(part, whole):
+                return round((part / whole * 100), 1) if whole > 0 else 0.0
+
+            return {
+                "channel": channel or "all",
+                "stages": [
+                    {"name": "Conversaciones", "count": conversations, "percentage": 100.0},
+                    {"name": "Leads", "count": leads, "percentage": rate(leads, conversations)},
+                    {"name": "Reservas", "count": reservations, "percentage": rate(reservations, conversations)},
+                ],
+                "conversion_rates": {
+                    "conversation_to_lead": rate(leads, conversations),
+                    "lead_to_reservation": rate(reservations, leads),
+                },
+            }
+        except Exception as e:
+            logger.error("Error getting funnel", error=str(e))
+            return {
+                "channel": channel or "all",
+                "stages": [
+                    {"name": "Conversaciones", "count": 0, "percentage": 100.0},
+                    {"name": "Leads", "count": 0, "percentage": 0.0},
+                    {"name": "Reservas", "count": 0, "percentage": 0.0},
+                ],
+                "conversion_rates": {"conversation_to_lead": 0.0, "lead_to_reservation": 0.0},
+            }
+
 
 # Instancia global
 metrics_service = MetricsService()

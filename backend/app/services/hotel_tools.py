@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session
 from app.services.rag_service import rag_service
 from app.services.reservation_service import get_availability, create_booking, get_booking
 from app.models.knowledge import KnowledgeEntry, Place, _payment_accounts
+from app.models.promotions import Promotion
+from app.services import promotions_service
 from app.core.hotel_location import (
     HOTEL_ADDRESS, HOTEL_AIRPORT, directions_url, near_hotel_search_url, is_far_origin,
 )
@@ -205,6 +207,7 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
         children=children,
         infants=infants,
         source="agente",
+        session_id=ctx.get("session_id"),
     )
 
     if "error" in result:
@@ -488,6 +491,43 @@ def _handle_comercios_amigos(args: Dict, ctx: Dict) -> Dict:
 
 
 # ---------------------------------------------------------------------------
+# Promos vigentes
+# ---------------------------------------------------------------------------
+
+def _handle_promos_vigentes(args: Dict, ctx: Dict) -> Dict:
+    """Devuelve las promociones activas y vigentes cargadas en el backoffice.
+    Determinístico: lee la tabla promotions directamente. No inventa ni improvisa."""
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    vigentes = promotions_service.get_vigentes(db)
+
+    if not vigentes:
+        return {
+            "tool_result": (
+                "En este momento no tenemos promociones especiales activas. "
+                "De todas formas podés consultar la disponibilidad y las tarifas vigentes."
+            ),
+            "found": False,
+        }
+
+    lines = ["Nuestras promociones vigentes son:\n"]
+    for p in vigentes:
+        line = f"• **{p.name}**: {p.description}"
+        if p.discount_type == "percentage" and p.discount_value is not None:
+            line += f" ({p.discount_value:.0f}% de descuento)"
+        elif p.discount_type == "free_night" and p.discount_value is not None:
+            bonif = int(p.discount_value)
+            line += f" ({bonif} noche(s) bonificada(s))"
+        if p.conditions:
+            line += f" — Condiciones: {p.conditions}"
+        lines.append(line)
+
+    return {"tool_result": "\n".join(lines), "found": True}
+
+
+# ---------------------------------------------------------------------------
 # DISPATCHER
 # ---------------------------------------------------------------------------
 
@@ -499,6 +539,7 @@ _DISPATCH = {
     "info_pago": _handle_info_pago,
     "como_llegar": _handle_como_llegar,
     "comercios_amigos": _handle_comercios_amigos,
+    "promos_vigentes": _handle_promos_vigentes,
 }
 
 

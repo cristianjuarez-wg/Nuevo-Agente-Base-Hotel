@@ -67,10 +67,11 @@ class HotelContext:
     orquestador necesita para armar la respuesta final.
     """
 
-    def __init__(self, db: Session, message: str, history: List[Dict]):
+    def __init__(self, db: Session, message: str, history: List[Dict], session_id: str = ""):
         self.db = db
         self.message = message
         self.history = history
+        self.session_id = session_id
         self.document_sources: List = []
         # Habitaciones consultadas en este turno (para renderizar tarjetas en el chat).
         self.rooms_offered: List[Dict] = []
@@ -80,6 +81,7 @@ class HotelContext:
             "db": self.db,
             "message": self.message,
             "history": self.history,
+            "session_id": self.session_id,
             "document_sources": self.document_sources,
             "rooms_offered": self.rooms_offered,
         }
@@ -370,7 +372,7 @@ class HotelSDKOrchestrator:
         )
 
         # 3. Contexto del turno
-        run_ctx = HotelContext(db, message, history)
+        run_ctx = HotelContext(db, message, history, session_id=session_id)
         input_list = self._build_input_list(history, message)
 
         # 4. Ejecutar el loop del SDK

@@ -16,13 +16,21 @@ from typing import List, Dict, Optional
 
 from sqlalchemy.orm import Session
 
+from sqlalchemy import or_
+
 from app.models.hotel import Room, Booking
+from app.services import exchange_rate_service
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 # Estados que NO ocupan inventario (no cuentan para el solapamiento).
 _NON_BLOCKING_STATUSES = {"cancelled"}
+
+
+def _ars(usd: float, rate: float) -> float:
+    """Convierte USD a ARS con la cotización vigente."""
+    return round((usd or 0) * rate, 2)
 
 
 def _generate_booking_code() -> str:
@@ -54,10 +62,25 @@ def _units_booked(db: Session, room_id: int, check_in: date, check_out: date) ->
     return overlapping
 
 
-def list_rooms(db: Session) -> List[Dict]:
-    """Catálogo de tipos de habitación (para la landing)."""
-    rooms = db.query(Room).order_by(Room.base_price_usd.asc()).all()
-    return [r.to_dict() for r in rooms]
+def list_rooms(db: Session, include_inactive: bool = False) -> List[Dict]:
+    """Catálogo de tipos de habitación.
+
+    Para la landing/chat: solo activas. Para el backoffice (`include_inactive=True`):
+    todas. El precio ARS se calcula al vuelo con la cotización vigente (el USD es la
+    fuente de verdad; `base_price_ars` de la tabla quedó obsoleto).
+    """
+    rate = exchange_rate_service.get_current_rate(db)["rate"]
+    query = db.query(Room)
+    if not include_inactive:
+        # NULL se trata como activa (filas previas a la columna status).
+        query = query.filter(or_(Room.status == "active", Room.status.is_(None)))
+    rooms = query.order_by(Room.base_price_usd.asc()).all()
+    result = []
+    for r in rooms:
+        info = r.to_dict()
+        info["base_price_ars"] = _ars(r.base_price_usd, rate)
+        result.append(info)
+    return result
 
 
 def get_availability(
@@ -74,9 +97,17 @@ def get_availability(
 
     occupancy = guests + max(children, 0)
     nights = _nights_between(check_in, check_out)
+    rate = exchange_rate_service.get_current_rate(db)["rate"]
     results: List[Dict] = []
 
-    rooms = db.query(Room).filter(Room.capacity >= occupancy).all()
+    rooms = (
+        db.query(Room)
+        .filter(
+            Room.capacity >= occupancy,
+            or_(Room.status == "active", Room.status.is_(None)),
+        )
+        .all()
+    )
     for room in rooms:
         booked = _units_booked(db, room.id, check_in, check_out)
         units_left = room.total_units - booked
@@ -87,8 +118,9 @@ def get_availability(
             {
                 "units_available": units_left,
                 "nights": nights,
+                "base_price_ars": _ars(room.base_price_usd, rate),
                 "total_price_usd": round(room.base_price_usd * nights, 2),
-                "total_price_ars": round(room.base_price_ars * nights, 2),
+                "total_price_ars": _ars(room.base_price_usd * nights, rate),
             }
         )
         results.append(info)
@@ -110,6 +142,7 @@ def create_booking(
     children: int = 0,
     infants: int = 0,
     source: str = "web",
+    session_id: Optional[str] = None,
 ) -> Dict:
     """Crea una reserva si hay disponibilidad. Pago SIMULADO → payment_status='paid'.
 
@@ -150,12 +183,39 @@ def create_booking(
         }
 
     nights = _nights_between(check_in, check_out)
+    rate = exchange_rate_service.get_current_rate(db)["rate"]
+
+    clean_phone = (guest_phone or "").strip() or None
+    clean_email = (guest_email or "").strip() or None
+
+    # En WhatsApp el teléfono real está en el session_id ("wa_<telefono>"). Si el agente
+    # no capturó un guest_phone explícito, usamos ese número como identidad del huésped.
+    if not clean_phone and session_id and session_id.startswith("wa_"):
+        clean_phone = "+" + session_id[3:]
+
+    # Identidad 360°: vincular la reserva a un Contact (clave = teléfono). Email enriquece.
+    # El conteo de compras y el contact_type se recalculan en update_contact_metrics()
+    # DESPUÉS de persistir el Booking (fuente de verdad = Bookings vinculados).
+    contact_id = None
+    if clean_phone:
+        try:
+            from app.services.contact_service import contact_service
+            contact = contact_service.get_or_create_contact(
+                phone=clean_phone, name=guest_name.strip(), email=clean_email, db=db
+            )
+            if contact:
+                contact_id = contact.id
+        except Exception as e:  # noqa: BLE001 — no bloquear la reserva por la vinculación
+            logger.warning("No se pudo vincular la reserva a un Contact", error=str(e))
+
     booking = Booking(
         code=_generate_booking_code(),
         room_id=room.id,
+        contact_id=contact_id,
+        session_id=session_id,
         guest_name=guest_name.strip(),
-        guest_email=(guest_email or "").strip() or None,
-        guest_phone=(guest_phone or "").strip() or None,
+        guest_email=clean_email,
+        guest_phone=clean_phone,
         check_in=check_in,
         check_out=check_out,
         guests=guests,
@@ -163,7 +223,7 @@ def create_booking(
         infants=max(infants, 0),
         nights=nights,
         total_price_usd=round(room.base_price_usd * nights, 2),
-        total_price_ars=round(room.base_price_ars * nights, 2),
+        total_price_ars=_ars(room.base_price_usd * nights, rate),
         status="confirmed",
         payment_status="paid",  # pago simulado
         source=source,
@@ -172,11 +232,20 @@ def create_booking(
     db.commit()
     db.refresh(booking)
 
+    # Recalcular métricas agregadas del Contact (purchases_made, contact_type, etc.).
+    if contact_id:
+        try:
+            from app.services.contact_service import contact_service
+            contact_service.update_contact_metrics(contact_id, db)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo actualizar métricas del Contact", error=str(e))
+
     logger.info(
         "Booking created",
         code=booking.code,
         room_type=room.room_type,
         source=source,
+        contact_id=contact_id,
         check_in=str(check_in),
         check_out=str(check_out),
     )

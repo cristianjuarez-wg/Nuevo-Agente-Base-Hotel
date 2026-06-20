@@ -121,6 +121,63 @@ async def list_contacts(
     )
 
 
+def _contact_row(contact, db) -> dict:
+    """Fila de contacto enriquecida con el canal (del último Lead) para las tablas."""
+    row = contact.to_dict()
+    row["channel"] = contact_service.get_channel(contact.id, db)
+    return row
+
+
+# NOTA: estas rutas estáticas van ANTES de "/{contact_id}" para que FastAPI no
+# interprete "passengers"/"leads-identity" como un contact_id.
+@router.get("/passengers")
+async def list_passengers(db: Session = Depends(get_db)):
+    """Pasajeros = Contacts con al menos 1 reserva (purchases_made > 0)."""
+    from app.models.contact import Contact
+    rows = (
+        db.query(Contact)
+        .filter(Contact.purchases_made > 0)
+        .order_by(Contact.last_interaction_date.desc())
+        .all()
+    )
+    return {"success": True, "passengers": [_contact_row(c, db) for c in rows]}
+
+
+@router.get("/leads-identity")
+async def list_lead_contacts(db: Session = Depends(get_db)):
+    """Leads (identidad) = Contacts que aún no reservaron (purchases_made == 0)."""
+    from app.models.contact import Contact
+    rows = (
+        db.query(Contact)
+        .filter(Contact.purchases_made == 0)
+        .order_by(Contact.last_interaction_date.desc())
+        .all()
+    )
+    return {"success": True, "leads": [_contact_row(c, db) for c in rows]}
+
+
+@router.get("/{contact_id}/profile")
+async def get_guest_profile(contact_id: int, db: Session = Depends(get_db)):
+    """Perfil 360° del huésped (estadías, habitación preferida, frecuencia, preferencias)."""
+    profile = contact_service.get_guest_profile(contact_id, db)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Contacto {contact_id} no encontrado")
+    return {"success": True, "profile": profile}
+
+
+class PreferencesUpdate(BaseModel):
+    preferences: dict
+
+
+@router.patch("/{contact_id}/preferences")
+async def update_preferences(contact_id: int, payload: PreferencesUpdate, db: Session = Depends(get_db)):
+    """Actualiza el JSON de preferencias del huésped (gustos, servicios, familia)."""
+    ok = contact_service.set_preferences(contact_id, payload.preferences, db)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Contacto {contact_id} no encontrado")
+    return {"success": True, "message": "Preferencias actualizadas"}
+
+
 @router.get("/{contact_id}", response_model=Contact360Response)
 async def get_contact_360(
     contact_id: int,

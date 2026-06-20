@@ -21,6 +21,9 @@ class Conversation(Base):
     
     # 🆕 Tipo de contexto (NUEVO - VISIÓN 360°)
     context_type = Column(String(20), default='pre_sale')  # "pre_sale" | "post_sale"
+
+    # Canal de origen de la conversación: "web" | "whatsapp" (para analíticas por canal).
+    channel = Column(String(20), nullable=True)
     
     # Timestamps
     started_at = Column(DateTime, default=datetime.utcnow, index=True)

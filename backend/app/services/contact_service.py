@@ -148,17 +148,24 @@ class ContactService:
             Lead.contact_id == contact_id
         ).count()
         
-        # Contar paquetes (si existe la tabla sold_packages) - Buscar por teléfono
+        # Contar compras = reservas del hotel (Booking) vinculadas a este Contact.
+        # (Antes contaba SoldPackage de turismo, que en el hotel está vacío y dejaba
+        #  a todos como 'lead'. La fuente correcta para el hotel son los Bookings.)
         try:
-            from app.models.postsale import SoldPackage
-            if contact.phone_number:
-                phone_last_digits = contact.phone_number[-10:] if len(contact.phone_number) >= 10 else contact.phone_number
-                contact.purchases_made = db.query(SoldPackage).filter(
-                    SoldPackage.passenger_phone.like(f'%{phone_last_digits}%')
+            from app.models.hotel import Booking
+            purchases = db.query(Booking).filter(
+                Booking.contact_id == contact_id,
+                Booking.status != "cancelled",
+            ).count()
+            # Fallback: si hay bookings históricos sin contact_id, matchear por teléfono.
+            if purchases == 0 and contact.phone_number:
+                phone_last = contact.phone_number[-10:] if len(contact.phone_number) >= 10 else contact.phone_number
+                purchases = db.query(Booking).filter(
+                    Booking.guest_phone.like(f'%{phone_last}%'),
+                    Booking.status != "cancelled",
                 ).count()
-            else:
-                contact.purchases_made = 0
-        except:
+            contact.purchases_made = purchases
+        except Exception:
             contact.purchases_made = 0
         
         # Contar tickets (si existe la tabla support_tickets) - A través de paquetes
@@ -357,5 +364,91 @@ class ContactService:
         
         # Paginación
         q = q.limit(limit).offset(offset)
-        
+
         return q.all()
+
+    def get_channel(self, contact_id: int, db: Session) -> Optional[str]:
+        """Canal preferente del contacto: el del último Lead asociado (whatsapp/web)."""
+        lead = (
+            db.query(Lead)
+            .filter(Lead.contact_id == contact_id)
+            .order_by(Lead.created_at.desc())
+            .first()
+        )
+        return lead.channel if lead and lead.channel else None
+
+    def get_guest_profile(self, contact_id: int, db: Session) -> Dict:
+        """Perfil 360° del huésped DERIVADO de sus reservas + preferencias guardadas.
+
+        No captura datos nuevos: estadías, habitación preferida, frecuencia, estadía
+        activa y gasto salen de los Bookings vinculados (Entrega A). `preferences` es la
+        estructura extensible (gustos, servicios, familia) que se llena aparte.
+        """
+        from app.models.hotel import Booking
+        from datetime import date
+        import json
+
+        contact = db.query(Contact).filter(Contact.id == contact_id).first()
+        if not contact:
+            return {}
+
+        bookings = (
+            db.query(Booking)
+            .filter(Booking.contact_id == contact_id, Booking.status != "cancelled")
+            .order_by(Booking.check_in.desc())
+            .all()
+        )
+
+        today = date.today()
+        stays = [b.to_dict() for b in bookings]
+        # Estadía activa: hoy está dentro de algún rango check_in..check_out.
+        active = next(
+            (b for b in bookings if b.check_in and b.check_out and b.check_in <= today <= b.check_out),
+            None,
+        )
+        # Habitación preferida: room_type más frecuente.
+        room_counts: Dict[str, int] = {}
+        for b in bookings:
+            rt = b.room.room_type if b.room else None
+            if rt:
+                room_counts[rt] = room_counts.get(rt, 0) + 1
+        preferred_room = max(room_counts, key=room_counts.get) if room_counts else None
+        total_spent_usd = round(sum(b.total_price_usd or 0 for b in bookings), 2)
+
+        # preferences es JSON guardado como TEXT.
+        prefs = {}
+        raw = getattr(contact, "preferences", None)
+        if raw:
+            try:
+                prefs = json.loads(raw) if isinstance(raw, str) else raw
+            except Exception:
+                prefs = {}
+
+        return {
+            "contact": contact.to_dict(),
+            "channel": self.get_channel(contact_id, db),
+            "is_staying_now": active is not None,
+            "active_stay": active.to_dict() if active else None,
+            "stays_count": len(bookings),
+            "is_recurring": len(bookings) > 1,
+            "first_stay": stays[-1]["check_in"] if stays else None,
+            "last_stay": stays[0]["check_in"] if stays else None,
+            "preferred_room": preferred_room,
+            "total_spent_usd": total_spent_usd,
+            "stays": stays,
+            "preferences": prefs,
+        }
+
+    def set_preferences(self, contact_id: int, preferences: Dict, db: Session) -> bool:
+        """Guarda el JSON de preferencias del huésped (gustos, servicios, familia)."""
+        import json
+        contact = db.query(Contact).filter(Contact.id == contact_id).first()
+        if not contact:
+            return False
+        contact.preferences = json.dumps(preferences, ensure_ascii=False)
+        db.commit()
+        return True
+
+
+# Instancia global reutilizable (mismo patrón que lead_service).
+contact_service = ContactService()

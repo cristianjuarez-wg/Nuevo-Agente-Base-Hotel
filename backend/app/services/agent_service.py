@@ -136,14 +136,18 @@ class AgentService:
             ).first()
             
             if not conversation:
+                # Canal derivado del session_id (mismo criterio que Lead.channel).
+                channel = "whatsapp" if session_id.startswith("wa_") else "web"
                 conversation = Conversation(
                     session_id=session_id,
-                    context_type=context_type
+                    context_type=context_type,
+                    channel=channel,
                 )
                 db.add(conversation)
                 db.flush()  # Para obtener el ID
                 logger.info("New conversation created in DB",
                            session_id=session_id,
+                           channel=channel,
                            conversation_id=conversation.id)
             
             # Obtener número de secuencia

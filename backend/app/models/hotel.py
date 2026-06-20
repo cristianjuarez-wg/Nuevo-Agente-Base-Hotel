@@ -30,6 +30,7 @@ class Room(Base):
     view = Column(String, nullable=True)                     # "Lago o ciudad"
     images = Column(JSON, nullable=True, default=list)        # lista de URLs
     amenities = Column(JSON, nullable=True, default=list)     # lista de strings
+    status = Column(String, nullable=False, default="active") # "active" | "inactive"
 
     bookings = relationship("Booking", back_populates="room")
 
@@ -46,6 +47,7 @@ class Room(Base):
             "view": self.view,
             "images": self.images or [],
             "amenities": self.amenities or [],
+            "status": self.status or "active",
         }
 
 
@@ -56,6 +58,11 @@ class Booking(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, nullable=False, index=True)  # ej "HTL-7F3A"
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False, index=True)
+
+    # Identidad del huésped (Visión 360°): la reserva pertenece a un Contact.
+    # session_id da trazabilidad a la conversación de chat que la originó.
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True, index=True)
+    session_id = Column(String(255), nullable=True, index=True)
 
     guest_name = Column(String, nullable=False)
     guest_email = Column(String, nullable=True)
@@ -86,6 +93,8 @@ class Booking(Base):
             "code": self.code,
             "room_id": self.room_id,
             "room_type": self.room.room_type if self.room else None,
+            "contact_id": self.contact_id,
+            "session_id": self.session_id,
             "guest_name": self.guest_name,
             "guest_email": self.guest_email,
             "guest_phone": self.guest_phone,

@@ -117,14 +117,36 @@ async def get_postsale_metrics(db: Session = Depends(get_db)):
 
 
 @router.get("/conversations/heatmap")
-async def get_conversations_heatmap(days: int = 7, db: Session = Depends(get_db)):
-    """Obtiene datos para heatmap de conversaciones (día × hora)"""
+async def get_conversations_heatmap(days: int = 7, channel: str = None, db: Session = Depends(get_db)):
+    """Heatmap de conversaciones (día × hora). channel opcional: web | whatsapp."""
     try:
-        heatmap_data = metrics_service.get_heatmap_data(db, days=days)
+        heatmap_data = metrics_service.get_heatmap_data(db, days=days, channel=channel)
         return {"success": True, "data": heatmap_data}
     except Exception as e:
         logger.error("Error getting conversations heatmap", error=str(e))
         raise HTTPException(status_code=500, detail=f"Error obteniendo heatmap: {str(e)}")
+
+
+@router.get("/conversations/channels")
+async def get_conversations_channels(db: Session = Depends(get_db)):
+    """Distribución real de conversaciones por canal (web / whatsapp)."""
+    try:
+        data = metrics_service.get_conversations_by_channel(db)
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error("Error getting conversations by channel", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Error obteniendo canales: {str(e)}")
+
+
+@router.get("/funnel")
+async def get_funnel(channel: str = None, db: Session = Depends(get_db)):
+    """Embudo real conversaciones → leads → reservas. channel opcional: web | whatsapp."""
+    try:
+        data = metrics_service.get_funnel(db, channel=channel)
+        return {"success": True, "data": data}
+    except Exception as e:
+        logger.error("Error getting funnel", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Error obteniendo embudo: {str(e)}")
 
 
 @router.get("/destinations/top")
