@@ -44,6 +44,7 @@ from app.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
     build_whatsapp_contact_block,
+    build_guest_profile_block,
 )
 
 logger = get_logger(__name__)
@@ -320,6 +321,10 @@ class HotelSDKOrchestrator:
 
         is_whatsapp = session_id.startswith("wa_")
 
+        # Perfil del huésped conocido (recurrente/alojado): personaliza la conversación.
+        # Se antepone a cualquier bloque de lead cuando hay historial real.
+        guest_block = self._build_guest_block(db, session_id, lead)
+
         lead_block = ""
         if has_contact_info:
             contact_name = lead.name or "este usuario"
@@ -341,7 +346,35 @@ class HotelSDKOrchestrator:
             main_interest = lead_analysis.get("main_interest", "tu estadía")
             lead_block = build_contact_request_block(main_interest)
 
-        return lead_block, lead_analysis, should_request_contact
+        # El perfil del huésped va PRIMERO (contexto de quién es), luego el bloque de lead.
+        return (guest_block + lead_block), lead_analysis, should_request_contact
+
+    def _build_guest_block(self, db: Session, session_id: str, lead) -> str:
+        """Si el contacto tiene historial (reserva/preferencias), arma el bloque de perfil.
+
+        Resuelve el Contact por lead.contact_id o, en WhatsApp, por el teléfono del
+        session_id. Cae con gracia (string vacío) si no hay perfil útil.
+        """
+        try:
+            from app.services.contact_service import contact_service
+            from app.models.contact import Contact
+
+            contact_id = getattr(lead, "contact_id", None)
+            if not contact_id and session_id.startswith("wa_"):
+                phone = "+" + session_id[3:]
+                c = db.query(Contact).filter(Contact.phone_number == phone).first()
+                contact_id = c.id if c else None
+            if not contact_id:
+                return ""
+
+            profile = contact_service.get_guest_profile(contact_id, db)
+            # Solo personalizamos si hay algo que contar (estadías o preferencias).
+            if not profile or (not profile.get("stays_count") and not profile.get("preferences")):
+                return ""
+            return build_guest_profile_block(profile)
+        except Exception as e:  # noqa: BLE001 — nunca romper el turno por personalización
+            logger.warning("No se pudo armar el guest profile block", error=str(e))
+            return ""
 
     def _build_input_list(self, history: List[Dict], message: str) -> List[Dict]:
         recent = history[-MAX_HISTORY_MESSAGES:] if len(history) > MAX_HISTORY_MESSAGES else history

@@ -4,6 +4,63 @@ Cada función recibe los datos necesarios y devuelve el bloque de texto formatea
 """
 
 
+def build_guest_profile_block(profile: dict) -> str:
+    """Bloque de perfil del huésped recurrente/conocido para personalizar la charla.
+
+    Recibe el dict de contact_service.get_guest_profile(). Solo se inyecta cuando el
+    huésped tiene historial (≥1 estadía o preferencias). Le da a Aura contexto para
+    reconocerlo y ofrecer una experiencia personalizada, con tono cálido y no invasivo.
+    """
+    contact = profile.get("contact") or {}
+    name = contact.get("first_name") or contact.get("full_name") or "este huésped"
+
+    lines = []
+    if profile.get("is_staying_now"):
+        active = profile.get("active_stay") or {}
+        lines.append(f"- ESTÁ ALOJADO AHORA (reserva {active.get('code','')}, "
+                     f"habitación {active.get('room_type','')}). Tratalo como huésped en casa.")
+    if profile.get("is_recurring"):
+        lines.append(f"- Es un huésped RECURRENTE: {profile.get('stays_count')} estadías. "
+                     f"Última: {profile.get('last_stay')}.")
+    elif profile.get("stays_count"):
+        lines.append(f"- Ya se hospedó antes (última estadía: {profile.get('last_stay')}).")
+    if profile.get("preferred_room"):
+        lines.append(f"- Habitación que suele elegir: {profile['preferred_room']}.")
+
+    prefs = profile.get("preferences") or {}
+    if prefs.get("dietary"):
+        lines.append(f"- Preferencias gastronómicas: {', '.join(prefs['dietary'])}.")
+    if prefs.get("services_used"):
+        lines.append(f"- Servicios que suele usar: {', '.join(prefs['services_used'])}.")
+    if prefs.get("family"):
+        fam = ", ".join(m.get("name", "") for m in prefs["family"] if m.get("name"))
+        if fam:
+            lines.append(f"- Suele viajar con: {fam}.")
+    if prefs.get("notes"):
+        lines.append(f"- Notas del hotel: {prefs['notes']}")
+
+    if not lines:
+        return ""  # sin datos útiles: no inyectamos nada
+
+    detail = "\n".join(lines)
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛎️ PERFIL DEL HUÉSPED — {name}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Conocés a este huésped. Usá esta información para personalizar la conversación:
+{detail}
+
+CÓMO USARLO:
+✅ Saludalo por su nombre y reconocé que lo conocés ("¡Qué bueno tenerte de vuelta!").
+✅ Si va a reservar, ofrecé proactivamente lo que ya sabés que prefiere
+   (ej: "¿Te reservo la {profile.get('preferred_room') or 'misma habitación'} de siempre?").
+✅ Tono cálido, de hospitalidad premium, natural — NO leas los datos como una lista.
+🚫 NO suenes invasivo ni recites todo lo que sabés de golpe; usalo cuando venga al caso.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+
+
 def build_lead_context_block(contact_name: str, contact_details: list[str]) -> str:
     contact_info_str = "\n- ".join(contact_details)
     return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
