@@ -1,52 +1,127 @@
 """
-Utilidad para normalización de números de teléfono
+Utilidad para normalización de números de teléfono.
+
+Motor principal: `phonenumbers` (libphonenumber de Google), que produce formato
+canónico E.164 y resuelve correctamente el "9" móvil argentino (un número cargado
+con o sin el 9, con 0 o 15, converge al MISMO E.164). Si la librería no puede
+parsear, se cae a una normalización regex de mejor esfuerzo (defensivo).
+
+Para el matching tolerante (teléfonos ya guardados con formato viejo) ver
+`phone_match_key` / `phones_match`.
 """
 import re
 from typing import Optional, Tuple
 
+try:
+    import phonenumbers
+    from phonenumbers import PhoneNumberFormat, PhoneNumberType
+    _HAS_PHONENUMBERS = True
+except Exception:  # noqa: BLE001 — sin la librería, usamos el fallback regex
+    _HAS_PHONENUMBERS = False
 
-def normalize_phone(phone: str, country_code: str = "54") -> Optional[str]:
-    """
-    Normaliza un número de teléfono a formato estándar internacional
-    
-    Args:
-        phone: Número de teléfono en cualquier formato
-        country_code: Código de país por defecto (54 para Argentina)
-    
-    Returns:
-        Teléfono normalizado en formato +XXXXXXXXXXX o None si es inválido
-    
-    Examples:
-        "+54 911 1234 5678" → "+5491112345678"
-        "911 1234 5678" → "+5491112345678"
-        "+1 555 123 4567" → "+15551234567"
-        "(011) 1234-5678" → "+54111234567"
-    """
-    if not phone:
-        return None
-    
-    # Convertir a string y limpiar
-    phone = str(phone).strip()
-    
-    if not phone:
-        return None
-    
-    # Quitar espacios, guiones, paréntesis y otros caracteres
+# Región por defecto cuando el número viene sin código de país (Argentina).
+_DEFAULT_REGION = "AR"
+
+
+def _normalize_regex(phone: str, country_code: str) -> Optional[str]:
+    """Fallback histórico: limpia separadores y antepone el código de país."""
     clean = re.sub(r'[^\d+]', '', phone)
-    
-    # Si está vacío después de limpiar, retornar None
     if not clean:
         return None
-    
-    # Si no tiene +, agregar código de país
     if not clean.startswith('+'):
-        # Si empieza con 00, reemplazar por +
         if clean.startswith('00'):
             clean = '+' + clean[2:]
         else:
             clean = f"+{country_code}{clean}"
-    
     return clean
+
+
+def normalize_phone(phone: str, country_code: str = "54") -> Optional[str]:
+    """
+    Normaliza un número de teléfono a formato canónico internacional (E.164).
+
+    Usa `phonenumbers` cuando está disponible; si falla el parseo, cae al método
+    regex histórico. NUNCA lanza: ante un input inválido devuelve None.
+
+    Args:
+        phone: Número de teléfono en cualquier formato
+        country_code: Código de país por defecto (54 para Argentina) — usado solo
+            por el fallback regex; el parseo principal usa la región AR.
+
+    Returns:
+        Teléfono en E.164 (+XXXXXXXXXXX) o None si es inválido.
+
+    Examples (Argentina, todos convergen al mismo canónico):
+        "+543417207797"      → "+5493417207797"
+        "+5493417207797"     → "+5493417207797"
+        "3417207797"         → "+5493417207797"
+        "0341 15 7207797"    → "+5493417207797"
+        "+1 555 123 4567"    → "+15551234567"
+    """
+    if not phone:
+        return None
+    phone = str(phone).strip()
+    if not phone:
+        return None
+
+    if _HAS_PHONENUMBERS:
+        try:
+            # Si ya trae +, phonenumbers ignora la región; si no, asume AR.
+            parsed = phonenumbers.parse(phone, _DEFAULT_REGION)
+            if phonenumbers.is_valid_number(parsed):
+                return phonenumbers.format_number(parsed, PhoneNumberFormat.E164)
+            # Número no estrictamente válido pero parseable (ej. de prueba):
+            # devolvemos su E.164 de mejor esfuerzo si tiene país + nacional.
+            if parsed.country_code and parsed.national_number:
+                return phonenumbers.format_number(parsed, PhoneNumberFormat.E164)
+        except Exception:  # noqa: BLE001 — caemos al fallback regex
+            pass
+
+    return _normalize_regex(phone, country_code)
+
+
+def phone_match_key(phone: str) -> Optional[str]:
+    """
+    Clave de comparación tolerante: los últimos 10 dígitos del número.
+
+    Descarta '+', código de país, el '9' móvil argentino, el '0'/'15' y cualquier
+    separador. Dos números equivalentes (uno con '9', otro sin) comparten clave.
+    Sirve para machear contra teléfonos YA guardados con formato viejo sin migrar la DB.
+
+    Returns:
+        Cadena de hasta 10 dígitos, o None si no hay suficientes dígitos.
+    """
+    if not phone:
+        return None
+    digits = re.sub(r'\D', '', str(phone))
+    if len(digits) < 8:
+        return None
+    return digits[-10:]
+
+
+def phones_match(a: Optional[str], b: Optional[str]) -> bool:
+    """True si dos teléfonos son equivalentes según `phone_match_key`."""
+    ka, kb = phone_match_key(a or ""), phone_match_key(b or "")
+    return bool(ka) and ka == kb
+
+
+def is_whatsapp_capable(phone: str) -> bool:
+    """
+    Heurística: ¿el número parece un móvil válido (asumible alcanzable por WhatsApp)?
+
+    Usa `phonenumbers` para validar y mirar el tipo de línea. NO consulta a WhatsApp;
+    es un indicador de formato, no de existencia real de la cuenta.
+    """
+    if not phone or not _HAS_PHONENUMBERS:
+        return False
+    try:
+        parsed = phonenumbers.parse(phone, _DEFAULT_REGION)
+        if not phonenumbers.is_valid_number(parsed):
+            return False
+        ntype = phonenumbers.number_type(parsed)
+        return ntype in (PhoneNumberType.MOBILE, PhoneNumberType.FIXED_LINE_OR_MOBILE)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def extract_country_code(phone: str) -> Optional[str]:

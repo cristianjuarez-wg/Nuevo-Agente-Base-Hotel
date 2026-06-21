@@ -7,7 +7,7 @@ from app.models.contact import Contact
 from app.models.conversation import Conversation
 from app.models.lead import Lead
 from app.models.conversation_message import ConversationMessage
-from app.utils.phone_normalizer import normalize_phone, extract_country_code
+from app.utils.phone_normalizer import normalize_phone, extract_country_code, phone_match_key
 from typing import Optional, Dict, List
 from datetime import datetime
 import logging
@@ -18,9 +18,33 @@ logger = logging.getLogger(__name__)
 class ContactService:
     """Servicio para gestionar contactos unificados"""
     
+    def _find_by_phone(self, phone_normalized: str, db: Session) -> Optional[Contact]:
+        """Busca un contacto por teléfono: match exacto y, si falla, tolerante.
+
+        El fallback por clave de últimos dígitos evita duplicar un contacto cuando el
+        mismo número quedó guardado con/sin el "9" móvil argentino (web vs WhatsApp).
+        """
+        contact = db.query(Contact).filter(
+            Contact.phone_number == phone_normalized
+        ).first()
+        if contact:
+            return contact
+
+        key = phone_match_key(phone_normalized)
+        if not key:
+            return None
+        # like('%key%') acota en SQL; confirmamos por sufijo exacto en Python.
+        candidates = db.query(Contact).filter(
+            Contact.phone_number.like(f'%{key}%')
+        ).all()
+        for c in candidates:
+            if phone_match_key(c.phone_number) == key:
+                return c
+        return None
+
     def get_or_create_contact(
-        self, 
-        phone: str, 
+        self,
+        phone: str,
         name: str = None,
         last_name: str = None,
         email: str = None, 
@@ -51,12 +75,10 @@ class ContactService:
             return None
         
         logger.info(f"get_or_create_contact: normalized {phone} -> {phone_normalized}")
-        
-        # Buscar contacto existente
-        contact = db.query(Contact).filter(
-            Contact.phone_number == phone_normalized
-        ).first()
-        
+
+        # Buscar contacto existente (exacto + fallback tolerante por últimos dígitos)
+        contact = self._find_by_phone(phone_normalized, db)
+
         if contact:
             # Actualizar última interacción
             contact.last_interaction_date = datetime.utcnow()
@@ -113,10 +135,8 @@ class ContactService:
         phone_normalized = normalize_phone(phone)
         if not phone_normalized:
             return None
-        
-        return db.query(Contact).filter(
-            Contact.phone_number == phone_normalized
-        ).first()
+
+        return self._find_by_phone(phone_normalized, db)
     
     def update_contact_metrics(self, contact_id: int, db: Session):
         """

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2 } from 'lucide-react'
 import { listLeads, deleteLead } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, WhatsAppDot,
 } from '../ui'
 import { toast } from '../toast'
 
@@ -43,6 +43,7 @@ function flatten(lead) {
     status: md.status,
     origin: md.origin,
     created_at: md.created_at,
+    whatsappLinked: lead.whatsapp_linked,
   }
 }
 
@@ -93,7 +94,7 @@ export default function LeadsView() {
     { key: 'contact', label: 'Contacto', render: (r) => (
       <div className="space-y-0.5 text-xs text-slatey">
         {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
-        {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}
+        {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}<WhatsAppDot linked={r.whatsappLinked} /></p>}
         {!r.email && !r.phone && '—'}
       </div>
     ) },
@@ -117,7 +118,7 @@ export default function LeadsView() {
       {r.interest && <p className="text-sm text-slatey">{r.interest}</p>}
       <div className="mt-2 space-y-0.5 text-xs text-slatey">
         {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
-        {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}
+        {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}<WhatsAppDot linked={r.whatsappLinked} /></p>}
       </div>
       <div className="mt-2 flex items-center justify-between">
         <ScoreBar score={r.score} />

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Users, RefreshCw, Plus, Pencil, Trash2, X, Crown, Briefcase } from 'lucide-react'
 import { listStaff, saveStaff, setStaffActive, deleteStaff } from '../../services/api'
-import { PageHeader, ResponsiveTable, Badge, Loading, EmptyState } from '../ui'
+import { PageHeader, ResponsiveTable, Badge, Loading, EmptyState, WhatsAppDot } from '../ui'
 import { toast } from '../toast'
 
 function RoleBadge({ role }) {
@@ -48,7 +48,11 @@ export default function EquipoView() {
 
   const columns = [
     { key: 'name', label: 'Nombre', render: (r) => <span className="font-medium text-ink">{r.name}</span> },
-    { key: 'phone', label: 'WhatsApp', render: (r) => <span className="tabular-nums text-slatey">{r.phone}</span> },
+    { key: 'phone', label: 'WhatsApp', render: (r) => (
+      <span className="inline-flex items-center gap-1.5 tabular-nums text-slatey">
+        {r.phone}<WhatsAppDot linked={r.whatsapp_linked} />
+      </span>
+    ) },
     { key: 'role', label: 'Rol', render: (r) => <RoleBadge role={r.role} /> },
     { key: 'active', label: 'Estado', render: (r) => (
       <button onClick={() => toggle(r)} className="text-xs font-medium">
@@ -71,7 +75,7 @@ export default function EquipoView() {
         <span className="font-medium text-ink">{r.name}</span>
         <RoleBadge role={r.role} />
       </div>
-      <p className="text-xs tabular-nums text-slatey">{r.phone}</p>
+      <p className="flex items-center gap-1.5 text-xs tabular-nums text-slatey">{r.phone}<WhatsAppDot linked={r.whatsapp_linked} /></p>
       <div className="mt-2 flex items-center justify-between">
         <button onClick={() => toggle(r)}>
           {r.active ? <Badge tone="green">Activo</Badge> : <Badge tone="gray">Inactivo</Badge>}

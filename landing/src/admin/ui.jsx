@@ -1,4 +1,4 @@
-import { Loader2, Bot, Globe, User } from 'lucide-react'
+import { Loader2, Bot, Globe, User, MessageCircle } from 'lucide-react'
 
 // Formato unificado (única fuente de verdad en lib/format.js).
 export { formatNumber, formatUSD, formatARS, formatDate, formatDateTime } from '../lib/format'
@@ -46,6 +46,19 @@ export function Badge({ children, tone = 'gray' }) {
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone]}`}>
       {children}
+    </span>
+  )
+}
+
+// Indicador sutil de "número válido para WhatsApp". El backend lo deriva con
+// libphonenumber (whatsapp_linked): un móvil bien formado se asume alcanzable por
+// WhatsApp. Es heurístico (formato), no confirma que la cuenta exista. Si un número
+// del equipo NO muestra el ícono, probablemente esté mal cargado (ej. sin el "9").
+export function WhatsAppDot({ linked, className = '' }) {
+  if (!linked) return null
+  return (
+    <span title="Número válido para WhatsApp" className={`inline-flex shrink-0 ${className}`}>
+      <MessageCircle size={13} className="text-green-500/80" aria-label="Número válido para WhatsApp" />
     </span>
   )
 }

@@ -13,13 +13,24 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.models.staff import StaffMember
-from app.utils.phone_normalizer import normalize_phone
+from app.utils.phone_normalizer import normalize_phone, phones_match
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/staff", tags=["Staff"])
 
 _VALID_ROLES = {"owner", "staff"}
+
+
+def _find_duplicate(db: Session, phone: str, exclude_id: Optional[int] = None):
+    """Devuelve un StaffMember cuyo teléfono coincide (tolerante al "9"), o None."""
+    members = db.query(StaffMember).all()
+    for m in members:
+        if exclude_id is not None and m.id == exclude_id:
+            continue
+        if phones_match(m.phone, phone):
+            return m
+    return None
 
 
 class StaffPayload(BaseModel):
@@ -51,7 +62,8 @@ def create_staff(payload: StaffPayload, db: Session = Depends(get_db)):
     phone = normalize_phone(payload.phone)
     if not phone:
         raise HTTPException(status_code=422, detail="Teléfono inválido.")
-    if db.query(StaffMember).filter(StaffMember.phone == phone).first():
+    # Duplicado tolerante: el mismo número con/sin el "9" no debe entrar dos veces.
+    if _find_duplicate(db, phone):
         raise HTTPException(status_code=409, detail="Ya existe un miembro con ese teléfono.")
     member = StaffMember(name=payload.name.strip(), phone=phone, role=role, active=payload.active)
     db.add(member)
@@ -70,11 +82,8 @@ def update_staff(member_id: int, payload: StaffPayload, db: Session = Depends(ge
     phone = normalize_phone(payload.phone)
     if not phone:
         raise HTTPException(status_code=422, detail="Teléfono inválido.")
-    # Otro miembro con el mismo teléfono → conflicto.
-    dup = db.query(StaffMember).filter(
-        StaffMember.phone == phone, StaffMember.id != member_id
-    ).first()
-    if dup:
+    # Otro miembro con el mismo teléfono (tolerante al "9") → conflicto.
+    if _find_duplicate(db, phone, exclude_id=member_id):
         raise HTTPException(status_code=409, detail="Otro miembro ya usa ese teléfono.")
     member.name = payload.name.strip()
     member.phone = phone

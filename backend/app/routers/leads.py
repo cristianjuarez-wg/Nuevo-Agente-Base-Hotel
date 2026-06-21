@@ -45,7 +45,14 @@ async def get_active_leads(limit: int = 50):
     """Obtiene leads activos ordenados por prioridad"""
     try:
         leads = lead_service.get_active_leads(limit=limit)
-        
+
+        # Indicador "vinculado a WhatsApp" (heurístico por formato del teléfono).
+        from app.utils.phone_normalizer import is_whatsapp_capable
+        for lead in leads:
+            ci = lead.get("contact_info") if isinstance(lead, dict) else None
+            phone = ci.get("phone") if isinstance(ci, dict) else None
+            lead["whatsapp_linked"] = is_whatsapp_capable(phone) if phone else False
+
         logger.info("Active leads retrieved", count=len(leads))
         
         return {

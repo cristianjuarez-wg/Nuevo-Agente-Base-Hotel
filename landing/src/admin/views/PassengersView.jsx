@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD, WhatsAppDot,
 } from '../ui'
 import { toast } from '../toast'
 
@@ -17,6 +17,7 @@ function flatten(c) {
     name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Sin nombre',
     email: c.email,
     phone: c.phone_number,
+    whatsappLinked: c.whatsapp_linked,
     origin: c.origin,
     stays: m.purchases_made ?? 0,
     inHouse: !!c.is_staying_now,
@@ -270,7 +271,7 @@ export default function PassengersView() {
     ) },
     { key: 'contact', label: 'Contacto', render: (r) => (
       <div className="space-y-0.5 text-xs text-slatey">
-        {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}
+        {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}<WhatsAppDot linked={r.whatsappLinked} /></p>}
         {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
         {!r.phone && !r.email && '—'}
       </div>
@@ -294,7 +295,7 @@ export default function PassengersView() {
           <OriginBadge origin={r.origin} />
         </div>
         <div className="space-y-0.5 text-xs text-slatey">
-          {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}
+          {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}<WhatsAppDot linked={r.whatsappLinked} /></p>}
           {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
         </div>
         <p className="mt-2 text-xs text-slatey">

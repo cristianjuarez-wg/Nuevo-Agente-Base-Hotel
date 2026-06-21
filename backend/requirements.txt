@@ -101,6 +101,7 @@ pyasn1==0.6.1
 pyasn1_modules==0.4.2
 pybase64==1.4.2
 pycountry==24.6.1
+phonenumbers==9.0.32
 pydantic==2.13.4
 pydantic-settings==2.6.1
 pydantic_core==2.46.4
