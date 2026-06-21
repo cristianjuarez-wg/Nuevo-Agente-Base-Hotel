@@ -96,6 +96,7 @@ async def _process_and_reply(
     profile_name: str,
     audio_url: str | None = None,
     audio_type: str | None = None,
+    message_sid: str | None = None,
 ) -> None:
     """Procesa el mensaje con el agente y responde por WhatsApp. Corre en background.
 
@@ -111,6 +112,11 @@ async def _process_and_reply(
     if not phone:
         logger.warning("WhatsApp: teléfono inválido", from_field=from_field)
         return
+
+    # Feedback inmediato al huésped: "escribiendo…" + marca su mensaje como leído (tilde
+    # azul). Best-effort, antes de invocar al agente. Cubre también audios (mientras
+    # Whisper + agente trabajan, el huésped ve que estamos con eso).
+    whatsapp_service.send_typing_indicator(message_sid)
 
     session_id = "wa_" + phone.lstrip("+")
 
@@ -205,6 +211,7 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     from_field = form.get("From", "")
     body = (form.get("Body") or "").strip()
     profile_name = form.get("ProfileName", "")
+    message_sid = form.get("MessageSid", "")  # para el typing indicator / read-receipt
 
     # Validación de firma: garantiza que el POST viene de Twilio.
     if settings.TWILIO_AUTH_TOKEN:
@@ -240,5 +247,7 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     )
 
     # Procesar en background: respondemos 200 a Twilio ya mismo.
-    asyncio.create_task(_process_and_reply(from_field, body, profile_name, audio_url, audio_type))
+    asyncio.create_task(
+        _process_and_reply(from_field, body, profile_name, audio_url, audio_type, message_sid)
+    )
     return Response(status_code=200)
