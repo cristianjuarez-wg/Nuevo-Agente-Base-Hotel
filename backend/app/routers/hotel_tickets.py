@@ -6,7 +6,7 @@ reserva asociada (código, huésped). Solo lectura para la demo.
 """
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db
@@ -37,6 +37,18 @@ async def list_tickets(
         query = query.filter(HotelTicket.status == status)
     tickets = query.order_by(HotelTicket.created_at.desc()).all()
     return {"tickets": [_enrich(t) for t in tickets]}
+
+
+@router.delete("/{ticket_id}")
+async def delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    """Elimina un ticket de soporte por su ID (backoffice)."""
+    ticket = db.query(HotelTicket).filter(HotelTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    db.delete(ticket)
+    db.commit()
+    logger.info("Ticket eliminado", ticket_id=ticket_id)
+    return {"success": True, "message": f"Ticket {ticket_id} eliminado"}
 
 
 @router.get("/stats")

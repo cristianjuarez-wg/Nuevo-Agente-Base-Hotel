@@ -377,6 +377,14 @@ def delete_booking(db: Session, code: str) -> bool:
         return False
 
     contact_id = booking.contact_id
+
+    # Los tickets de soporte tienen booking_id NOT NULL → borrarlos primero para no
+    # dejar registros huérfanos que rompan la integridad referencial.
+    from app.models.hotel import HotelTicket
+    db.query(HotelTicket).filter(HotelTicket.booking_id == booking.id).delete(
+        synchronize_session=False
+    )
+
     db.delete(booking)
     db.commit()
 

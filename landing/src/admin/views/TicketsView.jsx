@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { LifeBuoy, RefreshCw, Bot, AlertTriangle, CheckCircle2 } from 'lucide-react'
-import { listTickets } from '../../services/api'
+import { LifeBuoy, RefreshCw, Bot, AlertTriangle, CheckCircle2, Trash2 } from 'lucide-react'
+import { listTickets, deleteTicket } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate,
 } from '../ui'
+import { toast } from '../toast'
 
 function StatusBadge({ status }) {
   const map = {
@@ -27,6 +28,7 @@ function CategoryBadge({ category }) {
 export default function TicketsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -36,6 +38,31 @@ export default function TicketsView() {
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  const handleDelete = async (r) => {
+    if (!window.confirm(`¿Eliminar el ticket ${r.ticket_number}? Esta acción no se puede deshacer.`)) return
+    setDeletingId(r.id)
+    try {
+      await deleteTicket(r.id)
+      setRows((prev) => prev.filter((x) => x.id !== r.id))
+      toast.success(`Ticket ${r.ticket_number} eliminado`)
+    } catch {
+      toast.error('No se pudo eliminar el ticket. Intentá de nuevo.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const DeleteButton = ({ r }) => (
+    <button
+      onClick={() => handleDelete(r)}
+      disabled={deletingId === r.id}
+      title="Eliminar ticket"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+    >
+      <Trash2 size={15} />
+    </button>
+  )
 
   const columns = [
     { key: 'ticket_number', label: 'Ticket', render: (r) => <span className="font-semibold text-hilton-700">{r.ticket_number}</span> },
@@ -54,6 +81,7 @@ export default function TicketsView() {
       <span className="inline-flex items-center gap-1 text-xs text-green-600"><Bot size={13} /> Auto (IA)</span>
     ) },
     { key: 'created_at', label: 'Fecha', render: (r) => formatDate(r.created_at) },
+    { key: 'actions', label: '', render: (r) => <DeleteButton r={r} /> },
   ]
 
   const renderCard = (r) => (
@@ -66,11 +94,14 @@ export default function TicketsView() {
       <p className="mt-1 text-sm text-slatey">{r.subject}</p>
       <div className="mt-2 flex items-center justify-between">
         <CategoryBadge category={r.category} />
-        {r.escalated ? (
-          <span className="inline-flex items-center gap-1 text-xs text-red-600"><AlertTriangle size={13} /> A asesor</span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckCircle2 size={13} /> Auto (IA)</span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {r.escalated ? (
+            <span className="inline-flex items-center gap-1 text-xs text-red-600"><AlertTriangle size={13} /> A asesor</span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckCircle2 size={13} /> Auto (IA)</span>
+          )}
+          <DeleteButton r={r} />
+        </div>
       </div>
     </div>
   )

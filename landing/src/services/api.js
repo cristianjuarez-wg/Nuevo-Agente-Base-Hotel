@@ -85,6 +85,11 @@ export async function getTicketStats() {
   return data
 }
 
+export async function deleteTicket(ticketId) {
+  const { data } = await client.delete(`/api/hotel-tickets/${ticketId}`)
+  return data
+}
+
 // ── Consumo IA (tokens / USD) ────────────────────────────────────────────────
 export async function getUsageSummary() {
   const { data } = await client.get('/api/usage/summary')
