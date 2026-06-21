@@ -66,28 +66,48 @@ async def list_documents():
     return {"documents": vs.get_all_sources_with_status()}
 
 
+# Formatos de texto plano que se ingieren DIRECTO (sin parsear): el Markdown ya viene
+# estructurado (encabezados, listas) — ideal para el chunking y la recuperación del agente.
+_TEXT_EXTS = (".md", ".markdown", ".txt")
+
+
 @router.post("/documents/upload")
 async def upload_document(file: UploadFile = File(...)):
-    """Sube y procesa un PDF de entrenamiento del consultor (colección de gerencia)."""
+    """Sube un documento de entrenamiento del consultor: PDF, Markdown (.md) o texto (.txt).
+
+    El PDF se parsea (extracción de texto); el Markdown/TXT entra directo como texto limpio,
+    que suele venir mejor estructurado para el agente. Ambos terminan en la misma colección.
+    """
     start = time.time()
-    if not (file.filename or "").lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Solo se aceptan archivos PDF.")
+    name = (file.filename or "").lower()
+    is_pdf = name.endswith(".pdf")
+    is_text = name.endswith(_TEXT_EXTS)
+    if not (is_pdf or is_text):
+        raise HTTPException(status_code=400, detail="Formatos aceptados: PDF, Markdown (.md) o texto (.txt).")
+
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail=f"Archivo > {settings.MAX_FILE_SIZE_MB}MB.")
 
-    path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(path, "wb") as f:
-        f.write(content)
-
     try:
-        chunks = pdf_processor.process_pdf(path, file.filename)
+        if is_pdf:
+            path = os.path.join(UPLOAD_DIR, file.filename)
+            with open(path, "wb") as f:
+                f.write(content)
+            chunks = pdf_processor.process_pdf(path, file.filename)
+        else:
+            text = content.decode("utf-8", errors="replace").strip()
+            if not text:
+                raise HTTPException(status_code=422, detail="El archivo está vacío.")
+            chunks = _chunks_from_text(file.filename, text)
+
         if not chunks:
-            raise HTTPException(status_code=422, detail="No se pudo extraer texto del PDF.")
+            raise HTTPException(status_code=422, detail="No se pudo extraer contenido del documento.")
         vs = get_management_vector_store()
         vs.delete_by_source(file.filename)  # reemplazar versión previa
         result = await vs.add_documents(chunks)
-        logger.info("Mgmt knowledge PDF ingested", filename=file.filename, added=result.get("added"))
+        logger.info("Mgmt knowledge ingested", filename=file.filename,
+                    kind="pdf" if is_pdf else "text", added=result.get("added"))
         return {
             "success": True, "filename": file.filename,
             "chunks_created": result.get("added", 0),

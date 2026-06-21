@@ -27,8 +27,8 @@ export default function AsesoriaView() {
   const onPick = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      toast.error('Solo se aceptan archivos PDF.')
+    if (!/\.(pdf|md|markdown|txt)$/i.test(file.name)) {
+      toast.error('Formatos aceptados: PDF, Markdown (.md) o texto (.txt).')
       return
     }
     setUploading(true)
@@ -116,16 +116,16 @@ export default function AsesoriaView() {
     <div>
       <PageHeader
         title="Asesoría — Entrenamiento del consultor"
-        subtitle="Subí libros y documentos de gestión hotelera, revenue management o finanzas. El asesor de gerencia (por WhatsApp) los usa para fundamentar sus recomendaciones, cruzándolos con los datos reales del hotel. Es independiente del conocimiento del agente de huéspedes."
+        subtitle="Subí libros y documentos de gestión hotelera, revenue management o finanzas (PDF o Markdown). El asesor de gerencia (por WhatsApp) los usa para fundamentar sus recomendaciones, cruzándolos con los datos reales del hotel. Es independiente del conocimiento del agente de huéspedes."
         right={
           <div className="flex items-center gap-2">
             <button onClick={load} className="btn-secondary px-4 py-2 text-xs"><RefreshCw size={14} /> Actualizar</button>
             <button onClick={() => fileInput.current?.click()} disabled={uploading}
                     className="btn-primary px-4 py-2 text-xs disabled:opacity-60">
               {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-              {uploading ? 'Procesando…' : 'Subir PDF'}
+              {uploading ? 'Procesando…' : 'Subir documento'}
             </button>
-            <input ref={fileInput} type="file" accept="application/pdf" className="hidden" onChange={onPick} />
+            <input ref={fileInput} type="file" accept=".pdf,.md,.markdown,.txt" className="hidden" onChange={onPick} />
           </div>
         }
       />
@@ -133,7 +133,7 @@ export default function AsesoriaView() {
         <Loading />
       ) : rows.length === 0 ? (
         <EmptyState icon={GraduationCap} title="Sin material de entrenamiento todavía"
-                    desc="Subí un PDF (ej. un libro de gestión hotelera) para que el consultor pueda apoyarse en él." />
+                    desc="Subí un PDF o un Markdown (.md) — ej. un libro de gestión hotelera — para que el consultor pueda apoyarse en él." />
       ) : (
         <ResponsiveTable columns={columns} rows={rows.map((r) => ({ ...r, _key: r.filename }))} renderCard={renderCard} />
       )}
