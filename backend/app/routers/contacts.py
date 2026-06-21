@@ -125,13 +125,13 @@ def _contact_row(contact, db) -> dict:
     """Fila de contacto enriquecida con canal, origen y si está alojado hoy."""
     from app.models.hotel import Booking
     from app.core.origin import origin_from_channel
-    from app.utils.phone_normalizer import is_whatsapp_capable
     from datetime import date
     row = contact.to_dict()
     channel = contact_service.get_channel(contact.id, db)
     row["channel"] = channel
     row["origin"] = origin_from_channel(channel)
-    row["whatsapp_linked"] = is_whatsapp_capable(contact.phone_number)
+    # Verde solo si TENEMOS contacto real por WhatsApp (la persona nos escribió por ahí).
+    row["whatsapp_linked"] = contact_service.has_whatsapp_contact(contact.id, db)
     today = date.today()
     row["is_staying_now"] = db.query(Booking).filter(
         Booking.contact_id == contact.id,

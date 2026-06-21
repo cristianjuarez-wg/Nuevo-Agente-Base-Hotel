@@ -46,12 +46,15 @@ async def get_active_leads(limit: int = 50):
     try:
         leads = lead_service.get_active_leads(limit=limit)
 
-        # Indicador "vinculado a WhatsApp" (heurístico por formato del teléfono).
-        from app.utils.phone_normalizer import is_whatsapp_capable
+        # Indicador "tiene WhatsApp": el lead nos escribió por ese canal (dato real, no
+        # heurística). El canal se derivó del session_id "wa_" al crear el lead.
         for lead in leads:
-            ci = lead.get("contact_info") if isinstance(lead, dict) else None
-            phone = ci.get("phone") if isinstance(ci, dict) else None
-            lead["whatsapp_linked"] = is_whatsapp_capable(phone) if phone else False
+            if not isinstance(lead, dict):
+                continue
+            channel = (lead.get("metadata") or {}).get("channel")
+            if channel is None:
+                channel = "whatsapp" if str(lead.get("session_id", "")).startswith("wa_") else None
+            lead["whatsapp_linked"] = (channel == "whatsapp")
 
         logger.info("Active leads retrieved", count=len(leads))
         

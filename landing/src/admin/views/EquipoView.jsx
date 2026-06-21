@@ -50,7 +50,7 @@ export default function EquipoView() {
     { key: 'name', label: 'Nombre', render: (r) => <span className="font-medium text-ink">{r.name}</span> },
     { key: 'phone', label: 'WhatsApp', render: (r) => (
       <span className="inline-flex items-center gap-1.5 tabular-nums text-slatey">
-        {r.phone}<WhatsAppDot linked={r.whatsapp_linked} />
+        {r.phone}<WhatsAppDot linked={r.whatsapp_linked} title="WhatsApp del equipo" />
       </span>
     ) },
     { key: 'role', label: 'Rol', render: (r) => <RoleBadge role={r.role} /> },
@@ -75,7 +75,7 @@ export default function EquipoView() {
         <span className="font-medium text-ink">{r.name}</span>
         <RoleBadge role={r.role} />
       </div>
-      <p className="flex items-center gap-1.5 text-xs tabular-nums text-slatey">{r.phone}<WhatsAppDot linked={r.whatsapp_linked} /></p>
+      <p className="flex items-center gap-1.5 text-xs tabular-nums text-slatey">{r.phone}<WhatsAppDot linked={r.whatsapp_linked} title="WhatsApp del equipo" /></p>
       <div className="mt-2 flex items-center justify-between">
         <button onClick={() => toggle(r)}>
           {r.active ? <Badge tone="green">Activo</Badge> : <Badge tone="gray">Inactivo</Badge>}

@@ -24,14 +24,14 @@ class StaffMember(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     def to_dict(self):
-        from app.utils.phone_normalizer import is_whatsapp_capable
         return {
             "id": self.id,
             "name": self.name,
             "phone": self.phone,
             "role": self.role,
             "active": self.active,
-            "whatsapp_linked": is_whatsapp_capable(self.phone),
+            # Para el equipo asumimos que el número cargado es su WhatsApp (regla de negocio).
+            "whatsapp_linked": True,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

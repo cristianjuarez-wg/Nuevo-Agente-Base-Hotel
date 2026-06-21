@@ -50,15 +50,15 @@ export function Badge({ children, tone = 'gray' }) {
   )
 }
 
-// Indicador sutil de "número válido para WhatsApp". El backend lo deriva con
-// libphonenumber (whatsapp_linked): un móvil bien formado se asume alcanzable por
-// WhatsApp. Es heurístico (formato), no confirma que la cuenta exista. Si un número
-// del equipo NO muestra el ícono, probablemente esté mal cargado (ej. sin el "9").
-export function WhatsAppDot({ linked, className = '' }) {
+// Indicador sutil de "tenemos contacto por WhatsApp". El backend (whatsapp_linked) lo
+// marca cuando la persona NOS ESCRIBIÓ por WhatsApp (dato real, no heurística) — o,
+// para el equipo, porque asumimos que su número es WhatsApp. Significa que ese es un
+// canal de comunicación efectivo; si no aparece, conviene usar otro medio.
+export function WhatsAppDot({ linked, title = 'Tenemos contacto por WhatsApp', className = '' }) {
   if (!linked) return null
   return (
-    <span title="Número válido para WhatsApp" className={`inline-flex shrink-0 ${className}`}>
-      <MessageCircle size={13} className="text-green-500/80" aria-label="Número válido para WhatsApp" />
+    <span title={title} className={`inline-flex shrink-0 ${className}`}>
+      <MessageCircle size={13} className="text-green-500/80" aria-label={title} />
     </span>
   )
 }

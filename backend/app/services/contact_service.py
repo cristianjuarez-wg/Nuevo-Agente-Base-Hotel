@@ -414,6 +414,25 @@ class ContactService:
             return "whatsapp" if (booking.session_id or "").startswith("wa_") else "web"
         return None
 
+    def has_whatsapp_contact(self, contact_id: int, db: Session) -> bool:
+        """True si el contacto NOS ESCRIBIÓ alguna vez por WhatsApp.
+
+        Es la prueba real de que tenemos canal de WhatsApp con esa persona: el mensaje
+        llegó por el webhook de Twilio. Se deriva de los campos `channel == "whatsapp"`
+        ya poblados en Lead y Conversation (sin columnas nuevas). No afirma que el número
+        "tenga WhatsApp" en abstracto, sino que existe contacto efectivo por ese medio.
+        """
+        has_lead = db.query(Lead).filter(
+            Lead.contact_id == contact_id,
+            Lead.channel == "whatsapp",
+        ).first() is not None
+        if has_lead:
+            return True
+        return db.query(Conversation).filter(
+            Conversation.contact_id == contact_id,
+            Conversation.channel == "whatsapp",
+        ).first() is not None
+
     def get_guest_profile(self, contact_id: int, db: Session) -> Dict:
         """Perfil 360° del huésped DERIVADO de sus reservas + preferencias guardadas.
 
