@@ -14,7 +14,7 @@ from app.services import usage_service
 from app.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import re
 
 # 🆕 Imports para módulo post-venta
@@ -53,6 +53,11 @@ class AgentService:
     # para no perder mensajes en reinicios del servidor.
     _MAX_HISTORY_MESSAGES: int = 50
 
+    # Ventana de sesión: el agente DA CONTINUIDAD a una charla mientras el último mensaje
+    # sea más reciente que esto. Pasada la ventana, se trata como conversación nueva (pero
+    # el histórico queda en la DB). 24h = estándar de mercado + ventana de servicio de WhatsApp.
+    _SESSION_WINDOW_HOURS: int = 24
+
     def _contains_booking_code(self, message: str) -> bool:
         """True si el mensaje contiene un patrón de código de reserva."""
         upper = message.upper()
@@ -71,38 +76,73 @@ class AgentService:
             logger.error("Error initializing agent service", error=str(e))
             raise
     
+    def _session_cutoff(self) -> datetime:
+        """Instante (UTC, naive) a partir del cual un mensaje sigue dentro de la ventana
+        de sesión. Más viejo que esto = no entra al contexto activo del agente."""
+        return datetime.utcnow() - timedelta(hours=self._SESSION_WINDOW_HOURS)
+
+    def _rehydrate_from_db(self, session_id: str, db: Session) -> List[Dict]:
+        """Reconstruye el contexto desde la BD: los ÚLTIMOS mensajes dentro de la ventana
+        de 24h, en orden cronológico. Robusto ante reinicios del proceso (deploys/restarts).
+
+        Corrige los bugs previos: ordena por created_at (timestamp real, no sequence_number
+        que es por-conversación) DESC para tomar los más recientes, y acota a la ventana.
+        """
+        if db is None:
+            return []
+        try:
+            rows = (
+                db.query(ConversationMessage)
+                .filter(
+                    ConversationMessage.session_id == session_id,
+                    ConversationMessage.created_at >= self._session_cutoff(),
+                )
+                .order_by(ConversationMessage.created_at.desc(), ConversationMessage.id.desc())
+                .limit(self._MAX_HISTORY_MESSAGES)
+                .all()
+            )
+            rows.reverse()  # a orden cronológico (viejo → nuevo) para el modelo
+            history = [{"role": m.role, "content": m.content} for m in rows]
+            if history:
+                logger.info("Conversation history rehydrated from DB",
+                            session_id=session_id, messages_loaded=len(history))
+            return history
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Could not rehydrate history from DB",
+                           session_id=session_id, error=str(e), exc_info=True)
+            return []
+
     def _get_or_create_history(self, session_id: str, db: Session = None) -> List[Dict]:
-        """Obtiene o crea historial de conversación.
-        En cache-miss intenta rehidratar desde la BD para sobrevivir reinicios del servidor."""
-        if session_id not in self.conversation_history:
-            rehydrated = []
-            if db is not None:
-                try:
-                    messages = (
-                        db.query(ConversationMessage)
-                        .filter(ConversationMessage.session_id == session_id)
-                        .order_by(ConversationMessage.sequence_number)
-                        .limit(self._MAX_HISTORY_MESSAGES)
-                        .all()
-                    )
-                    rehydrated = [{"role": m.role, "content": m.content} for m in messages]
-                    if rehydrated:
-                        logger.info("Conversation history rehydrated from DB",
-                                    session_id=session_id,
-                                    messages_loaded=len(rehydrated))
-                except Exception as e:
-                    logger.warning("Could not rehydrate history from DB",
-                                   session_id=session_id, error=str(e))
+        """Obtiene el historial de la conversación con CONTINUIDAD y ventana de sesión.
 
-            self.conversation_history[session_id] = rehydrated
-            self.session_metadata[session_id] = {
-                "created_at": now_argentina(),
-                "message_count": len(rehydrated),
-                "last_activity": now_argentina()
-            }
-            if not rehydrated:
-                logger.info("New conversation session created", session_id=session_id)
+        - Si la sesión está en RAM pero su última actividad fue hace > 24h, se descarta
+          (charla vieja → nueva). Así un huésped que vuelve al otro día arranca de cero
+          aunque el proceso no se haya reiniciado.
+        - En cache-miss, rehidrata desde la BD los últimos mensajes dentro de la ventana,
+          para sobrevivir reinicios del servidor (deploys/restarts) sin perder el hilo.
+        """
+        # 1) ¿La sesión en RAM sigue vigente (dentro de la ventana)?
+        if session_id in self.conversation_history:
+            meta = self.session_metadata.get(session_id) or {}
+            last = meta.get("last_activity")
+            if last is not None and (now_argentina() - last) > timedelta(hours=self._SESSION_WINDOW_HOURS):
+                logger.info("Session window expired (RAM), starting fresh",
+                            session_id=session_id)
+                self.conversation_history.pop(session_id, None)
+                self.session_metadata.pop(session_id, None)
+            else:
+                return self.conversation_history[session_id]
 
+        # 2) Cache-miss: rehidratar desde la BD (acotado a la ventana de 24h).
+        rehydrated = self._rehydrate_from_db(session_id, db)
+        self.conversation_history[session_id] = rehydrated
+        self.session_metadata[session_id] = {
+            "created_at": now_argentina(),
+            "message_count": len(rehydrated),
+            "last_activity": now_argentina(),
+        }
+        if not rehydrated:
+            logger.info("New conversation session created", session_id=session_id)
         return self.conversation_history[session_id]
     
     def _save_message_to_db(
