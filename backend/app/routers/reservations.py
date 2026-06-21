@@ -101,3 +101,12 @@ async def get_booking(code: str, db: Session = Depends(get_db)):
 async def list_bookings(db: Session = Depends(get_db)):
     """Lista todas las reservas (para el backoffice)."""
     return {"bookings": reservation_service.list_bookings(db)}
+
+
+@router.delete("/bookings/{code}")
+async def delete_booking(code: str, db: Session = Depends(get_db)):
+    """Elimina una reserva por su código (backoffice)."""
+    ok = reservation_service.delete_booking(db, code)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada.")
+    return {"success": True, "message": f"Reserva {code} eliminada"}

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2 } from 'lucide-react'
-import { listBookings } from '../../services/api'
+import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2, Trash2 } from 'lucide-react'
+import { listBookings, deleteBooking } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatUSD, formatARS, formatDate,
 } from '../ui'
+import { toast } from '../toast'
 
 // Estado temporal de la estadía (derivado en el backend como stay_status).
 function StayBadge({ stay }) {
@@ -53,6 +54,7 @@ export default function BookingsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [deletingCode, setDeletingCode] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -62,6 +64,31 @@ export default function BookingsView() {
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  const handleDelete = async (r) => {
+    if (!window.confirm(`¿Eliminar la reserva ${r.code} de ${r.guest_name}? Esta acción no se puede deshacer.`)) return
+    setDeletingCode(r.code)
+    try {
+      await deleteBooking(r.code)
+      setRows((prev) => prev.filter((x) => x.code !== r.code))
+      toast.success(`Reserva ${r.code} eliminada`)
+    } catch {
+      toast.error('No se pudo eliminar la reserva. Intentá de nuevo.')
+    } finally {
+      setDeletingCode(null)
+    }
+  }
+
+  const DeleteButton = ({ r }) => (
+    <button
+      onClick={() => handleDelete(r)}
+      disabled={deletingCode === r.code}
+      title="Eliminar reserva"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+    >
+      <Trash2 size={15} />
+    </button>
+  )
 
   // Abre el perfil 360° del pasajero (deep-link manejado por PassengersView).
   const goToProfile = (contactId) => {
@@ -111,6 +138,7 @@ export default function BookingsView() {
     ) },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
+    { key: 'actions', label: '', render: (r) => <DeleteButton r={r} /> },
   ]
 
   const renderCard = (r) => (
@@ -127,7 +155,10 @@ export default function BookingsView() {
       <p className="mt-1 text-xs text-slatey">{formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)</p>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>
-        <OriginBadge origin={r.origin} />
+        <div className="flex items-center gap-1.5">
+          <OriginBadge origin={r.origin} />
+          <DeleteButton r={r} />
+        </div>
       </div>
     </div>
   )

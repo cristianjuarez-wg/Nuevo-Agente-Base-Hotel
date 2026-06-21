@@ -204,12 +204,17 @@ def create_booking(
     infants: int = 0,
     source: str = "web",
     session_id: Optional[str] = None,
+    promo_name: Optional[str] = None,
 ) -> Dict:
     """Crea una reserva si hay disponibilidad. Pago SIMULADO → payment_status='paid'.
 
     Acepta `room_id` (preciso, desde la landing) o `room_type` (desde el agente, que
     razona en lenguaje natural). Valida disponibilidad ANTES de crear — es el punto
     "determinístico" que el agente NO puede saltarse.
+
+    Si `promo_name` se indica y esa promo vigente APLICA a la estadía, el total se
+    recalcula con el descuento (server-side, sin confiar en números del LLM) y se
+    guarda el precio sin promo en `full_price_usd` para trazabilidad.
 
     Returns: dict con la reserva creada (incluye `code`) o un dict {"error": ...}.
     """
@@ -261,6 +266,24 @@ def create_booking(
     nights = _nights_between(check_in, check_out)
     rate = exchange_rate_service.get_current_rate(db)["rate"]
 
+    # Precio base (sin promo). Si se pidió aplicar una promo y APLICA realmente a esta
+    # estadía, recalculamos el total con el descuento — server-side, fuente de verdad.
+    base_total_usd = round(room.base_price_usd * nights, 2)
+    total_usd = base_total_usd
+    full_price_usd = None
+    applied_promo_name = None
+    if promo_name:
+        from app.services import promotions_service
+        promo = next(
+            (p for p in promotions_service.get_vigentes(db) if p.name == promo_name), None
+        )
+        if promo:
+            oferta = promotions_service.aplicar_descuento(promo, room.base_price_usd, nights)
+            if oferta:
+                total_usd = oferta["final_price_usd"]
+                full_price_usd = oferta["full_price_usd"]
+                applied_promo_name = oferta["promo_name"]
+
     clean_phone = (guest_phone or "").strip() or None
     clean_email = (guest_email or "").strip() or None
 
@@ -299,8 +322,10 @@ def create_booking(
         children=max(children, 0),
         infants=max(infants, 0),
         nights=nights,
-        total_price_usd=round(room.base_price_usd * nights, 2),
-        total_price_ars=_ars(room.base_price_usd * nights, rate),
+        total_price_usd=total_usd,
+        total_price_ars=_ars(total_usd, rate),
+        promo_name=applied_promo_name,
+        full_price_usd=full_price_usd,
         status="confirmed",
         payment_status="paid",  # pago simulado
         source=source,
@@ -339,3 +364,28 @@ def list_bookings(db: Session) -> List[Dict]:
     """Todas las reservas (para el backoffice)."""
     bookings = db.query(Booking).order_by(Booking.check_in.asc()).all()
     return [b.to_dict() for b in bookings]
+
+
+def delete_booking(db: Session, code: str) -> bool:
+    """Elimina una reserva por su código. Devuelve True si existía y se borró.
+
+    Al liberar inventario, recalculamos las métricas del contacto vinculado (si lo hay)
+    para que su contador de compras quede consistente.
+    """
+    booking = db.query(Booking).filter(Booking.code == code.strip().upper()).first()
+    if booking is None:
+        return False
+
+    contact_id = booking.contact_id
+    db.delete(booking)
+    db.commit()
+
+    if contact_id:
+        try:
+            from app.services.contact_service import ContactService
+            ContactService().update_contact_metrics(contact_id, db)
+        except Exception as e:  # noqa: BLE001 — el borrado ya ocurrió; no romper por métricas
+            logger.warning("No se pudieron recalcular métricas tras borrar reserva", error=str(e))
+
+    logger.info("Reserva eliminada", code=code)
+    return True

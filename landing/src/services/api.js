@@ -33,6 +33,11 @@ export async function getBooking(code) {
   return data.booking ?? data
 }
 
+export async function deleteBooking(code) {
+  const { data } = await client.delete(`/api/reservations/bookings/${code}`)
+  return data
+}
+
 // ── Chat del agente (Aura) ───────────────────────────────────────────────────
 export async function getGreeting(lang = 'es') {
   const { data } = await client.get('/api/chat/greeting', { params: { lang } })
@@ -338,6 +343,11 @@ export async function listLeadContacts() {
 
 export async function getContactStats() {
   const { data } = await client.get('/api/contacts/stats/overview')
+  return data
+}
+
+export async function deleteContact(contactId) {
+  const { data } = await client.delete(`/api/contacts/${contactId}`)
   return data
 }
 

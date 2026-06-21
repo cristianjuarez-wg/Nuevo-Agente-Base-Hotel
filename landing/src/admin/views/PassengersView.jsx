@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
   Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
-  Repeat, DollarSign, Star, Loader2,
+  Repeat, DollarSign, Star, Loader2, Trash2,
 } from 'lucide-react'
-import { listPassengers, getGuestProfile, updateGuestPreferences } from '../../services/api'
+import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD,
 } from '../ui'
@@ -212,6 +212,7 @@ export default function PassengersView() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(contactIdFromHash)
   const [onlyInHouse, setOnlyInHouse] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -221,6 +222,31 @@ export default function PassengersView() {
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  const handleDelete = async (r) => {
+    if (!window.confirm(`¿Eliminar a ${r.name}? Se quitará del listado de pasajeros (sus reservas quedan, pero sin vincular). Esta acción no se puede deshacer.`)) return
+    setDeletingId(r.id)
+    try {
+      await deleteContact(r.id)
+      setRows((prev) => prev.filter((x) => x.id !== r.id))
+      toast.success(`${r.name} eliminado`)
+    } catch {
+      toast.error('No se pudo eliminar el pasajero. Intentá de nuevo.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const DeleteButton = ({ r }) => (
+    <button
+      onClick={(e) => { e.stopPropagation(); handleDelete(r) }}
+      disabled={deletingId === r.id}
+      title="Eliminar pasajero"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+    >
+      <Trash2 size={15} />
+    </button>
+  )
 
   // Soporta deep-link: si el hash trae un contact_id, abre su drawer.
   useEffect(() => {
@@ -253,24 +279,30 @@ export default function PassengersView() {
     { key: 'stays', label: 'Estadías', render: (r) => <span className="tabular-nums font-medium text-ink">{r.stays}</span> },
     { key: 'last', label: 'Última actividad', render: (r) => formatDate(r.last) },
     { key: 'actions', label: '', render: (r) => (
-      <button onClick={() => setSelected(r.id)} className="text-xs font-medium text-hilton-600 hover:underline">Ver 360°</button>
+      <div className="flex items-center justify-end gap-1.5">
+        <button onClick={() => setSelected(r.id)} className="text-xs font-medium text-hilton-600 hover:underline">Ver 360°</button>
+        <DeleteButton r={r} />
+      </div>
     ) },
   ]
 
   const renderCard = (r) => (
-    <button onClick={() => setSelected(r.id)} className="w-full text-left">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-medium text-ink">{r.name}</span>
-        <OriginBadge origin={r.origin} />
-      </div>
-      <div className="space-y-0.5 text-xs text-slatey">
-        {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}
-        {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
-      </div>
-      <p className="mt-2 text-xs text-slatey">
-        <span className="tabular-nums font-medium text-ink">{r.stays}</span> estadía{r.stays === 1 ? '' : 's'}
-      </p>
-    </button>
+    <div className="relative">
+      <button onClick={() => setSelected(r.id)} className="w-full text-left">
+        <div className="mb-2 flex items-center justify-between pr-9">
+          <span className="font-medium text-ink">{r.name}</span>
+          <OriginBadge origin={r.origin} />
+        </div>
+        <div className="space-y-0.5 text-xs text-slatey">
+          {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}</p>}
+          {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
+        </div>
+        <p className="mt-2 text-xs text-slatey">
+          <span className="tabular-nums font-medium text-ink">{r.stays}</span> estadía{r.stays === 1 ? '' : 's'}
+        </p>
+      </button>
+      <div className="absolute right-0 top-0"><DeleteButton r={r} /></div>
+    </div>
   )
 
   const inHouseCount = rows.filter((r) => r.inHouse).length

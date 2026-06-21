@@ -190,6 +190,46 @@ async def update_preferences(contact_id: int, payload: PreferencesUpdate, db: Se
     return {"success": True, "message": "Preferencias actualizadas"}
 
 
+@router.delete("/{contact_id}")
+async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
+    """Elimina un contacto (pasajero / lead-identidad) del backoffice.
+
+    Para no romper integridad referencial, primero desvincula sus registros
+    relacionados (reservas, leads, conversaciones, paquetes) poniendo su
+    contact_id en NULL, y luego borra el contacto.
+    """
+    from app.models.contact import Contact
+    from app.models.hotel import Booking
+    from app.models.lead import Lead
+    from app.models.conversation import Conversation
+
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contacto no encontrado")
+
+    # Desvincular dependencias (no borramos su historial, solo lo despersonalizamos).
+    db.query(Booking).filter(Booking.contact_id == contact_id).update(
+        {Booking.contact_id: None}, synchronize_session=False
+    )
+    db.query(Lead).filter(Lead.contact_id == contact_id).update(
+        {Lead.contact_id: None}, synchronize_session=False
+    )
+    db.query(Conversation).filter(Conversation.contact_id == contact_id).update(
+        {Conversation.contact_id: None}, synchronize_session=False
+    )
+    try:
+        from app.models.postsale import SoldPackage
+        db.query(SoldPackage).filter(SoldPackage.contact_id == contact_id).update(
+            {SoldPackage.contact_id: None}, synchronize_session=False
+        )
+    except Exception:  # noqa: BLE001 — el modelo puede no estar presente en esta demo
+        pass
+
+    db.delete(contact)
+    db.commit()
+    return {"success": True, "message": f"Contacto {contact_id} eliminado"}
+
+
 @router.get("/{contact_id}", response_model=Contact360Response)
 async def get_contact_360(
     contact_id: int,
