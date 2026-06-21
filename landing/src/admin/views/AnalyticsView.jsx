@@ -5,7 +5,7 @@ import {
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList,
 } from 'recharts'
-import { getFunnel, getHeatmap, getChannelStats } from '../../services/api'
+import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics } from '../../services/api'
 import { PageHeader, StatCard, Loading } from '../ui'
 
 // Selector de canal: Todos / Web / WhatsApp. Filtra funnel + heatmap.
@@ -196,20 +196,26 @@ export default function AnalyticsView() {
   const [funnel, setFunnel] = useState(null)
   const [heatmap, setHeatmap] = useState(null)
   const [channels, setChannels] = useState(null)
+  const [quality, setQuality] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const load = () => {
     setLoading(true)
-    Promise.all([getFunnel(channel), getHeatmap(channel, 30), getChannelStats()])
-      .then(([f, h, c]) => {
+    Promise.all([
+      getFunnel(channel), getHeatmap(channel, 30), getChannelStats(),
+      getAgentQualityMetrics().catch(() => null),
+    ])
+      .then(([f, h, c, q]) => {
         setFunnel(f)
         setHeatmap(h)
         setChannels(c)
+        setQuality(q)
       })
       .catch(() => {
         setFunnel(null)
         setHeatmap(null)
         setChannels(null)
+        setQuality(null)
       })
       .finally(() => setLoading(false))
   }
@@ -251,6 +257,33 @@ export default function AnalyticsView() {
               tone="hilton"
             />
           </div>
+
+          {/* Calidad del agente en soporte (post-venta): containment */}
+          {quality && quality.total_tickets > 0 && (
+            <Panel
+              title="Calidad del agente · soporte al huésped"
+              subtitle="Qué resuelve Aura sola vs. qué deriva al equipo (consultas de huéspedes con reserva)."
+            >
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="rounded-xl bg-green-50 px-4 py-3">
+                  <p className="text-xs text-slatey">Resueltas sin humano</p>
+                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-green-700">{quality.containment_rate}%</p>
+                </div>
+                <div className="rounded-xl bg-mist px-4 py-3">
+                  <p className="text-xs text-slatey">Auto-resueltas</p>
+                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-hilton-700">{quality.auto_resolved_tickets}</p>
+                </div>
+                <div className="rounded-xl bg-mist px-4 py-3">
+                  <p className="text-xs text-slatey">Pedidos al staff</p>
+                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-hilton-700">{quality.service_requests}</p>
+                </div>
+                <div className="rounded-xl bg-amber-50 px-4 py-3">
+                  <p className="text-xs text-slatey">Escaladas a humano</p>
+                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-amber-700">{quality.escalation_rate}%</p>
+                </div>
+              </div>
+            </Panel>
+          )}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Embudo */}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel, Sparkles,
   Users, BarChart3,
@@ -8,10 +8,14 @@ import BookingsView from './views/BookingsView'
 import HabitacionesView from './views/HabitacionesView'
 import LeadsView from './views/LeadsView'
 import PassengersView from './views/PassengersView'
-import AnalyticsView from './views/AnalyticsView'
 import TicketsView from './views/TicketsView'
-import AgentSection from './views/agente/AgentSection'
 import { Toaster } from './toast'
+import { Loading } from './ui'
+
+// Lazy: AnalyticsView arrastra Recharts (~130 KB) y AgentSection es pesado. Se cargan
+// solo cuando el usuario entra a esas secciones, aliviando el bundle inicial.
+const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
+const AgentSection = lazy(() => import('./views/agente/AgentSection'))
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -83,14 +87,16 @@ export default function AdminApp() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {tab === 'dashboard' && <DashboardView go={go} />}
-          {tab === 'analiticas' && <AnalyticsView />}
-          {tab === 'reservas' && <BookingsView />}
-          {tab === 'habitaciones' && <HabitacionesView />}
-          {tab === 'pasajeros' && <PassengersView />}
-          {tab === 'leads' && <LeadsView />}
-          {tab === 'tickets' && <TicketsView />}
-          {tab === 'agente' && <AgentSection />}
+          <Suspense fallback={<Loading />}>
+            {tab === 'dashboard' && <DashboardView go={go} />}
+            {tab === 'analiticas' && <AnalyticsView />}
+            {tab === 'reservas' && <BookingsView />}
+            {tab === 'habitaciones' && <HabitacionesView />}
+            {tab === 'pasajeros' && <PassengersView />}
+            {tab === 'leads' && <LeadsView />}
+            {tab === 'tickets' && <TicketsView />}
+            {tab === 'agente' && <AgentSection />}
+          </Suspense>
         </main>
       </div>
     </div>

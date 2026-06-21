@@ -315,6 +315,11 @@ export async function getHeatmap(channel, days = 30) {
   return data.data ?? data
 }
 
+export async function getAgentQualityMetrics() {
+  const { data } = await client.get('/api/analytics/postsale/metrics')
+  return data.data ?? data
+}
+
 export async function getChannelStats() {
   const { data } = await client.get('/api/analytics/conversations/channels')
   return data.data ?? data

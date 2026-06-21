@@ -599,24 +599,37 @@ class MetricsService:
             return {"top_destinations": []}
 
     def get_postsale_metrics(self, db: Session) -> Dict:
-        """Métricas de negocio del agente POST-VENTA (no existían antes).
+        """Métricas de calidad del agente POST-VENTA (soporte al huésped en viaje).
 
-        Mide qué tan bien el agente resuelve solo vs cuánto necesita escalar a un
-        humano — clave para evaluar la efectividad real del soporte automatizado.
+        Mide containment: qué tan bien Aura resuelve sola vs cuánto escala a un humano,
+        más los pedidos de servicio que enruta al staff (service routing). Es la métrica
+        de "calidad del agente como producto" que recomienda el estado del arte
+        (containment / escalation rate).
+
+        Usa HotelTicket (modelo del hotel). Antes apuntaba a SupportTicket (legacy de
+        turismo), por eso estas métricas salían siempre en cero para el hotel.
         """
-        from app.models.postsale import SupportTicket
+        from app.models.hotel import HotelTicket
         try:
-            total = db.query(func.count(SupportTicket.id)).scalar() or 0
-            escalated = db.query(func.count(SupportTicket.id)).filter(
-                SupportTicket.has_escalated_issues == True  # noqa: E712
+            total = db.query(func.count(HotelTicket.id)).scalar() or 0
+            escalated = db.query(func.count(HotelTicket.id)).filter(
+                HotelTicket.escalated == 1
             ).scalar() or 0
-            auto_resolved = db.query(func.count(SupportTicket.id)).filter(
-                SupportTicket.auto_resolved_by_agent == True  # noqa: E712
+            # Auto-resueltos por el agente sin escalar (containment efectivo).
+            auto_resolved = db.query(func.count(HotelTicket.id)).filter(
+                HotelTicket.status == "resolved", HotelTicket.escalated == 0
             ).scalar() or 0
-            open_tickets = db.query(func.count(SupportTicket.id)).filter(
-                SupportTicket.status == "open"
+            # Pedidos de servicio enrutados al staff (toallas, mantenimiento, etc.).
+            service_requests = db.query(func.count(HotelTicket.id)).filter(
+                HotelTicket.category == "service_request"
+            ).scalar() or 0
+            open_tickets = db.query(func.count(HotelTicket.id)).filter(
+                HotelTicket.status == "open"
             ).scalar() or 0
 
+            # Containment = atendidos sin escalar (auto-resueltos + pedidos enrutados).
+            contained = auto_resolved + service_requests
+            containment_rate = round((contained / total * 100), 1) if total else 0.0
             escalation_rate = round((escalated / total * 100), 1) if total else 0.0
             auto_resolution_rate = round((auto_resolved / total * 100), 1) if total else 0.0
 
@@ -624,7 +637,9 @@ class MetricsService:
                 "total_tickets": total,
                 "escalated_tickets": escalated,
                 "auto_resolved_tickets": auto_resolved,
+                "service_requests": service_requests,
                 "open_tickets": open_tickets,
+                "containment_rate": containment_rate,        # % atendido sin escalar
                 "escalation_rate": escalation_rate,          # % escalado a humano
                 "auto_resolution_rate": auto_resolution_rate,  # % resuelto por el agente
             }
@@ -632,7 +647,8 @@ class MetricsService:
             logger.error("Error getting postsale metrics", error=str(e))
             return {
                 "total_tickets": 0, "escalated_tickets": 0, "auto_resolved_tickets": 0,
-                "open_tickets": 0, "escalation_rate": 0.0, "auto_resolution_rate": 0.0,
+                "service_requests": 0, "open_tickets": 0, "containment_rate": 0.0,
+                "escalation_rate": 0.0, "auto_resolution_rate": 0.0,
             }
 
     def get_funnel(self, db: Session, channel: str = None) -> Dict:
