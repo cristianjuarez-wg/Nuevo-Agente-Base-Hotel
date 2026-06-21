@@ -27,6 +27,10 @@ logger = get_logger(__name__)
 # internos para dar memoria conversacional al consultor.
 _role_histories: Dict[str, List[Dict]] = {}
 
+# Último gráfico (chart_url) enviado por sesión del owner. Evita reenviar el MISMO gráfico
+# en turnos seguidos (el modelo a veces vuelve a llamar la tool aunque ya lo mandó).
+_last_owner_chart: Dict[str, str] = {}
+
 
 async def route_whatsapp(db: Session, phone: str, message: str) -> Dict:
     """Rutea un mensaje de WhatsApp al agente correcto según el rol del teléfono.
@@ -73,9 +77,24 @@ async def _route_owner(db: Session, phone: str, message: str) -> Dict:
 
     result = await owner_orchestrator.run(db, message, session_id, history, owner_name=owner_name)
 
-    # Actualizar memoria del hilo (acotada).
+    # Anti-duplicado de gráfico: si el chart_url de este turno es el MISMO que el último
+    # enviado en la sesión, no lo reenviamos (el modelo a veces re-llama la tool aunque ya
+    # lo mandó). El texto del agente ya avisa que lo envió arriba (regla del prompt).
+    chart_url = result.get("chart_url")
+    if chart_url:
+        if _last_owner_chart.get(session_id) == chart_url:
+            result["chart_url"] = None  # mismo gráfico → no reenviar
+        else:
+            _last_owner_chart[session_id] = chart_url
+
+    # Actualizar memoria del hilo (acotada). Si en este turno se envió un gráfico (uno
+    # nuevo), lo anotamos en el mensaje del assistant (nota interna, no la ve el dueño)
+    # para que el agente sepa que ya lo mandó y no lo repita.
+    assistant_content = result.get("response", "")
+    if result.get("chart_url"):
+        assistant_content += "\n\n[Nota interna: en este turno ya se envió al dueño un gráfico de los datos consultados.]"
     history.append({"role": "user", "content": message})
-    history.append({"role": "assistant", "content": result.get("response", "")})
+    history.append({"role": "assistant", "content": assistant_content})
     if len(history) > 40:
         _role_histories[session_id] = history[-40:]
 

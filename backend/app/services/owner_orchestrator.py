@@ -353,11 +353,12 @@ async def consultar_soporte(ctx: RunContextWrapper[OwnerContext]) -> str:
 
 @function_tool
 async def consultar_conocimiento(ctx: RunContextWrapper[OwnerContext], consulta: str) -> str:
-    """Consulta el MATERIAL DE ENTRENAMIENTO del consultor (libros y documentos de gestión
-    hotelera, revenue management, finanzas, etc. que el dueño cargó). Úsala para fundamentar
-    recomendaciones con marcos/metodologías expertas. Aclarale al dueño que esto proviene de
-    su material de entrenamiento (no de los datos del hotel ni inventado). Si no hay material
-    relevante, decílo y respondé con tu criterio general marcándolo como estimación."""
+    """CONSULTÁ SIEMPRE esta tool ANTES de dar cualquier recomendación de gestión, estrategia,
+    finanzas o revenue management. Es tu material experto: los libros/documentos que el dueño
+    cargó. Devuelve fragmentos de esos documentos (citalos al recomendar, aclarando que vienen
+    del material de entrenamiento, no de los datos del hotel ni inventado). Si la búsqueda NO
+    trae material relevante, te lo dice — en ese caso avisale al dueño que no tenés material
+    cargado sobre ese tema y recién ahí respondé con tu criterio general (como estimación)."""
     try:
         from app.services.vector_store import get_management_vector_store
         vs = get_management_vector_store()
