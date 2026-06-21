@@ -63,8 +63,12 @@ def create_staff(payload: StaffPayload, db: Session = Depends(get_db)):
     if not phone:
         raise HTTPException(status_code=422, detail="Teléfono inválido.")
     # Duplicado tolerante: el mismo número con/sin el "9" no debe entrar dos veces.
-    if _find_duplicate(db, phone):
-        raise HTTPException(status_code=409, detail="Ya existe un miembro con ese teléfono.")
+    dup = _find_duplicate(db, phone)
+    if dup:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ese número ya está cargado como «{dup.name}».",
+        )
     member = StaffMember(name=payload.name.strip(), phone=phone, role=role, active=payload.active)
     db.add(member)
     db.commit()
@@ -83,8 +87,12 @@ def update_staff(member_id: int, payload: StaffPayload, db: Session = Depends(ge
     if not phone:
         raise HTTPException(status_code=422, detail="Teléfono inválido.")
     # Otro miembro con el mismo teléfono (tolerante al "9") → conflicto.
-    if _find_duplicate(db, phone, exclude_id=member_id):
-        raise HTTPException(status_code=409, detail="Otro miembro ya usa ese teléfono.")
+    dup = _find_duplicate(db, phone, exclude_id=member_id)
+    if dup:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ese número ya está cargado como «{dup.name}».",
+        )
     member.name = payload.name.strip()
     member.phone = phone
     member.role = payload.role if payload.role in _VALID_ROLES else member.role

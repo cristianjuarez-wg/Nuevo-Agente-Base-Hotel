@@ -142,7 +142,9 @@ function StaffModal({ member, onClose, onSaved }) {
       toast.success(isNew ? 'Miembro agregado' : 'Miembro actualizado')
       onSaved()
     } catch (e) {
-      const msg = e?.response?.data?.detail || 'No se pudo guardar. Verificá el teléfono.'
+      // El backend manda el motivo en `detail` (HTTPException) o `message` (handler global).
+      const data = e?.response?.data || {}
+      const msg = data.detail || data.message || 'No se pudo guardar. Verificá el teléfono.'
       setError(msg)
       setSaving(false)
     }
