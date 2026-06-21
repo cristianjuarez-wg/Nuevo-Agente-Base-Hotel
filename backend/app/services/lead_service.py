@@ -160,9 +160,10 @@ class LeadService:
                        email_final=lead.email,
                        phone_final=lead.phone)
             
-            # 5. Determinar si debe solicitar contacto
+            # 5. Determinar si debe solicitar contacto (incluye "momento de cierre":
+            #    si el usuario se despide tras mostrar interés, captamos el contacto).
             should_request = lead_analyzer.should_request_contact(
-                analysis, len(conversation_history)
+                analysis, len(conversation_history), message
             )
             
             # No solicitar si ya tiene contacto completo
@@ -788,9 +789,9 @@ Responde SOLO con el JSON."""
                 hours_old = (datetime.now(timezone.utc).replace(tzinfo=None) - updated.replace(tzinfo=None)).total_seconds() / 3600
                 if hours_old > 24:
                     score -= min(hours_old / 24, 2)  # Máximo -2 puntos
-            except:
-                pass
-        
+            except Exception as e:
+                logger.debug("No se pudo calcular antigüedad del lead para el score", error=str(e))
+
         return max(score, 0)
     
     async def create_event_lead(

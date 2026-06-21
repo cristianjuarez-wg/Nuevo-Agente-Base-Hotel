@@ -260,36 +260,63 @@ IMPORTANTE:
             "fallback_used": True
         }
     
-    def should_request_contact(self, analysis: Dict, conversation_length: int) -> bool:
+    # Señales de que el usuario se está despidiendo o postergando la decisión.
+    # Es el "momento de cierre": si mostró interés, conviene captar el contacto antes
+    # de que se vaya sin convertir (best practice de captación conversacional).
+    _EXIT_SIGNALS = (
+        "lo voy a pensar", "lo pienso", "lo consulto", "lo veo", "después veo",
+        "despues veo", "más adelante", "mas adelante", "otro día", "otro dia",
+        "gracias por todo", "muchas gracias", "nada más", "nada mas", "chau",
+        "adiós", "adios", "hasta luego", "lo hablo", "tengo que ver", "veré",
+        "vere", "let me think", "i'll think", "thanks anyway", "maybe later",
+    )
+
+    def _is_exit_intent(self, message: str) -> bool:
+        text = (message or "").lower()
+        return any(sig in text for sig in self._EXIT_SIGNALS)
+
+    def should_request_contact(self, analysis: Dict, conversation_length: int,
+                               message: str = "") -> bool:
         """
         Determina si es el momento apropiado para solicitar datos de contacto
-        
+
         Args:
             analysis: Resultado del análisis de lead
             conversation_length: Número de mensajes en la conversación
-            
+            message: Mensaje actual (para detectar intención de salida/despedida)
+
         Returns:
             bool: True si debe solicitar contacto
         """
         # No solicitar contacto en el primer mensaje
         if conversation_length < 2:
             return False
-        
+
         # Si ya expresó que quiere ser contactado
         if analysis.get('contact_readiness', False):
             return True
-        
+
         # Lead caliente con interés alto
-        if (analysis.get('lead_type') == 'CALIENTE' and 
+        if (analysis.get('lead_type') == 'CALIENTE' and
             analysis.get('interest_score', 0) >= 7):
             return True
-        
+
         # Lead tibio que ya tuvo varias interacciones
-        if (analysis.get('lead_type') == 'TIBIO' and 
+        if (analysis.get('lead_type') == 'TIBIO' and
             conversation_length >= 4 and
             analysis.get('interest_score', 0) >= 6):
             return True
-        
+
+        # MOMENTO DE CIERRE: el usuario se despide/posterga tras una conversación con
+        # algo de interés. Captamos el contacto para hacer seguimiento antes de que se
+        # vaya sin convertir, de forma natural y no invasiva. Umbral bajo a propósito:
+        # alguien que preguntó y se va es justo a quien conviene retener. Solo excluimos
+        # el caso claramente sin interés (FRÍO con score muy bajo) y charlas de 1 turno.
+        if (self._is_exit_intent(message) and
+                conversation_length >= 2 and
+                not (analysis.get('lead_type') == 'FRIO' and analysis.get('interest_score', 0) <= 2)):
+            return True
+
         return False
     
     async def generate_contact_request_with_llm(

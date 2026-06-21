@@ -85,7 +85,31 @@ async def analizar_escalacion(
     )
 
 
-_TOOLS = [analizar_escalacion]
+@function_tool
+async def consultar_info_hotel(
+    ctx: RunContextWrapper[HotelPostventaContext], query: str
+) -> str:
+    """Consulta la base de conocimiento del hotel para responder dudas INFORMATIVAS del
+    huésped durante su estadía: política de cancelación y cambios, horarios de
+    check-in/check-out, servicios incluidos, amenities, desayuno, estacionamiento,
+    mascotas, accesibilidad, cómo llegar. Úsala cuando el huésped PIDE información sobre
+    una política o servicio (aunque sea sobre cancelación o cambios), para informarle la
+    condición antes de ofrecer pasar a un asesor. NO inventes: respondé solo con lo que
+    devuelva esta herramienta."""
+    try:
+        from app.services.rag_service import rag_service
+        context_text = await rag_service.retrieve_context(query)
+        if not context_text or context_text.strip() == "NO_CONTEXT_FOUND":
+            return ("No encontré ese detalle en la información del hotel. Para ese caso "
+                    "puntual, lo mejor es coordinar con un asesor del hotel.")
+        return context_text
+    except Exception as e:  # noqa: BLE001
+        logger.error("consultar_info_hotel (post-venta) falló", error=str(e))
+        return ("No pude acceder a la información en este momento. Un asesor del hotel "
+                "puede ayudarte con ese detalle.")
+
+
+_TOOLS = [analizar_escalacion, consultar_info_hotel]
 
 
 # ---------------------------------------------------------------------------

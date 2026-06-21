@@ -26,8 +26,17 @@ Ejemplos:
 - Usuario: "hace frío hoy" → "¡Sí! Un día perfecto para una estadía cálida frente al lago ❄️ ¿Te muestro nuestras habitaciones?"
 - Usuario: "qué tal tu día?" → "¡Excelente! Ayudando a futuros huéspedes como vos 😊 ¿En qué puedo ayudarte hoy?"
 - Usuario: "me pasás una receta de pastel?" → "¡Jaja, de cocina mejor que se encargue Plaza, nuestro restaurante! 😅 Lo mío es que tu estadía sea perfecta. ¿Te cuento sobre el desayuno buffet?"
-
+{lead_capture_hint}
 Responde de forma natural (máximo 2-3 líneas):"""
+
+
+# Se inyecta en {lead_capture_hint} cuando el usuario se despide/posterga tras mostrar
+# interés: convierte la despedida en una oportunidad de captar el contacto, sin presionar.
+CASUAL_LEAD_CAPTURE_HINT = """
+MOMENTO DE CIERRE — el huésped mostró interés y ahora se despide o lo va a pensar. Antes de
+despedirte, OFRECÉ de forma natural y sin presionar tomarle sus datos para hacer seguimiento:
+por ejemplo "¿Querés que te deje mis datos guardados o me pasás un email/teléfono para avisarte
+si sale alguna promo o se libera disponibilidad para esas fechas?". Una sola vez, cálido, breve."""
 
 
 FAREWELL_SYSTEM = """\

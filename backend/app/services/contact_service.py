@@ -187,9 +187,10 @@ class ContactService:
                     contact.tickets_created = 0
             else:
                 contact.tickets_created = 0
-        except:
+        except Exception as e:
+            logger.warning("No se pudo contar tickets del contacto", error=str(e))
             contact.tickets_created = 0
-        
+
         # Actualizar tipo de contacto (clasificación simple)
         # Cliente: compró al menos 1 vez (purchases_made > 0)
         # Lead: nunca compró (purchases_made == 0)

@@ -165,9 +165,9 @@ class SummaryService:
                     lines.append(f"- {pkg.package_name}: {pkg.destination_country}")
                     lines.append(f"  Fecha: {pkg.departure_date.strftime('%d/%m/%Y') if pkg.departure_date else 'N/A'}")
                 lines.append("")
-        except:
-            pass
-        
+        except Exception as e:
+            logger.warning("No se pudieron agregar paquetes al resumen", error=str(e))
+
         return "\n".join(lines)
     
     def should_regenerate_summary(self, contact: Contact) -> bool:

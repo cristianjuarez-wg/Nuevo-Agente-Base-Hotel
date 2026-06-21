@@ -220,7 +220,62 @@ class AgentService:
         
         return "\n".join(formatted)
     
-    async def _generate_casual_response(self, message: str, history: List[Dict], language: str = "es") -> tuple[str, Dict]:
+    def _build_casual_guest_block(self, db, session_id: str) -> str:
+        """Perfil del huésped conocido para personalizar el saludo casual.
+
+        Resuelve el Contact por el teléfono del session_id de WhatsApp o por el Lead
+        de la sesión, y devuelve el bloque de perfil si hay historial (≥1 reserva o
+        preferencias). Vacío si es un huésped nuevo/desconocido. Nunca rompe el turno.
+        """
+        try:
+            from app.services.contact_service import contact_service
+            from app.prompts.context_blocks import build_guest_profile_block
+            from app.models.contact import Contact
+
+            contact_id = None
+            if session_id.startswith("wa_"):
+                phone = "+" + session_id[3:]
+                c = db.query(Contact).filter(Contact.phone_number == phone).first()
+                contact_id = c.id if c else None
+            if not contact_id:
+                from app.models.lead import Lead
+                lead = db.query(Lead).filter(Lead.session_id == session_id).first()
+                contact_id = lead.contact_id if lead else None
+            if not contact_id:
+                return ""
+
+            profile = contact_service.get_guest_profile(contact_id, db)
+            if not profile or (not profile.get("stays_count") and not profile.get("preferences")):
+                return ""
+            return build_guest_profile_block(profile)
+        except Exception as e:  # noqa: BLE001 — la personalización nunca debe romper el saludo
+            logger.warning("No se pudo armar el guest block casual", error=str(e))
+            return ""
+
+    async def _should_capture_lead_in_casual(self, db, message: str, session_id: str, history) -> bool:
+        """True si en un turno casual (típicamente despedida) conviene captar el contacto.
+
+        Corre el mismo análisis de lead que pre-venta; devuelve la decisión de captar
+        (incluye el "momento de cierre" por despedida). False si el lead ya tiene contacto
+        o si no aplica. Nunca rompe el turno.
+        """
+        try:
+            from app.services.lead_service import lead_service
+
+            lead = lead_service._get_or_create_lead(db, session_id)
+            if lead.is_complete_lead():
+                return False
+            _, should_request = await lead_service.process_message_for_lead(
+                db, message, session_id, history, "", {}
+            )
+            return should_request
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo evaluar captación de lead en casual", error=str(e))
+            return False
+
+    async def _generate_casual_response(self, message: str, history: List[Dict],
+                                        language: str = "es", guest_block: str = "",
+                                        capture_lead: bool = False) -> tuple[str, Dict]:
         """
         Genera respuesta natural para conversación casual
 
@@ -228,6 +283,8 @@ class AgentService:
             message: Mensaje del usuario
             history: Historial de conversación
             language: idioma de respuesta (es | en | pt | fr)
+            guest_block: contexto del huésped conocido (perfil 360°) para personalizar
+                el saludo cuando es un huésped recurrente/alojado. Vacío si es nuevo.
 
         Returns:
             (respuesta amigable, usage) — usage con los tokens consumidos.
@@ -244,11 +301,17 @@ class AgentService:
                 ])
 
             history_section = f"Historial de la conversación:\n{history_context}" if history_context else ""
+            from app.prompts.generation_prompts import CASUAL_LEAD_CAPTURE_HINT
             prompt = CASUAL_RESPONSE_SYSTEM.format(
                 agent_name=profile_manager.get_agent_name(),
                 history_section=history_section,
                 message=message,
+                lead_capture_hint=(CASUAL_LEAD_CAPTURE_HINT if capture_lead else ""),
             )
+            # Si conocemos al huésped (recurrente/alojado), anteponemos su perfil para que
+            # el saludo lo reconozca por su nombre en vez de tratarlo como desconocido.
+            if guest_block:
+                prompt = guest_block + "\n" + prompt
             from app.prompts.context_blocks import build_language_block
             lang_block = build_language_block(language)
             if lang_block:
@@ -386,7 +449,15 @@ class AgentService:
                                message=message[:50])
                     # El triage solo rutea; la respuesta casual la genera SIEMPRE este
                     # método (única fuente con reglas de alcance: no recetas/tareas, etc.).
-                    response_text, casual_usage = await self._generate_casual_response(message, history, language)
+                    # Si reconocemos al huésped (recurrente/alojado), personalizamos el saludo.
+                    guest_block = self._build_casual_guest_block(db, session_id)
+                    # MOMENTO DE CIERRE: si el usuario se despide tras mostrar interés, el
+                    # lead service decide captar el contacto. Una despedida se rutea a casual,
+                    # así que la oferta de dejar datos se inyecta también acá.
+                    capture_lead = await self._should_capture_lead_in_casual(db, message, session_id, history)
+                    response_text, casual_usage = await self._generate_casual_response(
+                        message, history, language, guest_block, capture_lead
+                    )
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})
                     self._update_session_metadata(session_id)
