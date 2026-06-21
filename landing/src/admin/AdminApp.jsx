@@ -11,6 +11,7 @@ import PassengersView from './views/PassengersView'
 import AnalyticsView from './views/AnalyticsView'
 import TicketsView from './views/TicketsView'
 import AgentSection from './views/agente/AgentSection'
+import { Toaster } from './toast'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -48,6 +49,7 @@ export default function AdminApp() {
 
   return (
     <div className="flex min-h-dvh bg-mist text-ink">
+      <Toaster />
       {/* Sidebar desktop */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-hilton-100 bg-white lg:flex">
         <SidebarContent tab={tab} go={go} />

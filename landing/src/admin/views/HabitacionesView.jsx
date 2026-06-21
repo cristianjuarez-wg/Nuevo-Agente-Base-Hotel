@@ -3,6 +3,7 @@ import { Hotel, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Save, Loader2,
 import { listRoomsAdmin, saveRoom, patchRoomStatus, deleteRoom } from '../../services/api'
 import { PageHeader, Badge, Loading, EmptyState, formatUSD, formatARS } from '../ui'
 import ImageInput from '../components/ImageInput'
+import { toast } from '../toast'
 
 export default function HabitacionesView() {
   const [rooms, setRooms] = useState([])
@@ -26,8 +27,13 @@ export default function HabitacionesView() {
 
   const toggleStatus = async (room) => {
     const next = room.status === 'active' ? 'inactive' : 'active'
-    await patchRoomStatus(room.id, next)
-    load(true)
+    try {
+      await patchRoomStatus(room.id, next)
+      load(true)
+      toast.success(next === 'active' ? 'Habitación activada' : 'Habitación desactivada')
+    } catch {
+      toast.error('No se pudo cambiar el estado')
+    }
   }
 
   const handleDelete = async (room) => {
@@ -36,9 +42,11 @@ export default function HabitacionesView() {
       await deleteRoom(room.id)
       setConfirmDelete(null)
       load(true)
+      toast.success('Habitación eliminada')
     } catch (e) {
       const msg = e?.response?.data?.message || e?.response?.data?.detail || 'No se pudo eliminar.'
       setActionError(msg)
+      toast.error(msg)
     }
   }
 
@@ -197,9 +205,11 @@ function RoomModal({ room, rate, onClose, onSaved }) {
         amenities: amenitiesText.split(',').map((a) => a.trim()).filter(Boolean),
         status,
       }, room.id)
+      toast.success(isNew ? 'Habitación creada' : 'Habitación actualizada')
       onSaved()
     } catch {
       setError('No se pudo guardar. Intentá de nuevo.')
+      toast.error('No se pudo guardar la habitación')
       setSaving(false)
     }
   }

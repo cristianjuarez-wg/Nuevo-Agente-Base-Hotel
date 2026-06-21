@@ -7,6 +7,7 @@ import { listPassengers, getGuestProfile, updateGuestPreferences } from '../../s
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD,
 } from '../ui'
+import { toast } from '../toast'
 
 function flatten(c) {
   const m = c.metrics || {}
@@ -97,6 +98,9 @@ function DetailDrawer({ contactId, onClose }) {
       await updateGuestPreferences(contactId, preferences)
       const fresh = await getGuestProfile(contactId)
       setProfile(fresh)
+      toast.success('Preferencias guardadas')
+    } catch {
+      toast.error('No se pudieron guardar las preferencias')
     } finally {
       setSaving(false)
     }

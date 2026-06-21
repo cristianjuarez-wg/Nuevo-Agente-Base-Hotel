@@ -4,6 +4,7 @@ import { listLeads, deleteLead } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate,
 } from '../ui'
+import { toast } from '../toast'
 
 function TypeBadge({ type }) {
   const t = (type || '').toUpperCase()
@@ -68,8 +69,9 @@ export default function LeadsView() {
     try {
       await deleteLead(r.id)
       setRows((prev) => prev.filter((x) => x.id !== r.id))
+      toast.success(`Lead de ${r.name} eliminado`)
     } catch {
-      window.alert('No se pudo eliminar el lead. Intentá de nuevo.')
+      toast.error('No se pudo eliminar el lead. Intentá de nuevo.')
     } finally {
       setDeletingId(null)
     }

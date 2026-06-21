@@ -62,6 +62,28 @@ def _units_booked(db: Session, room_id: int, check_in: date, check_out: date) ->
     return overlapping
 
 
+def _lock_overlapping_bookings(db: Session, room_id: int, check_in: date, check_out: date) -> None:
+    """Toma un row-lock (FOR UPDATE) sobre las reservas solapadas del tipo, si el motor
+    lo soporta (PostgreSQL). Serializa la validación+creación concurrente para evitar
+    doble-booking. En SQLite no hace nada (no soporta FOR UPDATE y ya serializa writes).
+    """
+    try:
+        if db.bind and db.bind.dialect.name == "postgresql":
+            (
+                db.query(Booking.id)
+                .filter(
+                    Booking.room_id == room_id,
+                    Booking.check_in < check_out,
+                    Booking.check_out > check_in,
+                    ~Booking.status.in_(_NON_BLOCKING_STATUSES),
+                )
+                .with_for_update()
+                .all()
+            )
+    except Exception as e:  # noqa: BLE001 — el lock es defensivo; un fallo no debe romper la reserva
+        logger.warning("No se pudo tomar el lock de reservas (continuando)", error=str(e))
+
+
 def _free_units(db: Session, room: Room, check_in: date, check_out: date) -> List[RoomUnit]:
     """Unidades FÍSICAS de un tipo libres en el rango (status available + sin solape).
 
@@ -213,6 +235,14 @@ def create_booking(
             "error": f"La habitación '{room.room_type}' admite hasta {room.capacity} "
             f"huéspedes (se pidieron {occupancy}, sin contar bebés en cuna)."
         }
+
+    # LOCK PESIMISTA (anti doble-booking): serializa las reservas concurrentes del mismo
+    # tipo de habitación. En PostgreSQL (Render) tomamos un row-lock sobre las reservas
+    # solapadas del tipo, de modo que dos requests simultáneos no vean ambos la última
+    # unidad libre. En SQLite (local) no hay FOR UPDATE, pero SQLite ya serializa las
+    # escrituras, así que el riesgo no aplica. La validación + creación van en la misma
+    # transacción (sin commit intermedio hasta crear el Booking).
+    _lock_overlapping_bookings(db, room.id, check_in, check_out)
 
     # Validación determinística de disponibilidad + auto-asignación de unidad física.
     # Si el tipo tiene unidades sembradas, tomamos la primera libre y la asignamos.

@@ -53,6 +53,7 @@ class HotelPostventaContext:
         self.message = message
         self.history = history
         self.escalation_analysis = None  # lo escribe analizar_escalacion
+        self.service_requested = False   # lo marca solicitar_servicio (no re-tocar el ticket)
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +110,46 @@ async def consultar_info_hotel(
                 "puede ayudarte con ese detalle.")
 
 
-_TOOLS = [analizar_escalacion, consultar_info_hotel]
+@function_tool
+async def solicitar_servicio(
+    ctx: RunContextWrapper[HotelPostventaContext],
+    pedido: str,
+    tipo: str = "general",
+    urgencia: str = "media",
+) -> str:
+    """Registra un PEDIDO DE SERVICIO del huésped alojado para que el equipo del hotel lo
+    atienda (housekeeping, mantenimiento, recepción). Úsala cuando el huésped NECESITA una
+    acción concreta durante su estadía: toallas/amenities, limpieza, algo que no funciona
+    (aire, TV, WiFi, luz), una llave nueva, late checkout, room service, una almohada extra,
+    etc. NO la uses para dudas informativas (eso es consultar_info_hotel) ni para
+    cancelar/cambiar la reserva (eso escala).
+
+    Args:
+        pedido: descripción concreta de lo que necesita el huésped (en sus palabras).
+        tipo: "housekeeping" (toallas/limpieza/amenities), "mantenimiento" (algo roto),
+              "recepcion" (llave, late checkout, info), "room_service" o "general".
+        urgencia: "baja" | "media" | "alta" (alta si afecta el confort ahora, ej. AC roto).
+    """
+    try:
+        context = ctx.context
+        status = context.service.register_service_request(
+            ticket=context.ticket, pedido=pedido, tipo=tipo, urgencia=urgencia,
+        )
+        context.service_requested = True  # el ticket queda 'open' para el staff; no re-tocarlo
+        return (
+            f"PEDIDO REGISTRADO para el equipo del hotel (tipo: {tipo}, urgencia: {urgencia}). "
+            "Confirmá al huésped con calidez que el equipo ya fue avisado y se ocupará a la "
+            "brevedad. Si es algo urgente que afecta su confort (ej. aire/calefacción), "
+            "mostrá empatía extra y ofrecé avisar a recepción de inmediato. No prometas un "
+            "horario exacto."
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.error("solicitar_servicio (post-venta) falló", error=str(e))
+        return ("No pude registrar el pedido automáticamente. Pedile disculpas al huésped y "
+                "ofrecele contactar a recepción al +54 294-474-6200.")
+
+
+_TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio]
 
 
 # ---------------------------------------------------------------------------
@@ -229,14 +269,18 @@ class HotelPostSaleSDKOrchestrator:
             response_text = "Disculpá, no pude procesar tu consulta. ¿Podés reformularla?"
 
         # ACCIÓN DETERMINÍSTICA SOBRE EL TICKET — la decide el código, no el LLM.
-        # Si el run falló o el análisis pidió escalar, escalamos por seguridad.
+        # Si se registró un pedido de servicio, el ticket ya quedó 'open' para el staff:
+        # no lo re-tocamos. Si no, aplicamos resolver/escalar según el análisis.
         analysis = run_ctx.escalation_analysis
-        requires_escalation = (
-            run_failed or bool(analysis and analysis.get("requires_escalation"))
-        )
-        status = service.apply_ticket_action(
-            ticket, requires_escalation, response_text, message, analysis
-        )
+        if run_ctx.service_requested:
+            status = ticket.status  # 'open' (pedido de servicio para el staff)
+        else:
+            requires_escalation = (
+                run_failed or bool(analysis and analysis.get("requires_escalation"))
+            )
+            status = service.apply_ticket_action(
+                ticket, requires_escalation, response_text, message, analysis
+            )
 
         duration = time.time() - start
         logger.info("Hotel post-venta SDK turn completed",

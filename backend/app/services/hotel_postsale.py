@@ -160,10 +160,13 @@ class HotelPostSaleService:
             "horarios de check-in/out, servicios incluidos, amenities, cómo llegar, qué "
             "incluye la reserva. En estos casos el concierge informa la política/condición "
             "y, si el huésped luego quiere EJECUTARLA, recién ahí ofrece pasar a un asesor.\n"
-            "ESCALAR (requires_escalation=true) si el huésped PIDE EJECUTAR una acción que "
-            "modifica la reserva o compromete dinero: 'cancelá mi reserva', 'cambiame la "
-            "fecha al 15', pedido de reembolso, un reclamo/queja concreto, un problema real "
-            "en la estadía (algo roto, falta algo), o un cobro incorrecto.\n\n"
+            "ESCALAR (requires_escalation=true) SOLO si el huésped PIDE EJECUTAR una acción "
+            "que modifica la reserva o compromete dinero: 'cancelá mi reserva', 'cambiame la "
+            "fecha al 15', pedido de reembolso, un reclamo formal grave, o un cobro incorrecto.\n"
+            "NO ESCALAR (requires_escalation=false) los PEDIDOS DE SERVICIO de la estadía "
+            "(toallas, limpieza, algo que no funciona, llave, late checkout, room service): "
+            "esos se registran como pedido para el staff con otra herramienta, no se escalan. "
+            "Categoría 'service' para esos casos.\n\n"
             f"CONSULTA DEL HUÉSPED: \"{consulta}\"\n\n"
             "Respondé SOLO un JSON: "
             '{"requires_escalation": bool, "urgency_level": "baja|media|alta", '
@@ -225,6 +228,28 @@ class HotelPostSaleService:
             ticket.auto_resolved_by_agent = response_text[:2000]
 
         self.db.commit()
+        return ticket.status
+
+    def register_service_request(
+        self, ticket: HotelTicket, pedido: str, tipo: str = "general", urgencia: str = "media",
+    ) -> str:
+        """Registra un pedido de servicio del huésped como ticket para el staff.
+
+        A diferencia de una escalación genérica, deja el ticket con categoría
+        'service_request', el tipo (housekeeping/mantenimiento/recepcion/...) y la prioridad,
+        en estado 'open' para que el equipo del hotel lo atienda. Es lo que convierte a Aura
+        en un concierge real (service routing) en vez de "un asesor te contactará".
+        """
+        priority = {"baja": "low", "media": "medium", "alta": "high"}.get(urgencia, "medium")
+        ticket.category = "service_request"
+        ticket.priority = priority
+        ticket.subject = f"Pedido de servicio ({tipo})"
+        ticket.description = pedido[:1000]
+        ticket.status = "open"
+        # updated_at se refresca solo (onupdate=datetime.now en el modelo).
+        self.db.commit()
+        logger.info("Service request registered",
+                    ticket_number=ticket.ticket_number, tipo=tipo, priority=priority)
         return ticket.status
 
     # ------------------------------------------------------------------
