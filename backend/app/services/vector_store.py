@@ -1,6 +1,6 @@
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional  # noqa: F401
 from app.config import settings
 from app.services.embeddings import get_embedding_service
 from app.core.logging_config import get_logger
@@ -10,28 +10,35 @@ import time
 logger = get_logger(__name__)
 
 class VectorStoreService:
-    def __init__(self):
+    def __init__(self, collection_name: Optional[str] = None):
+        """Vector store sobre ChromaDB.
+
+        `collection_name` permite COLECCIONES SEPARADAS en el mismo Chroma: por defecto la
+        de huéspedes (Aura); el agente de gerencia usa otra (conocimiento de consultoría),
+        de modo que un huésped jamás recibe contenido de los libros de gestión.
+        """
+        self.collection_name = collection_name or settings.CHROMA_COLLECTION_NAME
         try:
             # Crear directorio si no existe
             os.makedirs(settings.CHROMA_PERSIST_DIRECTORY, exist_ok=True)
-            
+
             # Inicializar cliente ChromaDB
             self.client = chromadb.PersistentClient(
                 path=settings.CHROMA_PERSIST_DIRECTORY,
                 settings=ChromaSettings(anonymized_telemetry=False)
             )
-            
+
             # Crear o obtener colección
             self.collection = self.client.get_or_create_collection(
-                name=settings.CHROMA_COLLECTION_NAME,
+                name=self.collection_name,
                 metadata={"hnsw:space": "cosine"}
             )
-            
-            logger.info("Vector store initialized", 
+
+            logger.info("Vector store initialized",
                        persist_directory=settings.CHROMA_PERSIST_DIRECTORY,
-                       collection_name=settings.CHROMA_COLLECTION_NAME,
+                       collection_name=self.collection_name,
                        existing_documents=self.collection.count())
-            
+
         except Exception as e:
             logger.error("Error initializing vector store", error=str(e))
             raise
@@ -313,7 +320,7 @@ class VectorStoreService:
                 "total_documents": count,
                 "unique_sources": len(sources),
                 "sources": sources,
-                "collection_name": settings.CHROMA_COLLECTION_NAME,
+                "collection_name": self.collection_name,
                 "persist_directory": settings.CHROMA_PERSIST_DIRECTORY
             }
             
@@ -374,12 +381,24 @@ class VectorStoreService:
         except Exception as e:
             return False, f"Vector store error: {str(e)}"
 
-# Instancia global del vector store
+# Instancia global del vector store (conocimiento de HUÉSPEDES / Aura)
 vector_store = None
 
 def get_vector_store() -> VectorStoreService:
-    """Obtiene la instancia del vector store"""
+    """Obtiene la instancia del vector store de huéspedes (colección por defecto)."""
     global vector_store
     if vector_store is None:
         vector_store = VectorStoreService()
     return vector_store
+
+
+# Colección SEPARADA para el conocimiento de gerencia (libros de gestión, revenue, etc.).
+MANAGEMENT_COLLECTION = "management_knowledge"
+_management_vector_store = None
+
+def get_management_vector_store() -> VectorStoreService:
+    """Vector store del conocimiento de CONSULTORÍA (agente de gerencia), aislado del de Aura."""
+    global _management_vector_store
+    if _management_vector_store is None:
+        _management_vector_store = VectorStoreService(collection_name=MANAGEMENT_COLLECTION)
+    return _management_vector_store

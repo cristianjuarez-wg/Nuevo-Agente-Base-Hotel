@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel, Sparkles,
-  Users, BarChart3, Briefcase,
+  Users, BarChart3, Briefcase, GraduationCap,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -10,6 +10,7 @@ import LeadsView from './views/LeadsView'
 import PassengersView from './views/PassengersView'
 import TicketsView from './views/TicketsView'
 import EquipoView from './views/EquipoView'
+import AsesoriaView from './views/AsesoriaView'
 import { Toaster } from './toast'
 import { Loading } from './ui'
 
@@ -27,6 +28,7 @@ const NAV = [
   { id: 'leads', label: 'Leads', icon: UserPlus },
   { id: 'tickets', label: 'Soporte', icon: LifeBuoy },
   { id: 'equipo', label: 'Equipo', icon: Briefcase },
+  { id: 'asesoria', label: 'Asesoría', icon: GraduationCap },
   { id: 'agente', label: 'Agente', icon: Sparkles },
 ]
 
@@ -98,6 +100,7 @@ export default function AdminApp() {
             {tab === 'leads' && <LeadsView />}
             {tab === 'tickets' && <TicketsView />}
             {tab === 'equipo' && <EquipoView />}
+            {tab === 'asesoria' && <AsesoriaView />}
             {tab === 'agente' && <AgentSection />}
           </Suspense>
         </main>

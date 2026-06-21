@@ -391,6 +391,41 @@ export async function deleteStaff(id) {
   return data
 }
 
+// ── Conocimiento del Asesor de Gerencia (RAG separado del de Aura) ───────────
+export async function listManagementDocs() {
+  const { data } = await client.get('/api/management-knowledge/documents')
+  return data.documents ?? []
+}
+
+export async function uploadManagementDoc(file) {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await client.post('/api/management-knowledge/documents/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000,
+  })
+  return data
+}
+
+export async function uploadManagementText({ title, text }) {
+  const { data } = await client.post('/api/management-knowledge/documents/text', { title, text })
+  return data
+}
+
+export async function setManagementDocStatus(filename, status) {
+  const { data } = await client.patch(
+    `/api/management-knowledge/documents/${encodeURIComponent(filename)}/status`, { status }
+  )
+  return data
+}
+
+export async function deleteManagementDoc(filename) {
+  const { data } = await client.delete(
+    `/api/management-knowledge/documents/${encodeURIComponent(filename)}`
+  )
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 
