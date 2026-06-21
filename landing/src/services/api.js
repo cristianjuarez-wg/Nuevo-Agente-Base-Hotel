@@ -426,6 +426,11 @@ export async function deleteManagementDoc(filename) {
   return data
 }
 
+export async function resetAdvisorMemory() {
+  const { data } = await client.post('/api/management-knowledge/reset-advisor-memory')
+  return data
+}
+
 // ── Datos de demostración (poblar / limpiar desde el backoffice) ─────────────
 export async function getDemoStatus() {
   const { data } = await client.get('/api/demo/status')
@@ -439,6 +444,77 @@ export async function populateDemo() {
 
 export async function clearDemo() {
   const { data } = await client.post('/api/demo/clear')
+  return data
+}
+
+// ── Restaurante (carta, pedidos, folio, stats) ───────────────────────────────
+export async function listMenuPublic() {
+  const { data } = await client.get('/api/restaurant/menu/public')
+  return data.menu ?? []
+}
+
+export async function listMenuAdmin() {
+  const { data } = await client.get('/api/restaurant/menu')
+  return data   // { menu: [...], exchange_rate: {...} }
+}
+
+export async function saveMenuItem(payload, id) {
+  if (id) {
+    const { data } = await client.put(`/api/restaurant/menu/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/restaurant/menu', payload)
+  return data
+}
+
+export async function patchMenuStatus(id, status) {
+  const { data } = await client.patch(`/api/restaurant/menu/${id}/status`, { status })
+  return data
+}
+
+export async function deleteMenuItem(id) {
+  const { data } = await client.delete(`/api/restaurant/menu/${id}`)
+  return data
+}
+
+export async function createOrder(payload) {
+  // payload: { items:[{menu_item_id,qty,notes}], session_id, fulfillment, payment_mode, ... }
+  const { data } = await client.post('/api/restaurant/orders', payload)
+  return data
+}
+
+export async function getOrder(code) {
+  const { data } = await client.get(`/api/restaurant/orders/${code}`)
+  return data
+}
+
+export async function validateBooking(code) {
+  const { data } = await client.get(`/api/restaurant/validate-booking/${encodeURIComponent(code)}`)
+  return data   // { valid, in_house, guest_name, room_number, booking_code } | { valid:false, reason }
+}
+
+export async function listOrders() {
+  const { data } = await client.get('/api/restaurant/orders')
+  return data.orders ?? []
+}
+
+export async function patchOrderStatus(code, status) {
+  const { data } = await client.patch(`/api/restaurant/orders/${code}/status`, { status })
+  return data
+}
+
+export async function getFolio(bookingCode) {
+  const { data } = await client.get(`/api/restaurant/folio/${bookingCode}`)
+  return data
+}
+
+export async function settleFolio(bookingCode) {
+  const { data } = await client.post(`/api/restaurant/folio/${bookingCode}/settle`)
+  return data
+}
+
+export async function getRestaurantStats() {
+  const { data } = await client.get('/api/restaurant/stats')
   return data
 }
 

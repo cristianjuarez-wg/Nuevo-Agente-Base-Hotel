@@ -19,6 +19,9 @@ from sqlalchemy.orm import Session
 
 from app.services.role_service import resolve_role
 from app.core.logging_config import get_logger
+# Import a nivel módulo para que la tabla action_plans se cree al arrancar (create_all
+# vive en el modelo). El asesor la usa para los planes de acción de largo plazo.
+from app.models import action_plan as _action_plan  # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -57,15 +60,56 @@ async def route_whatsapp(db: Session, phone: str, message: str) -> Dict:
     return await agent_service.chat(db, message, session_id)
 
 
+# Cuántos mensajes del historial persistido rehidratar para el asesor (relación de
+# largo plazo: SIN ventana de tiempo, a diferencia de Aura). El orquestador igual acota
+# cuántos pasa al modelo (MAX_HISTORY_MESSAGES).
+_OWNER_REHYDRATE_LIMIT = 30
+
+
+def _rehydrate_owner_history(db: Session, session_id: str) -> List[Dict]:
+    """Reconstruye la memoria del asesor desde la DB (context_type='management'), SIN
+    filtro de tiempo: el vínculo con el CEO es de largo plazo. Últimos N en orden cronológico."""
+    if db is None:
+        return []
+    try:
+        from app.models.conversation_message import ConversationMessage
+        rows = (
+            db.query(ConversationMessage)
+            .filter(
+                ConversationMessage.session_id == session_id,
+                ConversationMessage.context_type == "management",
+            )
+            .order_by(ConversationMessage.created_at.desc(), ConversationMessage.id.desc())
+            .limit(_OWNER_REHYDRATE_LIMIT)
+            .all()
+        )
+        rows.reverse()
+        return [{"role": m.role, "content": m.content} for m in rows]
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo rehidratar memoria del asesor", session_id=session_id, error=str(e))
+        return []
+
+
 async def _route_owner(db: Session, phone: str, message: str) -> Dict:
-    """Despacha al consultor de gerencia con memoria de sesión propia."""
+    """Despacha al consultor de gerencia con memoria PERSISTENTE de largo plazo.
+
+    El historial se guarda en conversation_messages (context_type='management') y se
+    rehidrata desde la DB en cache-miss (reinicios/deploys), sin ventana de expiración.
+    """
     from app.services.owner_orchestrator import owner_orchestrator
+    from app.services.agent_service import agent_service
     from app.models.staff import StaffMember
     from app.utils.phone_normalizer import normalize_phone
 
     norm = normalize_phone(phone) or phone
     session_id = "owner_" + norm.lstrip("+")
-    history = _role_histories.setdefault(session_id, [])
+
+    # Memoria en RAM o, si se perdió (reinicio), rehidratada desde la DB (largo plazo).
+    if session_id in _role_histories:
+        history = _role_histories[session_id]
+    else:
+        history = _rehydrate_owner_history(db, session_id)
+        _role_histories[session_id] = history
 
     # Nombre del dueño para personalizar el saludo del consultor.
     owner_name = ""
@@ -97,5 +141,25 @@ async def _route_owner(db: Session, phone: str, message: str) -> Dict:
     history.append({"role": "assistant", "content": assistant_content})
     if len(history) > 40:
         _role_histories[session_id] = history[-40:]
+
+    # Persistir en la DB (memoria de largo plazo del asesor). Usamos una sesión NUEVA: la
+    # `db` del turno ya pasó por el orquestador (OpenAI Agents SDK) y puede quedar en un
+    # estado transaccional que impida el commit. Best-effort: un fallo no rompe la respuesta.
+    try:
+        from app.models.database import SessionLocal
+        mem_db = SessionLocal()
+        try:
+            agent_service._save_message_to_db(
+                db=mem_db, session_id=session_id, role="user", content=message,
+                context_type="management",
+            )
+            agent_service._save_message_to_db(
+                db=mem_db, session_id=session_id, role="assistant", content=assistant_content,
+                context_type="management", model_used=(result.get("usage") or {}).get("model"),
+            )
+        finally:
+            mem_db.close()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo persistir la memoria del asesor", session_id=session_id, error=str(e))
 
     return result

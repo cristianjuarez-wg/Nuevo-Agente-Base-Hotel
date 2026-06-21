@@ -149,3 +149,39 @@ async def delete_document(filename: str):
     vs = get_management_vector_store()
     result = vs.delete_by_source(filename)
     return {"success": True, "deleted": result.get("deleted", 0)}
+
+
+@router.post("/reset-advisor-memory")
+async def reset_advisor_memory(db: Session = Depends(get_db)):
+    """Resetea la MEMORIA del asesor con el CEO: borra el historial de conversación
+    (context_type='management') y los planes de acción, y limpia la memoria en RAM.
+
+    No toca los documentos de entrenamiento (RAG) — eso se gestiona aparte. Pensado para
+    arrancar la relación de cero (demos, o si la charla se ensució). No se puede deshacer.
+    """
+    from app.models.conversation import Conversation
+    from app.models.conversation_message import ConversationMessage
+    from app.models.action_plan import ActionPlan
+
+    # Mensajes y conversaciones del asesor (sesiones owner_, context management).
+    msgs = db.query(ConversationMessage).filter(
+        ConversationMessage.context_type == "management"
+    ).delete(synchronize_session=False)
+    convs = db.query(Conversation).filter(
+        Conversation.session_id.like("owner_%")
+    ).delete(synchronize_session=False)
+    plans = db.query(ActionPlan).delete(synchronize_session=False)
+    db.commit()
+
+    # Limpiar memoria en RAM (historiales y último gráfico por sesión owner).
+    try:
+        from app.services import agent_router
+        for d in (agent_router._role_histories, agent_router._last_owner_chart):
+            for k in [k for k in d if k.startswith("owner_")]:
+                d.pop(k, None)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo limpiar la memoria en RAM del asesor", error=str(e))
+
+    logger.info("Advisor memory reset", messages=msgs, conversations=convs, plans=plans)
+    return {"success": True, "messages_cleared": msgs, "conversations_cleared": convs,
+            "plans_cleared": plans}

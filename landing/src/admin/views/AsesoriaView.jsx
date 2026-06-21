@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { GraduationCap, RefreshCw, Upload, Trash2, FileText, Loader2 } from 'lucide-react'
+import { GraduationCap, RefreshCw, Upload, Trash2, FileText, Loader2, BrainCircuit } from 'lucide-react'
 import {
   listManagementDocs, uploadManagementDoc, setManagementDocStatus, deleteManagementDoc,
+  resetAdvisorMemory,
 } from '../../services/api'
 import { PageHeader, ResponsiveTable, Badge, Loading, EmptyState } from '../ui'
 import { toast } from '../toast'
@@ -13,6 +14,8 @@ export default function AsesoriaView() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [busy, setBusy] = useState(null)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const fileInput = useRef(null)
 
   const load = () => {
@@ -69,6 +72,19 @@ export default function AsesoriaView() {
       toast.error('No se pudo eliminar')
     } finally {
       setBusy(null)
+    }
+  }
+
+  const doReset = async () => {
+    setResetting(true)
+    try {
+      const r = await resetAdvisorMemory()
+      toast.success(`Memoria reiniciada (${r.messages_cleared || 0} mensajes, ${r.plans_cleared || 0} planes)`)
+      setConfirmReset(false)
+    } catch {
+      toast.error('No se pudo reiniciar la memoria del asesor')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -136,6 +152,51 @@ export default function AsesoriaView() {
                     desc="Subí un PDF o un Markdown (.md) — ej. un libro de gestión hotelera — para que el consultor pueda apoyarse en él." />
       ) : (
         <ResponsiveTable columns={columns} rows={rows.map((r) => ({ ...r, _key: r.filename }))} renderCard={renderCard} />
+      )}
+
+      {/* Memoria del asesor: el vínculo de largo plazo con el CEO (historial + planes). */}
+      <div className="mt-8 rounded-2xl border border-hilton-100 bg-white p-5 shadow-card">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+              <BrainCircuit size={18} />
+            </div>
+            <div>
+              <p className="font-serif text-base font-700 text-ink">Memoria del asesor</p>
+              <p className="mt-0.5 max-w-xl text-sm text-slatey">
+                El asesor recuerda toda la relación con el dueño/CEO (conversaciones y planes de
+                acción acordados) para darle continuidad. Reiniciar la memoria arranca el vínculo
+                de cero — no borra los documentos de entrenamiento de arriba.
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setConfirmReset(true)}
+                  className="rounded-xl border border-red-200 px-4 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50">
+            Reiniciar memoria
+          </button>
+        </div>
+      </div>
+
+      {confirmReset && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => !resetting && setConfirmReset(false)} />
+          <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
+            <h3 className="font-serif text-lg font-700 text-ink">Reiniciar la memoria del asesor</h3>
+            <p className="mt-2 text-sm text-slatey">
+              Esto borra <strong>toda la conversación y los planes</strong> que el asesor recuerda
+              del dueño/CEO. No afecta los documentos de entrenamiento. <strong>No se puede deshacer.</strong>
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setConfirmReset(false)} disabled={resetting}
+                      className="btn-secondary px-4 py-2 text-sm disabled:opacity-60">Cancelar</button>
+              <button onClick={doReset} disabled={resetting}
+                      className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60">
+                {resetting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                Reiniciar memoria
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

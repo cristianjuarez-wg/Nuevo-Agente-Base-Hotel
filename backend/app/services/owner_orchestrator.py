@@ -352,6 +352,79 @@ async def consultar_soporte(ctx: RunContextWrapper[OwnerContext]) -> str:
 
 
 @function_tool
+async def registrar_plan(
+    ctx: RunContextWrapper[OwnerContext], titulo: str, descripcion: str = "", metrica: str = "",
+) -> str:
+    """Registra un PLAN DE ACCIÓN acordado con el CEO (queda guardado para hacerle seguimiento
+    en charlas futuras). Úsala cuando acuerden una acción concreta, ej. "vamos a empujar
+    tarifas last-minute para subir la ocupación de mayo". `metrica` = qué medir para evaluarlo
+    (ej. "ocupación mayo"). Confirmá al CEO que lo anotaste y que se lo vas a recordar."""
+    from app.models.action_plan import ActionPlan
+    db = ctx.context.db
+    session = ctx.context.session_id or ""
+    plan = ActionPlan(
+        owner_session=session, title=titulo.strip(),
+        description=(descripcion or "").strip() or None,
+        metric=(metrica or "").strip() or None, status="active",
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return f"Plan registrado (#{plan.id}): «{plan.title}». Te voy a hacer el seguimiento."
+
+
+@function_tool
+async def consultar_planes(ctx: RunContextWrapper[OwnerContext]) -> str:
+    """Lista los PLANES DE ACCIÓN activos acordados con el CEO, con su antigüedad. Úsala al
+    iniciar un tema estratégico para RETOMAR lo pendiente ("la última vez quedamos en X,
+    ¿cómo viene?"). Si no hay planes activos, te lo dice."""
+    from app.models.action_plan import ActionPlan
+    from app.utils.timezone_utils import now_argentina
+    db = ctx.context.db
+    session = ctx.context.session_id or ""
+    plans = (
+        db.query(ActionPlan)
+        .filter(ActionPlan.owner_session == session, ActionPlan.status == "active")
+        .order_by(ActionPlan.created_at.asc())
+        .all()
+    )
+    if not plans:
+        return "No hay planes de acción activos registrados con el CEO."
+    hoy = now_argentina().date()
+    lines = []
+    for p in plans:
+        dias = (hoy - p.created_at.date()).days if p.created_at else 0
+        metric = f" · medir: {p.metric}" if p.metric else ""
+        lines.append(f"#{p.id} «{p.title}» (hace {dias} día/s{metric})")
+    return "Planes activos:\n" + "\n".join(lines)
+
+
+@function_tool
+async def actualizar_plan(
+    ctx: RunContextWrapper[OwnerContext], plan_id: int, estado: str = "", nota: str = "",
+) -> str:
+    """Actualiza un PLAN DE ACCIÓN: marcalo como cumplido/descartado o agregale seguimiento.
+    `estado` = "done" (cumplido), "dropped" (descartado) o vacío (solo registrar avance).
+    `nota` = avance o resultado. Úsala cuando haya novedades sobre un plan."""
+    from app.models.action_plan import ActionPlan
+    from app.utils.timezone_utils import now_argentina
+    db = ctx.context.db
+    plan = db.query(ActionPlan).filter(
+        ActionPlan.id == plan_id, ActionPlan.owner_session == (ctx.context.session_id or "")
+    ).first()
+    if not plan:
+        return f"No encontré el plan #{plan_id}."
+    if estado in ("done", "dropped"):
+        plan.status = estado
+    if nota:
+        plan.description = ((plan.description or "") + f"\n[{now_argentina().date()}] {nota.strip()}").strip()
+    plan.last_reviewed_at = now_argentina().replace(tzinfo=None)
+    db.commit()
+    estado_txt = {"done": "cumplido", "dropped": "descartado"}.get(plan.status, "en curso")
+    return f"Plan #{plan.id} actualizado ({estado_txt})."
+
+
+@function_tool
 async def consultar_conocimiento(ctx: RunContextWrapper[OwnerContext], consulta: str) -> str:
     """CONSULTÁ SIEMPRE esta tool ANTES de dar cualquier recomendación de gestión, estrategia,
     finanzas o revenue management. Es tu material experto: los libros/documentos que el dueño
@@ -402,6 +475,8 @@ _TOOLS = [
     consultar_embudo, consultar_soporte, consultar_equipo,
     # Conocimiento de consultoría (RAG separado)
     consultar_conocimiento,
+    # Planes de acción (socio de largo plazo con seguimiento)
+    registrar_plan, consultar_planes, actualizar_plan,
 ]
 
 

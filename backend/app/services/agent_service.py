@@ -177,7 +177,8 @@ class AgentService:
             
             if not conversation:
                 # Canal derivado del session_id (mismo criterio que Lead.channel).
-                channel = "whatsapp" if session_id.startswith("wa_") else "web"
+                # `owner_` = asesor de gerencia por WhatsApp (context_type "management").
+                channel = "whatsapp" if (session_id.startswith("wa_") or session_id.startswith("owner_")) else "web"
                 conversation = Conversation(
                     session_id=session_id,
                     context_type=context_type,
