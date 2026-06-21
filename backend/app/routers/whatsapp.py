@@ -107,37 +107,49 @@ async def _process_and_reply(from_field: str, body: str, profile_name: str) -> N
     session_id = "wa_" + phone.lstrip("+")
     db = SessionLocal()
     try:
-        # Vincular/crear el Contact por teléfono (Visión 360°).
-        try:
-            _contact_service.get_or_create_contact(phone=phone, name=profile_name or None, db=db)
-        except Exception as e:  # noqa: BLE001 — no bloquear la respuesta por esto
-            logger.warning("WhatsApp: no se pudo crear/vincular Contact", error=str(e))
+        # Resolver el ROL del remitente (huésped / staff / dueño). Define qué agente atiende.
+        from app.services.role_service import resolve_role
+        role = resolve_role(phone, db)
 
-        # Pre-cargar el teléfono de WhatsApp en el Lead: ya conocemos el número, así el
-        # agente no necesita pedirlo (ver build_whatsapp_contact_block en el orquestador).
-        try:
-            from app.services.lead_service import lead_service
-            lead = lead_service._get_or_create_lead(db, session_id)
-            if not lead.phone:
-                lead.phone = phone
-                db.commit()
-        except Exception as e:  # noqa: BLE001
-            logger.warning("WhatsApp: no se pudo pre-cargar teléfono en Lead", error=str(e))
+        # El preprocesamiento de huésped (crear Contact, pre-cargar Lead) SOLO aplica a
+        # huéspedes — el dueño/staff no son leads ni contactos comerciales.
+        if role == "guest":
+            try:
+                _contact_service.get_or_create_contact(phone=phone, name=profile_name or None, db=db)
+            except Exception as e:  # noqa: BLE001 — no bloquear la respuesta por esto
+                logger.warning("WhatsApp: no se pudo crear/vincular Contact", error=str(e))
+            try:
+                from app.services.lead_service import lead_service
+                lead = lead_service._get_or_create_lead(db, session_id)
+                if not lead.phone:
+                    lead.phone = phone
+                    db.commit()
+            except Exception as e:  # noqa: BLE001
+                logger.warning("WhatsApp: no se pudo pre-cargar teléfono en Lead", error=str(e))
 
+        # Despachar al agente correcto según el rol (punto único de ruteo).
+        from app.services.agent_router import route_whatsapp
         try:
             result = await asyncio.wait_for(
-                agent_service.chat(db, body, session_id),
+                route_whatsapp(db, phone, body),
                 timeout=CHAT_TIMEOUT_SECONDS,
             )
         except asyncio.TimeoutError:
-            logger.error("WhatsApp: el agente tardó demasiado", session_id=session_id)
+            logger.error("WhatsApp: el agente tardó demasiado", session_id=session_id, role=role)
             whatsapp_service.send_text(
                 phone,
                 "Disculpá, estoy tardando más de lo normal. ¿Podés repetirme tu consulta?",
             )
             return
 
-        _send_agent_reply(phone, result)
+        # Gerencia puede devolver un gráfico (chart_url) → se envía como media.
+        chart_url = result.get("chart_url")
+        if chart_url:
+            whatsapp_service.send_media(phone, result.get("response", ""), chart_url)
+        elif role in ("owner", "staff"):
+            whatsapp_service.send_text(phone, result.get("response", ""))
+        else:
+            _send_agent_reply(phone, result)
     except Exception as e:  # noqa: BLE001
         logger.error("WhatsApp: error procesando mensaje", error=str(e), session_id=session_id)
         whatsapp_service.send_text(

@@ -351,6 +351,31 @@ export async function updateGuestPreferences(contactId, preferences) {
   return data
 }
 
+// ── Equipo del hotel (staff/dueño para el agente multi-rol) ──────────────────
+export async function listStaff() {
+  const { data } = await client.get('/api/staff')
+  return data.staff ?? []
+}
+
+export async function saveStaff(payload, id) {
+  if (id) {
+    const { data } = await client.put(`/api/staff/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/staff', payload)
+  return data
+}
+
+export async function setStaffActive(id, active) {
+  const { data } = await client.patch(`/api/staff/${id}/status`, { active })
+  return data
+}
+
+export async function deleteStaff(id) {
+  const { data } = await client.delete(`/api/staff/${id}`)
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 

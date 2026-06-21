@@ -1,0 +1,73 @@
+"""
+Generación de gráficos vía QuickChart (sin dependencias locales).
+
+QuickChart (https://quickchart.io) toma una config Chart.js en la URL y devuelve un PNG
+público. Lo usamos para mandar gráficos al dueño por WhatsApp (send_media los acepta como
+media_url). Helpers que arman las configs de los gráficos típicos de gerencia.
+"""
+import json
+from urllib.parse import quote
+
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
+_BASE = "https://quickchart.io/chart"
+_HILTON = "#005aa9"
+
+
+def build_chart_url(chart_config: dict, width: int = 600, height: int = 350) -> str:
+    """Arma la URL de QuickChart para una config Chart.js dada (PNG público)."""
+    c = quote(json.dumps(chart_config, ensure_ascii=False))
+    return f"{_BASE}?w={width}&h={height}&bkg=white&c={c}"
+
+
+def occupancy_chart_url(daily: list, label: str = "Ocupación") -> str:
+    """Línea de ocupación diaria (%). `daily` = [{date, pct}]."""
+    # Etiquetas compactas: día/mes.
+    labels = []
+    for d in daily:
+        iso = d.get("date", "")
+        labels.append(iso[8:10] + "/" + iso[5:7] if len(iso) >= 10 else iso)
+    data = [d.get("pct", 0) for d in daily]
+    config = {
+        "type": "line",
+        "data": {
+            "labels": labels,
+            "datasets": [{
+                "label": label + " (%)",
+                "data": data,
+                "borderColor": _HILTON,
+                "backgroundColor": "rgba(0,90,169,0.1)",
+                "fill": True,
+                "tension": 0.3,
+                "pointRadius": 2,
+            }],
+        },
+        "options": {
+            "plugins": {"legend": {"display": True}},
+            "scales": {"y": {"beginAtZero": True, "max": 100, "title": {"display": True, "text": "%"}}},
+        },
+    }
+    return build_chart_url(config)
+
+
+def bars_chart_url(labels: list, values: list, title: str = "") -> str:
+    """Barras simples (ej. ocupación por tipo de habitación, ingresos por período)."""
+    config = {
+        "type": "bar",
+        "data": {
+            "labels": labels,
+            "datasets": [{
+                "label": title,
+                "data": values,
+                "backgroundColor": _HILTON,
+                "borderRadius": 4,
+            }],
+        },
+        "options": {
+            "plugins": {"legend": {"display": bool(title)}},
+            "scales": {"y": {"beginAtZero": True}},
+        },
+    }
+    return build_chart_url(config)
