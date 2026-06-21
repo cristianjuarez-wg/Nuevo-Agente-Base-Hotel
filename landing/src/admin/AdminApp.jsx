@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import {
-  LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel, Sparkles,
-  Users, BarChart3, Briefcase, GraduationCap,
+  LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
+  Users, BarChart3, Briefcase, Bot,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -28,8 +28,8 @@ const NAV = [
   { id: 'leads', label: 'Leads', icon: UserPlus },
   { id: 'tickets', label: 'Soporte', icon: LifeBuoy },
   { id: 'equipo', label: 'Equipo', icon: Briefcase },
-  { id: 'asesoria', label: 'Asesoría', icon: GraduationCap },
-  { id: 'agente', label: 'Agente', icon: Sparkles },
+  { id: 'agente', label: 'Pre-Pos Venta', icon: Bot },
+  { id: 'asesoria', label: 'Asesor', icon: Bot },
 ]
 
 // Devuelve el primer segmento tras #admin/ (ej "agente" en "#admin/agente/conocimiento").
