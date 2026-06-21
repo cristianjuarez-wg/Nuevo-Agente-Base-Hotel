@@ -32,6 +32,36 @@ router = APIRouter(prefix="/api/knowledge", tags=["Knowledge"])
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
 
+# Estándar del proyecto: las subidas de documentos a agentes soportan PDF + Markdown + TXT.
+# El PDF se parsea; el Markdown/TXT entra directo como texto limpio (mejor estructurado).
+DOC_PDF_EXT = ".pdf"
+DOC_TEXT_EXTS = (".md", ".markdown", ".txt")
+DOC_ACCEPTED_EXTS = (DOC_PDF_EXT,) + DOC_TEXT_EXTS
+
+
+def _extract_doc_text(content: bytes, filename: str) -> str:
+    """Devuelve el texto de un documento subido (PDF parseado, o MD/TXT como texto plano).
+
+    Lanza HTTPException(400) si el formato no está soportado. El llamador valida el tamaño.
+    """
+    ext = os.path.splitext(filename or "")[1].lower()
+    if ext == DOC_PDF_EXT:
+        os.makedirs(settings.MEDIA_DIR, exist_ok=True)
+        tmp_path = os.path.join(settings.MEDIA_DIR, f"_doc_{hashlib.md5(content).hexdigest()[:12]}.pdf")
+        with open(tmp_path, "wb") as f:
+            f.write(content)
+        try:
+            from app.services.pdf_processor import pdf_processor
+            return pdf_processor.extract_text(tmp_path) or ""
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+    if ext in DOC_TEXT_EXTS:
+        return content.decode("utf-8", errors="replace")
+    raise HTTPException(400, "Formatos aceptados: PDF, Markdown (.md) o texto (.txt).")
+
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -257,38 +287,26 @@ async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    """Sube un PDF como documento libre: extrae su texto, lo ingesta y lo registra."""
+    """Sube un documento libre (PDF o Markdown/TXT): extrae su texto, lo ingesta y registra."""
     if category not in KNOWLEDGE_CATEGORIES:
         raise HTTPException(400, f"Categoría inválida. Válidas: {', '.join(KNOWLEDGE_CATEGORIES)}")
     ext = os.path.splitext(file.filename or "")[1].lower()
-    if ext != ".pdf":
-        raise HTTPException(400, "Solo se permiten archivos PDF. Para otro texto, usá 'pegar texto'.")
+    if ext not in DOC_ACCEPTED_EXTS:
+        raise HTTPException(400, "Formatos aceptados: PDF, Markdown (.md) o texto (.txt). O usá 'pegar texto'.")
 
     content = await file.read()
     if len(content) > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(413, f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
 
-    # Guardar temporal y extraer texto con el pdf_processor existente.
-    os.makedirs(settings.MEDIA_DIR, exist_ok=True)
-    tmp_path = os.path.join(settings.MEDIA_DIR, f"_doc_{hashlib.md5(content).hexdigest()[:12]}.pdf")
-    with open(tmp_path, "wb") as f:
-        f.write(content)
-    try:
-        from app.services.pdf_processor import pdf_processor
-        text = pdf_processor.extract_text(tmp_path)
-    finally:
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-
+    text = _extract_doc_text(content, file.filename)
     if not text or not text.strip():
-        raise HTTPException(422, "No se pudo extraer texto del PDF (¿es un PDF escaneado sin OCR?).")
+        raise HTTPException(422, "No se pudo extraer texto del documento (¿es un PDF escaneado sin OCR?).")
 
+    doc_kind = "pdf" if ext == DOC_PDF_EXT else "markdown" if ext in (".md", ".markdown") else "text"
     entry = KnowledgeEntry(
         category=category, title=title.strip() or (file.filename or "Documento"),
         content=text.strip(),
-        data={"is_document": True, "doc_kind": "pdf", "filename": file.filename},
+        data={"is_document": True, "doc_kind": doc_kind, "filename": file.filename},
         status="active",
     )
     db.add(entry)
@@ -340,23 +358,12 @@ async def extract_from_document(
     doc_text = (text or "").strip()
     if file is not None:
         ext = os.path.splitext(file.filename or "")[1].lower()
-        if ext != ".pdf":
-            raise HTTPException(400, "Para subir archivo, debe ser PDF. O pegá el texto.")
+        if ext not in DOC_ACCEPTED_EXTS:
+            raise HTTPException(400, "Para subir archivo: PDF, Markdown (.md) o texto (.txt). O pegá el texto.")
         content = await file.read()
         if len(content) > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
             raise HTTPException(413, f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
-        os.makedirs(settings.MEDIA_DIR, exist_ok=True)
-        tmp_path = os.path.join(settings.MEDIA_DIR, f"_ext_{hashlib.md5(content).hexdigest()[:12]}.pdf")
-        with open(tmp_path, "wb") as f:
-            f.write(content)
-        try:
-            from app.services.pdf_processor import pdf_processor
-            doc_text = pdf_processor.extract_text(tmp_path)
-        finally:
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
+        doc_text = _extract_doc_text(content, file.filename)
 
     if not doc_text.strip():
         raise HTTPException(422, "No se pudo obtener texto del documento.")

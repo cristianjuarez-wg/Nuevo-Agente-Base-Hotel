@@ -194,7 +194,7 @@ export default function KnowledgeView() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-ink">{d.title}</p>
                   <p className="truncate text-xs text-slatey">
-                    {cat?.label || d.category} · {d.data?.doc_kind === 'pdf' ? 'PDF' : 'Texto'}
+                    {cat?.label || d.category} · {{ pdf: 'PDF', markdown: 'Markdown' }[d.data?.doc_kind] || 'Texto'}
                   </p>
                 </div>
                 <Badge tone={d.status === 'active' ? 'green' : 'gray'}>
@@ -633,7 +633,7 @@ function ExtractBar({ category, onExtracted }) {
     try {
       const payload = { category }
       if (mode === 'pdf') {
-        if (!file) { setError('Elegí un PDF.'); setLoading(false); return }
+        if (!file) { setError('Elegí un archivo.'); setLoading(false); return }
         payload.file = file
       } else {
         if (!text.trim()) { setError('Pegá el texto.'); setLoading(false); return }
@@ -671,7 +671,7 @@ function ExtractBar({ category, onExtracted }) {
       </div>
 
       <div className="mb-3 flex gap-1 rounded-xl bg-white p-1">
-        {[['pdf', 'Subir PDF'], ['text', 'Pegar texto']].map(([id, label]) => (
+        {[['pdf', 'Subir archivo'], ['text', 'Pegar texto']].map(([id, label]) => (
           <button
             key={id} onClick={() => setMode(id)}
             className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
@@ -686,8 +686,8 @@ function ExtractBar({ category, onExtracted }) {
       {mode === 'pdf' ? (
         <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-hilton-300 bg-white px-4 py-3 text-sm text-slatey hover:bg-hilton-50">
           <Upload size={16} />
-          {file ? file.name : 'Elegí un PDF…'}
-          <input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} className="hidden" />
+          {file ? file.name : 'Elegí un archivo (PDF o .md)…'}
+          <input type="file" accept=".pdf,.md,.markdown,.txt" onChange={(e) => setFile(e.target.files?.[0] || null)} className="hidden" />
         </label>
       ) : (
         <textarea
@@ -731,7 +731,7 @@ function DocumentModal({ categories, onClose, onSaved }) {
     setSaving(true); setError('')
     try {
       if (mode === 'pdf') {
-        if (!file) { setError('Elegí un PDF.'); setSaving(false); return }
+        if (!file) { setError('Elegí un archivo.'); setSaving(false); return }
         await uploadKnowledgeDocument({ title, category, file })
       } else {
         if (!text.trim()) { setError('Pegá el texto.'); setSaving(false); return }
@@ -748,7 +748,7 @@ function DocumentModal({ categories, onClose, onSaved }) {
     <Modal onClose={onClose} title="Nuevo documento" icon={FileUp}>
       <div className="space-y-4">
         <div className="flex gap-1 rounded-xl bg-mist p-1">
-          {[['pdf', 'Subir PDF'], ['text', 'Pegar texto']].map(([id, label]) => (
+          {[['pdf', 'Subir archivo'], ['text', 'Pegar texto']].map(([id, label]) => (
             <button
               key={id} onClick={() => setMode(id)}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
@@ -774,12 +774,12 @@ function DocumentModal({ categories, onClose, onSaved }) {
 
         {mode === 'pdf' ? (
           <div>
-            <Label>Archivo PDF</Label>
+            <Label>Archivo (PDF o Markdown)</Label>
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-hilton-300 px-4 py-3 text-sm text-slatey hover:bg-hilton-50">
               <Upload size={16} />
-              {file ? file.name : 'Elegí un PDF…'}
+              {file ? file.name : 'Elegí un archivo (PDF o .md)…'}
               <input
-                type="file" accept="application/pdf"
+                type="file" accept=".pdf,.md,.markdown,.txt"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="hidden"
               />
