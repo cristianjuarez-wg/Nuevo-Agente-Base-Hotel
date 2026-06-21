@@ -5,6 +5,16 @@ import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, WhatsAppDot,
 } from '../ui'
 import { toast } from '../toast'
+import SearchInput from '../components/SearchInput'
+import Pagination from '../components/Pagination'
+import { useTableControls } from '../hooks/useTableControls'
+
+const TYPE_FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'CALIENTE', label: 'Calientes' },
+  { id: 'TIBIO', label: 'Tibios' },
+  { id: 'FRIO', label: 'Fríos' },
+]
 
 function TypeBadge({ type }) {
   const t = (type || '').toUpperCase()
@@ -51,6 +61,7 @@ export default function LeadsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
+  const [filter, setFilter] = useState('all')
 
   const load = () => {
     setLoading(true)
@@ -90,7 +101,7 @@ export default function LeadsView() {
   )
 
   const columns = [
-    { key: 'name', label: 'Nombre', render: (r) => <span className="font-medium text-ink">{r.name}</span> },
+    { key: 'name', label: 'Nombre', sortable: true, render: (r) => <span className="font-medium text-ink">{r.name}</span> },
     { key: 'contact', label: 'Contacto', render: (r) => (
       <div className="space-y-0.5 text-xs text-slatey">
         {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
@@ -101,8 +112,8 @@ export default function LeadsView() {
     { key: 'interest', label: 'Interés', render: (r) => r.interest || '—' },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'type', label: 'Tipo', render: (r) => <TypeBadge type={r.type} /> },
-    { key: 'score', label: 'Score', render: (r) => <ScoreBar score={r.score} /> },
-    { key: 'created_at', label: 'Fecha', render: (r) => formatDate(r.created_at) },
+    { key: 'score', label: 'Score', sortable: true, render: (r) => <ScoreBar score={r.score} /> },
+    { key: 'created_at', label: 'Fecha', sortable: true, render: (r) => formatDate(r.created_at) },
     { key: 'actions', label: '', render: (r) => <DeleteButton r={r} /> },
   ]
 
@@ -127,6 +138,25 @@ export default function LeadsView() {
     </div>
   )
 
+  // Chips por temperatura → búsqueda + orden + paginación.
+  const byType = filter === 'all' ? rows : rows.filter((r) => (r.type || '').toUpperCase() === filter)
+  const counts = rows.reduce((acc, r) => {
+    acc.all += 1
+    const t = (r.type || '').toUpperCase()
+    if (t) acc[t] = (acc[t] || 0) + 1
+    return acc
+  }, { all: 0 })
+  const { pageRows, query, setQuery, sort, toggleSort, page, setPage, total, pageSize } =
+    useTableControls(byType, {
+      searchKeys: ['name', 'email', 'phone', 'interest'],
+      pageSize: 50,
+      sortAccessors: {
+        name: (r) => r.name || '',
+        score: (r) => Number(r.score) || 0,
+        created_at: (r) => r.created_at || '',
+      },
+    })
+
   return (
     <div>
       <PageHeader
@@ -143,7 +173,32 @@ export default function LeadsView() {
       ) : rows.length === 0 ? (
         <EmptyState icon={UserPlus} title="Aún no hay leads" desc="Cuando el agente capte interesados, aparecerán acá." />
       ) : (
-        <ResponsiveTable columns={columns} rows={rows} renderCard={renderCard} />
+        <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {TYPE_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
+                  filter === f.id ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+                }`}
+              >
+                {f.label} <span className="tabular-nums opacity-70">({counts[f.id] ?? 0})</span>
+              </button>
+            ))}
+          </div>
+          <div className="mb-4">
+            <SearchInput value={query} onChange={setQuery} placeholder="Buscar por nombre, email o interés…" />
+          </div>
+          {total === 0 ? (
+            <EmptyState icon={UserPlus} title="Sin leads en esta vista" desc="Probá con otro filtro o búsqueda." />
+          ) : (
+            <>
+              <ResponsiveTable columns={columns} rows={pageRows} renderCard={renderCard} sort={sort} onSort={toggleSort} />
+              <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+            </>
+          )}
+        </>
       )}
     </div>
   )

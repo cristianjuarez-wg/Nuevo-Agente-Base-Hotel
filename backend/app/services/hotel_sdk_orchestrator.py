@@ -77,6 +77,8 @@ class HotelContext:
         self.document_sources: List = []
         # Habitaciones consultadas en este turno (para renderizar tarjetas en el chat).
         self.rooms_offered: List[Dict] = []
+        # Oferta de promo calculada en este turno (card con precio tachado), si la hubo.
+        self.promo_offer: Optional[Dict] = None
 
     def as_tool_ctx(self) -> Dict:
         return {
@@ -86,11 +88,13 @@ class HotelContext:
             "session_id": self.session_id,
             "document_sources": self.document_sources,
             "rooms_offered": self.rooms_offered,
+            "promo_offer": self.promo_offer,
         }
 
     def absorb(self, tool_ctx: Dict):
         self.document_sources = tool_ctx.get("document_sources", self.document_sources)
         self.rooms_offered = tool_ctx.get("rooms_offered", self.rooms_offered)
+        self.promo_offer = tool_ctx.get("promo_offer", self.promo_offer)
 
 
 # ---------------------------------------------------------------------------
@@ -146,12 +150,18 @@ async def crear_reserva(
     guests: int = 1,
     children: int = 0,
     infants: int = 0,
+    promo_name: str = "",
 ) -> str:
     """Crea una reserva confirmada y devuelve el código de reserva (HTL-XXXX).
     Llamala SOLO cuando ya tengas TODOS estos datos confirmados por el usuario:
     tipo de habitación, check_in, check_out (YYYY-MM-DD) y nombre del huésped.
     Si falta algún dato, pedíselo al usuario ANTES de llamar a esta herramienta.
-    El pago de la demo se simula como pagado al confirmar."""
+    El pago de la demo se simula como pagado al confirmar.
+
+    `promo_name`: si en ESTA conversación se aplicó una promoción a esta habitación y
+    fechas (porque usaste `calcular_precio_promo`), pasá el nombre EXACTO de esa promo
+    (ej. "Promoción 4x3") para que la reserva quede con el precio con descuento. Si no
+    hubo promo, dejalo vacío. El backend revalida que la promo realmente aplique."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool(
         "crear_reserva",
@@ -165,6 +175,7 @@ async def crear_reserva(
             "guests": guests,
             "children": children,
             "infants": infants,
+            "promo_name": promo_name,
         },
         tool_ctx,
     )
@@ -237,17 +248,48 @@ async def comercios_amigos(ctx: RunContextWrapper[HotelContext], rubro: str = ""
 async def promos_vigentes(ctx: RunContextWrapper[HotelContext], consulta: str = "") -> str:
     """Devuelve las promociones y ofertas especiales VIGENTES del hotel en este momento,
     con descripción de cada una, el tipo de descuento y las condiciones.
-    Úsala SIEMPRE que el usuario pregunte sobre promociones, ofertas, descuentos,
-    4x3, 7x5, Stay & Park, tarifas especiales o 'qué promociones tienen'.
+    Úsala SIEMPRE que el usuario pregunte EN GENERAL sobre promociones, ofertas, descuentos,
+    4x3, 7x5, Stay & Park, tarifas especiales o 'qué promociones tienen' (listado informativo).
+    Para CALCULAR el precio con descuento de una estadía concreta, usá `calcular_precio_promo`.
     Devolvé los datos tal cual, sin inventar ni modificar ningún beneficio."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool("promos_vigentes", {"consulta": consulta}, tool_ctx)
     return result.get("tool_result", "")
 
 
+@function_tool
+async def calcular_precio_promo(
+    ctx: RunContextWrapper[HotelContext],
+    room_type: str,
+    check_in: str,
+    check_out: str,
+) -> str:
+    """Calcula el precio REAL de una estadía concreta aplicando la MEJOR promoción que
+    corresponda (ej. 4x3 = pagás 3 noches de 4). El backend hace el cálculo: vos solo
+    comunicás el resultado. Devuelve el precio sin promo, el precio con promo y el ahorro.
+
+    USALA SOLO en estas dos situaciones (NO por defecto en cada consulta de disponibilidad):
+      (a) el cliente PIDE una promoción/descuento/oferta explícitamente, o
+      (b) el cliente muestra RESISTENCIA AL PRECIO (dice que es caro/elevado, menciona
+          presupuesto, duda por el valor).
+    Si ninguna promo calculable aplica a esas noches, la herramienta sugiere beneficios
+    cualitativos y cómo calificar (ej. sumar noches): comunicá eso como upsell amable.
+
+    `room_type`: tipo de habitación (ej. "King"). `check_in`/`check_out`: YYYY-MM-DD."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool(
+        "calcular_precio_promo",
+        {"room_type": room_type, "check_in": check_in, "check_out": check_out},
+        tool_ctx,
+    )
+    # Reincorpora promo_offer (la card con precio tachado) al contexto del turno.
+    ctx.context.absorb(tool_ctx)
+    return result.get("tool_result", "")
+
+
 _TOOLS = [
     info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,
-    como_llegar, comercios_amigos, promos_vigentes,
+    como_llegar, comercios_amigos, promos_vigentes, calcular_precio_promo,
 ]
 
 
@@ -460,6 +502,7 @@ class HotelSDKOrchestrator:
             "has_context": bool(run_ctx.document_sources),
             "document_sources": run_ctx.document_sources,
             "rooms_offered": run_ctx.rooms_offered,
+            "promo_offer": run_ctx.promo_offer,
             "tools_used": tools_used,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,

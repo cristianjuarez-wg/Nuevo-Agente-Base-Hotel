@@ -46,6 +46,9 @@ class Lead(Base):
     updated_at = Column(DateTime, default=now_argentina, onupdate=now_argentina)
     status = Column(String(20), default="active")  # active, contacted, converted, inactive
 
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
+
     # Kanban fields
     kanban_stage = Column(String(20), default="new")  # new, contacted, won, lost
     notes = Column(Text, nullable=True)  # Notas del vendedor

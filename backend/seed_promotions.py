@@ -68,6 +68,7 @@ PROMOS = [
         "conditions": "Mínimo 4 noches de estadía. La noche bonificada es la de menor valor. Sujeta a disponibilidad.",
         "discount_type": "free_night",
         "discount_value": 1,
+        "min_nights": 4,
         "status": "active",
         "valid_from": None,
         "valid_until": None,
@@ -81,6 +82,7 @@ PROMOS = [
         "conditions": "Mínimo 7 noches de estadía. Las 2 noches bonificadas son las de menor valor. Sujeta a disponibilidad.",
         "discount_type": "free_night",
         "discount_value": 2,
+        "min_nights": 7,
         "status": "active",
         "valid_from": None,
         "valid_until": None,
@@ -92,12 +94,20 @@ async def seed():
     db = SessionLocal()
     try:
         created = 0
-        skipped = 0
+        updated = 0
         for p in PROMOS:
+            min_nights = p.get("min_nights")
             exists = db.query(Promotion).filter(Promotion.name == p["name"]).first()
             if exists:
-                print(f"  --  Ya existe: {p['name']}")
-                skipped += 1
+                # Idempotente: actualiza min_nights si cambió (re-ingesta para el RAG).
+                if exists.min_nights != min_nights:
+                    exists.min_nights = min_nights
+                    db.commit()
+                    await promotions_service.reingest(exists)
+                    print(f"  ~~  Actualizada (min_nights={min_nights}): {p['name']}")
+                    updated += 1
+                else:
+                    print(f"  --  Ya existe: {p['name']}")
                 continue
 
             promo = Promotion(
@@ -106,6 +116,7 @@ async def seed():
                 conditions=p["conditions"],
                 discount_type=p["discount_type"],
                 discount_value=p["discount_value"],
+                min_nights=min_nights,
                 status=p["status"],
                 valid_from=p["valid_from"],
                 valid_until=p["valid_until"],
@@ -117,7 +128,7 @@ async def seed():
             print(f"  OK  Creada: {promo.name} (id={promo.id})")
             created += 1
 
-        print(f"\nSeed completo: {created} creadas, {skipped} omitidas.")
+        print(f"\nSeed completo: {created} creadas, {updated} actualizadas.")
     finally:
         db.close()
 

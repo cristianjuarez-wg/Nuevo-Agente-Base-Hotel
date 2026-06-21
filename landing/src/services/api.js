@@ -426,6 +426,22 @@ export async function deleteManagementDoc(filename) {
   return data
 }
 
+// ── Datos de demostración (poblar / limpiar desde el backoffice) ─────────────
+export async function getDemoStatus() {
+  const { data } = await client.get('/api/demo/status')
+  return data
+}
+
+export async function populateDemo() {
+  const { data } = await client.post('/api/demo/populate')
+  return data
+}
+
+export async function clearDemo() {
+  const { data } = await client.post('/api/demo/clear')
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 

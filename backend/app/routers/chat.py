@@ -160,6 +160,37 @@ def _build_room_cards(rooms_offered: list) -> list:
         })
     return cards
 
+
+def _build_promo_card(offer: dict) -> dict:
+    """Arma la tarjeta de oferta con promo (precio lleno tachado + final + ahorro).
+
+    `offer` viene del handler calcular_precio_promo (ctx['promo_offer']): ya trae el
+    precio sin promo, el precio con promo, el ahorro y los datos de la habitación.
+    """
+    image = offer.get("image") or _ROOM_FALLBACK_IMG
+    return {
+        "type": "room",
+        "title": offer.get("room_type"),
+        "description": offer.get("description"),
+        "image": image,
+        "price_usd": offer.get("price_usd"),          # final (con promo)
+        "price_ars": offer.get("price_ars"),
+        "full_price_usd": offer.get("full_price_usd"),  # tachado
+        "full_price_ars": offer.get("full_price_ars"),
+        "savings_usd": offer.get("savings_usd"),
+        "savings_ars": offer.get("savings_ars"),
+        "promo_name": offer.get("promo_name"),
+        "nights": offer.get("nights"),
+        "capacity": offer.get("capacity"),
+        "bed_config": offer.get("bed_config"),
+        "view": offer.get("view"),
+        "action": {
+            "kind": "send_message",
+            "label": "Reservar esta habitación",
+            "message": f"Quiero reservar la habitación {offer.get('room_type')}",
+        },
+    }
+
 @router.post("/message", response_model=ChatResponse)
 @limiter.limit(CHAT_RATE_LIMIT)
 async def send_message(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
@@ -250,9 +281,15 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # que la tool consultar_disponibilidad ofreció en este turno.
         cards = _build_room_cards(result.get("rooms_offered", []))
 
+        # Si en el turno se calculó una promo aplicable, esa tarjeta (con precio tachado)
+        # tiene prioridad: es la respuesta directa a la señal del cliente.
+        promo_offer = result.get("promo_offer")
+        if promo_offer:
+            cards = [_build_promo_card(promo_offer)]
+
         # Si el agente está pidiendo fechas y no mostró habitaciones, ofrecemos el selector.
         # Nunca en post-venta/casual (el huésped con reserva no busca disponibilidad).
-        if _should_offer_datepicker(result.get("response", ""),
+        elif _should_offer_datepicker(result.get("response", ""),
                                     result.get("tools_used", []),
                                     has_room_cards=bool(cards),
                                     context_type=result.get("context_type", "")):

@@ -31,6 +31,7 @@ class PromotionPayload(BaseModel):
     conditions: Optional[str] = None
     discount_type: Optional[str] = "other"   # "percentage" | "free_night" | "other"
     discount_value: Optional[float] = None
+    min_nights: Optional[int] = None         # estadía mínima para que aplique
     status: Optional[str] = "active"
     valid_from: Optional[str] = None         # ISO string YYYY-MM-DD o YYYY-MM-DDTHH:MM
     valid_until: Optional[str] = None
@@ -70,6 +71,7 @@ async def create_promotion(payload: PromotionPayload, db: Session = Depends(get_
         conditions=(payload.conditions or "").strip() or None,
         discount_type=payload.discount_type or "other",
         discount_value=payload.discount_value,
+        min_nights=payload.min_nights,
         status=payload.status or "active",
         valid_from=_parse_date(payload.valid_from),
         valid_until=_parse_date(payload.valid_until),
@@ -96,6 +98,7 @@ async def update_promotion(
     promo.conditions = (payload.conditions or "").strip() or None
     promo.discount_type = payload.discount_type or "other"
     promo.discount_value = payload.discount_value
+    promo.min_nights = payload.min_nights
     promo.status = payload.status or promo.status
     promo.valid_from = _parse_date(payload.valid_from)
     promo.valid_until = _parse_date(payload.valid_until)

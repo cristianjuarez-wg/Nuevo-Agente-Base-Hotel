@@ -8,7 +8,7 @@ se calcula por solapamiento de fechas (ver routers/reservations.py).
 
 Reutilizan el `Base` y el `engine` de models/database.py (misma BD SQLite).
 """
-from sqlalchemy import Column, String, Integer, Float, Date, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, String, Integer, Float, Date, DateTime, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, date
 
@@ -111,6 +111,10 @@ class Booking(Base):
     total_price_usd = Column(Float, nullable=False)
     total_price_ars = Column(Float, nullable=False)
 
+    # Promo aplicada (si hubo). full_price_usd = precio sin descuento, para trazabilidad.
+    promo_name = Column(String, nullable=True)
+    full_price_usd = Column(Float, nullable=True)
+
     # pending / confirmed / cancelled / completed
     status = Column(String, nullable=False, default="confirmed", index=True)
     # pending / paid / refunded  (demo: pago simulado → "paid")
@@ -123,6 +127,9 @@ class Booking(Base):
     generated_by = Column(String(20), nullable=True)   # default conceptual: "aura"
     created_by = Column(String(120), nullable=True)    # autor humano (futuro)
     created_at = Column(DateTime, default=datetime.now)
+
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
 
     room = relationship("Room", back_populates="bookings")
     room_unit = relationship("RoomUnit", back_populates="bookings")
@@ -175,6 +182,8 @@ class Booking(Base):
             "nights": self.nights,
             "total_price_usd": self.total_price_usd,
             "total_price_ars": self.total_price_ars,
+            "promo_name": self.promo_name,
+            "full_price_usd": self.full_price_usd,
             "status": self.status,
             "payment_status": self.payment_status,
             "source": self.source,
@@ -209,6 +218,9 @@ class HotelTicket(Base):
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
 
     booking = relationship("Booking")
 

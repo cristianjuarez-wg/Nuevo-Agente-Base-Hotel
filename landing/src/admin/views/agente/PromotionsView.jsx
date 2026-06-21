@@ -176,6 +176,7 @@ function PromoModal({ promo, onClose, onSaved }) {
   const [conditions, setConditions] = useState(promo.conditions || '')
   const [discountType, setDiscountType] = useState(promo.discount_type || 'other')
   const [discountValue, setDiscountValue] = useState(promo.discount_value ?? '')
+  const [minNights, setMinNights] = useState(promo.min_nights ?? '')
   const [validFrom, setValidFrom] = useState(formatDateInput(promo.valid_from))
   const [validUntil, setValidUntil] = useState(formatDateInput(promo.valid_until))
   const [status, setStatus] = useState(promo.status || 'active')
@@ -197,6 +198,7 @@ function PromoModal({ promo, onClose, onSaved }) {
           conditions: conditions.trim() || null,
           discount_type: discountType,
           discount_value: discountValue !== '' ? parseFloat(discountValue) : null,
+          min_nights: minNights !== '' ? parseInt(minNights) : null,
           valid_from: validFrom || null,
           valid_until: validUntil || null,
           status,
@@ -260,6 +262,21 @@ function PromoModal({ promo, onClose, onSaved }) {
             </label>
           )}
         </div>
+
+        {discountType !== 'other' && (
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-ink">Mínimo de noches</span>
+            <input
+              type="number" min="1"
+              value={minNights} onChange={(e) => setMinNights(e.target.value)}
+              placeholder={discountType === 'free_night' ? 'Ej: 4 (para 4x3)' : 'Sin mínimo'}
+              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+            />
+            <span className="mt-1 block text-xs text-slatey/70">
+              Estadía mínima para que la promo aplique. El agente la usa para calcular el precio.
+            </span>
+          </label>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">

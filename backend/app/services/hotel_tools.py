@@ -19,8 +19,9 @@ from sqlalchemy.orm import Session
 from app.services.rag_service import rag_service
 from app.services.reservation_service import get_availability, create_booking, get_booking
 from app.models.knowledge import KnowledgeEntry, Place, _payment_accounts
+from app.models.hotel import Room
 from app.models.promotions import Promotion
-from app.services import promotions_service
+from app.services import promotions_service, exchange_rate_service
 from app.core.hotel_location import (
     HOTEL_ADDRESS, HOTEL_AIRPORT, directions_url, near_hotel_search_url, is_far_origin,
 )
@@ -195,6 +196,17 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
             )
         }
 
+    # Promo a aplicar a la reserva. Prioridad: el nombre que el agente pasó explícitamente
+    # (ve toda la conversación), luego la promo calculada en este mismo turno (ctx). En
+    # ambos casos create_booking REVALIDA server-side que la promo realmente aplique.
+    promo_name = (args.get("promo_name") or "").strip() or None
+    if not promo_name:
+        offer = ctx.get("promo_offer")
+        if offer and offer.get("check_in") == check_in_str and offer.get("check_out") == check_out_str:
+            if room_type.lower() in (offer.get("room_type") or "").lower() or \
+               (offer.get("room_type") or "").lower() in room_type.lower():
+                promo_name = offer.get("promo_name")
+
     result = create_booking(
         db,
         room_type=room_type,
@@ -208,6 +220,7 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
         infants=infants,
         source="agente",
         session_id=ctx.get("session_id"),
+        promo_name=promo_name,
     )
 
     if "error" in result:
@@ -218,8 +231,18 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
     total_usd = result.get("total_price_usd", 0)
     total_ars = result.get("total_price_ars", 0)
     room = result.get("room_type", room_type)
+    applied_promo = result.get("promo_name")
+    full_usd = result.get("full_price_usd")
 
-    logger.info("Reservation created via agent tool", code=code, guest=guest_name)
+    logger.info("Reservation created via agent tool", code=code, guest=guest_name, promo=applied_promo)
+
+    promo_line = ""
+    if applied_promo and full_usd:
+        ahorro = full_usd - total_usd
+        promo_line = (
+            f"Promo aplicada: **{applied_promo}** "
+            f"(antes USD {full_usd:.0f}, ahorrás USD {ahorro:.0f})\n"
+        )
 
     return {
         "tool_result": (
@@ -228,6 +251,7 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
             f"Habitación: {room}\n"
             f"Check-in: {check_in} | Check-out: {check_out} ({nights} noche(s))\n"
             f"Huésped: {guest_name}\n"
+            f"{promo_line}"
             f"Total: USD {total_usd:.0f} / ARS {total_ars:,.0f}\n"
             f"Estado: Confirmada ✅\n\n"
             f"Guardá el código **{code}**: lo vas a necesitar para cualquier consulta post-estadía."
@@ -527,6 +551,123 @@ def _handle_promos_vigentes(args: Dict, ctx: Dict) -> Dict:
     return {"tool_result": "\n".join(lines), "found": True}
 
 
+def _handle_calcular_precio_promo(args: Dict, ctx: Dict) -> Dict:
+    """Calcula el precio de una estadía concreta con la MEJOR promo aplicable.
+
+    Determinístico: el descuento lo calcula el backend (nunca el LLM). Se usa SOLO
+    cuando el cliente pide promo o muestra resistencia al precio (lo decide el prompt).
+    Si ninguna promo calculable aplica, ofrece las cualitativas + cómo calificar (upsell).
+    """
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    room_type = (args.get("room_type") or "").strip()
+    check_in_str = (args.get("check_in") or "").strip()
+    check_out_str = (args.get("check_out") or "").strip()
+
+    if not room_type or not check_in_str or not check_out_str:
+        return {
+            "tool_result": (
+                "Para calcular una promo necesito el tipo de habitación y las fechas "
+                "(check-in y check-out en formato YYYY-MM-DD)."
+            )
+        }
+
+    try:
+        check_in = date.fromisoformat(check_in_str)
+        check_out = date.fromisoformat(check_out_str)
+    except ValueError:
+        return {"tool_result": "Las fechas deben estar en formato YYYY-MM-DD."}
+
+    nights = (check_out - check_in).days
+    if nights <= 0:
+        return {"tool_result": "El check-out debe ser posterior al check-in."}
+
+    # Precio base de la habitación (fuente de verdad = USD).
+    room = (
+        db.query(Room)
+        .filter(Room.room_type.ilike(f"%{room_type}%"))
+        .first()
+    )
+    if room is None:
+        return {"tool_result": f"No encontré la habitación '{room_type}'."}
+
+    rate = exchange_rate_service.get_current_rate(db)["rate"]
+    base_usd = room.base_price_usd
+
+    oferta = promotions_service.mejor_promo(db, base_usd, nights)
+
+    if oferta:
+        full_usd = oferta["full_price_usd"]
+        final_usd = oferta["final_price_usd"]
+        savings_usd = oferta["savings_usd"]
+        full_ars = round(full_usd * rate, 2)
+        final_ars = round(final_usd * rate, 2)
+        savings_ars = round(savings_usd * rate, 2)
+
+        # Datos para que el orquestador arme la card con precio tachado.
+        ctx["promo_offer"] = {
+            "room_type": room.room_type,
+            "check_in": check_in_str,
+            "check_out": check_out_str,
+            "nights": nights,
+            "promo_name": oferta["promo_name"],
+            "full_price_usd": full_usd,
+            "full_price_ars": full_ars,
+            "price_usd": final_usd,
+            "price_ars": final_ars,
+            "savings_usd": savings_usd,
+            "savings_ars": savings_ars,
+            "image": (room.images or [None])[0],
+            "description": room.description,
+            "capacity": room.capacity,
+            "bed_config": room.bed_config,
+            "view": room.view,
+        }
+
+        return {
+            "tool_result": (
+                f"Promo aplicable a {room.room_type} por {nights} noche(s): "
+                f"**{oferta['promo_name']}**. "
+                f"Precio sin promo: USD {full_usd:.0f}. "
+                f"Con la promo: USD {final_usd:.0f} (ahorra USD {savings_usd:.0f}). "
+                f"La tarjeta muestra el precio tachado y el final; comunicá el ahorro con calidez."
+            ),
+            "found": True,
+            "promo_applied": True,
+        }
+
+    # No hay promo calculable para estas noches → cualitativas + cómo calificar (upsell).
+    cualitativas = promotions_service.promos_cualitativas(db)
+    cercanas = promotions_service.promos_calculables_cercanas(db, nights)
+
+    partes = [
+        f"Para {room.room_type} por {nights} noche(s) no hay un descuento directo aplicable."
+    ]
+    if cercanas:
+        c = cercanas[0]
+        faltan = c.min_nights - nights
+        partes.append(
+            f"Pero si sumás {faltan} noche(s) más (mínimo {c.min_nights}), accedés a "
+            f"**{c.name}**: {c.description}"
+        )
+    if cualitativas:
+        nombres = "; ".join(f"**{p.name}** ({p.description})" for p in cualitativas)
+        partes.append(f"También tenemos beneficios vigentes: {nombres}.")
+    if not cercanas and not cualitativas:
+        partes.append(
+            "No tenemos descuentos adicionales en este momento, pero la tarifa incluye "
+            "todos nuestros servicios y la mejor ubicación de Bariloche."
+        )
+
+    return {
+        "tool_result": " ".join(partes),
+        "found": True,
+        "promo_applied": False,
+    }
+
+
 # ---------------------------------------------------------------------------
 # DISPATCHER
 # ---------------------------------------------------------------------------
@@ -540,6 +681,7 @@ _DISPATCH = {
     "como_llegar": _handle_como_llegar,
     "comercios_amigos": _handle_comercios_amigos,
     "promos_vigentes": _handle_promos_vigentes,
+    "calcular_precio_promo": _handle_calcular_precio_promo,
 }
 
 

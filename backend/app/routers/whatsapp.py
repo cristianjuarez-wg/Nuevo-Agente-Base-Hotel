@@ -90,10 +90,18 @@ def _send_agent_reply(to_phone: str, result: dict) -> None:
         whatsapp_service.send_media(to_phone, caption, image)
 
 
-async def _process_and_reply(from_field: str, body: str, profile_name: str) -> None:
+async def _process_and_reply(
+    from_field: str,
+    body: str,
+    profile_name: str,
+    audio_url: str | None = None,
+    audio_type: str | None = None,
+) -> None:
     """Procesa el mensaje con el agente y responde por WhatsApp. Corre en background.
 
     Usa su propia sesión de DB porque la del request ya se cerró cuando esto ejecuta.
+    Si llegó una nota de voz (audio_url), primero la transcribimos con Whisper y el
+    texto resultante se trata exactamente igual que un mensaje escrito.
     """
     from app.models.database import SessionLocal
 
@@ -105,6 +113,21 @@ async def _process_and_reply(from_field: str, body: str, profile_name: str) -> N
         return
 
     session_id = "wa_" + phone.lstrip("+")
+
+    # Nota de voz → texto. Si falla la transcripción, avisamos y cortamos.
+    transcribed = False
+    if audio_url:
+        from app.services.transcription_service import transcribe_whatsapp_audio
+        text = await transcribe_whatsapp_audio(audio_url, audio_type)
+        if not text:
+            whatsapp_service.send_text(
+                phone,
+                "No pude entender el audio 🙇 ¿Podés escribir tu consulta o intentar de nuevo?",
+            )
+            return
+        body = text
+        transcribed = True
+
     db = SessionLocal()
     try:
         # Resolver el ROL del remitente (huésped / staff / dueño). Define qué agente atiende.
@@ -141,6 +164,12 @@ async def _process_and_reply(from_field: str, body: str, profile_name: str) -> N
                 "Disculpá, estoy tardando más de lo normal. ¿Podés repetirme tu consulta?",
             )
             return
+
+        # Si el mensaje vino por audio, confirmamos qué entendió Aura. Así el huésped
+        # ve la transcripción y puede corregir si Whisper se equivocó.
+        if transcribed:
+            confirm = f"🎙️ Entendí: «{body}»\n\n"
+            result["response"] = confirm + (result.get("response") or "")
 
         # Gerencia puede devolver un gráfico (chart_url) → se envía como media.
         chart_url = result.get("chart_url")
@@ -188,12 +217,28 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
             logger.warning("WhatsApp: firma de Twilio inválida", url=url)
             return Response(status_code=403)
 
-    if not body:
-        # Mensajes sin texto (stickers, ubicaciones, etc.) — los ignoramos en la demo.
+    # Nota de voz: Twilio manda el audio como media (sin Body de texto). Lo detectamos
+    # acá y dejamos que el background task lo transcriba antes de pasárselo al agente.
+    audio_url = None
+    audio_type = None
+    num_media = int(form.get("NumMedia", "0") or "0")
+    if not body and num_media > 0:
+        content_type = (form.get("MediaContentType0") or "").lower()
+        if content_type.startswith("audio"):
+            audio_url = form.get("MediaUrl0")
+            audio_type = content_type
+
+    if not body and not audio_url:
+        # Sin texto ni audio (stickers, ubicaciones, imágenes, etc.) — los ignoramos.
         return Response(status_code=200)
 
-    logger.info("WhatsApp message received", from_field=from_field, length=len(body))
+    logger.info(
+        "WhatsApp message received",
+        from_field=from_field,
+        length=len(body),
+        is_audio=bool(audio_url),
+    )
 
     # Procesar en background: respondemos 200 a Twilio ya mismo.
-    asyncio.create_task(_process_and_reply(from_field, body, profile_name))
+    asyncio.create_task(_process_and_reply(from_field, body, profile_name, audio_url, audio_type))
     return Response(status_code=200)

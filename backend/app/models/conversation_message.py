@@ -45,7 +45,11 @@ class ConversationMessage(Base):
     # Vinculación a entidades (opcional)
     lead_id = Column(Integer, ForeignKey('leads.id'), nullable=True, index=True)
     ticket_id = Column(Integer, nullable=True, index=True)  # ForeignKey a support_tickets si existe
-    
+
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    # Igual se borran en cascada al borrar la Conversation; el flag permite borrado directo.
+    is_demo = Column(Boolean, default=False, index=True)
+
     # Relationships
     conversation = relationship("Conversation", back_populates="messages")
     

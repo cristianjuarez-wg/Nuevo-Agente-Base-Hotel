@@ -5,6 +5,9 @@ import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatUSD, formatARS, formatDate,
 } from '../ui'
 import { toast } from '../toast'
+import SearchInput from '../components/SearchInput'
+import Pagination from '../components/Pagination'
+import { useTableControls } from '../hooks/useTableControls'
 
 // Estado temporal de la estadía (derivado en el backend como stay_status).
 function StayBadge({ stay }) {
@@ -104,13 +107,22 @@ export default function BookingsView() {
     { all: 0 }
   )
 
-  // "Alojados hoy" primero; el resto por check-in descendente.
-  const filtered = (filter === 'all' ? rows : rows.filter((r) => r.stay_status === filter))
-    .slice()
-    .sort((a, b) => {
-      if (a.stay_status === 'checked_in' && b.stay_status !== 'checked_in') return -1
-      if (b.stay_status === 'checked_in' && a.stay_status !== 'checked_in') return 1
-      return (b.check_in || '').localeCompare(a.check_in || '')
+  // Chips de estado (filtro previo) → luego búsqueda + orden + paginación (hook).
+  const byStatus = filter === 'all' ? rows : rows.filter((r) => r.stay_status === filter)
+  // Orden por defecto: "alojados hoy" primero, luego check-in descendente.
+  const baseSorted = byStatus.slice().sort((a, b) => {
+    if (a.stay_status === 'checked_in' && b.stay_status !== 'checked_in') return -1
+    if (b.stay_status === 'checked_in' && a.stay_status !== 'checked_in') return 1
+    return (b.check_in || '').localeCompare(a.check_in || '')
+  })
+  const { pageRows, query, setQuery, sort, toggleSort, page, setPage, total, pageSize } =
+    useTableControls(baseSorted, {
+      searchKeys: ['code', 'guest_name', 'room_type'],
+      pageSize: 50,
+      sortAccessors: {
+        check_in: (r) => r.check_in || '',
+        total: (r) => r.total_price_usd || 0,
+      },
     })
 
   const GuestName = ({ r }) =>
@@ -131,9 +143,9 @@ export default function BookingsView() {
         {r.room_number && <span className="ml-1.5 rounded bg-hilton-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-hilton-700">N° {r.room_number}</span>}
       </span>
     ) },
-    { key: 'stay', label: 'Estadía', render: (r) => `${formatDate(r.check_in)} → ${formatDate(r.check_out)}` },
+    { key: 'stay', label: 'Estadía', sortable: true, sortKey: 'check_in', render: (r) => `${formatDate(r.check_in)} → ${formatDate(r.check_out)}` },
     { key: 'stay_status', label: 'Situación', render: (r) => <StayBadge stay={r.stay_status} /> },
-    { key: 'total', label: 'Total', render: (r) => (
+    { key: 'total', label: 'Total', sortable: true, render: (r) => (
       <span className="tabular-nums">{formatUSD(r.total_price_usd)} <span className="text-slatey">/ {formatARS(r.total_price_ars)}</span></span>
     ) },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
@@ -181,10 +193,22 @@ export default function BookingsView() {
       ) : (
         <>
           <FilterChips value={filter} counts={counts} onChange={setFilter} />
-          {filtered.length === 0 ? (
-            <EmptyState icon={CalendarCheck} title="Sin reservas en esta vista" desc="Probá con otro filtro." />
+          <div className="mb-4">
+            <SearchInput value={query} onChange={setQuery} placeholder="Buscar por código, huésped o habitación…" />
+          </div>
+          {total === 0 ? (
+            <EmptyState icon={CalendarCheck} title="Sin reservas en esta vista" desc="Probá con otro filtro o búsqueda." />
           ) : (
-            <ResponsiveTable columns={columns} rows={filtered.map((r) => ({ ...r, _key: r.code }))} renderCard={renderCard} />
+            <>
+              <ResponsiveTable
+                columns={columns}
+                rows={pageRows.map((r) => ({ ...r, _key: r.code }))}
+                renderCard={renderCard}
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+            </>
           )}
         </>
       )}

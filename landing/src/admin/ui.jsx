@@ -105,8 +105,10 @@ export function EmptyState({ icon: Icon, title, desc }) {
   )
 }
 
-/** Tabla responsive: tabla en desktop, cards en mobile. */
-export function ResponsiveTable({ columns, rows, renderCard }) {
+/** Tabla responsive: tabla en desktop, cards en mobile.
+ *  Orden por columna OPCIONAL: una columna con `sortable: true` (y `sortKey`, default `key`)
+ *  muestra una flecha y dispara `onSort(sortKey)`. `sort` = { key, dir } resalta la activa. */
+export function ResponsiveTable({ columns, rows, renderCard, sort, onSort }) {
   return (
     <>
       {/* Desktop */}
@@ -114,9 +116,23 @@ export function ResponsiveTable({ columns, rows, renderCard }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-mist bg-mist/50 text-xs uppercase tracking-wide text-slatey">
-              {columns.map((c) => (
-                <th key={c.key} className="px-4 py-3 font-semibold">{c.label}</th>
-              ))}
+              {columns.map((c) => {
+                const sortKey = c.sortKey || c.key
+                const active = sort?.key === sortKey
+                const arrow = !c.sortable ? '' : active ? (sort.dir === 'desc' ? ' ↓' : ' ↑') : ' ↕'
+                return (
+                  <th key={c.key} className="px-4 py-3 font-semibold">
+                    {c.sortable && onSort ? (
+                      <button
+                        onClick={() => onSort(sortKey)}
+                        className={`inline-flex items-center transition hover:text-ink ${active ? 'text-hilton-700' : ''}`}
+                      >
+                        {c.label}<span className="tabular-nums opacity-60">{arrow}</span>
+                      </button>
+                    ) : c.label}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>

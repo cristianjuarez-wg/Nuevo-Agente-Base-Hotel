@@ -98,3 +98,93 @@ def get_vigentes(db: Session) -> List[Promotion]:
             continue
         vigentes.append(p)
     return vigentes
+
+
+# ---------------------------------------------------------------------------
+# Motor de descuento (determinístico — NUNCA lo calcula el LLM)
+# ---------------------------------------------------------------------------
+def aplicar_descuento(promo: Promotion, base_price_usd: float, nights: int) -> "dict | None":
+    """Calcula el efecto de una promo sobre una estadía concreta.
+
+    Devuelve dict con el desglose o None si la promo no aplica (no cumple el mínimo
+    de noches, o es cualitativa / sin valor calculable).
+
+      free_night → se bonifican `discount_value` noches: pagás (nights - bonif).
+      percentage → `discount_value`% sobre el total.
+
+    Todos los importes en USD; el ARS lo resuelve el caller con la cotización vigente.
+    """
+    if base_price_usd is None or nights <= 0:
+        return None
+    if promo.min_nights and nights < promo.min_nights:
+        return None
+
+    full = round(base_price_usd * nights, 2)
+
+    if promo.discount_type == "free_night" and promo.discount_value:
+        bonif = int(promo.discount_value)
+        if bonif <= 0 or bonif >= nights:
+            return None  # no tiene sentido bonificar todas (o más) las noches
+        paid_nights = nights - bonif
+        final = round(base_price_usd * paid_nights, 2)
+    elif promo.discount_type == "percentage" and promo.discount_value:
+        pct = float(promo.discount_value)
+        if pct <= 0 or pct >= 100:
+            return None
+        final = round(full * (1 - pct / 100), 2)
+    else:
+        return None  # "other" o sin valor → cualitativa, no calculable
+
+    savings = round(full - final, 2)
+    if savings <= 0:
+        return None
+
+    return {
+        "promo_id": promo.id,
+        "promo_name": promo.name,
+        "discount_type": promo.discount_type,
+        "full_price_usd": full,
+        "final_price_usd": final,
+        "savings_usd": savings,
+    }
+
+
+def mejor_promo(db: Session, base_price_usd: float, nights: int) -> "dict | None":
+    """La promo vigente CALCULABLE de mayor ahorro para esta estadía, o None."""
+    mejor = None
+    for p in get_vigentes(db):
+        oferta = aplicar_descuento(p, base_price_usd, nights)
+        if oferta and (mejor is None or oferta["savings_usd"] > mejor["savings_usd"]):
+            mejor = oferta
+    return mejor
+
+
+def promos_cualitativas(db: Session) -> List[Promotion]:
+    """Promos vigentes NO calculables (discount_type 'other' o sin valor) — para upsell."""
+    out = []
+    for p in get_vigentes(db):
+        calculable = (
+            (p.discount_type == "free_night" and p.discount_value)
+            or (p.discount_type == "percentage" and p.discount_value)
+        )
+        if not calculable:
+            out.append(p)
+    return out
+
+
+def promos_calculables_cercanas(db: Session, nights: int) -> List[Promotion]:
+    """Promos calculables que NO aplican hoy por faltar noches, ordenadas por cercanía.
+
+    Sirve para el upsell: "si sumás N noches accedés a la 4x3". Solo promos cuyo
+    min_nights es mayor a las noches actuales.
+    """
+    out = []
+    for p in get_vigentes(db):
+        calculable = (
+            (p.discount_type == "free_night" and p.discount_value)
+            or (p.discount_type == "percentage" and p.discount_value)
+        )
+        if calculable and p.min_nights and p.min_nights > nights:
+            out.append(p)
+    out.sort(key=lambda p: p.min_nights)
+    return out

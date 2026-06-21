@@ -50,6 +50,9 @@ class Contact(Base):
     contact_type = Column(String(20), default='lead')  # 'lead', 'customer', 'both'
     is_active = Column(Boolean, default=True)
 
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
+
     # Perfil extensible del huésped (gustos, servicios usados, familia, tags) como JSON.
     # Se persiste sobre TEXT (ver migración) y se serializa con json.dumps/loads.
     preferences = Column(Text, nullable=True)

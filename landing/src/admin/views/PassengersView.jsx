@@ -8,6 +8,9 @@ import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD, WhatsAppDot,
 } from '../ui'
 import { toast } from '../toast'
+import SearchInput from '../components/SearchInput'
+import Pagination from '../components/Pagination'
+import { useTableControls } from '../hooks/useTableControls'
 
 function flatten(c) {
   const m = c.metrics || {}
@@ -263,7 +266,7 @@ export default function PassengersView() {
   }
 
   const columns = [
-    { key: 'name', label: 'Huésped', render: (r) => (
+    { key: 'name', label: 'Huésped', sortable: true, render: (r) => (
       <div className="flex items-center gap-2">
         <button onClick={() => setSelected(r.id)} className="font-medium text-hilton-700 hover:underline">{r.name}</button>
         {r.inHouse && <Badge tone="green"><BedDouble size={11} className="mr-1" /> En casa</Badge>}
@@ -277,8 +280,8 @@ export default function PassengersView() {
       </div>
     ) },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
-    { key: 'stays', label: 'Estadías', render: (r) => <span className="tabular-nums font-medium text-ink">{r.stays}</span> },
-    { key: 'last', label: 'Última actividad', render: (r) => formatDate(r.last) },
+    { key: 'stays', label: 'Estadías', sortable: true, render: (r) => <span className="tabular-nums font-medium text-ink">{r.stays}</span> },
+    { key: 'last', label: 'Última actividad', sortable: true, render: (r) => formatDate(r.last) },
     { key: 'actions', label: '', render: (r) => (
       <div className="flex items-center justify-end gap-1.5">
         <button onClick={() => setSelected(r.id)} className="text-xs font-medium text-hilton-600 hover:underline">Ver 360°</button>
@@ -307,7 +310,17 @@ export default function PassengersView() {
   )
 
   const inHouseCount = rows.filter((r) => r.inHouse).length
-  const visible = onlyInHouse ? rows.filter((r) => r.inHouse) : rows
+  const byHouse = onlyInHouse ? rows.filter((r) => r.inHouse) : rows
+  const { pageRows, query, setQuery, sort, toggleSort, page, setPage, total, pageSize } =
+    useTableControls(byHouse, {
+      searchKeys: ['name', 'email', 'phone'],
+      pageSize: 50,
+      sortAccessors: {
+        name: (r) => r.name || '',
+        stays: (r) => r.stays || 0,
+        last: (r) => r.last || '',
+      },
+    })
 
   return (
     <div>
@@ -345,11 +358,17 @@ export default function PassengersView() {
               <BedDouble size={13} /> Alojados ahora <span className="tabular-nums opacity-70">({inHouseCount})</span>
             </button>
           </div>
-          {visible.length === 0 ? (
-            <EmptyState icon={BedDouble} title="Nadie alojado ahora"
-                        desc="No hay huéspedes en casa en este momento." />
+          <div className="mb-4">
+            <SearchInput value={query} onChange={setQuery} placeholder="Buscar por nombre, email o teléfono…" />
+          </div>
+          {total === 0 ? (
+            <EmptyState icon={BedDouble} title="Sin pasajeros en esta vista"
+                        desc="Probá con otro filtro o búsqueda." />
           ) : (
-            <ResponsiveTable columns={columns} rows={visible} renderCard={renderCard} />
+            <>
+              <ResponsiveTable columns={columns} rows={pageRows} renderCard={renderCard} sort={sort} onSort={toggleSort} />
+              <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+            </>
           )}
         </>
       )}

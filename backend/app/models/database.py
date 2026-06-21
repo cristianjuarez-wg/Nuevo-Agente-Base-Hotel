@@ -86,6 +86,19 @@ def run_light_migrations() -> None:
     ensure_column("conversations", "channel", "VARCHAR(20)")
     # Perfil extensible del huésped (gustos, servicios, familia) en JSON.
     ensure_column("contacts", "preferences", "TEXT")
+    # Promociones aplicables al precio: mínimo de noches para elegibilidad.
+    ensure_column("promotions", "min_nights", "INTEGER")
+    # Reserva con promo aplicada: nombre de la promo y precio sin descuento (trazabilidad).
+    ensure_column("bookings", "promo_name", "VARCHAR(120)")
+    ensure_column("bookings", "full_price_usd", "FLOAT")
+    # Marcador de datos de demostración (generados por el seed) para poder limpiarlos solos.
+    ensure_column("contacts", "is_demo", "BOOLEAN")
+    ensure_column("bookings", "is_demo", "BOOLEAN")
+    ensure_column("hotel_tickets", "is_demo", "BOOLEAN")
+    ensure_column("leads", "is_demo", "BOOLEAN")
+    ensure_column("conversations", "is_demo", "BOOLEAN")
+    ensure_column("conversation_messages", "is_demo", "BOOLEAN")
+    ensure_column("staff_members", "is_demo", "BOOLEAN")
     # Backfill: las filas creadas antes de agregar la columna quedan en NULL.
     _backfill("rooms", "status", "active")
     # Conversaciones previas a la columna: asumimos canal web (no había WhatsApp).

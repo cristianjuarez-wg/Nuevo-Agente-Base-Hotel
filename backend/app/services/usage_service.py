@@ -22,6 +22,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.conversation_message import ConversationMessage
+from app.models.conversation import Conversation
 from app.models.agent_budget import AgentBudgetConfig
 from app.core.token_pricing import cost_usd_from_total
 from app.core.logging_config import get_logger
@@ -106,6 +107,16 @@ def get_budget_config(db: Session) -> AgentBudgetConfig:
     return config
 
 
+def _count_conversations(db: Session, since_utc: datetime) -> int:
+    """Cuenta conversaciones (pre-venta) iniciadas desde `since_utc`."""
+    return (
+        db.query(func.count(Conversation.id))
+        .filter(Conversation.started_at >= since_utc)
+        .scalar()
+        or 0
+    )
+
+
 def get_usage_summary(db: Session) -> Dict:
     """Resumen de consumo para el panel del backoffice."""
     day_start_utc, month_start_utc, _ = _ar_period_bounds_utc()
@@ -113,6 +124,9 @@ def get_usage_summary(db: Session) -> Dict:
     today = _aggregate(db, day_start_utc)
     month = _aggregate(db, month_start_utc)
     config = get_budget_config(db)
+
+    today["conversations"] = _count_conversations(db, day_start_utc)
+    month["conversations"] = _count_conversations(db, month_start_utc)
 
     daily_limit = config.daily_limit_usd
     monthly_limit = config.monthly_limit_usd

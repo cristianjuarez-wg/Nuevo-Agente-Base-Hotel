@@ -69,20 +69,50 @@ export default function RoomCard({ card, onAction, lang = 'es' }) {
           )}
         </ul>
 
-        <div className="mt-3 flex items-end justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wide text-slatey">
-              {t.total} {nights ? `· ${nights} ${nights === 1 ? t.night : t.nights}` : t.stay}
-            </p>
-            <p className="font-display text-lg font-700 leading-none text-ink tabular-nums">
-              {formatUSD(card.price_usd)}
-            </p>
-            <p className="text-[11px] tabular-nums text-slatey">
-              {formatARS(card.price_ars)}
-              {card.price_usd_night ? ` · ${formatUSD(card.price_usd_night)}/${t.night}` : ''}
-            </p>
+        {card.full_price_usd ? (
+          /* Oferta con promo: badge + precio lleno tachado + final + ahorro */
+          <div className="mt-3">
+            {card.promo_name && (
+              <span className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-forest-100 px-2.5 py-0.5 text-[11px] font-semibold text-forest-600">
+                🎉 {t.promoApplied}: {card.promo_name}
+              </span>
+            )}
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-slatey">
+                  {t.total} {nights ? `· ${nights} ${nights === 1 ? t.night : t.nights}` : t.stay}
+                </p>
+                <p className="text-[11px] tabular-nums text-slatey line-through">
+                  {t.before} {formatUSD(card.full_price_usd)}
+                </p>
+                <p className="font-display text-lg font-700 leading-none text-forest-600 tabular-nums">
+                  {formatUSD(card.price_usd)}
+                </p>
+                <p className="text-[11px] tabular-nums text-slatey">{formatARS(card.price_ars)}</p>
+              </div>
+              {card.savings_usd ? (
+                <span className="rounded-lg bg-forest-50 px-2 py-1 text-[11px] font-medium text-forest-600 tabular-nums">
+                  {t.youSave} {formatUSD(card.savings_usd)}
+                </span>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-slatey">
+                {t.total} {nights ? `· ${nights} ${nights === 1 ? t.night : t.nights}` : t.stay}
+              </p>
+              <p className="font-display text-lg font-700 leading-none text-ink tabular-nums">
+                {formatUSD(card.price_usd)}
+              </p>
+              <p className="text-[11px] tabular-nums text-slatey">
+                {formatARS(card.price_ars)}
+                {card.price_usd_night ? ` · ${formatUSD(card.price_usd_night)}/${t.night}` : ''}
+              </p>
+            </div>
+          </div>
+        )}
 
         {bookAction && (
           <button

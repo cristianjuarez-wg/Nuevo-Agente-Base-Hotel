@@ -1,7 +1,7 @@
 """
 Modelo para tracking de conversaciones y sus timestamps
 """
-from sqlalchemy import Column, Integer, String, DateTime, Float, Text, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, Text, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.models.database import Base
 from datetime import datetime
@@ -49,7 +49,10 @@ class Conversation(Base):
     
     # Metadata adicional
     extra_metadata = Column(JSON, default=lambda: {})
-    
+
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
+
     # 🆕 Relationships (NUEVO - VISIÓN 360°)
     contact = relationship("Contact", back_populates="conversations")
     messages = relationship("ConversationMessage", back_populates="conversation", cascade="all, delete-orphan", lazy="dynamic")

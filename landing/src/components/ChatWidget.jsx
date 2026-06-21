@@ -227,28 +227,31 @@ export default function ChatWidget() {
         <div className="fixed inset-0 z-50 flex flex-col bg-white animate-slide-up-widget sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[600px] sm:max-h-[85vh] sm:w-[400px] sm:rounded-2xl sm:shadow-widget">
           {/* Header */}
           <div
-            className={`flex items-center justify-between px-4 py-4 text-white sm:rounded-t-2xl${theme?.header_bg ? '' : ' bg-hilton-800'}`}
+            className={`flex items-center justify-between px-4 py-5 text-white sm:rounded-t-2xl${theme?.header_bg ? '' : ' bg-hilton-800'}`}
             style={{
               backgroundColor: theme?.header_bg || undefined,
               color: theme?.header_text || undefined,
             }}
           >
-
+            {/* Avatar + info */}
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 ring-2 ring-white/20">
                 {theme?.emoji
                   ? <span style={{ fontSize: 22, lineHeight: 1 }}>{theme.emoji}</span>
-                  : <Sparkles size={19} strokeWidth={1.6} />}
+                  : <Sparkles size={20} strokeWidth={1.5} />}
               </div>
-              <div className="leading-tight">
-                <p className="font-display text-lg font-600">Aura</p>
-                <p className="flex items-center gap-1.5 text-xs text-white/70">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-forest-300" />
-                  {t.subtitle}
+              <div>
+                <p className="font-display text-base font-600 tracking-wide leading-none">Aura</p>
+                <p className="mt-1 text-xs text-white/60 leading-none">{t.subtitle}</p>
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-white/80 leading-none">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_1px_rgba(52,211,153,0.7)]" />
+                  en línea
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+
+            {/* Acciones */}
+            <div className="flex items-center">
               {/* Selector de idioma */}
               <div className="relative">
                 <button
@@ -257,9 +260,9 @@ export default function ChatWidget() {
                   title={t.language}
                   aria-haspopup="menu"
                   aria-expanded={langMenu}
-                  className="flex h-10 items-center gap-1 rounded-lg px-2 text-white/70 transition hover:bg-white/10 hover:text-white/95"
+                  className="flex h-9 items-center gap-1 rounded-lg px-2 text-white/60 transition hover:bg-white/10 hover:text-white"
                 >
-                  <Languages size={16} />
+                  <Languages size={15} />
                   <span className="text-xs font-semibold tracking-wide">
                     {LANGUAGES.find((l) => l.code === lang)?.short || 'ES'}
                   </span>
@@ -286,21 +289,25 @@ export default function ChatWidget() {
                   </>
                 )}
               </div>
+
+              {/* Separador */}
+              <span className="mx-1 h-5 w-px bg-white/20" />
+
               <button
                 onClick={resetChat}
                 disabled={busy || resetting}
                 aria-label={t.reset}
                 title={t.reset}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90 disabled:opacity-30"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90 disabled:opacity-30"
               >
-                <RotateCcw size={16} className={resetting ? 'animate-spin' : ''} />
+                <RotateCcw size={15} className={resetting ? 'animate-spin' : ''} />
               </button>
               <button
                 onClick={() => setOpen(false)}
                 aria-label={t.close}
-                className="flex h-10 w-10 items-center justify-center rounded-lg transition hover:bg-white/10"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-white/70 transition hover:bg-white/15 hover:text-white"
               >
-                <X size={22} />
+                <X size={20} />
               </button>
             </div>
           </div>

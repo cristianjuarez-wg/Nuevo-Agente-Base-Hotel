@@ -45,6 +45,9 @@ const STRINGS = {
     upTo: 'Hasta',
     total: 'Total',
     stay: 'estadía',
+    promoApplied: 'Promo aplicada',
+    youSave: 'Ahorrás',
+    before: 'antes',
   },
   en: {
     fab: 'Chat with Aura',
@@ -79,6 +82,9 @@ const STRINGS = {
     upTo: 'Up to',
     total: 'Total',
     stay: 'stay',
+    promoApplied: 'Promo applied',
+    youSave: 'You save',
+    before: 'before',
   },
   pt: {
     fab: 'Fale com a Aura',
@@ -113,6 +119,9 @@ const STRINGS = {
     upTo: 'Até',
     total: 'Total',
     stay: 'estadia',
+    promoApplied: 'Promo aplicada',
+    youSave: 'Você economiza',
+    before: 'antes',
   },
   fr: {
     fab: 'Discuter avec Aura',
@@ -147,6 +156,9 @@ const STRINGS = {
     upTo: "Jusqu'à",
     total: 'Total',
     stay: 'séjour',
+    promoApplied: 'Promo appliquée',
+    youSave: 'Vous économisez',
+    before: 'avant',
   },
 }
 

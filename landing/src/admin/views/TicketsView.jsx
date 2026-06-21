@@ -5,6 +5,17 @@ import {
   PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate,
 } from '../ui'
 import { toast } from '../toast'
+import SearchInput from '../components/SearchInput'
+import Pagination from '../components/Pagination'
+import { useTableControls } from '../hooks/useTableControls'
+
+const STATUS_FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'open', label: 'Abiertos' },
+  { id: 'in_progress', label: 'En curso' },
+  { id: 'resolved', label: 'Resueltos' },
+  { id: 'escalated', label: 'Escalados' },
+]
 
 function StatusBadge({ status }) {
   const map = {
@@ -29,6 +40,7 @@ export default function TicketsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
+  const [filter, setFilter] = useState('all')
 
   const load = () => {
     setLoading(true)
@@ -80,7 +92,7 @@ export default function TicketsView() {
     ) : (
       <span className="inline-flex items-center gap-1 text-xs text-green-600"><Bot size={13} /> Auto (IA)</span>
     ) },
-    { key: 'created_at', label: 'Fecha', render: (r) => formatDate(r.created_at) },
+    { key: 'created_at', label: 'Fecha', sortable: true, render: (r) => formatDate(r.created_at) },
     { key: 'actions', label: '', render: (r) => <DeleteButton r={r} /> },
   ]
 
@@ -106,6 +118,16 @@ export default function TicketsView() {
     </div>
   )
 
+  // Chips por estado → búsqueda + orden + paginación.
+  const byStatus = filter === 'all' ? rows : rows.filter((r) => r.status === filter)
+  const counts = rows.reduce((acc, r) => { acc.all += 1; acc[r.status] = (acc[r.status] || 0) + 1; return acc }, { all: 0 })
+  const { pageRows, query, setQuery, sort, toggleSort, page, setPage, total, pageSize } =
+    useTableControls(byStatus, {
+      searchKeys: ['ticket_number', 'guest_name', 'subject', 'booking_code'],
+      pageSize: 50,
+      sortAccessors: { created_at: (r) => r.created_at || '' },
+    })
+
   return (
     <div>
       <PageHeader
@@ -122,7 +144,38 @@ export default function TicketsView() {
       ) : rows.length === 0 ? (
         <EmptyState icon={LifeBuoy} title="Aún no hay tickets" desc="Cuando un huésped contacte al agente con su código de reserva, se abrirá un ticket." />
       ) : (
-        <ResponsiveTable columns={columns} rows={rows.map((r) => ({ ...r, _key: r.ticket_number }))} renderCard={renderCard} />
+        <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
+                  filter === f.id ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+                }`}
+              >
+                {f.label} <span className="tabular-nums opacity-70">({counts[f.id] ?? 0})</span>
+              </button>
+            ))}
+          </div>
+          <div className="mb-4">
+            <SearchInput value={query} onChange={setQuery} placeholder="Buscar por ticket, huésped o asunto…" />
+          </div>
+          {total === 0 ? (
+            <EmptyState icon={LifeBuoy} title="Sin tickets en esta vista" desc="Probá con otro filtro o búsqueda." />
+          ) : (
+            <>
+              <ResponsiveTable
+                columns={columns}
+                rows={pageRows.map((r) => ({ ...r, _key: r.ticket_number }))}
+                renderCard={renderCard}
+                sort={sort}
+                onSort={toggleSort}
+              />
+              <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+            </>
+          )}
+        </>
       )}
     </div>
   )

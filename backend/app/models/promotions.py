@@ -29,6 +29,10 @@ class Promotion(Base):
     # "other"       → descuento libre (ej. "estacionamiento incluido")
     discount_value = Column(Float, nullable=True)
 
+    # Mínimo de noches para que la promo aplique (4x3 → 4, 7x5 → 7). Null = sin mínimo.
+    # Para free_night/percentage define la condición de elegibilidad por estadía.
+    min_nights = Column(Integer, nullable=True)
+
     status = Column(String, nullable=False, default="active", index=True)
     # "active" | "inactive"
 
@@ -51,6 +55,8 @@ class Promotion(Base):
         elif self.discount_type == "free_night" and self.discount_value is not None:
             bonif = int(self.discount_value)
             parts.append(f"Noches bonificadas: {bonif} noche(s) gratis incluida(s).")
+        if self.min_nights:
+            parts.append(f"Estadía mínima: {self.min_nights} noche(s).")
         if self.conditions:
             parts.append(f"Condiciones: {self.conditions}")
         if self.valid_from or self.valid_until:
@@ -70,6 +76,7 @@ class Promotion(Base):
             "conditions": self.conditions,
             "discount_type": self.discount_type,
             "discount_value": self.discount_value,
+            "min_nights": self.min_nights,
             "status": self.status,
             "valid_from": self.valid_from.isoformat() if self.valid_from else None,
             "valid_until": self.valid_until.isoformat() if self.valid_until else None,

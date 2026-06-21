@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { BookOpen, Gauge, ShieldCheck, Tag, Palette } from 'lucide-react'
+import { BookOpen, Gauge, ShieldCheck, Tag, Palette, Database } from 'lucide-react'
 import KnowledgeView from './KnowledgeView'
 import UsageView from '../UsageView'
 import LimitsView from './LimitsView'
 import PromotionsView from './PromotionsView'
 import ThemesView from './ThemesView'
+import DemoView from './DemoView'
 
 const SUBNAV = [
   { id: 'conocimiento', label: 'Conocimiento', icon: BookOpen },
@@ -12,6 +13,7 @@ const SUBNAV = [
   { id: 'temas', label: 'Temas', icon: Palette },
   { id: 'consumo', label: 'Consumo IA', icon: Gauge },
   { id: 'limites', label: 'Límites y seguridad', icon: ShieldCheck },
+  { id: 'demo', label: 'Demo', icon: Database },
 ]
 
 // Lee el sub-segmento de "#admin/agente/<sub>".
@@ -64,6 +66,7 @@ export default function AgentSection() {
       {sub === 'temas' && <ThemesView />}
       {sub === 'consumo' && <UsageView />}
       {sub === 'limites' && <LimitsView />}
+      {sub === 'demo' && <DemoView />}
     </div>
   )
 }

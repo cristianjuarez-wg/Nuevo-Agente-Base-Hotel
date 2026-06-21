@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Coins, DollarSign, CalendarDays, ShieldAlert } from 'lucide-react'
+import { Coins, DollarSign, CalendarDays, ShieldAlert, MessageCircle } from 'lucide-react'
 import { getUsageSummary } from '../../services/api'
 import { PageHeader, StatCard, Loading, formatNumber, formatUSD } from '../ui'
 
 const formatTokens = (n) => formatNumber(n, 0)
-const formatUsd = (n) => formatUSD(n, 4)
+const formatUsd = (n) => formatUSD(n, 2)
+const formatCostPerConv = (usd, convs) => {
+  if (!convs) return '—'
+  return formatUSD(usd / convs, 2)
+}
 
 export default function UsageView() {
   const [summary, setSummary] = useState(null)
@@ -48,6 +52,17 @@ export default function UsageView() {
         <StatCard icon={DollarSign} label="USD hoy (estimado)" value={formatUsd(today.usd)} tone="green" />
         <StatCard icon={CalendarDays} label="Tokens este mes" value={formatTokens(month.tokens)} tone="hilton" />
         <StatCard icon={DollarSign} label="USD este mes (estimado)" value={formatUsd(month.usd)} tone="amber" />
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <StatCard icon={MessageCircle} label="Conversaciones hoy" value={formatNumber(today.conversations, 0)} tone="hilton" />
+        <StatCard icon={MessageCircle} label="Conversaciones este mes" value={formatNumber(month.conversations, 0)} tone="hilton" />
+        <StatCard
+          icon={DollarSign}
+          label="Costo por conversación (mes)"
+          value={formatCostPerConv(month.usd, month.conversations)}
+          tone="green"
+        />
       </div>
 
       {/* Desglose por modelo (mes) */}
