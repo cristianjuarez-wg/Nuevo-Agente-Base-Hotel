@@ -107,14 +107,18 @@ _DATE_REQUEST_HINTS = (
 _BOOKING_FLOW_TOOLS = ("consultar_disponibilidad", "crear_reserva", "consultar_reserva")
 
 
-def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool) -> bool:
+def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool,
+                             context_type: str = "") -> bool:
     """Decide si adjuntar el selector de fechas.
 
-    Lo ofrecemos cuando el agente está PIDIENDO fechas al inicio del flujo: no mostró
-    habitaciones ni tocó ninguna tool de reserva en este turno, y su texto menciona
-    fechas/check-in. Así el usuario elige con el picker en vez de tipear, sin que el
-    selector reaparezca tras confirmar o consultar una reserva.
+    El picker SOLO tiene sentido en PRE-VENTA (cuando el agente está pidiendo fechas para
+    consultar disponibilidad). En post-venta (huésped con reserva preguntando por su
+    check-in, etc.) o en charla casual NUNCA se ofrece, aunque la respuesta mencione
+    "check-in"/"fecha". También se excluye si ya se mostraron habitaciones o se tocó una
+    tool de reserva en el turno.
     """
+    if context_type in ("postsale", "casual"):
+        return False
     if has_room_cards:
         return False
     used = tools_used or []
@@ -247,9 +251,11 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         cards = _build_room_cards(result.get("rooms_offered", []))
 
         # Si el agente está pidiendo fechas y no mostró habitaciones, ofrecemos el selector.
+        # Nunca en post-venta/casual (el huésped con reserva no busca disponibilidad).
         if _should_offer_datepicker(result.get("response", ""),
                                     result.get("tools_used", []),
-                                    has_room_cards=bool(cards)):
+                                    has_room_cards=bool(cards),
+                                    context_type=result.get("context_type", "")):
             cards = [_date_picker_card()]
 
         processing_time = time.time() - start_time

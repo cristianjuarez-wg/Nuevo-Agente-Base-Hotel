@@ -485,6 +485,7 @@ class AgentService:
                         "response": response_text,
                         "has_context": False,
                         "intent": "casual_conversation",
+                        "context_type": "casual",
                         "processing_time": f"{total_duration:.2f}s",
                         "session_info": self.get_session_info(session_id)
                     }
@@ -540,6 +541,7 @@ class AgentService:
                                          session_id=session_id, error=str(e))
 
                     orch_result["session_info"] = self.get_session_info(session_id)
+                    orch_result["context_type"] = "postsale"
                     return orch_result
 
                 except Exception as e:
