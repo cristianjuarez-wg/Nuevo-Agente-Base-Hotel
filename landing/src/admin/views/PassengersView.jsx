@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
-  Repeat, DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt, Pencil, Save,
+  DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt, Pencil, Save, LifeBuoy,
 } from 'lucide-react'
 import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio, updateContact } from '../../services/api'
 import {
@@ -40,6 +40,7 @@ function ProfileStat({ icon: Icon, label, value }) {
 
 function PreferenceEditor({ profile, onSave, saving }) {
   const prefs = profile.preferences || {}
+  const [allergies, setAllergies] = useState((prefs.allergies || []).join(', '))
   const [dietary, setDietary] = useState((prefs.dietary || []).join(', '))
   const [services, setServices] = useState((prefs.services_used || []).join(', '))
   const [notes, setNotes] = useState(prefs.notes || '')
@@ -48,10 +49,15 @@ function PreferenceEditor({ profile, onSave, saving }) {
 
   return (
     <div className="space-y-3">
-      <Field label="Preferencias gastronómicas" hint="separadas por coma">
+      <Field label="⚠️ Alergias / intolerancias" hint="seguridad alimentaria — separadas por coma">
+        <input className="w-full rounded-xl border border-red-200 bg-red-50/40 px-3.5 py-2.5 text-sm focus:border-red-400 focus:outline-none"
+               value={allergies} onChange={(e) => setAllergies(e.target.value)}
+               placeholder="maní, frutos secos, mariscos" />
+      </Field>
+      <Field label="Preferencias dietéticas" hint="separadas por coma">
         <input className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
                value={dietary} onChange={(e) => setDietary(e.target.value)}
-               placeholder="vegetariano, sin gluten" />
+               placeholder="vegetariano, sin TACC" />
       </Field>
       <Field label="Servicios que suele usar" hint="separados por coma">
         <input className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
@@ -64,7 +70,7 @@ function PreferenceEditor({ profile, onSave, saving }) {
                   placeholder="Prefiere pisos altos, viaja con mascota…" />
       </Field>
       <button
-        onClick={() => onSave({ ...prefs, dietary: toList(dietary), services_used: toList(services), notes })}
+        onClick={() => onSave({ ...prefs, allergies: toList(allergies), dietary: toList(dietary), services_used: toList(services), notes })}
         disabled={saving}
         className="btn-primary w-full py-2.5 text-sm disabled:opacity-60"
       >
@@ -178,15 +184,35 @@ function DetailDrawer({ contactId, onClose }) {
                 </div>
               )}
 
+              {/* Alergias resaltadas (seguridad alimentaria) */}
+              {profile.preferences?.allergies?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <span className="font-semibold">⚠️ Alergias:</span>
+                  {profile.preferences.allergies.map((a) => (
+                    <span key={a} className="rounded-full bg-red-600/90 px-2.5 py-0.5 text-xs font-medium text-white">{a}</span>
+                  ))}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <ProfileStat icon={CalendarCheck} label="Estadías" value={profile.stays_count} />
-                <ProfileStat icon={DollarSign} label="Gasto total"
+                <ProfileStat icon={DollarSign} label="Gasto alojamiento"
                              value={formatUSD(profile.total_spent_usd || 0)} />
+                <ProfileStat icon={UtensilsCrossed} label="Gasto restaurante"
+                             value={formatUSD(profile.total_spent_fnb_usd || 0)} />
                 <ProfileStat icon={BedDouble} label="Habitación preferida"
                              value={profile.preferred_room || '—'} />
-                <ProfileStat icon={Repeat} label="Recurrente"
-                             value={profile.is_recurring ? 'Sí' : 'No'} />
               </div>
+
+              {/* Preferencias dietéticas (no críticas) */}
+              {profile.preferences?.dietary?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-forest-50 px-4 py-2.5 text-sm text-forest-700">
+                  <span className="font-medium">Dieta:</span>
+                  {profile.preferences.dietary.map((d) => (
+                    <span key={d} className="rounded-full bg-forest-100 px-2.5 py-0.5 text-xs font-medium text-forest-600">{d}</span>
+                  ))}
+                </div>
+              )}
 
               {/* Contacto */}
               <div className="rounded-2xl bg-white p-4 shadow-card">
@@ -203,17 +229,28 @@ function DetailDrawer({ contactId, onClose }) {
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slatey">Historial de estadías</h3>
                   <div className="space-y-2">
                     {profile.stays.map((s) => (
-                      <div key={s.code} className="flex items-center justify-between border-b border-mist/60 pb-2 text-sm last:border-0 last:pb-0">
-                        <div>
-                          <p className="font-medium text-ink">
-                            {s.room_type}
-                            {s.room_number && <span className="ml-1.5 text-xs font-semibold tabular-nums text-hilton-600">N° {s.room_number}</span>}
-                          </p>
-                          <p className="text-xs text-slatey tabular-nums">
-                            {formatDate(s.check_in)} → {formatDate(s.check_out)}
-                          </p>
+                      <div key={s.code} className="border-b border-mist/60 pb-2 text-sm last:border-0 last:pb-0">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-ink">
+                              {s.room_type}
+                              {s.room_number && <span className="ml-1.5 text-xs font-semibold tabular-nums text-hilton-600">N° {s.room_number}</span>}
+                            </p>
+                            <p className="text-xs text-slatey tabular-nums">
+                              {formatDate(s.check_in)} → {formatDate(s.check_out)}
+                            </p>
+                          </div>
+                          <span className="font-medium tabular-nums text-hilton-700">{formatUSD(s.total_price_usd)}</span>
                         </div>
-                        <span className="font-medium tabular-nums text-hilton-700">{formatUSD(s.total_price_usd)}</span>
+                        {s.consumo?.length > 0 && (
+                          <p className="mt-1 flex items-start gap-1 text-xs text-slatey">
+                            <UtensilsCrossed size={12} className="mt-0.5 shrink-0 text-timber-400" />
+                            <span>
+                              {s.consumo.map((c) => `${c.qty}x ${c.name}`).join(', ')}
+                              {s.consumo_total_usd ? <span className="ml-1 tabular-nums text-timber-500">· {formatUSD(s.consumo_total_usd)}</span> : null}
+                            </span>
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -244,6 +281,28 @@ function DetailDrawer({ contactId, onClose }) {
                     {folio.summary.folio_pending_usd > 0 && (
                       <p className="text-xs text-amber-600">Pendiente de cobro: {formatUSD(folio.summary.folio_pending_usd)} (se salda al check-out)</p>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Tickets de soporte (post-venta) */}
+              {profile.tickets?.length > 0 && (
+                <div className="rounded-2xl bg-white p-4 shadow-card">
+                  <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
+                    <LifeBuoy size={13} /> Tickets de soporte
+                  </h3>
+                  <div className="space-y-2">
+                    {profile.tickets.map((t) => (
+                      <div key={t.id} className="flex items-center justify-between border-b border-mist/60 pb-2 text-sm last:border-0 last:pb-0">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-ink">{t.subject}</p>
+                          <p className="text-xs text-slatey tabular-nums">{t.ticket_number} · {formatDate(t.created_at)}</p>
+                        </div>
+                        <Badge tone={t.status === 'resolved' ? 'green' : t.escalated ? 'red' : 'amber'}>
+                          {t.status === 'resolved' ? 'Resuelto' : t.status === 'escalated' || t.escalated ? 'Escalado' : t.status === 'in_progress' ? 'En curso' : 'Abierto'}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

@@ -795,8 +795,35 @@ def _handle_registrar_pedido(args: Dict, ctx: Dict) -> Dict:
     }
 
 
+# Palabras que marcan una ALERGIA / intolerancia (seguridad alimentaria → categoría aparte).
+_ALERGIA_KEYWORDS = ("alergi", "alérgic", "alergic", "intoleran", "anafilax")
+
+
+def _clasificar_preferencia(texto: str, tipo_hint: Optional[str] = None) -> str:
+    """Devuelve 'allergies' o 'dietary' según el texto (o un hint explícito del agente).
+
+    Una alergia es un tema de SEGURIDAD alimentaria y va separada de las dietas
+    (vegano, vegetariano, sin TACC). El hint del agente ('alergia'|'dieta') gana.
+    """
+    if tipo_hint:
+        h = tipo_hint.strip().lower()
+        if h.startswith("aler") or "intoler" in h:
+            return "allergies"
+        if h in ("dieta", "dietary", "preferencia", "preferencia_dietetica"):
+            return "dietary"
+    t = (texto or "").lower()
+    if any(k in t for k in _ALERGIA_KEYWORDS):
+        return "allergies"
+    return "dietary"
+
+
 def _handle_guardar_preferencia(args: Dict, ctx: Dict) -> Dict:
-    """Guarda una preferencia dietética del huésped en su perfil (para sugerir a futuro)."""
+    """Guarda una preferencia/alergia del huésped en su perfil (para tener siempre en cuenta).
+
+    Distingue ALERGIAS (seguridad alimentaria, categoría `allergies`) de las preferencias
+    dietéticas (vegano, vegetariano, sin TACC → `dietary`). El agente puede mandar un
+    `tipo` ('alergia'|'dieta'); si no, se clasifica por el texto.
+    """
     db: Optional[Session] = ctx.get("db")
     if db is None:
         return {"tool_result": "Error interno: sin conexión a base de datos."}
@@ -810,23 +837,45 @@ def _handle_guardar_preferencia(args: Dict, ctx: Dict) -> Dict:
         nuevas = [nuevas]
     nuevas = [str(p).strip().lower() for p in nuevas if str(p).strip()]
     if not nuevas:
-        return {"tool_result": "¿Qué preferencia querés que guarde? (ej: vegetariano, sin TACC, alergia al maní)"}
+        return {"tool_result": "¿Qué preferencia o alergia querés que guarde? (ej: vegetariano, sin TACC, alergia al maní)"}
+
+    tipo_hint = args.get("tipo")
 
     try:
         profile = contact_service.get_guest_profile(contact.id, db)
         prefs = (profile or {}).get("preferences") or {}
     except Exception:
         prefs = {}
+
     diet = set(prefs.get("dietary") or [])
-    diet.update(nuevas)
+    allergies = set(prefs.get("allergies") or [])
+    nuevas_alergias, nuevas_dietas = [], []
+    for p in nuevas:
+        if _clasificar_preferencia(p, tipo_hint) == "allergies":
+            allergies.add(p)
+            nuevas_alergias.append(p)
+        else:
+            diet.add(p)
+            nuevas_dietas.append(p)
+
     prefs["dietary"] = sorted(diet)
+    prefs["allergies"] = sorted(allergies)
     contact_service.set_preferences(contact.id, prefs, db)
 
+    # Mensaje de confirmación diferenciado: la alergia se confirma con énfasis.
+    partes = []
+    if nuevas_alergias:
+        partes.append(
+            f"⚠️ Anoté tu alergia/intolerancia ({', '.join(nuevas_alergias)}). "
+            "La voy a tener SIEMPRE en cuenta: no te voy a sugerir nada que la contenga."
+        )
+    if nuevas_dietas:
+        partes.append(
+            f"Guardé tus preferencias ({', '.join(nuevas_dietas)}) en tu perfil. "
+            "Las voy a usar para sugerirte opciones acordes. 🌿"
+        )
     return {
-        "tool_result": (
-            f"Listo, guardé tus preferencias ({', '.join(nuevas)}) en tu perfil. "
-            "Las voy a tener en cuenta para sugerirte opciones acordes. 🌿"
-        ),
+        "tool_result": " ".join(partes) or "Listo, lo guardé en tu perfil.",
         "saved": True,
     }
 

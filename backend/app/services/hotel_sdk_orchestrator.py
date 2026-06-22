@@ -316,14 +316,22 @@ async def registrar_pedido(ctx: RunContextWrapper[HotelContext], order_code: str
 
 
 @function_tool
-async def guardar_preferencia(ctx: RunContextWrapper[HotelContext], preferencias: str) -> str:
-    """Guarda preferencias dietéticas del huésped en su perfil para sugerir a futuro.
-    Úsala cuando el cliente mencione una restricción o gusto (ej. "soy vegetariano",
-    "soy celíaco", "alergia a los frutos secos", "no como carne"). `preferencias` =
-    lista separada por comas (ej. "vegetariano, sin tacc")."""
+async def guardar_preferencia(
+    ctx: RunContextWrapper[HotelContext], preferencias: str, tipo: str = ""
+) -> str:
+    """Guarda una preferencia dietética o ALERGIA del huésped en su perfil, para tenerla
+    siempre en cuenta. Úsala apenas el cliente mencione una restricción, gusto o alergia
+    EN CUALQUIER momento de la charla (no solo al pedir comida): ej. "soy vegetariano",
+    "soy celíaco", "soy alérgico al maní", "no como carne".
+    `preferencias` = lista separada por comas (ej. "vegetariano, sin tacc").
+    `tipo` = "alergia" si es una alergia/intolerancia (seguridad alimentaria), o "dieta"
+    si es una preferencia dietética. Si no estás seguro, dejalo vacío y se clasifica solo."""
     tool_ctx = ctx.context.as_tool_ctx()
     prefs = [p.strip() for p in (preferencias or "").split(",") if p.strip()]
-    result = await execute_tool("guardar_preferencia", {"preferencias": prefs}, tool_ctx)
+    args = {"preferencias": prefs}
+    if (tipo or "").strip():
+        args["tipo"] = tipo.strip()
+    result = await execute_tool("guardar_preferencia", args, tool_ctx)
     return result.get("tool_result", "")
 
 

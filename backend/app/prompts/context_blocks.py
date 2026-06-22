@@ -56,8 +56,33 @@ def build_guest_profile_block(profile: dict) -> str:
         lines.append(f"- Habitación que suele elegir: {profile['preferred_room']}.")
 
     prefs = profile.get("preferences") or {}
+
+    # ALERGIAS — seguridad alimentaria, se resaltan aparte y arriba de todo.
+    allergies = prefs.get("allergies") or []
+    if allergies:
+        lines.append(
+            f"- ⚠️ ALERGIAS / INTOLERANCIAS (CRÍTICO, respetar SIEMPRE): "
+            f"{', '.join(allergies)}. NUNCA sugerir ni confirmar un plato que las contenga."
+        )
     if prefs.get("dietary"):
-        lines.append(f"- Preferencias gastronómicas: {', '.join(prefs['dietary'])}.")
+        lines.append(f"- Preferencias dietéticas: {', '.join(prefs['dietary'])}.")
+
+    # Consumo gastronómico histórico — para referenciarlo con calidez (no recitarlo).
+    consumo_hist: dict = {}
+    for o in profile.get("orders") or []:
+        for it in o.get("items", []):
+            consumo_hist[it["name"]] = consumo_hist.get(it["name"], 0) + (it.get("qty") or 1)
+    if consumo_hist:
+        top = sorted(consumo_hist.items(), key=lambda kv: kv[1], reverse=True)[:4]
+        lines.append("- Suele pedir en el restaurante: " + ", ".join(n for n, _ in top) + ".")
+
+    # Si está hospedado, lo que YA consumió en esta estadía.
+    active = profile.get("active_stay") or {}
+    consumo_actual = active.get("consumo") or []
+    if profile.get("is_staying_now") and consumo_actual:
+        actual_txt = ", ".join(f"{c['qty']}x {c['name']}" for c in consumo_actual)
+        lines.append(f"- En esta estadía ya consumió: {actual_txt}.")
+
     if prefs.get("services_used"):
         lines.append(f"- Servicios que suele usar: {', '.join(prefs['services_used'])}.")
     if prefs.get("family"):
@@ -71,6 +96,12 @@ def build_guest_profile_block(profile: dict) -> str:
         return ""  # sin datos útiles: no inyectamos nada
 
     detail = "\n".join(lines)
+    allergy_rule = ""
+    if allergies:
+        allergy_rule = (
+            "\n⚠️ SEGURIDAD ALIMENTARIA: tiene alergias declaradas. JAMÁS le sugieras ni "
+            "confirmes un plato que contenga esos alérgenos; ante la duda, consultá antes de recomendar."
+        )
     return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🛎️ PERFIL DEL HUÉSPED — {name}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -82,8 +113,10 @@ CÓMO USARLO:
 ✅ Saludalo por su nombre y reconocé que lo conocés ("¡Qué bueno tenerte de vuelta!").
 ✅ Si va a reservar, ofrecé proactivamente lo que ya sabés que prefiere
    (ej: "¿Te reservo la {profile.get('preferred_room') or 'misma habitación'} de siempre?").
+✅ Si ya pidió comida antes, podés referenciarlo con calidez cuando venga al caso
+   ("la última vez disfrutaste el ojo de bife, ¿querés repetir?") — sin recitar la lista.
 ✅ Tono cálido, de hospitalidad premium, natural — NO leas los datos como una lista.
-🚫 NO suenes invasivo ni recites todo lo que sabés de golpe; usalo cuando venga al caso.
+🚫 NO suenes invasivo ni recites todo lo que sabés de golpe; usalo cuando venga al caso.{allergy_rule}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 """

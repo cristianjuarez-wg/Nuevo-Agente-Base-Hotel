@@ -255,6 +255,16 @@ def create_order(
                 total_usd=total_usd, mode=payment_mode, fulfillment=fulfillment,
                 booking=bool(booking))
 
+    # Recalcular métricas 360° del contacto (gasto F&B, tipo) si el pedido es de un huésped
+    # identificado (por contact_id directo o por la reserva a la que se cargó el folio).
+    metrics_contact_id = order.contact_id or (booking.contact_id if booking else None)
+    if metrics_contact_id:
+        try:
+            from app.services.contact_service import contact_service
+            contact_service.update_contact_metrics(metrics_contact_id, db)
+        except Exception as e:  # noqa: BLE001 — no romper el pedido por las métricas
+            logger.warning("No se pudieron recalcular métricas tras el pedido", error=str(e))
+
     result = order.to_dict()
     result["payment_mode"] = payment_mode
     if booking:
@@ -270,6 +280,27 @@ def get_order(db: Session, order_code: str) -> Optional[Dict]:
 
 def list_orders(db: Session) -> List[Dict]:
     orders = db.query(RestaurantOrder).order_by(RestaurantOrder.created_at.desc()).all()
+    return [o.to_dict() for o in orders]
+
+
+def list_orders_for_contact(db: Session, contact_id: int) -> List[Dict]:
+    """Todos los pedidos de un contacto: por `contact_id` directo y por `booking_id` de
+    sus reservas (para pedidos que se cargaron al folio sin contact_id). Sin duplicados.
+    Cada pedido viene con sus `items` (vía to_dict)."""
+    from sqlalchemy import or_
+
+    booking_ids = [
+        b.id for b in db.query(Booking.id).filter(Booking.contact_id == contact_id).all()
+    ]
+    q = db.query(RestaurantOrder).filter(RestaurantOrder.status != "cancelado")
+    if booking_ids:
+        q = q.filter(or_(
+            RestaurantOrder.contact_id == contact_id,
+            RestaurantOrder.booking_id.in_(booking_ids),
+        ))
+    else:
+        q = q.filter(RestaurantOrder.contact_id == contact_id)
+    orders = q.order_by(RestaurantOrder.created_at.desc()).all()
     return [o.to_dict() for o in orders]
 
 

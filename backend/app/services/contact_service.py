@@ -188,23 +188,22 @@ class ContactService:
         except Exception:
             contact.purchases_made = 0
         
-        # Contar tickets (si existe la tabla support_tickets) - A través de paquetes
+        # Contar tickets de soporte del HOTEL (HotelTicket), no los modelos legacy de turismo.
+        # Los tickets reales se atan a las reservas del contacto por booking_id. Excluimos
+        # los tickets operativos de restaurante (category="restaurant"): son avisos a cocina,
+        # no reclamos de post-venta del huésped.
         try:
-            from app.models.postsale import SupportTicket, SoldPackage
-            if contact.phone_number:
-                phone_last_digits = contact.phone_number[-10:] if len(contact.phone_number) >= 10 else contact.phone_number
-                # Obtener IDs de paquetes del contacto
-                package_ids = db.query(SoldPackage.id).filter(
-                    SoldPackage.passenger_phone.like(f'%{phone_last_digits}%')
+            from app.models.hotel import Booking, HotelTicket
+            booking_ids = [
+                bid for (bid,) in db.query(Booking.id).filter(
+                    Booking.contact_id == contact_id
                 ).all()
-                package_ids = [pid[0] for pid in package_ids]
-                
-                if package_ids:
-                    contact.tickets_created = db.query(SupportTicket).filter(
-                        SupportTicket.package_id.in_(package_ids)
-                    ).count()
-                else:
-                    contact.tickets_created = 0
+            ]
+            if booking_ids:
+                contact.tickets_created = db.query(HotelTicket).filter(
+                    HotelTicket.booking_id.in_(booking_ids),
+                    HotelTicket.category != "restaurant",
+                ).count()
             else:
                 contact.tickets_created = 0
         except Exception as e:
@@ -457,6 +456,38 @@ class ContactService:
 
         today = date.today()
         stays = [b.to_dict() for b in bookings]
+
+        # ── Consumo gastronómico (F&B) del contacto, agrupado por estadía ──────────
+        # Cada reserva muestra qué consumió en esa visita; el resto queda en `orders`.
+        from app.services import restaurant_service
+        try:
+            all_orders = restaurant_service.list_orders_for_contact(db, contact_id)
+        except Exception:
+            all_orders = []
+        orders_by_booking: Dict[int, list] = {}
+        for o in all_orders:
+            bid = o.get("booking_id")
+            if bid:
+                orders_by_booking.setdefault(bid, []).append(o)
+
+        def _consumo_de(booking_id):
+            """Resumen [{name, qty}] y total USD de lo consumido en una reserva."""
+            line_qty: Dict[str, int] = {}
+            total = 0.0
+            for o in orders_by_booking.get(booking_id, []):
+                total += o.get("total_usd") or 0
+                for it in o.get("items", []):
+                    line_qty[it["name"]] = line_qty.get(it["name"], 0) + (it.get("qty") or 1)
+            consumo = [{"name": n, "qty": q} for n, q in line_qty.items()]
+            return consumo, round(total, 2)
+
+        for s in stays:
+            consumo, total = _consumo_de(s.get("id"))
+            s["consumo"] = consumo
+            s["consumo_total_usd"] = total
+
+        total_spent_fnb_usd = round(sum(o.get("total_usd") or 0 for o in all_orders), 2)
+
         # Estadía activa: hoy está dentro de algún rango check_in..check_out.
         active = next(
             (b for b in bookings if b.check_in and b.check_out and b.check_in <= today <= b.check_out),
@@ -480,6 +511,26 @@ class ContactService:
             except Exception:
                 prefs = {}
 
+        # Tickets de soporte (post-venta) del contacto, vía sus reservas. Excluimos los
+        # tickets operativos de restaurante (avisos a cocina), no son reclamos del huésped.
+        tickets = []
+        try:
+            from app.models.hotel import HotelTicket
+            booking_ids = [b.id for b in bookings]
+            if booking_ids:
+                tk = (
+                    db.query(HotelTicket)
+                    .filter(
+                        HotelTicket.booking_id.in_(booking_ids),
+                        HotelTicket.category != "restaurant",
+                    )
+                    .order_by(HotelTicket.created_at.desc())
+                    .all()
+                )
+                tickets = [t.to_dict() for t in tk]
+        except Exception:
+            tickets = []
+
         from app.core.origin import origin_from_channel
         _channel = self.get_channel(contact_id, db)
         return {
@@ -494,7 +545,10 @@ class ContactService:
             "last_stay": stays[0]["check_in"] if stays else None,
             "preferred_room": preferred_room,
             "total_spent_usd": total_spent_usd,
+            "total_spent_fnb_usd": total_spent_fnb_usd,
             "stays": stays,
+            "orders": all_orders,
+            "tickets": tickets,
             "preferences": prefs,
         }
 

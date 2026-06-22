@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Sparkles, RotateCcw, Languages, Check } from 'l
 import { getGreeting, sendMessage, clearChat, getChatTheme } from '../services/api'
 import RoomCard from './chat/RoomCard'
 import DatePickerCard from './chat/DatePickerCard'
+import MenuCard from './chat/MenuCard'
 import ChatEffects from './chat/ChatEffects'
 import { LANGUAGES, getStrings, detectInitialLang, persistLang } from '../i18n/chat'
 
@@ -342,6 +343,8 @@ export default function ChatWidget() {
                         return <RoomCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
                       if (card.type === 'date_picker')
                         return <DatePickerCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
+                      if (card.type === 'menu')
+                        return <MenuCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
                       return null
                     })}
                   </div>

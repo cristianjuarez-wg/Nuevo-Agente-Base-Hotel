@@ -48,6 +48,10 @@ const STRINGS = {
     promoApplied: 'Promo aplicada',
     youSave: 'Ahorrás',
     before: 'antes',
+    // Menu card
+    menuTitle: 'Carta del restaurante',
+    menuDesc: 'Cocina patagónica de PLAZA — Hampton’s Kitchen House.',
+    viewMenu: 'Ver carta y pedir',
   },
   en: {
     fab: 'Chat with Aura',
@@ -85,6 +89,9 @@ const STRINGS = {
     promoApplied: 'Promo applied',
     youSave: 'You save',
     before: 'before',
+    menuTitle: 'Restaurant menu',
+    menuDesc: 'Patagonian cuisine at PLAZA — Hampton’s Kitchen House.',
+    viewMenu: 'View menu & order',
   },
   pt: {
     fab: 'Fale com a Aura',
@@ -122,6 +129,9 @@ const STRINGS = {
     promoApplied: 'Promo aplicada',
     youSave: 'Você economiza',
     before: 'antes',
+    menuTitle: 'Cardápio do restaurante',
+    menuDesc: 'Cozinha patagônica do PLAZA — Hampton’s Kitchen House.',
+    viewMenu: 'Ver cardápio e pedir',
   },
   fr: {
     fab: 'Discuter avec Aura',
@@ -159,6 +169,9 @@ const STRINGS = {
     promoApplied: 'Promo appliquée',
     youSave: 'Vous économisez',
     before: 'avant',
+    menuTitle: 'Carte du restaurant',
+    menuDesc: 'Cuisine patagonienne du PLAZA — Hampton’s Kitchen House.',
+    viewMenu: 'Voir la carte et commander',
   },
 }
 
