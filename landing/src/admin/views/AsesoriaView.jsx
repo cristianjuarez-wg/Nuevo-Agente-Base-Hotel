@@ -131,7 +131,7 @@ export default function AsesoriaView() {
   return (
     <div>
       <PageHeader
-        title="Asesoría — Entrenamiento del consultor"
+        title="Asesor de gerencia"
         subtitle="Subí libros y documentos de gestión hotelera, revenue management o finanzas (PDF o Markdown). El asesor de gerencia (por WhatsApp) los usa para fundamentar sus recomendaciones, cruzándolos con los datos reales del hotel. Es independiente del conocimiento del agente de huéspedes."
         right={
           <div className="flex items-center gap-2">

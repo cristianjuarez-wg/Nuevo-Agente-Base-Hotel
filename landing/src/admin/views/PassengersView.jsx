@@ -509,7 +509,7 @@ export default function PassengersView() {
   return (
     <div>
       <PageHeader
-        title="Pasajeros"
+        title="Huéspedes"
         subtitle="Huéspedes que reservaron al menos una vez. Tocá un nombre para ver su perfil 360°."
         right={
           <button onClick={load} className="btn-secondary px-4 py-2 text-xs">

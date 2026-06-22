@@ -65,6 +65,10 @@ class ResolvePayload(BaseModel):
     note: Optional[str] = None
 
 
+class PriorityPayload(BaseModel):
+    priority: str  # low | medium | high
+
+
 @router.patch("/{ticket_id}/assign")
 async def assign_ticket(ticket_id: int, payload: AssignPayload, db: Session = Depends(get_db)):
     """Reasigna manualmente un ticket operativo a un área y/o persona (fallback humano)."""
@@ -134,6 +138,25 @@ async def reopen_ticket(ticket_id: int, db: Session = Depends(get_db)):
     from app.services import operations_service as ops
     ops.log_event(db, ticket, "reopened", actor_type="human", actor_name="Backoffice",
                   note="Reabierto desde el backoffice")
+    return {"ticket": _enrich(ticket)}
+
+
+_PRIORITY_LABELS = {"low": "baja", "medium": "media", "high": "alta"}
+
+
+@router.patch("/{ticket_id}/priority")
+async def set_ticket_priority(ticket_id: int, payload: PriorityPayload, db: Session = Depends(get_db)):
+    """Cambia la prioridad de un ticket desde el backoffice (acción manual)."""
+    if payload.priority not in _PRIORITY_LABELS:
+        raise HTTPException(status_code=422, detail="Prioridad inválida (low/medium/high)")
+    ticket = db.query(HotelTicket).filter(HotelTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    ticket.priority = payload.priority
+    db.commit()
+    from app.services import operations_service as ops
+    ops.log_event(db, ticket, "priority", actor_type="human", actor_name="Backoffice",
+                  note=f"Prioridad → {_PRIORITY_LABELS[payload.priority]}")
     return {"ticket": _enrich(ticket)}
 
 

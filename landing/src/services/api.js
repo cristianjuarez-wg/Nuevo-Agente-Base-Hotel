@@ -116,6 +116,11 @@ export async function reopenTicket(ticketId) {
   return data.ticket ?? data
 }
 
+export async function setTicketPriority(ticketId, priority) {
+  const { data } = await client.patch(`/api/hotel-tickets/${ticketId}/priority`, { priority })
+  return data.ticket ?? data
+}
+
 // ── Consumo IA (tokens / USD) ────────────────────────────────────────────────
 export async function getUsageSummary() {
   const { data } = await client.get('/api/usage/summary')

@@ -10,6 +10,8 @@ sin depender de generarlo todo en vivo:
   3) RESUELTO (loop)   — historia completa: Aura creó→asignó, Carlos resolvió, huésped validó.
   4) RESUELTO directo  — incidencia ORIGINADA por el staff (sin huésped a validar).
   5) REABIERTO         — el huésped rechazó la resolución; volvió al equipo.
+  6) CONSULTA resuelta — post-venta informativa que Aura respondió sola (toggle "Consultas").
+  7) CONSULTA escalada — post-venta que requirió acción humana (escalada a administración).
 
 Idempotente: usa números de ticket fijos con prefijo OPS- y no duplica. is_demo=True.
 Requiere que existan staff con área (seed_staff.py) y reservas (seed_hotel/demo).
@@ -171,6 +173,34 @@ def seed():
             _ev(db, t5, 179, "agent", "Aura", "assigned", f"→ Mantenimiento · {maint.name}")
             _ev(db, t5, 120, "staff", maint.name, "pre_resolved", "Cambié el flexible de la ducha.")
             _ev(db, t5, 90, "guest", "Huésped", "reopened", "El huésped indica que sigue el problema.")
+            _ev(db, t5, 88, "agent", "Aura", "assigned", f"Reabierto → Mantenimiento · {maint.name}")
+            created += 1
+
+        # 6) y 7) CONSULTAS (post-venta informativa) — para que el toggle "Consultas" no quede
+        # vacío en una demo con DB fresca. Son las que el agente responde o escala (no se asignan).
+        t6, isnew = _ticket(
+            db, "OPS-CONS01", b_any,
+            "Consulta de horarios de check-in",
+            "¿A partir de qué hora puedo hacer el check-in?",
+            category="info",
+        )
+        if isnew:
+            t6.status = "resolved"; t6.priority = "low"; t6.origin = "guest"; t6.escalated = 0
+            t6.auto_resolved_by_agent = "El check-in es a partir de las 15:00."
+            _ev(db, t6, 60, "agent", "Aura", "created", "Consulta del huésped: horario de check-in.")
+            _ev(db, t6, 59, "agent", "Aura", "resolved", "Respondida automáticamente (check-in 15:00).")
+            created += 1
+
+        t7, isnew = _ticket(
+            db, "OPS-CONS02", b_any,
+            "Solicitud de factura A",
+            "Necesito factura A a nombre de mi empresa por la estadía.",
+            category="complaint",
+        )
+        if isnew:
+            t7.status = "escalated"; t7.priority = "medium"; t7.origin = "guest"; t7.escalated = 1
+            _ev(db, t7, 45, "agent", "Aura", "created", "Pedido del huésped: factura A.")
+            _ev(db, t7, 44, "agent", "Aura", "reopened", "Escalado a administración (requiere acción humana).")
             created += 1
 
         db.commit()

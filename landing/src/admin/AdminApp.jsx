@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
-  Users, BarChart3, Briefcase, Bot, UtensilsCrossed,
+  Users, BarChart3, Briefcase, Bot, UtensilsCrossed, LineChart,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -20,18 +20,21 @@ import { Loading } from './ui'
 const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
 const AgentSection = lazy(() => import('./views/agente/AgentSection'))
 
+// Sidebar agrupado por USO real del gerente: lo operativo del día arriba, lo comercial en
+// el medio, y la configuración/herramientas abajo. Los `id` NO cambian (hash routing intacto);
+// solo cambian las etiquetas y el orden, y se suman encabezados de grupo.
 const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'analiticas', label: 'Analíticas', icon: BarChart3 },
-  { id: 'reservas', label: 'Reservas', icon: CalendarCheck },
-  { id: 'habitaciones', label: 'Habitaciones', icon: Hotel },
-  { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed },
-  { id: 'pasajeros', label: 'Pasajeros', icon: Users },
-  { id: 'leads', label: 'Leads', icon: UserPlus },
-  { id: 'tickets', label: 'Soporte', icon: LifeBuoy },
-  { id: 'equipo', label: 'Equipo', icon: Briefcase },
-  { id: 'agente', label: 'Pre-Pos Venta', icon: Bot },
-  { id: 'asesoria', label: 'Asesor', icon: Bot },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operación' },
+  { id: 'reservas', label: 'Reservas', icon: CalendarCheck, group: 'Operación' },
+  { id: 'pasajeros', label: 'Huéspedes', icon: Users, group: 'Operación' },
+  { id: 'tickets', label: 'Operaciones', icon: LifeBuoy, group: 'Operación' },
+  { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed, group: 'Operación' },
+  { id: 'leads', label: 'Leads', icon: UserPlus, group: 'Comercial' },
+  { id: 'analiticas', label: 'Analíticas', icon: BarChart3, group: 'Comercial' },
+  { id: 'habitaciones', label: 'Habitaciones', icon: Hotel, group: 'Configuración' },
+  { id: 'equipo', label: 'Equipo', icon: Briefcase, group: 'Configuración' },
+  { id: 'agente', label: 'Agente Aura', icon: Bot, group: 'Configuración' },
+  { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Configuración' },
 ]
 
 // Devuelve el primer segmento tras #admin/ (ej "agente" en "#admin/agente/conocimiento").
@@ -133,22 +136,30 @@ function SidebarContent({ tab, go, onClose }) {
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-3">
-        {NAV.map((n) => {
+        {NAV.map((n, i) => {
           const Icon = n.icon
           const active = tab === n.id
+          // Encabezado de grupo: se muestra cuando arranca un grupo nuevo.
+          const showGroup = i === 0 || NAV[i - 1].group !== n.group
           return (
-            <button
-              key={n.id}
-              onClick={() => go(n.id)}
-              className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
-                active
-                  ? 'bg-hilton-600 text-white shadow-card'
-                  : 'text-ink hover:bg-hilton-50'
-              }`}
-            >
-              <Icon size={18} className={active ? 'text-white' : 'text-hilton-500'} />
-              {n.label}
-            </button>
+            <div key={n.id}>
+              {showGroup && (
+                <p className={`px-3.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slatey ${i === 0 ? 'pt-1' : 'pt-4'}`}>
+                  {n.group}
+                </p>
+              )}
+              <button
+                onClick={() => go(n.id)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
+                  active
+                    ? 'bg-hilton-600 text-white shadow-card'
+                    : 'text-ink hover:bg-hilton-50'
+                }`}
+              >
+                <Icon size={18} className={active ? 'text-white' : 'text-hilton-500'} />
+                {n.label}
+              </button>
+            </div>
           )
         })}
       </nav>
