@@ -20,13 +20,16 @@ from typing import Dict, List
 
 from sqlalchemy.orm import Session
 
-from app.models.hotel import Room, RoomUnit, Booking, HotelTicket
+from app.models.hotel import Room, RoomUnit, Booking, HotelTicket, TicketEvent
 from app.models.contact import Contact
 from app.models.lead import Lead
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.models.staff import StaffMember
-from app.models.restaurant import MenuItem, RestaurantOrder, OrderItem, ExtraCharge
+from app.models.restaurant import (
+    MenuItem, RestaurantOrder, OrderItem, ExtraCharge,
+    TableReservation, Voucher, VoucherItem,
+)
 from app.services import exchange_rate_service, promotions_service
 from app.services.contact_service import contact_service
 from app.services.restaurant_menu_seed import menu_for_seed
@@ -151,7 +154,26 @@ def clear(db: Session) -> Dict:
     """Borra SOLO los registros marcados is_demo=True, en orden inverso de FKs."""
     before = counts(db)
     # Orden: hijos → padres para no violar FKs.
-    # Restaurante primero (OrderItem y ExtraCharge dependen de orders/bookings).
+    # IDs de contactos y reservas demo: las reservas de mesa y vouchers creados EN VIVO
+    # por el agente tienen is_demo=False pero referencian a esos contactos/reservas, así
+    # que hay que borrarlos también o el DELETE de Contact/Booking viola la FK (Postgres).
+    demo_contact_ids = [c.id for c in db.query(Contact.id).filter(Contact.is_demo.is_(True))]
+    demo_booking_ids = [b.id for b in db.query(Booking.id).filter(Booking.is_demo.is_(True))]
+    demo_ticket_ids = [t.id for t in db.query(HotelTicket.id).filter(HotelTicket.is_demo.is_(True))]
+
+    # Restaurante: vouchers (+items) y reservas de mesa que cuelgan de demo.
+    demo_voucher_ids = [v.id for v in db.query(Voucher.id).filter(
+        Voucher.is_demo.is_(True) | Voucher.contact_id.in_(demo_contact_ids or [-1])
+    )]
+    if demo_voucher_ids:
+        db.query(VoucherItem).filter(VoucherItem.voucher_id.in_(demo_voucher_ids)).delete(synchronize_session=False)
+        db.query(Voucher).filter(Voucher.id.in_(demo_voucher_ids)).delete(synchronize_session=False)
+    db.query(TableReservation).filter(
+        TableReservation.is_demo.is_(True)
+        | TableReservation.contact_id.in_(demo_contact_ids or [-1])
+        | TableReservation.booking_id.in_(demo_booking_ids or [-1])
+    ).delete(synchronize_session=False)
+
     demo_order_ids = [o.id for o in db.query(RestaurantOrder.id).filter(RestaurantOrder.is_demo.is_(True))]
     if demo_order_ids:
         db.query(OrderItem).filter(OrderItem.order_id.in_(demo_order_ids)).delete(synchronize_session=False)
@@ -159,6 +181,9 @@ def clear(db: Session) -> Dict:
     db.query(RestaurantOrder).filter(RestaurantOrder.is_demo.is_(True)).delete(synchronize_session=False)
     db.query(MenuItem).filter(MenuItem.is_demo.is_(True)).delete(synchronize_session=False)
     db.query(ConversationMessage).filter(ConversationMessage.is_demo.is_(True)).delete(synchronize_session=False)
+    # Bitácora de tickets (cuelga de hotel_tickets; bulk-delete no dispara el cascade ORM).
+    if demo_ticket_ids:
+        db.query(TicketEvent).filter(TicketEvent.ticket_id.in_(demo_ticket_ids)).delete(synchronize_session=False)
     db.query(HotelTicket).filter(HotelTicket.is_demo.is_(True)).delete(synchronize_session=False)
     db.query(Booking).filter(Booking.is_demo.is_(True)).delete(synchronize_session=False)
     db.query(Lead).filter(Lead.is_demo.is_(True)).delete(synchronize_session=False)
