@@ -128,6 +128,7 @@
   .bench .yes{color:#5ee08a;font-weight:700} .bench .no{color:rgba(255,255,255,.3)} .bench .part{color:var(--yellow)}
   .bench .wcol{background:rgba(241,17,96,.12)}
   .bench thead .wcol{color:#fff;background:var(--grad);border-radius:8px 8px 0 0}
+  .bench.compact{margin-top:22px} .bench.compact th,.bench.compact td{padding:9px 14px}
 
   /* ROI */
   .roi-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:30px;margin-top:34px;align-items:start}
@@ -152,6 +153,34 @@
   .n-tm{left:50%;top:2%;transform:translateX(-50%)}.n-bm{left:50%;bottom:2%;transform:translateX(-50%)}
   .dline{position:absolute;left:50%;top:50%;transform-origin:left center;height:2px;background:linear-gradient(90deg,rgba(241,17,96,.7),transparent);z-index:-1}
 
+  /* hub diagram (cerebro al centro, nodos a los lados) */
+  .hub{display:grid;grid-template-columns:1fr auto 1fr;gap:28px;align-items:center;margin-top:36px}
+  .hub-col{display:flex;flex-direction:column;gap:16px}
+  .hub-node{display:flex;align-items:center;gap:13px;background:rgba(255,255,255,.07);border:1px solid var(--line-d);
+    border-radius:16px;padding:14px 18px;backdrop-filter:blur(4px);transition:transform .3s,box-shadow .3s}
+  .hub-node:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .hub-node .em{font-size:1.5rem;flex:none}
+  .hub-node b{font-family:var(--display);font-weight:600;font-size:1rem;color:#fff;display:block}
+  .hub-node small{color:var(--txt-light);font-size:.82rem}
+  .hub-core{align-self:center;text-align:center;font-family:var(--display);font-weight:800;font-size:1.2rem;line-height:1.2;
+    color:#fff;background:var(--grad);border-radius:24px;padding:34px 30px;box-shadow:0 24px 60px -16px rgba(241,17,96,.6);
+    position:relative}
+  .hub-core-em{font-size:2.4rem;display:block;margin-bottom:8px}
+  /* líneas conectoras sutiles core <-> columnas */
+  .hub-core::before,.hub-core::after{content:"";position:absolute;top:50%;width:28px;height:2px;
+    background:linear-gradient(90deg,rgba(241,17,96,.6),rgba(241,17,96,.15))}
+  .hub-core::before{right:100%;transform:scaleX(-1)}
+  .hub-core::after{left:100%}
+
+  /* module map (agente al centro) */
+  .modmap{margin-top:26px}
+  .modcore{margin:0 auto;width:max-content;text-align:center;font-family:var(--display);font-weight:800;
+    font-size:1rem;line-height:1.2;color:#fff;background:var(--grad);padding:16px 32px;border-radius:var(--r-lg);
+    box-shadow:0 20px 50px -16px rgba(241,17,96,.6)}
+  .modcore small{font-weight:600;font-size:.78rem;color:rgba(255,255,255,.85)}
+  .modmap .card{padding:20px}
+  .modmap .card .ic{margin-bottom:10px} .modmap .card h3{font-size:1.05rem} .modmap .card p{font-size:.86rem}
+
   /* ---------- CHROME (nav) ---------- */
   .progress{position:fixed;top:0;left:0;height:4px;background:var(--grad);z-index:50;transition:width .4s ease}
   .nav{position:fixed;bottom:20px;right:24px;z-index:50;display:flex;align-items:center;gap:10px}
@@ -169,6 +198,8 @@
     .bench{font-size:.78rem} .bench th,.bench td{padding:9px}
     .flow{flex-direction:column} .flow .arr{transform:rotate(90deg)}
     .diagram{height:auto;display:grid;gap:10px} .node{position:static!important;transform:none!important}
+    .hub{grid-template-columns:1fr;gap:14px} .hub-core{order:-1;padding:24px}
+    .hub-core::before,.hub-core::after{display:none}
     .roi-grid{grid-template-columns:1fr}
   }
 </style>
@@ -243,22 +274,42 @@
     <div class="inner">
       <span class="eyebrow">La solución</span>
       <h2 class="title">Un cerebro digital en el centro de tu hotel.</h2>
-      <div class="diagram">
-        <div class="node core">🧠<br>Cerebro IA<br>del hotel</div>
-        <div class="node n-tl"><span class="em">💬</span>Huéspedes<br><small style="color:var(--txt-light)">WhatsApp · Web</small></div>
-        <div class="node n-tr"><span class="em">👔</span>El dueño / CEO<br><small style="color:var(--txt-light)">Asesor de gerencia</small></div>
-        <div class="node n-bl"><span class="em">👥</span>El equipo<br><small style="color:var(--txt-light)">Operación diaria</small></div>
-        <div class="node n-br"><span class="em">🔗</span>Tus sistemas<br><small style="color:var(--txt-light)">PMS · pagos</small></div>
-        <div class="node n-bm"><span class="em">📊</span>Tus datos<br><small style="color:var(--txt-light)">Reservas · CRM</small></div>
+      <div class="hub">
+        <div class="hub-col">
+          <div class="hub-node"><span class="em">💬</span><div><b>Huéspedes</b><small>WhatsApp · Web</small></div></div>
+          <div class="hub-node"><span class="em">👥</span><div><b>El equipo</b><small>Operación diaria</small></div></div>
+          <div class="hub-node"><span class="em">📊</span><div><b>Tus datos</b><small>Reservas · CRM</small></div></div>
+        </div>
+        <div class="hub-core"><span class="hub-core-em">🧠</span>Cerebro IA<br>del hotel</div>
+        <div class="hub-col">
+          <div class="hub-node"><span class="em">👔</span><div><b>El dueño / CEO</b><small>Asesor de gerencia</small></div></div>
+          <div class="hub-node"><span class="em">🔗</span><div><b>Tus sistemas</b><small>PMS · pagos</small></div></div>
+          <div class="hub-node"><span class="em">🛎️</span><div><b>Restaurante</b><small>Carta · pedidos</small></div></div>
+        </div>
       </div>
-      <p class="lead" style="margin-top:18px">Todo conectado. Un sistema que <b>trabaja solo</b> y le habla a cada uno en su idioma: al huésped, al equipo y al dueño.</p>
+      <p class="lead" style="margin-top:26px">Todo conectado. Un sistema que <b>trabaja solo</b> y le habla a cada uno en su idioma: al huésped, al equipo y al dueño.</p>
+    </div>
+  </section>
+
+  <!-- 5b · EMPLEADO DIGITAL (concepto) -->
+  <section class="slide ink">
+    <div class="orb orb2"></div>
+    <div class="inner">
+      <span class="eyebrow">El concepto · Empleado digital</span>
+      <h2 class="title">No es un chatbot.<br>Es un <span class="grad-text">empleado que no duerme</span>.</h2>
+      <div class="grid g3">
+        <div class="card"><div class="topbar"></div><div class="ic">🛎️</div><h3>Recepcionista</h3><p>Atiende cada consulta al instante, cotiza con el precio del día y confirma la reserva. En WhatsApp y en la web, sin horarios.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">💼</div><h3>Vendedor</h3><p>Convierte la consulta en reserva directa — sin comisión de OTA. Sugiere, aplica promociones y empuja la venta con criterio.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🤝</div><h3>Anfitrión y soporte</h3><p>Acompaña la estadía: resuelve dudas, toma pedidos al restaurante, escucha reclamos y escala al humano solo cuando hace falta.</p></div>
+      </div>
+      <p class="lead" style="margin-top:30px">Un empleado más en tu equipo: <b>trabaja 24/7, no se enferma, no rota</b> — y cada conversación lo hace mejor. Lo capacitás una vez y queda.</p>
     </div>
   </section>
 
   <!-- 6 · AURA (héroe) -->
   <section class="slide paper">
     <div class="inner">
-      <span class="eyebrow">El héroe · Empleado digital</span>
+      <span class="eyebrow">El héroe · Aura, en acción</span>
       <h2 class="title">Aura: el concierge que <span class="grad-text">vende y atiende</span>, 24/7.</h2>
       <div class="grid g2" style="grid-template-columns:1.3fr .9fr;align-items:center">
         <div>
@@ -352,18 +403,35 @@
     </div>
   </section>
 
-  <!-- 10 · ECOSISTEMA -->
+  <!-- 9b · CASOS DE USO POSIBLES -->
   <section class="slide paper">
     <div class="inner">
-      <span class="eyebrow">No es un chatbot · Es una plataforma</span>
-      <h2 class="title">El agente es la punta del iceberg.</h2>
+      <span class="eyebrow">Lo que ya resuelve · Casos de uso</span>
+      <h2 class="title">Un empleado, <span class="grad-text">muchos frentes</span>.</h2>
       <div class="grid g3">
-        <div class="card"><div class="topbar"></div><div class="ic">👤</div><h3>CRM 360°</h3><p>Identidad unificada del huésped: historial de estadías, preferencias, intereses y por qué canal llegó. Tu base de clientes, ordenada.</p></div>
-        <div class="card"><div class="topbar"></div><div class="ic">🛎️</div><h3>Operaciones</h3><p>Reservas, habitaciones, alojados hoy, restaurante con folio y tickets de soporte. La operación diaria en un solo lugar.</p></div>
-        <div class="card"><div class="topbar"></div><div class="ic">📈</div><h3>Analíticas</h3><p>Embudo de conversión, mapa de calor de actividad, calidad del agente, ingresos por canal. Para decidir con datos.</p></div>
-        <div class="card"><div class="topbar"></div><div class="ic">💱</div><h3>USD ↔ ARS</h3><p>Cotización automática del día aplicada a todos los precios — en el chat, el backoffice y WhatsApp.</p></div>
-        <div class="card"><div class="topbar"></div><div class="ic">🎯</div><h3>Leads + Promos</h3><p>Captación con scoring de temperatura y motor de promociones que el agente aplica solo.</p></div>
-        <div class="card"><div class="topbar"></div><div class="ic">🧩</div><h3>Todo conectado</h3><p>Una sola fuente de verdad. El agente, el CRM y las operaciones comparten el mismo cerebro.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🌙</div><h3>Reserva fuera de horario</h3><p>Consulta un sábado a las 2am → cotiza, confirma y genera el código. Reserva directa, sin que nadie del equipo esté despierto.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🎙️</div><h3>El turista manda un audio</h3><p>En vez de escribir, manda una nota de voz. Aura la transcribe, la entiende y responde como si fuera texto.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🍽️</div><h3>Pedido al restaurante</h3><p>El huésped pide desde el chat: ve la carta, arma el pedido y lo carga al folio de la habitación (room charge).</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🎫</div><h3>Reclamo → ticket</h3><p>Un problema en la habitación genera un ticket asignado al equipo, con loop de validación hasta que queda resuelto.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🎯</div><h3>Lead que no respondió</h3><p>Detecta al interesado tibio y lo re-engancha, aplicando solo la promoción vigente que corresponde.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">📊</div><h3>El dueño pregunta un número</h3><p>"¿Cómo viene mayo?" → diagnóstico con datos reales, propuesta de acción y seguimiento la semana siguiente.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · ECOSISTEMA -->
+  <section class="slide ink">
+    <div class="orb orb1"></div>
+    <div class="inner">
+      <span class="eyebrow">No es un chatbot · Es una plataforma</span>
+      <h2 class="title">El agente es la <span class="grad-text">punta del iceberg</span>.</h2>
+      <div class="grid g3">
+        <div class="card"><div class="topbar"></div><div class="ic">👤</div><h3>CRM 360°</h3><p>Identidad unificada del huésped: estadías, preferencias, consumo y por qué canal llegó. Tu base de clientes, ordenada.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🛎️</div><h3>Operaciones</h3><p>Reservas, habitaciones y alojados hoy. La operación diaria en un solo lugar, sincronizada con tu PMS.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🍽️</div><h3>Restaurante</h3><p>Carta interactiva, pedidos al folio (room charge), reserva de mesa y vouchers. En el chat y en el backoffice.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🎫</div><h3>Soporte</h3><p>Tickets con asignación al equipo y loop de doble validación. El reclamo no se pierde: se resuelve y se confirma.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">📈</div><h3>Analíticas</h3><p>Embudo de conversión, ingresos por canal, calidad del agente y consumo de IA. Para decidir con datos.</p></div>
+        <div class="card"><div class="topbar"></div><div class="ic">🎯</div><h3>Leads + Promos</h3><p>Captación con scoring de temperatura y motor de promociones que el agente aplica solo. Más conversión directa.</p></div>
       </div>
     </div>
   </section>
@@ -387,11 +455,14 @@
   <section class="slide ink">
     <div class="inner">
       <span class="eyebrow">Dónde estamos parados</span>
-      <h2 class="title">Los líderes atienden al huésped.<br>Nosotros, además, <span class="grad-text">te asesoran a vos</span>.</h2>
-      <table class="bench">
+      <h2 class="title">Los líderes atienden al huésped.<br>Nosotros, además, <span class="grad-text">te asesoramos a vos</span>.</h2>
+      <table class="bench compact">
         <thead><tr><th>Capacidad</th><th>Chatbots hoteleros líderes*</th><th class="wcol">Wigou</th></tr></thead>
         <tbody>
           <tr><td class="feat">Atención al huésped 24/7 (WhatsApp/web)</td><td class="yes">Sí</td><td class="wcol yes">Sí</td></tr>
+          <tr><td class="feat">Entiende notas de voz (audio → respuesta)</td><td class="part">A veces</td><td class="wcol yes">Sí</td></tr>
+          <tr><td class="feat">Multi-idioma (atiende al turista internacional)</td><td class="yes">Sí</td><td class="wcol yes">Sí</td></tr>
+          <tr><td class="feat">Restaurante integrado (carta, pedidos, folio)</td><td class="no">No</td><td class="wcol yes">Sí</td></tr>
           <tr><td class="feat">Asesor de gerencia para el dueño (BI por chat)</td><td class="no">No</td><td class="wcol yes">Sí</td></tr>
           <tr><td class="feat">Memoria de largo plazo + planes con seguimiento</td><td class="no">No</td><td class="wcol yes">Sí</td></tr>
           <tr><td class="feat">CRM 360° + operaciones propias integradas</td><td class="part">Parcial</td><td class="wcol yes">Sí</td></tr>
@@ -456,6 +527,28 @@
     </div>
   </section>
 
+  <!-- 15b · MAPA DE MÓDULOS -->
+  <section class="slide ink">
+    <div class="orb orb1"></div><div class="orb orb2"></div>
+    <div class="inner">
+      <span class="eyebrow">El sistema completo · Módulos y cobertura</span>
+      <h2 class="title">El empleado digital en el centro.<br><span class="grad-text">Todo lo demás, conectado</span>.</h2>
+      <div class="modmap">
+        <div class="modcore">🧠<br>AURA<br><small>Empleado digital</small></div>
+        <div class="grid g4" style="margin-top:24px">
+          <div class="card"><div class="topbar"></div><div class="ic">👤</div><h3>CRM 360°</h3><p>Perfiles, estadías, consumo F&amp;B y alergias. Identidad unificada del huésped.</p></div>
+          <div class="card"><div class="topbar"></div><div class="ic">🛎️</div><h3>Operaciones</h3><p>Reservas, habitaciones y alojados hoy, sincronizado con el PMS.</p></div>
+          <div class="card"><div class="topbar"></div><div class="ic">🍽️</div><h3>Restaurante</h3><p>Carta, pedidos al folio, reserva de mesa y vouchers.</p></div>
+          <div class="card"><div class="topbar"></div><div class="ic">🎫</div><h3>Soporte</h3><p>Tickets con asignación al equipo y doble validación.</p></div>
+          <div class="card"><div class="topbar"></div><div class="ic">📈</div><h3>Analíticas</h3><p>Embudo, ingresos por canal y consumo de IA (tokens / USD).</p></div>
+          <div class="card"><div class="topbar"></div><div class="ic">🎯</div><h3>Leads + Promos</h3><p>Scoring de temperatura y promociones que el agente aplica solo.</p></div>
+          <div class="card"><div class="topbar"></div><div class="ic">📚</div><h3>Conocimiento</h3><p>Docs PDF/MD, pagos multi-cuenta y lugares. Re-ingesta sin redeploy.</p></div>
+          <div class="card"><div class="topbar"></div><div class="ic">🔗</div><h3>PMS</h3><p>Integración bidireccional: lee y escribe en tu sistema de reservas.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- 16 · CIERRE -->
   <section class="slide gradient">
     <div class="inner center" style="text-align:center;margin:0 auto">
@@ -472,7 +565,7 @@
 
 </div>
 
-<div class="counter"><span id="cur">01</span> / <span id="tot">16</span></div>
+<div class="counter"><span id="cur">01</span> / <span id="tot">19</span></div>
 <div class="hint" id="hint">← →  para navegar · F pantalla completa</div>
 <div class="nav">
   <button id="prev" aria-label="Anterior">‹</button>

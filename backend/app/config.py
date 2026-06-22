@@ -41,12 +41,9 @@ class Settings(BaseSettings):
     GEOGRAPHY_DATA_PATH: str = "./data/geography.json"
 
     # Arquitectura del agente sobre el OpenAI Agents SDK (camino de producción).
-    # En P4 se retiraron los orquestadores caseros y los clasificadores legacy, por lo
-    # que el SDK es el único camino: chat() delega siempre en estos orquestadores.
-    # Los flags se conservan como documentación de la arquitectura activa y como punto
-    # único para tracing/diagnóstico; ya no alternan entre dos implementaciones.
-    USE_AGENTS_SDK_PREVENTA: bool = True   # agent_sdk_orchestrator (pre-venta)
-    USE_AGENTS_SDK_POSTVENTA: bool = True  # postsale_sdk_orchestrator (post-venta)
+    # El agente del hotel delega siempre en los orquestadores del hotel
+    # (hotel_sdk_orchestrator / hotel_postsale_orchestrator) con ruteo por
+    # triage_sdk_orchestrator. Flag de documentación de la arquitectura activa.
     USE_AGENTS_SDK_TRIAGE: bool = True     # triage_sdk_orchestrator (ruteo pre/post/casual)
 
     # WhatsApp (Twilio Sandbox) — canal opcional para la demo.
@@ -83,5 +80,9 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        # Ignorar variables de entorno desconocidas en vez de fallar el arranque.
+        # Evita que un flag viejo/huérfano en el entorno (ej. en Render) tumbe el
+        # backend tras quitar un setting del modelo.
+        extra = "ignore"
 
 settings = Settings()

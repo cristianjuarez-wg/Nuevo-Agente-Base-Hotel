@@ -408,11 +408,37 @@ def _assign_units(db: Session, bookings: List[Booking], today: date) -> None:
     db.commit()
 
 
-# Preferencias dietéticas posibles para sembrar en ~30% de los contactos.
+# Preferencias posibles para sembrar en ~30% de los contactos. Mezcla dietas y
+# alergias a propósito; `_split_prefs` las separa en los campos correctos (las
+# alergias son seguridad alimentaria y van aparte de las dietas).
 _DIETARY_POOL = [
     ["vegetariano"], ["sin_tacc"], ["vegano"], ["vegetariano", "sin_tacc"],
-    ["alergia_frutos_secos"], ["sin_lactosa"],
+    ["alergia_frutos_secos"], ["sin_lactosa"], ["alergia_mariscos", "vegetariano"],
 ]
+
+
+def _split_prefs(items: List[str]) -> Dict[str, List[str]]:
+    """Separa una lista de preferencias en {'dietary': [...], 'allergies': [...]}.
+
+    Reutiliza la misma clasificación que el flujo en vivo (`_clasificar_preferencia`)
+    para que el seed y el agente coincidan. A las alergias les quita el prefijo
+    'alergia_' para guardar el alérgeno limpio (ej: 'alergia_frutos_secos' → 'frutos_secos').
+    """
+    from app.services.hotel_tools import _clasificar_preferencia
+
+    dietary: List[str] = []
+    allergies: List[str] = []
+    for raw in items:
+        if _clasificar_preferencia(raw) == "allergies":
+            allergies.append(raw.replace("alergia_", "", 1))
+        else:
+            dietary.append(raw)
+    out: Dict[str, List[str]] = {}
+    if dietary:
+        out["dietary"] = dietary
+    if allergies:
+        out["allergies"] = allergies
+    return out
 
 # Notas posibles de pedidos.
 _ORDER_NOTES = [None, None, "Sin sal, por favor.", "Para compartir.", "Bien cocido.", "Sin picante."]
@@ -440,16 +466,27 @@ def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Bookin
     for mi in menu_items:
         db.refresh(mi)
 
-    # 2) Preferencias dietéticas en ~30% de los contactos.
+    # 2) Preferencias en ~30% de los contactos. Dietas y alergias quedan separadas.
     for c in contacts:
         if _RNG.random() < 0.30:
-            diet = _RNG.choice(_DIETARY_POOL)
-            c.preferences = json.dumps({"dietary": diet}, ensure_ascii=False)
+            picked = _RNG.choice(_DIETARY_POOL)
+            c.preferences = json.dumps(_split_prefs(picked), ensure_ascii=False)
     db.commit()
 
     # 3) Pedidos demo. Reservas en curso → algunos al folio (ExtraCharge).
     in_house = [b for b in bookings
                 if b.status != "cancelled" and b.check_in <= today <= b.check_out]
+
+    # 2b) Garantía para la demo: al menos UN huésped alojado hoy debe tener una alergia
+    # registrada, para poder mostrar siempre el flujo de seguridad alimentaria del agente.
+    if in_house:
+        demo_booking = in_house[0]
+        demo_contact = db.query(Contact).filter(Contact.id == demo_booking.contact_id).first()
+        if demo_contact:
+            demo_contact.preferences = json.dumps(
+                _split_prefs(["alergia_frutos_secos", "vegetariano"]), ensure_ascii=False
+            )
+            db.commit()
     past = [b for b in bookings if b.status == "completed"]
     N_ORDERS = 25
     for i in range(N_ORDERS):

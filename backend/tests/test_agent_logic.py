@@ -23,118 +23,94 @@ class TestBookingCodeDetection:
         return agent_service
 
     @pytest.mark.parametrize("message", [
-        "Mi código es BK-2026-001",
-        "hola, reserva BK41281119",
-        "consulta sobre PKG-2025-001",
-        "mi numero es AB-123456",
+        "Mi código es HTL-6XV6",
+        "hola, mi reserva HTL-7F3A",
+        "consulta sobre la reserva HTL-ABCD",
+        "tengo el código htl-9z3k",  # case-insensitive
     ])
     def test_detecta_codigo_de_reserva(self, message):
         assert self._svc()._contains_booking_code(message) is True
 
     @pytest.mark.parametrize("message", [
-        "quiero viajar a Japón",
-        "qué paquetes tienen para Europa",
-        "hola, busco unas vacaciones de playa",
-        "cuánto sale un viaje a Tailandia",
+        "quiero una habitación con vista al lago",
+        "tienen disponibilidad para el finde?",
+        "hola, cuánto sale la noche en julio?",
+        "qué servicios incluye el desayuno?",
     ])
     def test_no_detecta_en_consulta_normal(self, message):
         assert self._svc()._contains_booking_code(message) is False
 
 
 # ---------------------------------------------------------------------------
-# 2. Acción determinística sobre el ticket (escalar vs auto-resolver)
+# 2. Acción determinística sobre el ticket del HOTEL (escalar vs auto-resolver)
 # ---------------------------------------------------------------------------
 class TestApplyTicketAction:
-    def _orchestrator(self):
-        from app.services.postsale_orchestrator import postsale_orchestrator
-        return postsale_orchestrator
-
-    def _fake_service(self):
-        service = MagicMock()
-        service.db = MagicMock()
-        return service
+    def _service(self):
+        # HotelPostSaleService sin __init__ (evita crear cliente OpenAI); solo
+        # necesitamos su db (mock) para el commit y el método apply_ticket_action.
+        from app.services.hotel_postsale import HotelPostSaleService
+        svc = HotelPostSaleService.__new__(HotelPostSaleService)
+        svc.db = MagicMock()
+        return svc
 
     def _fake_ticket(self):
         ticket = MagicMock()
-        ticket.ticket_number = "TKT-TEST-001"
-        ticket.has_escalated_issues = False
-        ticket.escalated_issues_count = 0
+        ticket.ticket_number = "HTL-TKT-001"
+        ticket.description = "Sesión de soporte iniciada"
         return ticket
 
     def test_escala_cuando_requires_escalation(self):
-        orch = self._orchestrator()
-        service, ticket = self._fake_service(), self._fake_ticket()
+        svc, ticket = self._service(), self._fake_ticket()
 
-        status = orch._apply_ticket_action(
-            service, ticket, requires_escalation=True,
+        status = svc.apply_ticket_action(
+            ticket, requires_escalation=True,
             response_text="Un asesor te contactará.",
-            message="el traslado no llegó y estoy varada",
-            escalation={"escalation_reason": "cliente varado"},
+            query="quiero cancelar mi reserva y que me devuelvan la plata",
+            analysis={"escalation_reason": "pide cancelar", "category": "cancel",
+                      "urgency_level": "alta"},
         )
 
         assert status == "escalated"
-        service.escalate_ticket.assert_called_once()
-        service.resolve_ticket.assert_not_called()
-        assert ticket.has_escalated_issues is True
+        assert ticket.status == "escalated"
+        assert ticket.escalated == 1
 
     def test_auto_resuelve_consulta_simple(self):
-        orch = self._orchestrator()
-        service, ticket = self._fake_service(), self._fake_ticket()
+        svc, ticket = self._service(), self._fake_ticket()
 
-        status = orch._apply_ticket_action(
-            service, ticket, requires_escalation=False,
+        status = svc.apply_ticket_action(
+            ticket, requires_escalation=False,
             response_text="El check-in es a las 14:00.",
-            message="a qué hora es el check-in?",
-            escalation={"suggested_category": "informativa"},
+            query="a qué hora es el check-in?",
+            analysis={"category": "info", "urgency_level": "baja"},
         )
 
-        assert status == "auto_resolving"
-        service.resolve_ticket.assert_called_once()
-        service.escalate_ticket.assert_not_called()
-
-    def test_no_auto_resuelve_si_ya_tiene_issues_escalados(self):
-        orch = self._orchestrator()
-        service, ticket = self._fake_service(), self._fake_ticket()
-        ticket.has_escalated_issues = True  # ya hubo un problema serio antes
-
-        status = orch._apply_ticket_action(
-            service, ticket, requires_escalation=False,
-            response_text="info adicional",
-            message="otra consulta",
-            escalation=None,
-        )
-
-        # Responde pero NO marca resuelto (hay issues escalados pendientes)
-        assert status == "auto_resolving"
-        service.resolve_ticket.assert_not_called()
+        assert status == "resolved"
+        assert ticket.status == "resolved"
+        # Guarda la respuesta con la que auto-resolvió, para auditoría.
+        assert "14:00" in ticket.auto_resolved_by_agent
 
 
 # ---------------------------------------------------------------------------
-# 3. Escalado de seguridad ante análisis de severidad fallido (P1)
+# 3. Escalado de seguridad ante análisis fallido del HOTEL (P1, fail-safe)
 # ---------------------------------------------------------------------------
 class TestSeverityAnalysisFailsSafe:
     @pytest.mark.asyncio
     async def test_analisis_fallido_escala_por_seguridad(self):
-        from app.services.postsale_tools import _handle_analizar_severidad
+        """Si el clasificador de escalación revienta, analyze_escalation escala por
+        seguridad (requires_escalation=True) en vez de auto-resolver un caso serio."""
+        from app.services.hotel_postsale import HotelPostSaleService
 
-        class FakeServiceThatFails:
-            async def analyze_with_intelligence(self, *a, **k):
-                raise RuntimeError("clasificador caído (simulado)")
-
-        ctx = {
-            "service": FakeServiceThatFails(),
-            "package": object(),
-            "message": "perdí mi pasaporte en París",
-            "history": [],
-        }
-        result = await _handle_analizar_severidad(
-            {"consulta": "perdí mi pasaporte"}, ctx
+        svc = HotelPostSaleService.__new__(HotelPostSaleService)
+        # Cliente cuyo create() falla → debe caer al fallback seguro.
+        svc.client = MagicMock()
+        svc.client.chat.completions.create = AsyncMock(
+            side_effect=RuntimeError("clasificador caído (simulado)")
         )
 
-        analysis = ctx.get("escalation_analysis")
-        assert analysis is not None, "debe dejar un análisis en ctx aunque falle"
-        assert analysis.get("requires_escalation") is True, "ante fallo => escalar, no auto-resolver"
-        assert "ESCALACIÓN" in result["tool_result"].upper()
+        result = await svc.analyze_escalation("cancelá mi reserva ya", booking=MagicMock())
+
+        assert result["requires_escalation"] is True, "ante fallo => escalar, no auto-resolver"
+        assert result["urgency_level"] == "alta"
 
 
 # ---------------------------------------------------------------------------
@@ -143,21 +119,22 @@ class TestSeverityAnalysisFailsSafe:
 class TestSDKRunnerFallback:
     @pytest.mark.asyncio
     async def test_preventa_fallback_no_propaga_excepcion(self):
-        from app.services import agent_sdk_orchestrator as mod
+        """Si el Runner del SDK revienta, la pre-venta del hotel devuelve un fallback
+        amable en vez de propagar un 500."""
+        import app.services.hotel_sdk_orchestrator as mod
 
-        orch = mod.agent_sdk_orchestrator
+        orch = mod.hotel_sdk_orchestrator
 
-        # Mockear lo I/O: lead block vacío y Runner que revienta
+        # Mockear lo I/O: lead block vacío y Runner que revienta.
         async def fake_lead_block(*a, **k):
             return ("", {"lead_type": "FRIO"}, False)
 
         with patch.object(orch, "_build_lead_block", side_effect=fake_lead_block), \
-             patch.object(mod.Runner, "run", new=AsyncMock(side_effect=RuntimeError("OpenAI 500"))), \
-             patch.object(mod.rag_service.vector_store, "get_available_countries", return_value=["japón"]):
+             patch.object(mod.Runner, "run", new=AsyncMock(side_effect=RuntimeError("OpenAI 500"))):
             db = MagicMock()
-            result = await orch.run(db, "quiero ir a Japón", "test-fallback-pre", [])
+            result = await orch.run(db, "tienen habitaciones?", "test-fallback-pre", [])
 
-        # No propaga: devuelve dict con respuesta de fallback amable
+        # No propaga: devuelve dict con respuesta de fallback amable.
         assert "response" in result
         assert result["response"]  # no vacío
         assert result["tools_used"] == []
@@ -231,9 +208,18 @@ class TestPostsaleMetrics:
 #   - el triage y los orquestadores SDK
 class TestChatRouting:
     def _db_sin_postsale_activa(self):
-        """db MagicMock cuyo query(...).filter(...).first() devuelve None."""
+        """db MagicMock sin post-venta activa: cualquier query(...).first() ⇒ None.
+
+        El chequeo real encadena varios .filter()/.order_by(), así que devolvemos un
+        query 'auto-encadenable' que siempre termina en first()=None (y all()=[]).
+        """
         db = MagicMock()
-        db.query.return_value.filter.return_value.first.return_value = None
+        chain = MagicMock()
+        chain.filter.return_value = chain
+        chain.order_by.return_value = chain
+        chain.first.return_value = None
+        chain.all.return_value = []
+        db.query.return_value = chain
         return db
 
     def _svc(self):
@@ -278,49 +264,56 @@ class TestChatRouting:
              patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=False), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route",
-                          new=AsyncMock(return_value={"route": triage_mod.ROUTE_CASUAL})), \
+                          new=AsyncMock(return_value={"route": triage_mod.ROUTE_CASUAL, "usage": {}})), \
+             patch.object(svc, "_build_casual_guest_block", return_value=""), \
+             patch.object(svc, "_should_capture_lead_in_casual", new=AsyncMock(return_value=False)), \
              patch.object(svc, "_generate_casual_response",
-                          new=AsyncMock(return_value="¡Hola! ¿Pensando tu próximo viaje? 😊")):
+                          new=AsyncMock(return_value=("¡Hola! ¿En qué puedo ayudarte con tu estadía? 😊", {}))), \
+             patch.object(svc, "_save_message_to_db"):
             result = await svc.chat(db, "hola, cómo estás?", "sess-casual-001")
 
         assert result["intent"] == "casual_conversation"
         assert result["has_context"] is False
-        assert "viaje" in result["response"].lower()
+        assert "ayudarte" in result["response"].lower()
 
     @pytest.mark.asyncio
     async def test_triage_postventa_delega_al_orquestador(self):
+        """Ruta post-venta del HOTEL: gate (HotelPostSaleService) + orquestador del hotel."""
         from app.services.agent_service import agent_service
         from app.services import triage_sdk_orchestrator as triage_mod
-        from app.services import postsale_sdk_orchestrator as post_mod
+        import app.services.hotel_postsale as hps_mod
+        import app.services.hotel_postsale_orchestrator as orch_mod
 
         svc = agent_service
         db = self._db_sin_postsale_activa()
 
-        fake_postsale = MagicMock()
-        fake_postsale.run_gate = AsyncMock(return_value={
-            "handled": False, "package": object(), "ticket": object(),
-            "query_to_process": "el traslado no llegó",
+        # El gate no resuelve solo: deja pasar al loop con tools del hotel.
+        fake_service = MagicMock()
+        fake_service.run_gate = AsyncMock(return_value={
+            "handled": False, "booking": object(), "ticket": object(),
+            "query_to_process": "el aire de la habitación no enfría",
         })
 
         with patch.object(svc, "_get_or_create_history", return_value=[]), \
              patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=False), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route",
-                          new=AsyncMock(return_value={"route": triage_mod.ROUTE_POSTVENTA})), \
-             patch.object(svc, "_get_postsale_service", return_value=fake_postsale), \
-             patch.object(post_mod.postsale_sdk_orchestrator, "run",
-                          new=AsyncMock(return_value={"response": "Escalé tu caso a un asesor.",
-                                                      "context_type": "postsale"})):
-            result = await svc.chat(db, "el traslado no llegó y estoy varada", "sess-post-triage")
+                          new=AsyncMock(return_value={"route": triage_mod.ROUTE_POSTVENTA, "usage": {}})), \
+             patch.object(hps_mod, "HotelPostSaleService", return_value=fake_service), \
+             patch.object(orch_mod.hotel_postsale_sdk_orchestrator, "run",
+                          new=AsyncMock(return_value={"response": "Generé un ticket para mantenimiento.",
+                                                      "usage": {}})):
+            result = await svc.chat(db, "el aire de la habitación no enfría", "sess-post-triage")
 
-        assert result["response"] == "Escalé tu caso a un asesor."
+        assert result["response"] == "Generé un ticket para mantenimiento."
         assert result["context_type"] == "postsale"
 
     @pytest.mark.asyncio
     async def test_triage_preventa_delega_al_orquestador(self):
+        """Ruta pre-venta del HOTEL: delega en hotel_sdk_orchestrator."""
         from app.services.agent_service import agent_service
         from app.services import triage_sdk_orchestrator as triage_mod
-        from app.services import agent_sdk_orchestrator as pre_mod
+        import app.services.hotel_sdk_orchestrator as pre_mod
 
         svc = agent_service
         db = self._db_sin_postsale_activa()
@@ -329,14 +322,14 @@ class TestChatRouting:
              patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=False), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route",
-                          new=AsyncMock(return_value={"route": triage_mod.ROUTE_PREVENTA})), \
-             patch.object(pre_mod.agent_sdk_orchestrator, "run",
-                          new=AsyncMock(return_value={"response": "Tenemos un paquete a Japón...",
+                          new=AsyncMock(return_value={"route": triage_mod.ROUTE_PREVENTA, "usage": {}})), \
+             patch.object(pre_mod.hotel_sdk_orchestrator, "run",
+                          new=AsyncMock(return_value={"response": "Tenemos la habitación King disponible.",
                                                       "tools_used": []})), \
              patch.object(svc, "_save_message_to_db"):
-            result = await svc.chat(db, "quiero ir a Japón en primavera", "sess-pre-triage")
+            result = await svc.chat(db, "tienen disponibilidad para el finde?", "sess-pre-triage")
 
-        assert "japón" in result["response"].lower()
+        assert "king" in result["response"].lower()
         assert result["tools_used"] == []
 
     @pytest.mark.asyncio

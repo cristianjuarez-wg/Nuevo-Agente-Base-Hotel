@@ -11,6 +11,17 @@ os.environ.setdefault("SQLITE_DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("CHROMA_PERSIST_DIRECTORY", "/tmp/chroma_test")
 
+# Importar TODOS los modelos antes de tocar app.main: algunos módulos (ej. hotel.py)
+# llaman create_all sobre tablas con FK a otras (staff_members) que solo resuelven si
+# el modelo ya está registrado. `staff` debe ir ANTES que `hotel` (que referencia
+# staff_members) — por eso se importa explícito primero, antes del barrido alfabético.
+import importlib
+import pkgutil
+import app.models.staff  # noqa: F401 — registra staff_members antes que hotel.py
+import app.models as _models_pkg
+for _mod in pkgutil.iter_modules(_models_pkg.__path__):
+    importlib.import_module(f"app.models.{_mod.name}")
+
 from app.main import app
 from app.models.database import Base, get_db
 
