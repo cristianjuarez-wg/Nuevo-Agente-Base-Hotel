@@ -26,6 +26,8 @@ def _enrich(ticket: HotelTicket) -> dict:
     data["guest_name"] = booking.guest_name if booking else None
     data["room_type"] = (booking.room.room_type if booking and booking.room else None)
     data["room_number"] = (booking.room_unit.number if booking and booking.room_unit else None)
+    # Bitácora: quién hizo cada acción (agente vs humano vs equipo). Para el timeline.
+    data["events"] = [e.to_dict() for e in (ticket.events or [])]
     return data
 
 
@@ -78,9 +80,11 @@ async def assign_ticket(ticket_id: int, payload: AssignPayload, db: Session = De
         ticket.assigned_area = payload.area or staff.area
         ticket.status = "asignado"
         db.commit()
+        ops.log_event(db, ticket, "assigned", actor_type="human",
+                      note=f"→ {staff.name} (manual)")
         ops.notify_staff_assignment(staff, ticket)
     elif payload.area:
-        staff = ops.classify_and_assign(db, ticket, area_hint=payload.area)
+        staff = ops.classify_and_assign(db, ticket, area_hint=payload.area, actor_type="human")
         ops.notify_staff_assignment(staff, ticket)
     else:
         raise HTTPException(status_code=422, detail="Indicá un área o una persona")
@@ -98,7 +102,10 @@ async def pre_resolve_ticket(ticket_id: int, payload: ResolvePayload, db: Sessio
         db.query(StaffMember).filter(StaffMember.id == ticket.assigned_staff_id).first()
         if ticket.assigned_staff_id else None
     )
-    status = ops.mark_pre_resolved(db, ticket, staff, payload.note or "Resuelto por el equipo")
+    status = ops.mark_pre_resolved(
+        db, ticket, staff, payload.note or "Resuelto desde el backoffice",
+        actor_type="human", actor_name="Backoffice",
+    )
     return {"ticket": _enrich(ticket), "status": status}
 
 
@@ -110,6 +117,9 @@ async def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
     ticket.status = "resuelto"
     db.commit()
+    from app.services import operations_service as ops
+    ops.log_event(db, ticket, "resolved", actor_type="human", actor_name="Backoffice",
+                  note="Cierre forzado desde el backoffice")
     return {"ticket": _enrich(ticket)}
 
 
@@ -121,6 +131,9 @@ async def reopen_ticket(ticket_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Ticket no encontrado")
     ticket.status = "asignado"
     db.commit()
+    from app.services import operations_service as ops
+    ops.log_event(db, ticket, "reopened", actor_type="human", actor_name="Backoffice",
+                  note="Reabierto desde el backoffice")
     return {"ticket": _enrich(ticket)}
 
 

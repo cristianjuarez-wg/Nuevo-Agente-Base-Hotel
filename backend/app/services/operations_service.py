@@ -23,11 +23,35 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
-from app.models.hotel import HotelTicket, Booking
+from app.models.hotel import HotelTicket, Booking, TicketEvent
 from app.models.staff import StaffMember
 from app.services.whatsapp_service import whatsapp_service
 
 logger = get_logger(__name__)
+
+# Nombre legible del agente para la bitácora (lo gestionado por la IA).
+AGENT_NAME = "Aura"
+
+
+def log_event(db: Session, ticket: HotelTicket, action: str,
+              actor_type: str = "agent", actor_name: Optional[str] = None,
+              note: Optional[str] = None) -> None:
+    """Registra una acción del ticket en su bitácora (quién hizo qué).
+
+    actor_type: "agent" (Aura) | "staff" (equipo) | "human" (backoffice) | "guest".
+    Best-effort: un fallo de la bitácora nunca debe romper la transición del ticket.
+    """
+    try:
+        if actor_type == "agent" and not actor_name:
+            actor_name = AGENT_NAME
+        db.add(TicketEvent(
+            ticket_id=ticket.id, actor_type=actor_type,
+            actor_name=actor_name, action=action, note=(note or None),
+        ))
+        db.commit()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo registrar el evento del ticket",
+                       ticket_number=getattr(ticket, "ticket_number", None), error=str(e))
 
 # Áreas operativas válidas (espejo de StaffMember.area y del `tipo` de solicitar_servicio).
 AREAS = ("mantenimiento", "recepcion", "housekeeping", "general")
@@ -117,12 +141,14 @@ def _pick_staff(db: Session, area: str) -> Optional[StaffMember]:
 
 
 def classify_and_assign(
-    db: Session, ticket: HotelTicket, area_hint: Optional[str] = None
+    db: Session, ticket: HotelTicket, area_hint: Optional[str] = None,
+    actor_type: str = "agent", actor_name: Optional[str] = None,
 ) -> Optional[StaffMember]:
     """Clasifica el ticket por área y lo asigna a un miembro del equipo.
 
     Setea assigned_area / assigned_staff_id y pasa el status a "asignado". Devuelve el
     StaffMember asignado (o None si el equipo no tiene a nadie cargado todavía).
+    `actor_type` indica quién enrutó: "agent" (Aura, por defecto) o "human" (backoffice).
     """
     text = f"{ticket.subject or ''} {ticket.description or ''}"
     area = classify_area(text, area_hint)
@@ -133,6 +159,10 @@ def classify_and_assign(
     if staff:
         ticket.assigned_staff_id = staff.id
     db.commit()
+
+    area_label = area.capitalize()
+    note = f"→ {area_label}" + (f" · {staff.name}" if staff else " (sin nadie del área)")
+    log_event(db, ticket, "assigned", actor_type=actor_type, actor_name=actor_name, note=note)
 
     logger.info(
         "Ticket operativo asignado",
@@ -208,20 +238,24 @@ def _guest_can_validate(ticket: HotelTicket) -> bool:
 
 
 def mark_pre_resolved(
-    db: Session, ticket: HotelTicket, staff: Optional[StaffMember], note: str
+    db: Session, ticket: HotelTicket, staff: Optional[StaffMember], note: str,
+    actor_type: str = "staff", actor_name: Optional[str] = None,
 ) -> str:
     """El staff marca el ticket como resuelto → queda pre_resuelto a la espera del huésped.
 
     Si NO hay huésped contactable (tarea interna), se cierra directo a "resuelto".
-    Devuelve el status final.
+    `actor_type` = "staff" (WhatsApp) o "human" (botón del backoffice). Devuelve el status final.
     """
     ticket.resolution_note = (note or "").strip()[:1000]
     if staff:
         ticket.resolved_by_staff_id = staff.id
+    who = actor_name or (staff.name if staff else None)
+    clean_note = (note or "").strip()[:120]
 
     if _guest_can_validate(ticket):
         ticket.status = "pre_resuelto"
         db.commit()
+        log_event(db, ticket, "pre_resolved", actor_type=actor_type, actor_name=who, note=clean_note)
         # Si el huésped tiene WhatsApp, le mandamos el aviso ahora. Si vino por chat web,
         # verá el aviso en su próximo mensaje (lo cierra el flujo de validación del huésped).
         phone = _guest_whatsapp_phone(ticket)
@@ -232,6 +266,8 @@ def mark_pre_resolved(
     else:
         ticket.status = "resuelto"
         db.commit()
+        log_event(db, ticket, "resolved", actor_type=actor_type, actor_name=who,
+                  note=(clean_note or "Sin huésped a validar"))
         logger.info("Ticket resuelto directo (sin huésped a validar)",
                     ticket_number=ticket.ticket_number)
     return ticket.status
@@ -263,11 +299,15 @@ def guest_validate(db: Session, ticket: HotelTicket, ok: bool) -> str:
         ticket.status = "resuelto"
         ticket.guest_validated = 1
         db.commit()
+        log_event(db, ticket, "validated", actor_type="guest", actor_name="Huésped",
+                  note="Confirmó que quedó resuelto")
         logger.info("Ticket validado por el huésped → resuelto",
                     ticket_number=ticket.ticket_number)
     else:
         ticket.status = "asignado"
         db.commit()
+        log_event(db, ticket, "reopened", actor_type="guest", actor_name="Huésped",
+                  note="El huésped indica que sigue el problema")
         staff = (
             db.query(StaffMember).filter(StaffMember.id == ticket.assigned_staff_id).first()
             if ticket.assigned_staff_id else None
@@ -322,6 +362,9 @@ def create_staff_ticket(
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
+    # El staff originó la incidencia hablándole a Aura; Aura la registró.
+    log_event(db, ticket, "created", actor_type="agent",
+              note=f"Incidencia reportada por el equipo: {(description or '')[:80]}")
     staff = classify_and_assign(db, ticket, area_hint=area_hint)
     notify_staff_assignment(staff, ticket)
     logger.info("Ticket originado por staff", ticket_number=ticket.ticket_number,

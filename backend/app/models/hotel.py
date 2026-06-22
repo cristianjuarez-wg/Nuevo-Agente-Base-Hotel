@@ -258,6 +258,11 @@ class HotelTicket(Base):
 
     booking = relationship("Booking")
     assigned_staff = relationship("StaffMember", foreign_keys=[assigned_staff_id])
+    events = relationship(
+        "TicketEvent", order_by="TicketEvent.created_at",
+        cascade="all, delete-orphan",
+        primaryjoin="HotelTicket.id == TicketEvent.ticket_id",
+    )
 
     def to_dict(self):
         return {
@@ -283,12 +288,45 @@ class HotelTicket(Base):
         }
 
 
-# Crear SOLO las tablas de hotel (Room, Booking, HotelTicket) de forma explícita, sin
-# disparar el create_all global: otras tablas de Base (heredadas del proyecto) tienen FKs
+class TicketEvent(Base):
+    """Bitácora de un ticket: quién hizo cada acción (Fase 4, "empleado digital").
+
+    Permite distinguir en el backoffice lo que GESTIONÓ EL AGENTE (Aura, sola) de lo que
+    hizo una persona — el staff por WhatsApp o un humano desde el backoffice. Cada transición
+    del ticket (crear/asignar/pre-resolver/resolver/validar/reabrir) deja un evento con su
+    actor, para reconstruir la historia del caso ("Aura lo creó y asignó → Carlos lo resolvió
+    por WhatsApp → el huésped validó").
+    """
+    __tablename__ = "ticket_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("hotel_tickets.id"), nullable=False, index=True)
+    # Quién originó la acción: "agent" (Aura) | "staff" (equipo, WhatsApp) | "human" (backoffice) | "guest".
+    actor_type = Column(String(20), nullable=False, default="agent")
+    actor_name = Column(String(120), nullable=True)   # nombre legible (ej. "Aura", "Carlos", "Huésped")
+    action = Column(String(40), nullable=False)        # created | assigned | pre_resolved | resolved | reopened | validated
+    note = Column(String, nullable=True)               # detalle ("→ Mantenimiento", "reparé el aire")
+    created_at = Column(DateTime, default=datetime.now, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "ticket_id": self.ticket_id,
+            "actor_type": self.actor_type,
+            "actor_name": self.actor_name,
+            "action": self.action,
+            "note": self.note,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# Crear SOLO las tablas de hotel (Room, Booking, HotelTicket, TicketEvent) de forma explícita,
+# sin disparar el create_all global: otras tablas de Base (heredadas del proyecto) tienen FKs
 # que solo resuelven si sus modelos están importados, y acá no queremos depender de ese orden.
 Base.metadata.create_all(
     bind=engine,
-    tables=[Room.__table__, RoomUnit.__table__, Booking.__table__, HotelTicket.__table__],
+    tables=[Room.__table__, RoomUnit.__table__, Booking.__table__,
+            HotelTicket.__table__, TicketEvent.__table__],
 )
 
 

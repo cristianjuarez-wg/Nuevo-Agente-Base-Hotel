@@ -257,6 +257,10 @@ class HotelPostSaleService:
         # abierto y visible en el backoffice (no rompe la respuesta al huésped).
         try:
             from app.services import operations_service
+            operations_service.log_event(
+                self.db, ticket, "created", actor_type="agent",
+                note=f"Pedido del huésped: {pedido[:80]}",
+            )
             staff = operations_service.classify_and_assign(self.db, ticket, area_hint=tipo)
             operations_service.notify_staff_assignment(staff, ticket)
         except Exception as e:  # noqa: BLE001

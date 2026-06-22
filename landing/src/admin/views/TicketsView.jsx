@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   LifeBuoy, RefreshCw, CheckCircle2, Trash2,
-  Check, RotateCcw, Loader2, User,
+  Check, RotateCcw, Loader2, User, Bot, Hand, ChevronRight,
 } from 'lucide-react'
 import {
   listTickets, deleteTicket, preResolveTicket, resolveTicketAdmin, reopenTicket,
@@ -68,12 +68,68 @@ function CategoryBadge({ category }) {
 // Estados del ciclo operativo donde tienen sentido las acciones manuales (fallback humano).
 const OPERATIONAL = new Set(['asignado', 'pre_resuelto', 'resuelto', 'open', 'in_progress'])
 
+// --- Gestión: distinguir lo que hizo el AGENTE solo de lo que tuvo intervención HUMANA ---
+// "human" = alguien usó los botones del backoffice (acción manual). El resto (agente/staff/
+// huésped) es parte del flujo autónomo que orquesta Aura.
+function hadHumanAction(events) {
+  return (events || []).some((e) => e.actor_type === 'human')
+}
+
+function GestionBadge({ events }) {
+  if (hadHumanAction(events)) {
+    return <Badge tone="amber"><Hand size={11} className="mr-1" /> Manual</Badge>
+  }
+  return <Badge tone="green"><Bot size={11} className="mr-1" /> Agente</Badge>
+}
+
+// Etiquetas y estilo de cada actor en el timeline.
+const ACTOR_META = {
+  agent: { label: 'Aura', icon: Bot, cls: 'text-forest-700 bg-forest-50' },
+  staff: { label: 'Equipo', icon: User, cls: 'text-hilton-700 bg-hilton-50' },
+  guest: { label: 'Huésped', icon: User, cls: 'text-slatey bg-mist' },
+  human: { label: 'Backoffice', icon: Hand, cls: 'text-amber-700 bg-amber-50' },
+}
+const ACTION_LABELS = {
+  created: 'creó el ticket', assigned: 'asignó', pre_resolved: 'marcó pre-resuelto',
+  resolved: 'resolvió', reopened: 'reabrió', validated: 'validó',
+}
+
+function TicketTimeline({ events }) {
+  if (!events || events.length === 0) {
+    return <p className="px-4 py-3 text-xs text-slatey">Sin actividad registrada todavía.</p>
+  }
+  return (
+    <ol className="space-y-2 px-4 py-3">
+      {events.map((e) => {
+        const meta = ACTOR_META[e.actor_type] || ACTOR_META.agent
+        const Icon = meta.icon
+        return (
+          <li key={e.id} className="flex items-start gap-2.5 text-sm">
+            <span className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${meta.cls}`}>
+              <Icon size={13} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-ink">
+                <span className="font-medium">{e.actor_name || meta.label}</span>{' '}
+                <span className="text-slatey">{ACTION_LABELS[e.action] || e.action}</span>
+                {e.note && <span className="text-slatey"> · {e.note}</span>}
+              </p>
+              <p className="text-[11px] tabular-nums text-slatey">{formatDate(e.created_at)}</p>
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 export default function TicketsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
   const [busyId, setBusyId] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [detail, setDetail] = useState(null)  // ticket cuyo timeline se está viendo
 
   const load = () => {
     setLoading(true)
@@ -169,9 +225,21 @@ export default function TicketsView() {
     ) },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
+    { key: 'gestion', label: 'Gestión', render: (r) => (
+      <button onClick={() => setDetail(r)} title="Ver actividad del ticket" className="transition hover:opacity-80">
+        <GestionBadge events={r.events} />
+      </button>
+    ) },
     { key: 'created_at', label: 'Fecha', sortable: true, render: (r) => formatDate(r.created_at) },
     { key: 'actions', label: '', render: (r) => (
-      <div className="flex items-center justify-end gap-1.5"><OpsActions r={r} /><DeleteButton r={r} /></div>
+      <div className="flex items-center justify-end gap-1.5">
+        <OpsActions r={r} />
+        <button onClick={() => setDetail(r)} title="Ver actividad"
+          className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700">
+          <ChevronRight size={15} />
+        </button>
+        <DeleteButton r={r} />
+      </div>
     ) },
   ]
 
@@ -191,11 +259,16 @@ export default function TicketsView() {
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <AreaBadge area={r.assigned_area} />
         <OriginBadge origin={r.origin} />
+        <button onClick={() => setDetail(r)}><GestionBadge events={r.events} /></button>
         {r.assigned_staff_name && <span className="text-xs text-slatey">→ {r.assigned_staff_name}</span>}
       </div>
       <div className="mt-3 flex items-center justify-between">
         <OpsActions r={r} />
-        <DeleteButton r={r} />
+        <div className="flex items-center gap-1">
+          <button onClick={() => setDetail(r)} title="Ver actividad"
+            className="rounded-lg p-1.5 text-slatey hover:bg-hilton-50 hover:text-hilton-700"><ChevronRight size={15} /></button>
+          <DeleteButton r={r} />
+        </div>
       </div>
     </div>
   )
@@ -259,6 +332,44 @@ export default function TicketsView() {
           )}
         </>
       )}
+
+      {detail && <ActivityDrawer ticket={detail} onClose={() => setDetail(null)} />}
+    </div>
+  )
+}
+
+// Panel lateral con la bitácora del ticket: cuenta su historia y deja claro qué hizo el
+// agente solo y qué tuvo intervención humana.
+function ActivityDrawer({ ticket, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-card-lg animate-slide-up">
+        <div className="flex items-start justify-between border-b border-mist px-5 py-4">
+          <div>
+            <p className="font-serif text-lg font-700 text-hilton-700">{ticket.ticket_number}</p>
+            <p className="mt-0.5 text-sm text-slatey">{ticket.subject}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <StatusBadge status={ticket.status} />
+              <AreaBadge area={ticket.assigned_area} />
+              <GestionBadge events={ticket.events} />
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist">
+            <ChevronRight size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <p className="px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-slatey">Actividad</p>
+          <TicketTimeline events={ticket.events} />
+        </div>
+        {ticket.resolution_note && (
+          <div className="border-t border-mist bg-mist/40 px-5 py-3">
+            <p className="text-xs font-semibold text-slatey">Nota de resolución</p>
+            <p className="mt-0.5 text-sm text-ink">{ticket.resolution_note}</p>
+          </div>
+        )}
+      </aside>
     </div>
   )
 }
