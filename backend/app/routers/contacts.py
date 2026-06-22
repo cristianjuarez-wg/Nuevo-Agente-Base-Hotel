@@ -8,8 +8,11 @@ from app.models.database import get_db
 from app.services.contact_service import ContactService
 from app.services.summary_service import SummaryService
 from app.config import settings
+from app.core.logging_config import get_logger
 from pydantic import BaseModel
 from datetime import datetime, timezone
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/contacts", tags=["contacts"])
 
@@ -245,8 +248,29 @@ async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     except Exception:  # noqa: BLE001 — el modelo puede no estar presente en esta demo
         pass
 
-    db.delete(contact)
-    db.commit()
+    # Restaurante: pedidos, reservas de mesa y vouchers también referencian al contacto.
+    # Sin desvincularlos, el DELETE falla por integridad referencial (Postgres) y el
+    # contacto sobrevive ocupando su teléfono. Best-effort por si la tabla no existe.
+    try:
+        from app.models.restaurant import RestaurantOrder, TableReservation, Voucher
+        for model in (RestaurantOrder, TableReservation, Voucher):
+            db.query(model).filter(model.contact_id == contact_id).update(
+                {model.contact_id: None}, synchronize_session=False
+            )
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        db.delete(contact)
+        db.commit()
+    except Exception as e:  # noqa: BLE001 — alguna FK no desvinculada bloquea el borrado
+        db.rollback()
+        logger.error("Error eliminando contacto", contact_id=contact_id, error=str(e))
+        raise HTTPException(
+            status_code=409,
+            detail="No se pudo eliminar: el contacto tiene registros vinculados. "
+                   "Avisá al equipo para revisar.",
+        )
     return {"success": True, "message": f"Contacto {contact_id} eliminado"}
 
 

@@ -130,6 +130,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         status_code=exc.status_code,
         content={
             "error": f"Error {exc.status_code}",
+            # `detail` es la clave estándar de FastAPI y la que lee el frontend;
+            # `message` se mantiene por compatibilidad con consumidores previos.
+            "detail": exc.detail,
             "message": exc.detail,
             "timestamp": datetime.now().isoformat()
         }
