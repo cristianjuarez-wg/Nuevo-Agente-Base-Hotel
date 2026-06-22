@@ -166,6 +166,22 @@ export default function ChatWidget() {
     [input, busy, lang]
   )
 
+  // Retorno desde la pantalla de pedido: si el hash trae ?order=RST-XXXX, abrimos el chat
+  // y le avisamos al agente para que registre/confirme el pedido. Se hace una sola vez.
+  useEffect(() => {
+    const m = window.location.hash.match(/[?&]order=([A-Za-z0-9-]+)/)
+    if (!m) return
+    const code = m[1]
+    // Limpia el parámetro del hash para no re-disparar al recargar.
+    window.location.hash = 'inicio'
+    setOpen(true)
+    const t = setTimeout(() => {
+      send(`Listo, confirmo mi pedido del restaurante (código ${code}).`)
+    }, 600)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const resetChat = useCallback(async () => {
     if (busy || resetting) return
     setResetting(true)

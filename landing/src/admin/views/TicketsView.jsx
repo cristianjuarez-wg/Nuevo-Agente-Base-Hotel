@@ -31,9 +31,10 @@ function StatusBadge({ status }) {
 function CategoryBadge({ category }) {
   const map = {
     info: 'Información', change: 'Cambio', cancel: 'Cancelación',
-    complaint: 'Reclamo', general: 'General',
+    complaint: 'Reclamo', general: 'General', restaurant: 'Restaurante',
   }
-  return <Badge tone="gray">{map[category] || category}</Badge>
+  const tone = category === 'restaurant' ? 'hilton' : 'gray'
+  return <Badge tone={tone}>{map[category] || category}</Badge>
 }
 
 export default function TicketsView() {

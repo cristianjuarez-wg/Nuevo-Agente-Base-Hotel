@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEBUG: bool = False
     BASE_URL: str = "http://localhost:8000"  # URL base del backend
+    LANDING_URL: str = "http://localhost:5174"  # URL del sitio público (para links del agente)
     
     # Security & Rate Limiting
     MAX_FILE_SIZE_MB: int = 10

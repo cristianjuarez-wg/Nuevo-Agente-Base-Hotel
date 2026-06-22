@@ -103,6 +103,70 @@ def run_light_migrations() -> None:
     _backfill("rooms", "status", "active")
     # Conversaciones previas a la columna: asumimos canal web (no había WhatsApp).
     _backfill("conversations", "channel", "web")
+    # Tablas del restaurante (menu/pedidos/folio): garantizar creación con todas las
+    # dependencias ya importadas (las FKs a contacts/bookings necesitan esas tablas).
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
+    # hotel_tickets.booking_id pasó a nullable (pedidos de visitante sin reserva).
+    # Cubrimos ambos motores: SQLite recrea la tabla; Postgres (Render) usa ALTER COLUMN.
+    _make_nullable_sqlite("hotel_tickets", "booking_id")
+    _make_nullable_postgres("hotel_tickets", "booking_id")
+
+
+def _make_nullable_sqlite(table: str, column: str) -> None:
+    """Vuelve nullable una columna NOT NULL en SQLite (que no soporta ALTER COLUMN).
+
+    Idempotente: si la columna ya es nullable o la tabla no existe, no hace nada.
+    Recrea la tabla con el esquema actual del modelo (que ya define la columna nullable)
+    y copia los datos. Solo aplica a SQLite; en Postgres se usaría ALTER COLUMN.
+    """
+    try:
+        if engine.dialect.name != "sqlite":
+            return
+        inspector = inspect(engine)
+        if table not in inspector.get_table_names():
+            return
+        cols = inspector.get_columns(table)
+        target = next((c for c in cols if c["name"] == column), None)
+        if not target or target.get("nullable", True):
+            return  # ya es nullable
+        # Recrear la tabla con el esquema del modelo (booking_id ya es nullable).
+        tbl = Base.metadata.tables.get(table)
+        if tbl is None:
+            return
+        col_names = ", ".join(c["name"] for c in cols)
+        with engine.begin() as conn:
+            conn.execute(text(f'ALTER TABLE {table} RENAME TO {table}_old'))
+            tbl.create(bind=conn)
+            conn.execute(text(f'INSERT INTO {table} ({col_names}) SELECT {col_names} FROM {table}_old'))
+            conn.execute(text(f'DROP TABLE {table}_old'))
+    except Exception:
+        # Una migración fallida no debe impedir el arranque.
+        pass
+
+
+def _make_nullable_postgres(table: str, column: str) -> None:
+    """Vuelve nullable una columna NOT NULL en PostgreSQL (Render) con ALTER COLUMN.
+
+    Idempotente: si la columna ya es nullable o la tabla no existe, no hace nada.
+    Solo aplica a Postgres (en SQLite usamos _make_nullable_sqlite, que recrea la tabla).
+    """
+    try:
+        if not engine.dialect.name.startswith("postgres"):
+            return
+        inspector = inspect(engine)
+        if table not in inspector.get_table_names():
+            return
+        target = next((c for c in inspector.get_columns(table) if c["name"] == column), None)
+        if not target or target.get("nullable", True):
+            return  # ya es nullable
+        with engine.begin() as conn:
+            conn.execute(text(f'ALTER TABLE {table} ALTER COLUMN {column} DROP NOT NULL'))
+    except Exception:
+        # Una migración fallida no debe impedir el arranque.
+        pass
 
 
 def _backfill(table: str, column: str, value: str) -> None:

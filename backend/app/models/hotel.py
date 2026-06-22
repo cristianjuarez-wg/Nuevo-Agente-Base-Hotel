@@ -133,11 +133,31 @@ class Booking(Base):
 
     room = relationship("Room", back_populates="bookings")
     room_unit = relationship("RoomUnit", back_populates="bookings")
+    # Cargos extra al folio (consumos de restaurante, etc.). Lazy: solo se carga al pedirlo.
+    extra_charges = relationship(
+        "ExtraCharge",
+        primaryjoin="Booking.id == foreign(ExtraCharge.booking_id)",
+        viewonly=True,
+        lazy="select",
+    )
 
     def origin(self) -> dict:
         """Origen unificado de la reserva (icono+etiqueta consistentes en el backoffice)."""
         from app.core.origin import origin_from_booking
         return origin_from_booking(self.source, self.session_id, self.generated_by)
+
+    def folio_summary(self) -> dict:
+        """Resumen del folio: estadía + cargos extra. `extra_charges` se carga lazy."""
+        charges = list(self.extra_charges or [])
+        extras_usd = round(sum(c.amount_usd or 0 for c in charges), 2)
+        pending_usd = round(sum(c.amount_usd or 0 for c in charges if c.status != "saldado"), 2)
+        return {
+            "stay_usd": self.total_price_usd or 0,
+            "extras_usd": extras_usd,
+            "folio_total_usd": round((self.total_price_usd or 0) + extras_usd, 2),
+            "folio_pending_usd": pending_usd,
+            "charges_count": len(charges),
+        }
 
     def stay_status(self) -> str:
         """Estado temporal de la estadía respecto a HOY (derivado, no se persiste).
@@ -202,7 +222,9 @@ class HotelTicket(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     ticket_number = Column(String, unique=True, nullable=False, index=True)  # "HT-XXXXXX"
-    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False, index=True)
+    # Nullable: un pedido de restaurante de un VISITANTE de afuera (sin reserva) también
+    # genera ticket de aviso al equipo, sin booking asociado.
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True, index=True)
     session_id = Column(String, nullable=False, index=True)
 
     subject = Column(String, nullable=False)

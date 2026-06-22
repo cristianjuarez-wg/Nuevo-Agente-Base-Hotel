@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, postsale, learning, reservations, hotel_tickets, usage, knowledge, whatsapp, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo
+from app.routers import chat, documents, admin, leads, analytics, postsale, learning, reservations, hotel_tickets, usage, knowledge, whatsapp, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant
 from app.config import settings
 from app.core.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
@@ -197,6 +197,7 @@ app.include_router(contacts.router)
 app.include_router(staff.router)
 app.include_router(management_knowledge.router)
 app.include_router(demo.router)
+app.include_router(restaurant.router)
 app.include_router(whatsapp.router)
 
 # Montar directorio de vouchers como archivos estáticos

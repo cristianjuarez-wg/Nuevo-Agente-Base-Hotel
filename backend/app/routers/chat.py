@@ -284,8 +284,13 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # Si en el turno se calculó una promo aplicable, esa tarjeta (con precio tachado)
         # tiene prioridad: es la respuesta directa a la señal del cliente.
         promo_offer = result.get("promo_offer")
+        menu_card = result.get("menu_card")
         if promo_offer:
             cards = [_build_promo_card(promo_offer)]
+
+        # Si se mostró la carta del restaurante, agregamos su card con el botón al carrito.
+        elif menu_card:
+            cards = [menu_card]
 
         # Si el agente está pidiendo fechas y no mostró habitaciones, ofrecemos el selector.
         # Nunca en post-venta/casual (el huésped con reserva no busca disponibilidad).

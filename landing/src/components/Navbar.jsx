@@ -5,6 +5,7 @@ const LINKS = [
   { href: '#habitaciones', label: 'Habitaciones' },
   { href: '#reservar', label: 'Reservar' },
   { href: '#servicios', label: 'Servicios' },
+  { href: '#restaurante', label: 'Restaurante' },
   { href: '#galeria', label: 'Galería' },
   { href: '#ubicacion', label: 'Ubicación' },
 ]

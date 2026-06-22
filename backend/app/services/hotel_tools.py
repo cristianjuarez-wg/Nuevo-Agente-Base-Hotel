@@ -19,9 +19,12 @@ from sqlalchemy.orm import Session
 from app.services.rag_service import rag_service
 from app.services.reservation_service import get_availability, create_booking, get_booking
 from app.models.knowledge import KnowledgeEntry, Place, _payment_accounts
-from app.models.hotel import Room
+from app.models.hotel import Room, Booking
 from app.models.promotions import Promotion
-from app.services import promotions_service, exchange_rate_service
+from app.models.contact import Contact
+from app.services import promotions_service, exchange_rate_service, restaurant_service
+from app.services.contact_service import contact_service
+from app.config import settings
 from app.core.hotel_location import (
     HOTEL_ADDRESS, HOTEL_AIRPORT, directions_url, near_hotel_search_url, is_far_origin,
 )
@@ -669,6 +672,166 @@ def _handle_calcular_precio_promo(args: Dict, ctx: Dict) -> Dict:
 
 
 # ---------------------------------------------------------------------------
+# RESTAURANTE
+# ---------------------------------------------------------------------------
+
+def _resolve_contact(db, ctx: Dict):
+    """Resuelve el Contact desde el ctx (contact_id directo o teléfono del session_id wa_)."""
+    cid = ctx.get("contact_id")
+    if cid:
+        return db.query(Contact).filter(Contact.id == cid).first()
+    session_id = ctx.get("session_id") or ""
+    if session_id.startswith("wa_"):
+        phone = "+" + session_id[3:]
+        return db.query(Contact).filter(Contact.phone_number == phone).first()
+    return None
+
+
+def _active_booking_for(db, contact, session_id: Optional[str]):
+    """Reserva activa (hospedado hoy) del contacto/sesión, o None."""
+    today = date.today()
+    q = db.query(Booking).filter(
+        Booking.status != "cancelled",
+        Booking.check_in <= today, Booking.check_out >= today,
+    )
+    if contact:
+        b = q.filter(Booking.contact_id == contact.id).first()
+        if b:
+            return b
+    if session_id:
+        return q.filter(Booking.session_id == session_id).first()
+    return None
+
+
+def _handle_ver_carta(args: Dict, ctx: Dict) -> Dict:
+    """Devuelve la carta del restaurante PLAZA y un link para armar el pedido."""
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    categoria = (args.get("categoria") or "").strip().lower()
+    menu = restaurant_service.list_menu(db, include_inactive=False)
+    if not menu:
+        return {"tool_result": "Por ahora no tengo la carta disponible. Probá más tarde."}
+
+    if categoria:
+        menu = [m for m in menu if categoria in (m.get("category") or "").lower()] or menu
+
+    # Si el huésped tiene preferencias, resaltarlas para sugerir.
+    contact = _resolve_contact(db, ctx)
+    pref_note = ""
+    if contact:
+        try:
+            profile = contact_service.get_guest_profile(contact.id, db)
+            prefs = (profile or {}).get("preferences") or {}
+            diet = prefs.get("dietary") or prefs.get("dietary_restrictions") or []
+            if diet:
+                pref_note = f" (Tené en cuenta sus preferencias: {', '.join(diet)} — sugerí acorde.)"
+        except Exception:
+            pass
+
+    # Agrupar por categoría para el texto.
+    by_cat: Dict[str, list] = {}
+    for m in menu:
+        by_cat.setdefault(m["category"], []).append(m)
+    lines = ["Carta del restaurante PLAZA - Hampton's Kitchen House:\n"]
+    for cat, items in by_cat.items():
+        lines.append(f"**{cat.capitalize()}**")
+        for m in items[:8]:
+            tags = f" [{', '.join(m['tags'])}]" if m.get("tags") else ""
+            lines.append(f"• {m['name']} — USD {m['price_usd']:.0f}{tags}")
+    cart_url = f"{settings.LANDING_URL.rstrip('/')}/#pedido"
+    sid = ctx.get("session_id")
+    if sid:
+        cart_url += f"?session={sid}"
+    lines.append(f"\nPara armar tu pedido entrá acá: {cart_url}")
+    if pref_note:
+        lines.append(pref_note)
+
+    # Card para el chat web con botón que abre la pantalla de carrito.
+    ctx["menu_card"] = {
+        "type": "menu",
+        "title": "Carta del restaurante",
+        "description": "Cocina patagónica de PLAZA - Hampton's Kitchen House.",
+        "action": {"kind": "open_url", "label": "Ver carta y pedir", "url": cart_url},
+    }
+
+    return {"tool_result": "\n".join(lines), "found": True}
+
+
+def _handle_registrar_pedido(args: Dict, ctx: Dict) -> Dict:
+    """Registra un pedido que el huésped armó en la pantalla de carrito (por order_code)."""
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    order_code = (args.get("order_code") or "").strip().upper()
+    if order_code:
+        o = restaurant_service.get_order(db, order_code)
+        if not o:
+            return {"tool_result": f"No encontré el pedido {order_code}. ¿Lo armaste en el link de la carta?"}
+        # El pedido ya fue creado por la pantalla de carrito; acá solo confirmamos.
+        items_txt = ", ".join(f"{it['qty']}x {it['name']}" for it in o.get("items", []))
+        dest = {"room_service": "a tu habitación", "salon": "en el salón", "retiro": "para retirar"}.get(
+            o.get("fulfillment"), "")
+        pago = "cargado a tu habitación" if o.get("payment_mode") == "folio" else "con link de pago"
+        extra = ""
+        if o.get("payment_mode") == "folio" and o.get("booking_code"):
+            extra = f" Lo sumé al folio de tu reserva {o['booking_code']}."
+        return {
+            "tool_result": (
+                f"¡Pedido confirmado! 🍽️ {items_txt} ({dest}). "
+                f"Total: USD {o['total_usd']:.0f} / ARS {o['total_ars']:,.0f}, {pago}.{extra} "
+                f"El equipo ya fue avisado."
+            ),
+            "order": o,
+        }
+
+    return {
+        "tool_result": (
+            "Para registrar tu pedido necesito que lo armes primero en la carta "
+            "(te paso el link con `ver_carta`) y me confirmes cuando termines."
+        )
+    }
+
+
+def _handle_guardar_preferencia(args: Dict, ctx: Dict) -> Dict:
+    """Guarda una preferencia dietética del huésped en su perfil (para sugerir a futuro)."""
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    contact = _resolve_contact(db, ctx)
+    if not contact:
+        return {"tool_result": "Anotado. (No pude vincularlo a un perfil, pero lo tendré en cuenta en esta charla.)"}
+
+    nuevas = args.get("preferencias") or []
+    if isinstance(nuevas, str):
+        nuevas = [nuevas]
+    nuevas = [str(p).strip().lower() for p in nuevas if str(p).strip()]
+    if not nuevas:
+        return {"tool_result": "¿Qué preferencia querés que guarde? (ej: vegetariano, sin TACC, alergia al maní)"}
+
+    try:
+        profile = contact_service.get_guest_profile(contact.id, db)
+        prefs = (profile or {}).get("preferences") or {}
+    except Exception:
+        prefs = {}
+    diet = set(prefs.get("dietary") or [])
+    diet.update(nuevas)
+    prefs["dietary"] = sorted(diet)
+    contact_service.set_preferences(contact.id, prefs, db)
+
+    return {
+        "tool_result": (
+            f"Listo, guardé tus preferencias ({', '.join(nuevas)}) en tu perfil. "
+            "Las voy a tener en cuenta para sugerirte opciones acordes. 🌿"
+        ),
+        "saved": True,
+    }
+
+
+# ---------------------------------------------------------------------------
 # DISPATCHER
 # ---------------------------------------------------------------------------
 
@@ -682,6 +845,9 @@ _DISPATCH = {
     "comercios_amigos": _handle_comercios_amigos,
     "promos_vigentes": _handle_promos_vigentes,
     "calcular_precio_promo": _handle_calcular_precio_promo,
+    "ver_carta": _handle_ver_carta,
+    "registrar_pedido": _handle_registrar_pedido,
+    "guardar_preferencia": _handle_guardar_preferencia,
 }
 
 

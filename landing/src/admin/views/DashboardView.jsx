@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, ArrowRight, AlertTriangle, BedDouble,
+  CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, ArrowRight, AlertTriangle, BedDouble, UtensilsCrossed,
 } from 'lucide-react'
-import { listBookings, listLeads, getTicketStats } from '../../services/api'
+import { listBookings, listLeads, getTicketStats, getRestaurantStats } from '../../services/api'
 import { PageHeader, StatCard, Loading, OriginBadge, formatUSD, formatDate } from '../ui'
 
 export default function DashboardView({ go }) {
@@ -14,8 +14,9 @@ export default function DashboardView({ go }) {
       listBookings().catch(() => []),
       listLeads().catch(() => []),
       getTicketStats().catch(() => ({ total: 0, escalated: 0, resolved: 0, open: 0 })),
+      getRestaurantStats().catch(() => ({ revenue_fnb_usd: 0, orders_total: 0, orders_today: 0 })),
     ])
-      .then(([bookings, leads, tickets]) => {
+      .then(([bookings, leads, tickets, fnb]) => {
         const bArr = Array.isArray(bookings) ? bookings : []
         const lArr = Array.isArray(leads) ? leads : leads?.leads || []
         const revenueUsd = bArr
@@ -27,7 +28,7 @@ export default function DashboardView({ go }) {
         const guestsInHouse = inHouse.reduce((sum, b) => sum + (b.guests || 0) + (b.children || 0), 0)
         setData({
           bookings: bArr, leads: lArr, tickets, revenueUsd, fromAgent,
-          inHouseCount: inHouse.length, guestsInHouse,
+          inHouseCount: inHouse.length, guestsInHouse, fnb,
         })
       })
       .finally(() => setLoading(false))
@@ -42,7 +43,7 @@ export default function DashboardView({ go }) {
     <div>
       <PageHeader title="Dashboard" subtitle="Resumen de actividad del Hampton by Hilton Bariloche." />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           icon={BedDouble}
           label={`En casa hoy${data.guestsInHouse ? ` · ${data.guestsInHouse} huésp.` : ''}`}
@@ -51,6 +52,12 @@ export default function DashboardView({ go }) {
         />
         <StatCard icon={CalendarCheck} label="Reservas totales" value={data.bookings.length} tone="hilton" />
         <StatCard icon={DollarSign} label="Ingresos (USD)" value={formatUSD(data.revenueUsd)} tone="green" />
+        <StatCard
+          icon={UtensilsCrossed}
+          label={`Restaurante${data.fnb?.orders_today ? ` · ${data.fnb.orders_today} hoy` : ''}`}
+          value={formatUSD(data.fnb?.revenue_fnb_usd || 0)}
+          tone="amber"
+        />
         <StatCard icon={UserPlus} label="Leads captados" value={data.leads.length} tone="amber" />
         <StatCard icon={LifeBuoy} label="Tickets soporte" value={data.tickets.total} tone="hilton" />
       </div>

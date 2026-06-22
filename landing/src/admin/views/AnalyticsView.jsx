@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
-  RefreshCw, MessageSquare, UserPlus, CalendarCheck, MessageCircle, Globe, TrendingDown,
+  RefreshCw, MessageSquare, UserPlus, CalendarCheck, MessageCircle, Globe, TrendingDown, UtensilsCrossed,
 } from 'lucide-react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList,
 } from 'recharts'
-import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics } from '../../services/api'
-import { PageHeader, StatCard, Loading } from '../ui'
+import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics, getRestaurantStats } from '../../services/api'
+import { PageHeader, StatCard, Loading, formatUSD } from '../ui'
 
 // Selector de canal: Todos / Web / WhatsApp. Filtra funnel + heatmap.
 const CHANNELS = [
@@ -197,6 +197,7 @@ export default function AnalyticsView() {
   const [heatmap, setHeatmap] = useState(null)
   const [channels, setChannels] = useState(null)
   const [quality, setQuality] = useState(null)
+  const [fnb, setFnb] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const load = () => {
@@ -204,12 +205,14 @@ export default function AnalyticsView() {
     Promise.all([
       getFunnel(channel), getHeatmap(channel, 30), getChannelStats(),
       getAgentQualityMetrics().catch(() => null),
+      getRestaurantStats().catch(() => null),
     ])
-      .then(([f, h, c, q]) => {
+      .then(([f, h, c, q, fb]) => {
         setFunnel(f)
         setHeatmap(h)
         setChannels(c)
         setQuality(q)
+        setFnb(fb)
       })
       .catch(() => {
         setFunnel(null)
@@ -323,6 +326,35 @@ export default function AnalyticsView() {
               <Heatmap data={heatmap.data || []} maxCount={heatmap.max_count} />
             )}
           </Panel>
+        </div>
+      )}
+
+      {/* Restaurante (F&B): platos más pedidos + ingresos */}
+      {fnb && (fnb.orders_total > 0) && (
+        <div className="mt-6 rounded-2xl bg-white p-5 shadow-card">
+          <div className="mb-4 flex items-center gap-2">
+            <UtensilsCrossed size={18} className="text-hilton-600" />
+            <h2 className="font-serif text-lg font-600 text-ink">Restaurante (F&B)</h2>
+            <span className="ml-auto text-sm text-slatey">
+              {fnb.orders_total} pedidos · <strong className="text-hilton-700">{formatUSD(fnb.revenue_fnb_usd)}</strong>
+            </span>
+          </div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slatey">Platos más pedidos</p>
+          <div className="space-y-2">
+            {(fnb.top_dishes || []).map((d, i) => {
+              const max = fnb.top_dishes[0]?.qty || 1
+              return (
+                <div key={d.name} className="flex items-center gap-3">
+                  <span className="w-5 text-right text-xs font-semibold tabular-nums text-slatey">{i + 1}</span>
+                  <span className="w-44 truncate text-sm text-ink">{d.name}</span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-mist">
+                    <div className="h-full rounded-full bg-hilton-500" style={{ width: `${(d.qty / max) * 100}%` }} />
+                  </div>
+                  <span className="w-8 text-right text-sm font-medium tabular-nums text-ink">{d.qty}</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

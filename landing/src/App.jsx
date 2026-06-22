@@ -5,26 +5,32 @@ import Rooms from './components/Rooms'
 import About from './components/About'
 import BookingEngine from './components/BookingEngine'
 import Services from './components/Services'
+import Restaurant from './components/Restaurant'
 import Gallery from './components/Gallery'
 import Location from './components/Location'
 import Footer from './components/Footer'
 import ChatWidget from './components/ChatWidget'
+import RestaurantOrderPage from './components/restaurant/RestaurantOrderPage'
 import AdminApp from './admin/AdminApp'
 
-function isAdminRoute() {
-  return window.location.hash.startsWith('#admin')
+function currentRoute() {
+  const h = window.location.hash
+  if (h.startsWith('#admin')) return 'admin'
+  if (h.startsWith('#pedido')) return 'pedido'
+  return 'home'
 }
 
 export default function App() {
-  const [admin, setAdmin] = useState(isAdminRoute())
+  const [route, setRoute] = useState(currentRoute())
 
   useEffect(() => {
-    const onHash = () => setAdmin(isAdminRoute())
+    const onHash = () => setRoute(currentRoute())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  if (admin) return <AdminApp />
+  if (route === 'admin') return <AdminApp />
+  if (route === 'pedido') return <RestaurantOrderPage />
 
   return (
     <>
@@ -35,6 +41,7 @@ export default function App() {
         <About />
         <BookingEngine />
         <Services />
+        <Restaurant />
         <Gallery />
         <Location />
       </main>

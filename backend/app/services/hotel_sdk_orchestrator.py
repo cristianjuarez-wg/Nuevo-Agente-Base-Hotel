@@ -79,6 +79,8 @@ class HotelContext:
         self.rooms_offered: List[Dict] = []
         # Oferta de promo calculada en este turno (card con precio tachado), si la hubo.
         self.promo_offer: Optional[Dict] = None
+        # Card de la carta del restaurante (botón "Ver carta y pedir"), si se mostró.
+        self.menu_card: Optional[Dict] = None
 
     def as_tool_ctx(self) -> Dict:
         return {
@@ -89,12 +91,14 @@ class HotelContext:
             "document_sources": self.document_sources,
             "rooms_offered": self.rooms_offered,
             "promo_offer": self.promo_offer,
+            "menu_card": self.menu_card,
         }
 
     def absorb(self, tool_ctx: Dict):
         self.document_sources = tool_ctx.get("document_sources", self.document_sources)
         self.rooms_offered = tool_ctx.get("rooms_offered", self.rooms_offered)
         self.promo_offer = tool_ctx.get("promo_offer", self.promo_offer)
+        self.menu_card = tool_ctx.get("menu_card", self.menu_card)
 
 
 # ---------------------------------------------------------------------------
@@ -287,9 +291,46 @@ async def calcular_precio_promo(
     return result.get("tool_result", "")
 
 
+@function_tool
+async def ver_carta(ctx: RunContextWrapper[HotelContext], categoria: str = "") -> str:
+    """Devuelve la carta del restaurante PLAZA - Hampton's Kitchen House (platos, precios,
+    tags dietéticos) y un link para que el cliente arme su pedido en la pantalla de carrito.
+    Úsala cuando pregunten por el menú, qué hay para comer/tomar, room service o pedir comida.
+    `categoria` opcional filtra (ej. "tapas", "postre", "trago"). Si el cliente tiene
+    preferencias dietéticas guardadas, sugerí acorde."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("ver_carta", {"categoria": categoria}, tool_ctx)
+    ctx.context.absorb(tool_ctx)
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def registrar_pedido(ctx: RunContextWrapper[HotelContext], order_code: str = "") -> str:
+    """Confirma y registra un pedido del restaurante que el cliente armó en la pantalla de
+    carrito (te dará un código RST-XXXX, o lo trae el contexto al volver del carrito).
+    Úsala cuando el cliente confirme que terminó su pedido. El backend ya calculó el total
+    y, si está hospedado, lo cargó al folio de su habitación; vos solo confirmás con calidez."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("registrar_pedido", {"order_code": order_code}, tool_ctx)
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def guardar_preferencia(ctx: RunContextWrapper[HotelContext], preferencias: str) -> str:
+    """Guarda preferencias dietéticas del huésped en su perfil para sugerir a futuro.
+    Úsala cuando el cliente mencione una restricción o gusto (ej. "soy vegetariano",
+    "soy celíaco", "alergia a los frutos secos", "no como carne"). `preferencias` =
+    lista separada por comas (ej. "vegetariano, sin tacc")."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    prefs = [p.strip() for p in (preferencias or "").split(",") if p.strip()]
+    result = await execute_tool("guardar_preferencia", {"preferencias": prefs}, tool_ctx)
+    return result.get("tool_result", "")
+
+
 _TOOLS = [
     info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,
     como_llegar, comercios_amigos, promos_vigentes, calcular_precio_promo,
+    ver_carta, registrar_pedido, guardar_preferencia,
 ]
 
 
@@ -503,6 +544,7 @@ class HotelSDKOrchestrator:
             "document_sources": run_ctx.document_sources,
             "rooms_offered": run_ctx.rooms_offered,
             "promo_offer": run_ctx.promo_offer,
+            "menu_card": run_ctx.menu_card,
             "tools_used": tools_used,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,

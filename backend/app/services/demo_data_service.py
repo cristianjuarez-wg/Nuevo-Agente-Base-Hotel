@@ -26,8 +26,10 @@ from app.models.lead import Lead
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.models.staff import StaffMember
+from app.models.restaurant import MenuItem, RestaurantOrder, OrderItem, ExtraCharge
 from app.services import exchange_rate_service, promotions_service
 from app.services.contact_service import contact_service
+from app.services.restaurant_menu_seed import menu_for_seed
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -137,6 +139,8 @@ def counts(db: Session) -> Dict:
         "messages": db.query(ConversationMessage).filter(ConversationMessage.is_demo.is_(True)).count(),
         "tickets": db.query(HotelTicket).filter(HotelTicket.is_demo.is_(True)).count(),
         "staff": db.query(StaffMember).filter(StaffMember.is_demo.is_(True)).count(),
+        "menu_items": db.query(MenuItem).filter(MenuItem.is_demo.is_(True)).count(),
+        "orders": db.query(RestaurantOrder).filter(RestaurantOrder.is_demo.is_(True)).count(),
     }
     data["has_data"] = any(v for k, v in data.items() if k != "has_data")
     return data
@@ -147,6 +151,13 @@ def clear(db: Session) -> Dict:
     """Borra SOLO los registros marcados is_demo=True, en orden inverso de FKs."""
     before = counts(db)
     # Orden: hijos → padres para no violar FKs.
+    # Restaurante primero (OrderItem y ExtraCharge dependen de orders/bookings).
+    demo_order_ids = [o.id for o in db.query(RestaurantOrder.id).filter(RestaurantOrder.is_demo.is_(True))]
+    if demo_order_ids:
+        db.query(OrderItem).filter(OrderItem.order_id.in_(demo_order_ids)).delete(synchronize_session=False)
+    db.query(ExtraCharge).filter(ExtraCharge.is_demo.is_(True)).delete(synchronize_session=False)
+    db.query(RestaurantOrder).filter(RestaurantOrder.is_demo.is_(True)).delete(synchronize_session=False)
+    db.query(MenuItem).filter(MenuItem.is_demo.is_(True)).delete(synchronize_session=False)
     db.query(ConversationMessage).filter(ConversationMessage.is_demo.is_(True)).delete(synchronize_session=False)
     db.query(HotelTicket).filter(HotelTicket.is_demo.is_(True)).delete(synchronize_session=False)
     db.query(Booking).filter(Booking.is_demo.is_(True)).delete(synchronize_session=False)
@@ -353,7 +364,10 @@ def populate(db: Session) -> Dict:
         ))
     db.commit()
 
-    # 7) Recalcular métricas de cada contacto (fuente de verdad = registros reales).
+    # 7) Restaurante: carta + pedidos + folios + preferencias dietéticas.
+    _seed_restaurant(db, contacts, bookings, today, rate)
+
+    # 8) Recalcular métricas de cada contacto (fuente de verdad = registros reales).
     for c in contacts:
         try:
             contact_service.update_contact_metrics(c.id, db)
@@ -392,3 +406,110 @@ def _assign_units(db: Session, bookings: List[Booking], today: date) -> None:
         if free:
             b.room_unit_id = free.id
     db.commit()
+
+
+# Preferencias dietéticas posibles para sembrar en ~30% de los contactos.
+_DIETARY_POOL = [
+    ["vegetariano"], ["sin_tacc"], ["vegano"], ["vegetariano", "sin_tacc"],
+    ["alergia_frutos_secos"], ["sin_lactosa"],
+]
+
+# Notas posibles de pedidos.
+_ORDER_NOTES = [None, None, "Sin sal, por favor.", "Para compartir.", "Bien cocido.", "Sin picante."]
+
+
+def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Booking],
+                     today: date, rate: float) -> None:
+    """Siembra la carta real, pedidos demo (con folios) y preferencias dietéticas."""
+    import json
+
+    # 1) Carta (MenuItem) — solo si no hay carta demo ya (clear la borró).
+    menu_rows = menu_for_seed(rate)
+    menu_items: List[MenuItem] = []
+    for row in menu_rows:
+        mi = MenuItem(
+            name=row["name"], description=row["description"], category=row["category"],
+            price_usd=row["price_usd"], image_url=row["image_url"],
+            allergens=row["allergens"], tags=row["tags"],
+            available=True, status="active", only_dinner=row["only_dinner"],
+            is_demo=True,
+        )
+        db.add(mi)
+        menu_items.append(mi)
+    db.commit()
+    for mi in menu_items:
+        db.refresh(mi)
+
+    # 2) Preferencias dietéticas en ~30% de los contactos.
+    for c in contacts:
+        if _RNG.random() < 0.30:
+            diet = _RNG.choice(_DIETARY_POOL)
+            c.preferences = json.dumps({"dietary": diet}, ensure_ascii=False)
+    db.commit()
+
+    # 3) Pedidos demo. Reservas en curso → algunos al folio (ExtraCharge).
+    in_house = [b for b in bookings
+                if b.status != "cancelled" and b.check_in <= today <= b.check_out]
+    past = [b for b in bookings if b.status == "completed"]
+    N_ORDERS = 25
+    for i in range(N_ORDERS):
+        # 60% de pedidos ligados a una reserva (en curso o pasada); 40% "de afuera".
+        booking = None
+        if _RNG.random() < 0.6 and (in_house or past):
+            booking = _RNG.choice(in_house or past)
+        contact = booking and db.query(Contact).filter(Contact.id == booking.contact_id).first()
+        if contact is None:
+            contact = _RNG.choice(contacts)
+
+        # Armar 1-4 líneas.
+        chosen = _RNG.sample(menu_items, _RNG.randint(1, 4))
+        items = [{"menu_item_id": mi.id, "qty": _RNG.choice([1, 1, 2]), "notes": None} for mi in chosen]
+        total_usd = round(sum(
+            next(m for m in menu_items if m.id == it["menu_item_id"]).price_usd * it["qty"]
+            for it in items
+        ), 2)
+
+        is_in_house = booking is not None and booking in in_house
+        fulfillment = _RNG.choice(["room_service", "salon", "retiro"]) if is_in_house else _RNG.choice(["salon", "retiro"])
+        payment_mode = "folio" if (is_in_house and _RNG.random() < 0.7) else "link"
+        channel = _RNG.choice(["web", "whatsapp"])
+        status = _RNG.choice(["entregado", "entregado", "confirmado", "en_preparacion", "pendiente"])
+        created = (datetime.combine(booking.check_in, datetime.min.time()) + timedelta(days=_RNG.randint(0, max(1, booking.nights)))
+                   if booking else now_minus_days(_RNG.randint(0, 60)))
+
+        order = RestaurantOrder(
+            order_code=_code("RST-"),
+            contact_id=contact.id if contact else None,
+            booking_id=booking.id if booking else None,
+            session_id=(booking.session_id if booking else f"demo-rst-{i}"),
+            channel=channel, fulfillment=fulfillment, payment_mode=payment_mode,
+            total_usd=total_usd, total_ars=round(total_usd * rate, 2),
+            status=status, guest_name=(contact.full_name if contact else None),
+            notes=_RNG.choice(_ORDER_NOTES), created_at=created, updated_at=created,
+            is_demo=True,
+        )
+        order.items = [
+            OrderItem(
+                menu_item_id=it["menu_item_id"],
+                name_snapshot=next(m for m in menu_items if m.id == it["menu_item_id"]).name,
+                qty=it["qty"],
+                unit_price_usd=next(m for m in menu_items if m.id == it["menu_item_id"]).price_usd,
+            )
+            for it in items
+        ]
+        db.add(order)
+        db.flush()
+
+        # Folio: si es room charge sobre reserva en curso.
+        if payment_mode == "folio" and booking is not None:
+            db.add(ExtraCharge(
+                booking_id=booking.id, order_id=order.id, category="restaurant",
+                description=f"Pedido {order.order_code}",
+                amount_usd=total_usd, status="pendiente",
+                created_at=created, is_demo=True,
+            ))
+    db.commit()
+
+
+def now_minus_days(days: int) -> datetime:
+    return datetime.now() - timedelta(days=days)

@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
-  Users, BarChart3, Briefcase, Bot,
+  Users, BarChart3, Briefcase, Bot, UtensilsCrossed,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -11,6 +11,7 @@ import PassengersView from './views/PassengersView'
 import TicketsView from './views/TicketsView'
 import EquipoView from './views/EquipoView'
 import AsesoriaView from './views/AsesoriaView'
+import RestaurantSection from './views/restaurant/RestaurantSection'
 import { Toaster } from './toast'
 import { Loading } from './ui'
 
@@ -24,6 +25,7 @@ const NAV = [
   { id: 'analiticas', label: 'Analíticas', icon: BarChart3 },
   { id: 'reservas', label: 'Reservas', icon: CalendarCheck },
   { id: 'habitaciones', label: 'Habitaciones', icon: Hotel },
+  { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed },
   { id: 'pasajeros', label: 'Pasajeros', icon: Users },
   { id: 'leads', label: 'Leads', icon: UserPlus },
   { id: 'tickets', label: 'Soporte', icon: LifeBuoy },
@@ -96,6 +98,7 @@ export default function AdminApp() {
             {tab === 'analiticas' && <AnalyticsView />}
             {tab === 'reservas' && <BookingsView />}
             {tab === 'habitaciones' && <HabitacionesView />}
+            {tab === 'restaurante' && <RestaurantSection />}
             {tab === 'pasajeros' && <PassengersView />}
             {tab === 'leads' && <LeadsView />}
             {tab === 'tickets' && <TicketsView />}

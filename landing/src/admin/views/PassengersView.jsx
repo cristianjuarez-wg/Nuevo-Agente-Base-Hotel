@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
   Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
-  Repeat, DollarSign, Star, Loader2, Trash2,
+  Repeat, DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt,
 } from 'lucide-react'
-import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact } from '../../services/api'
+import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD, WhatsAppDot,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD, formatARS, WhatsAppDot,
 } from '../ui'
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
@@ -90,10 +90,20 @@ function DetailDrawer({ contactId, onClose }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [folio, setFolio] = useState(null)
 
   useEffect(() => {
     setLoading(true)
-    getGuestProfile(contactId).then(setProfile).catch(() => setProfile(null)).finally(() => setLoading(false))
+    setFolio(null)
+    getGuestProfile(contactId)
+      .then((p) => {
+        setProfile(p)
+        // Si está hospedado, traemos su folio (estadía + consumos).
+        const code = p?.active_stay?.code
+        if (code) getFolio(code).then(setFolio).catch(() => setFolio(null))
+      })
+      .catch(() => setProfile(null))
+      .finally(() => setLoading(false))
   }, [contactId])
 
   const save = async (preferences) => {
@@ -185,6 +195,34 @@ function DetailDrawer({ contactId, onClose }) {
                         <span className="font-medium tabular-nums text-hilton-700">{formatUSD(s.total_price_usd)}</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Folio de la estadía actual (estadía + consumos del restaurante) */}
+              {folio && (
+                <div className="rounded-2xl bg-white p-4 shadow-card">
+                  <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
+                    <Receipt size={13} /> Folio · {folio.booking_code}
+                  </h3>
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between text-slatey">
+                      <span>Estadía</span>
+                      <span className="tabular-nums text-ink">{formatUSD(folio.summary.stay_usd)}</span>
+                    </div>
+                    {folio.charges?.map((ch) => (
+                      <div key={ch.id} className="flex justify-between text-slatey">
+                        <span className="inline-flex items-center gap-1"><UtensilsCrossed size={12} /> {ch.description}</span>
+                        <span className="tabular-nums text-ink">{formatUSD(ch.amount_usd)}</span>
+                      </div>
+                    ))}
+                    <div className="mt-1 flex justify-between border-t border-mist pt-2 font-semibold">
+                      <span className="text-ink">Total a pagar</span>
+                      <span className="tabular-nums text-hilton-700">{formatUSD(folio.summary.folio_total_usd)}</span>
+                    </div>
+                    {folio.summary.folio_pending_usd > 0 && (
+                      <p className="text-xs text-amber-600">Pendiente de cobro: {formatUSD(folio.summary.folio_pending_usd)} (se salda al check-out)</p>
+                    )}
                   </div>
                 </div>
               )}
