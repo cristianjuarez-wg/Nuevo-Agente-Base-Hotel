@@ -7,10 +7,12 @@ reserva asociada (código, huésped). Solo lectura para la demo.
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.models.hotel import HotelTicket
+from app.models.staff import StaffMember
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -23,6 +25,7 @@ def _enrich(ticket: HotelTicket) -> dict:
     data["booking_code"] = booking.code if booking else None
     data["guest_name"] = booking.guest_name if booking else None
     data["room_type"] = (booking.room.room_type if booking and booking.room else None)
+    data["room_number"] = (booking.room_unit.number if booking and booking.room_unit else None)
     return data
 
 
@@ -49,6 +52,76 @@ async def delete_ticket(ticket_id: int, db: Session = Depends(get_db)):
     db.commit()
     logger.info("Ticket eliminado", ticket_id=ticket_id)
     return {"success": True, "message": f"Ticket {ticket_id} eliminado"}
+
+
+class AssignPayload(BaseModel):
+    area: Optional[str] = None
+    staff_id: Optional[int] = None
+
+
+class ResolvePayload(BaseModel):
+    note: Optional[str] = None
+
+
+@router.patch("/{ticket_id}/assign")
+async def assign_ticket(ticket_id: int, payload: AssignPayload, db: Session = Depends(get_db)):
+    """Reasigna manualmente un ticket operativo a un área y/o persona (fallback humano)."""
+    from app.services import operations_service as ops
+    ticket = db.query(HotelTicket).filter(HotelTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    if payload.staff_id:
+        staff = db.query(StaffMember).filter(StaffMember.id == payload.staff_id).first()
+        if not staff:
+            raise HTTPException(status_code=404, detail="Miembro del equipo no encontrado")
+        ticket.assigned_staff_id = staff.id
+        ticket.assigned_area = payload.area or staff.area
+        ticket.status = "asignado"
+        db.commit()
+        ops.notify_staff_assignment(staff, ticket)
+    elif payload.area:
+        staff = ops.classify_and_assign(db, ticket, area_hint=payload.area)
+        ops.notify_staff_assignment(staff, ticket)
+    else:
+        raise HTTPException(status_code=422, detail="Indicá un área o una persona")
+    return {"ticket": _enrich(ticket)}
+
+
+@router.patch("/{ticket_id}/pre-resolve")
+async def pre_resolve_ticket(ticket_id: int, payload: ResolvePayload, db: Session = Depends(get_db)):
+    """Marca un ticket como pre-resuelto desde el backoffice (dispara validación del huésped)."""
+    from app.services import operations_service as ops
+    ticket = db.query(HotelTicket).filter(HotelTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    staff = (
+        db.query(StaffMember).filter(StaffMember.id == ticket.assigned_staff_id).first()
+        if ticket.assigned_staff_id else None
+    )
+    status = ops.mark_pre_resolved(db, ticket, staff, payload.note or "Resuelto por el equipo")
+    return {"ticket": _enrich(ticket), "status": status}
+
+
+@router.patch("/{ticket_id}/resolve")
+async def resolve_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    """Fuerza el cierre definitivo de un ticket (resuelto) desde el backoffice."""
+    ticket = db.query(HotelTicket).filter(HotelTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    ticket.status = "resuelto"
+    db.commit()
+    return {"ticket": _enrich(ticket)}
+
+
+@router.patch("/{ticket_id}/reopen")
+async def reopen_ticket(ticket_id: int, db: Session = Depends(get_db)):
+    """Reabre un ticket (vuelve a 'asignado') desde el backoffice."""
+    ticket = db.query(HotelTicket).filter(HotelTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado")
+    ticket.status = "asignado"
+    db.commit()
+    return {"ticket": _enrich(ticket)}
 
 
 @router.get("/stats")

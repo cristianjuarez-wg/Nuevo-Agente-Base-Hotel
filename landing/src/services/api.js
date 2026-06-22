@@ -96,6 +96,26 @@ export async function deleteTicket(ticketId) {
   return data
 }
 
+export async function assignTicket(ticketId, payload) {
+  const { data } = await client.patch(`/api/hotel-tickets/${ticketId}/assign`, payload)
+  return data.ticket ?? data
+}
+
+export async function preResolveTicket(ticketId, note) {
+  const { data } = await client.patch(`/api/hotel-tickets/${ticketId}/pre-resolve`, { note })
+  return data.ticket ?? data
+}
+
+export async function resolveTicketAdmin(ticketId) {
+  const { data } = await client.patch(`/api/hotel-tickets/${ticketId}/resolve`)
+  return data.ticket ?? data
+}
+
+export async function reopenTicket(ticketId) {
+  const { data } = await client.patch(`/api/hotel-tickets/${ticketId}/reopen`)
+  return data.ticket ?? data
+}
+
 // ── Consumo IA (tokens / USD) ────────────────────────────────────────────────
 export async function getUsageSummary() {
   const { data } = await client.get('/api/usage/summary')

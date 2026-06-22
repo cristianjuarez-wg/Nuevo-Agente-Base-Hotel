@@ -20,6 +20,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/staff", tags=["Staff"])
 
 _VALID_ROLES = {"owner", "staff"}
+_VALID_AREAS = {"mantenimiento", "recepcion", "housekeeping", "general"}
 
 
 def _find_duplicate(db: Session, phone: str, exclude_id: Optional[int] = None):
@@ -37,6 +38,7 @@ class StaffPayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     phone: str = Field(..., min_length=6, max_length=50)
     role: str = Field("staff")
+    area: str = Field("general")  # mantenimiento | recepcion | housekeeping | general
     active: bool = True
 
 
@@ -69,7 +71,8 @@ def create_staff(payload: StaffPayload, db: Session = Depends(get_db)):
             status_code=409,
             detail=f"Ese número ya está cargado como «{dup.name}».",
         )
-    member = StaffMember(name=payload.name.strip(), phone=phone, role=role, active=payload.active)
+    area = payload.area if payload.area in _VALID_AREAS else "general"
+    member = StaffMember(name=payload.name.strip(), phone=phone, role=role, area=area, active=payload.active)
     db.add(member)
     db.commit()
     db.refresh(member)
@@ -96,6 +99,7 @@ def update_staff(member_id: int, payload: StaffPayload, db: Session = Depends(ge
     member.name = payload.name.strip()
     member.phone = phone
     member.role = payload.role if payload.role in _VALID_ROLES else member.role
+    member.area = payload.area if payload.area in _VALID_AREAS else member.area
     member.active = payload.active
     db.commit()
     db.refresh(member)

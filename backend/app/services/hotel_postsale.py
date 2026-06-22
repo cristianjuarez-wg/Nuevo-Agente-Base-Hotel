@@ -245,11 +245,24 @@ class HotelPostSaleService:
         ticket.priority = priority
         ticket.subject = f"Pedido de servicio ({tipo})"
         ticket.description = pedido[:1000]
+        ticket.origin = "guest"
         ticket.status = "open"
         # updated_at se refresca solo (onupdate=datetime.now en el modelo).
         self.db.commit()
         logger.info("Service request registered",
                     ticket_number=ticket.ticket_number, tipo=tipo, priority=priority)
+
+        # "Empleado digital" (Fase 4): enrutar el pedido al área del equipo y avisarle por
+        # WhatsApp. Best-effort: si falla la asignación/notificación, el ticket igual queda
+        # abierto y visible en el backoffice (no rompe la respuesta al huésped).
+        try:
+            from app.services import operations_service
+            staff = operations_service.classify_and_assign(self.db, ticket, area_hint=tipo)
+            operations_service.notify_staff_assignment(staff, ticket)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo enrutar/notificar el pedido al equipo",
+                           ticket_number=ticket.ticket_number, error=str(e))
+
         return ticket.status
 
     # ------------------------------------------------------------------

@@ -47,12 +47,7 @@ async def route_whatsapp(db: Session, phone: str, message: str) -> Dict:
         return await _route_owner(db, phone, message)
 
     if role == "staff":
-        # Caso 1 (cerrar tickets por audio) — todavía no implementado.
-        logger.info("WhatsApp staff message (no implementado aún)", phone=phone[-4:])
-        return {
-            "response": ("¡Hola! La función de gestión de tareas para el equipo está en "
-                         "preparación. Por ahora podés coordinar con recepción. 🙌"),
-        }
+        return await _route_staff(db, phone, message)
 
     # Huésped: flujo actual sin cambios (el agente concierge usa su propio session_id wa_).
     from app.services.agent_service import agent_service
@@ -161,5 +156,35 @@ async def _route_owner(db: Session, phone: str, message: str) -> Dict:
             mem_db.close()
     except Exception as e:  # noqa: BLE001
         logger.warning("No se pudo persistir la memoria del asesor", session_id=session_id, error=str(e))
+
+    return result
+
+
+async def _route_staff(db: Session, phone: str, message: str) -> Dict:
+    """Despacha al coordinador de operaciones del equipo (rol staff).
+
+    Memoria conversacional en RAM por sesión (`staff_<phone>`). La identidad del miembro se
+    resuelve por teléfono (StaffMember). El audio ya llega transcrito desde el webhook, así
+    que para el orquestador es indistinto texto o voz.
+    """
+    from app.services.staff_orchestrator import staff_orchestrator
+    from app.models.staff import StaffMember
+    from app.utils.phone_normalizer import normalize_phone
+
+    norm = normalize_phone(phone) or phone
+    session_id = "staff_" + norm.lstrip("+")
+
+    staff = db.query(StaffMember).filter(StaffMember.phone == norm).first()
+    if not staff:
+        # No debería pasar (resolve_role ya lo marcó staff), pero por las dudas.
+        return {"response": "No te tengo registrado en el equipo. Avisá a recepción para que te den de alta. 🙌"}
+
+    history = _role_histories.setdefault(session_id, [])
+    result = await staff_orchestrator.run(db, staff, message, session_id, history)
+
+    history.append({"role": "user", "content": message})
+    history.append({"role": "assistant", "content": result.get("response", "")})
+    if len(history) > 30:
+        _role_histories[session_id] = history[-30:]
 
     return result

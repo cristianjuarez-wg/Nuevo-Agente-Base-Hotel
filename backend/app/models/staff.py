@@ -20,6 +20,9 @@ class StaffMember(Base):
     name = Column(String(120), nullable=False)
     phone = Column(String(50), nullable=False, unique=True, index=True)  # normalizado (+549...)
     role = Column(String(20), nullable=False, default="staff")  # "owner" | "staff"
+    # Área operativa: define a qué staff se asignan los tickets de servicio del huésped
+    # (el agente clasifica el problema y enruta al área correcta). Editable desde backoffice.
+    area = Column(String(20), nullable=False, default="general")  # mantenimiento | recepcion | housekeeping | general
     active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.now)
 
@@ -32,6 +35,7 @@ class StaffMember(Base):
             "name": self.name,
             "phone": self.phone,
             "role": self.role,
+            "area": self.area,
             "active": self.active,
             # Para el equipo asumimos que el número cargado es su WhatsApp (regla de negocio).
             "whatsapp_linked": True,

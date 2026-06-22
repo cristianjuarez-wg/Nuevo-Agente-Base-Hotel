@@ -10,6 +10,17 @@ function RoleBadge({ role }) {
     : <Badge tone="blue"><Briefcase size={11} className="mr-1" /> Staff</Badge>
 }
 
+const AREA_LABELS = {
+  mantenimiento: 'Mantenimiento', recepcion: 'Recepción',
+  housekeeping: 'Housekeeping', general: 'General',
+}
+const AREA_OPTIONS = ['mantenimiento', 'recepcion', 'housekeeping', 'general']
+
+function AreaBadge({ role, area }) {
+  if (role === 'owner') return <span className="text-xs text-slatey">—</span>
+  return <Badge tone="gray">{AREA_LABELS[area] || 'General'}</Badge>
+}
+
 export default function EquipoView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +65,7 @@ export default function EquipoView() {
       </span>
     ) },
     { key: 'role', label: 'Rol', render: (r) => <RoleBadge role={r.role} /> },
+    { key: 'area', label: 'Área', render: (r) => <AreaBadge role={r.role} area={r.area} /> },
     { key: 'active', label: 'Estado', render: (r) => (
       <button onClick={() => toggle(r)} className="text-xs font-medium">
         {r.active
@@ -128,6 +140,7 @@ function StaffModal({ member, onClose, onSaved }) {
   const [name, setName] = useState(member.name || '')
   const [phone, setPhone] = useState(member.phone || '')
   const [role, setRole] = useState(member.role || 'staff')
+  const [area, setArea] = useState(member.area || 'general')
   const [active, setActive] = useState(member.active ?? true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -138,7 +151,7 @@ function StaffModal({ member, onClose, onSaved }) {
     setSaving(true)
     setError('')
     try {
-      await saveStaff({ name: name.trim(), phone: phone.trim(), role, active }, member.id)
+      await saveStaff({ name: name.trim(), phone: phone.trim(), role, area, active }, member.id)
       toast.success(isNew ? 'Miembro agregado' : 'Miembro actualizado')
       onSaved()
     } catch (e) {
@@ -163,6 +176,16 @@ function StaffModal({ member, onClose, onSaved }) {
             <option value="owner">Dueño / Gerente (acceso a métricas)</option>
           </select>
         </label>
+        {role === 'staff' && (
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-ink">Área</span>
+            <select value={area} onChange={(e) => setArea(e.target.value)}
+                    className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100">
+              {AREA_OPTIONS.map((a) => <option key={a} value={a}>{AREA_LABELS[a]}</option>)}
+            </select>
+            <span className="mt-1 block text-xs text-slatey">El agente asigna los pedidos del huésped al área que corresponda.</span>
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm text-ink">
           <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 rounded border-hilton-300" />
           Activo

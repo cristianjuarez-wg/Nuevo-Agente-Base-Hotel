@@ -99,8 +99,18 @@ def run_light_migrations() -> None:
     ensure_column("conversations", "is_demo", "BOOLEAN")
     ensure_column("conversation_messages", "is_demo", "BOOLEAN")
     ensure_column("staff_members", "is_demo", "BOOLEAN")
+    # Fase 4 — "empleado digital": área del staff + ciclo operativo del ticket.
+    ensure_column("staff_members", "area", "VARCHAR(20)")
+    ensure_column("hotel_tickets", "assigned_staff_id", "INTEGER")
+    ensure_column("hotel_tickets", "assigned_area", "VARCHAR(20)")
+    ensure_column("hotel_tickets", "origin", "VARCHAR(20)")
+    ensure_column("hotel_tickets", "resolution_note", "TEXT")
+    ensure_column("hotel_tickets", "resolved_by_staff_id", "INTEGER")
+    ensure_column("hotel_tickets", "guest_validated", "INTEGER")
     # Backfill: las filas creadas antes de agregar la columna quedan en NULL.
     _backfill("rooms", "status", "active")
+    _backfill("staff_members", "area", "general")
+    _backfill("hotel_tickets", "origin", "guest")
     # Conversaciones previas a la columna: asumimos canal web (no había WhatsApp).
     _backfill("conversations", "channel", "web")
     # Tablas del restaurante (menu/pedidos/folio): garantizar creación con todas las

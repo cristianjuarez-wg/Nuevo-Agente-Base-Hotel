@@ -63,6 +63,67 @@ class AgentService:
         upper = message.upper()
         return any(re.search(p, upper) for p in self.BOOKING_CODE_PATTERNS)
 
+    # Palabras que el huésped usa para confirmar / negar la resolución de su pedido (Fase 4).
+    # Se matchean como PALABRA COMPLETA (con \b), no substring: evita que "si" matchee dentro
+    # de "sigue" o "anda" dentro de "demandar".
+    _VALIDATION_YES = (
+        "si", "sí", "sip", "dale", "perfecto", "genial", "gracias", "ok", "okey", "buenísimo",
+        "buenisimo", "joya", "anda", "funciona", "resuelto", "solucionado", "bárbaro",
+        "barbaro", "excelente", "listo", "impecable", "tal cual", "todo bien",
+    )
+    _VALIDATION_NO = (
+        "no", "sigue", "todavía", "todavia", "aún", "aun", "igual", "peor", "nada", "persiste",
+        "continúa", "continua", "sin cambios", "no anda", "no funciona", "no se solucionó",
+        "no se soluciono", "no quedó", "no quedo", "ni ahí", "ni ahi",
+    )
+
+    def _handle_resolution_validation(self, db, message: str, session_id: str, history):
+        """Cierra el loop operativo (Fase 4) si el huésped valida/rechaza una resolución.
+
+        Si hay un ticket PRE-RESUELTO para esta sesión y el mensaje es un sí/no claro, aplica
+        la validación y devuelve una respuesta terminal. Si no hay ticket o el mensaje es
+        ambiguo, devuelve None para que siga el flujo normal.
+        """
+        from app.services import operations_service as ops
+        ticket = ops.find_pending_validation_ticket(db, session_id)
+        if not ticket:
+            return None
+
+        low = (message or "").strip().lower()
+
+        def _has(words):
+            return any(re.search(r"\b" + re.escape(w) + r"\b", low) for w in words)
+
+        is_no = _has(self._VALIDATION_NO)
+        is_yes = _has(self._VALIDATION_YES)
+        # Ni sí ni no → ambiguo: dejamos seguir el flujo normal (no forzamos cierre).
+        if not is_no and not is_yes:
+            return None
+        # NO tiene prioridad: ante cualquier señal de que sigue el problema, NO cerramos
+        # (más seguro reabrir que cerrar mal). ok solo si hay sí y no hay no.
+        ok = is_yes and not is_no
+
+        status = ops.guest_validate(db, ticket, ok=ok)
+        where = ops._room_label(ticket)
+        if status == "resuelto":
+            response_text = (f"¡Genial! Me alegra que se haya resuelto lo de {where}. "
+                             "Cualquier otra cosa que necesites durante tu estadía, acá estoy. 😊")
+        else:
+            response_text = (f"Lamento que siga el inconveniente con {where}. Ya avisé de nuevo "
+                             "al equipo para que lo revisen cuanto antes. Te mantengo al tanto. 🙏")
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": response_text})
+        self._update_session_metadata(session_id)
+        return {
+            "response": response_text,
+            "has_context": True,
+            "context_type": "postsale",
+            "intent": "resolution_validation",
+            "ticket_number": ticket.ticket_number,
+            "status": status,
+            "session_info": self.get_session_info(session_id),
+        }
+
     def __init__(self):
         try:
             self.client = get_async_openai()
@@ -461,6 +522,14 @@ class AgentService:
                            step=state.get("step"))
                 return await self._handle_conversation_state(db, message, session_id, state, history)
             
+            # 🆕 2.35. VALIDACIÓN DE RESOLUCIÓN (Fase 4, "empleado digital"): si hay un ticket
+            # operativo PRE-RESUELTO para esta sesión, el huésped está respondiendo si quedó
+            # bien. Lo interceptamos acá (determinístico, 0 LLM) para cerrar el loop sin pasar
+            # por el orquestador. Si el mensaje no es un sí/no claro, dejamos seguir el flujo.
+            validation_resp = self._handle_resolution_validation(db, message, session_id, history)
+            if validation_resp is not None:
+                return validation_resp
+
             # 🆕 2.4. SEÑALES DURAS (determinísticas) — cortocircuitos previos al ruteo.
             # Un mensaje con código de reserva o una sesión post-venta activa SIEMPRE es
             # post-venta, sin importar el flag de ruteo: el regex/DB query es infalible y

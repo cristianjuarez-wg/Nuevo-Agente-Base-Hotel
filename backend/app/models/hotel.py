@@ -228,15 +228,27 @@ class HotelTicket(Base):
     session_id = Column(String, nullable=False, index=True)
 
     subject = Column(String, nullable=False)
-    category = Column(String, nullable=False, default="general")  # general/change/cancel/complaint/info
+    category = Column(String, nullable=False, default="general")  # general/change/cancel/complaint/info/service_request
     priority = Column(String, nullable=False, default="medium")   # low/medium/high/urgent
-    # open / in_progress / resolved / escalated
+    # Estados base: open / in_progress / resolved / escalated.
+    # Estados del ciclo OPERATIVO (Fase 4, "empleado digital"):
+    #   asignado     → enrutado a un área/persona del equipo, esperando que lo resuelvan.
+    #   pre_resuelto → el staff lo marcó resuelto; esperando validación del huésped.
+    #   resuelto     → cierre definitivo (validado por el huésped, o sin huésped a validar).
     status = Column(String, nullable=False, default="open", index=True)
     description = Column(String, nullable=True)
 
     # Trazabilidad del agente IA
     auto_resolved_by_agent = Column(String, nullable=True)  # última respuesta auto-resuelta
     escalated = Column(Integer, nullable=False, default=0)   # 0/1: requirió asesor humano
+
+    # --- Ciclo operativo (Fase 4): asignación al equipo + loop de doble validación ---
+    assigned_staff_id = Column(Integer, ForeignKey("staff_members.id"), nullable=True, index=True)
+    assigned_area = Column(String(20), nullable=True)        # snapshot del área asignada
+    origin = Column(String(20), nullable=False, default="guest")  # "guest" | "staff" (quién lo originó)
+    resolution_note = Column(String, nullable=True)          # nota del staff al resolver ("reparado el aire 401")
+    resolved_by_staff_id = Column(Integer, ForeignKey("staff_members.id"), nullable=True)
+    guest_validated = Column(Integer, nullable=False, default=0)  # 0/1: el huésped confirmó la resolución
 
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -245,6 +257,7 @@ class HotelTicket(Base):
     is_demo = Column(Boolean, default=False, index=True)
 
     booking = relationship("Booking")
+    assigned_staff = relationship("StaffMember", foreign_keys=[assigned_staff_id])
 
     def to_dict(self):
         return {
@@ -258,6 +271,13 @@ class HotelTicket(Base):
             "status": self.status,
             "description": self.description,
             "escalated": bool(self.escalated),
+            # Ciclo operativo (Fase 4)
+            "origin": self.origin,
+            "assigned_staff_id": self.assigned_staff_id,
+            "assigned_area": self.assigned_area,
+            "assigned_staff_name": self.assigned_staff.name if self.assigned_staff else None,
+            "resolution_note": self.resolution_note,
+            "guest_validated": bool(self.guest_validated),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
