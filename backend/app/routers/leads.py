@@ -15,6 +15,12 @@ router = APIRouter(prefix="/api/leads", tags=["Leads"])
 class LeadStatusUpdate(BaseModel):
     status: Literal["active", "contacted", "converted", "inactive", "new"]
 
+class LeadFieldsUpdate(BaseModel):
+    name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
 class LeadResponse(BaseModel):
     success: bool
     message: str
@@ -162,6 +168,21 @@ async def get_lead_by_session(session_id: str):
             status_code=500,
             detail=f"Error obteniendo lead: {str(e)}"
         )
+
+@router.patch("/{lead_id}")
+async def update_lead(lead_id: int, payload: LeadFieldsUpdate):
+    """Edita los datos de contacto de un lead (nombre, apellido, email, teléfono)."""
+    try:
+        updated = lead_service.update_lead_fields(lead_id, payload.model_dump(exclude_unset=True))
+        if updated is None:
+            raise HTTPException(status_code=404, detail=f"Lead con ID {lead_id} no encontrado")
+        logger.info("Lead updated", lead_id=lead_id)
+        return {"success": True, "data": updated}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error updating lead", lead_id=lead_id, error=str(e))
+        raise HTTPException(status_code=500, detail=f"Error actualizando lead: {str(e)}")
 
 @router.patch("/{lead_id}/status")
 async def update_lead_status(lead_id: int, status_update: LeadStatusUpdate):

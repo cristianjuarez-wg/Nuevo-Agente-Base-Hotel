@@ -508,6 +508,45 @@ class ContactService:
         db.commit()
         return True
 
+    def update_fields(self, contact_id: int, fields: Dict, db: Session) -> Dict:
+        """Edita datos del pasajero (nombre, apellido, email, teléfono).
+
+        El teléfono es la clave única del contacto: si se cambia, valida que no choque
+        con otro contacto. Devuelve {ok, error?, contact?}.
+        """
+        from app.utils.phone_normalizer import normalize_phone  # normalización consistente
+
+        contact = db.query(Contact).filter(Contact.id == contact_id).first()
+        if not contact:
+            return {"ok": False, "error": "Contacto no encontrado."}
+
+        if "phone_number" in fields and fields["phone_number"] is not None:
+            raw = str(fields["phone_number"]).strip()
+            if raw:
+                new_phone = normalize_phone(raw) or raw
+                if new_phone != contact.phone_number:
+                    clash = (
+                        db.query(Contact)
+                        .filter(Contact.phone_number == new_phone, Contact.id != contact_id)
+                        .first()
+                    )
+                    if clash:
+                        return {"ok": False, "error": "Ya existe otro pasajero con ese teléfono."}
+                    contact.phone_number = new_phone
+
+        if "first_name" in fields and fields["first_name"] is not None:
+            contact.first_name = str(fields["first_name"]).strip() or None
+        if "last_name" in fields and fields["last_name"] is not None:
+            contact.last_name = str(fields["last_name"]).strip() or None
+        if ("first_name" in fields) or ("last_name" in fields):
+            contact.full_name = " ".join(p for p in [contact.first_name, contact.last_name] if p) or None
+        if "email" in fields and fields["email"] is not None:
+            contact.email = str(fields["email"]).strip() or None
+
+        db.commit()
+        db.refresh(contact)
+        return {"ok": True, "contact": contact.to_dict()}
+
 
 # Instancia global reutilizable (mismo patrón que lead_service).
 contact_service = ContactService()

@@ -192,6 +192,24 @@ async def update_preferences(contact_id: int, payload: PreferencesUpdate, db: Se
     return {"success": True, "message": "Preferencias actualizadas"}
 
 
+class ContactFieldsUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone_number: Optional[str] = None
+
+
+@router.patch("/{contact_id}")
+async def update_contact(contact_id: int, payload: ContactFieldsUpdate, db: Session = Depends(get_db)):
+    """Edita los datos del pasajero (nombre, apellido, email, teléfono)."""
+    result = contact_service.update_fields(contact_id, payload.model_dump(exclude_unset=True), db)
+    if not result.get("ok"):
+        # 409 si el teléfono choca con otro contacto; 404 si no existe.
+        code = 404 if result.get("error") == "Contacto no encontrado." else 409
+        raise HTTPException(status_code=code, detail=result.get("error", "No se pudo actualizar."))
+    return {"success": True, "contact": result["contact"]}
+
+
 @router.delete("/{contact_id}")
 async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     """Elimina un contacto (pasajero / lead-identidad) del backoffice.

@@ -684,6 +684,50 @@ Responde SOLO con el JSON."""
         finally:
             db.close()
 
+    def update_lead_fields(self, lead_id: int, fields: Dict) -> Optional[Dict]:
+        """Edita datos de contacto de un lead (nombre, apellido, email, teléfono).
+
+        Solo toca los campos provistos (no None). Si el lead está vinculado a un Contact,
+        propaga el cambio al Contact para mantener la Visión 360° consistente.
+        Devuelve el lead actualizado (dict) o None si no existe.
+        """
+        db = SessionLocal()
+        try:
+            lead = db.query(Lead).filter(Lead.id == lead_id).first()
+            if not lead:
+                return None
+
+            allowed = ("name", "last_name", "email", "phone")
+            for key in allowed:
+                if key in fields and fields[key] is not None:
+                    val = str(fields[key]).strip() or None
+                    setattr(lead, key, val)
+            lead.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+            # Propagar al Contact vinculado (si lo hay) para no desincronizar el 360°.
+            if lead.contact_id:
+                from app.models.contact import Contact
+                c = db.query(Contact).filter(Contact.id == lead.contact_id).first()
+                if c:
+                    if "name" in fields and fields["name"] is not None:
+                        c.first_name = (fields["name"] or "").strip() or None
+                    if "last_name" in fields and fields["last_name"] is not None:
+                        c.last_name = (fields["last_name"] or "").strip() or None
+                    if c.first_name or c.last_name:
+                        c.full_name = " ".join(p for p in [c.first_name, c.last_name] if p)
+                    if "email" in fields and fields["email"] is not None:
+                        c.email = (fields["email"] or "").strip() or None
+
+            db.commit()
+            db.refresh(lead)
+            logger.info("Lead fields updated", lead_id=lead_id, fields=list(fields.keys()))
+            return lead.to_dict() if hasattr(lead, "to_dict") else {
+                "id": lead.id, "name": lead.name, "last_name": lead.last_name,
+                "email": lead.email, "phone": lead.phone,
+            }
+        finally:
+            db.close()
+
     def delete_lead(self, lead_id: int) -> bool:
         """Elimina un lead por su ID. Devuelve True si existía y se borró."""
         db = SessionLocal()

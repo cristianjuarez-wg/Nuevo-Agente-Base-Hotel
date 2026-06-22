@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
   Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
-  Repeat, DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt,
+  Repeat, DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt, Pencil, Save,
 } from 'lucide-react'
-import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio } from '../../services/api'
+import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio, updateContact } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD, formatARS, WhatsAppDot,
 } from '../ui'
@@ -120,6 +120,21 @@ function DetailDrawer({ contactId, onClose }) {
     }
   }
 
+  const [editing, setEditing] = useState(false)
+  const saveContact = async (fields) => {
+    try {
+      await updateContact(contactId, fields)
+      const fresh = await getGuestProfile(contactId)
+      setProfile(fresh)
+      setEditing(false)
+      toast.success('Datos del pasajero actualizados')
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'No se pudieron guardar los datos.'
+      toast.error(msg)
+      throw e
+    }
+  }
+
   const c = profile?.contact || {}
   const name = c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Huésped'
 
@@ -132,10 +147,16 @@ function DetailDrawer({ contactId, onClose }) {
             <h2 className="truncate font-serif text-lg font-700 text-ink">{name}</h2>
             {profile?.origin && <div className="mt-0.5"><OriginBadge origin={profile.origin} /></div>}
           </div>
-          <button onClick={onClose} aria-label="Cerrar"
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-slatey hover:bg-mist">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setEditing(true)} aria-label="Editar datos" title="Editar datos"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-slatey hover:bg-mist hover:text-ink">
+              <Pencil size={17} />
+            </button>
+            <button onClick={onClose} aria-label="Cerrar"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-slatey hover:bg-mist">
+              <X size={20} />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-5">
@@ -238,7 +259,73 @@ function DetailDrawer({ contactId, onClose }) {
           )}
         </div>
       </aside>
+
+      {editing && (
+        <EditContactModal contact={c} onClose={() => setEditing(false)} onSave={saveContact} />
+      )}
     </div>
+  )
+}
+
+// ── Modal de edición de datos del pasajero ──────────────────────────────────
+function EditContactModal({ contact, onClose, onSave }) {
+  const [firstName, setFirstName] = useState(contact.first_name || '')
+  const [lastName, setLastName] = useState(contact.last_name || '')
+  const [email, setEmail] = useState(contact.email || '')
+  const [phone, setPhone] = useState(contact.phone_number || '')
+  const [saving, setSaving] = useState(false)
+
+  const submit = async () => {
+    setSaving(true)
+    try {
+      await onSave({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        phone_number: phone.trim(),
+      })
+    } catch {
+      setSaving(false)   // el toast de error ya lo mostró el caller
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="font-serif text-lg font-700 text-ink">Editar pasajero</h3>
+          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist"><X size={20} /></button>
+        </div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <PField label="Nombre" value={firstName} onChange={setFirstName} placeholder="Nombre" />
+            <PField label="Apellido" value={lastName} onChange={setLastName} placeholder="Apellido" />
+          </div>
+          <PField label="Email" value={email} onChange={setEmail} placeholder="email@ejemplo.com" type="email" />
+          <PField label="Teléfono" value={phone} onChange={setPhone} placeholder="+54 9 11 …" />
+          <p className="text-xs text-slatey">El teléfono identifica al pasajero; debe ser único.</p>
+          <div className="flex justify-end gap-3 pt-1">
+            <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
+            <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60">
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PField({ label, value, onChange, placeholder, type = 'text' }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-ink">{label}</span>
+      <input
+        type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+      />
+    </label>
   )
 }
 

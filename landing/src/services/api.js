@@ -75,6 +75,12 @@ export async function deleteLead(leadId) {
   return data
 }
 
+export async function updateLead(leadId, fields) {
+  // fields: { name?, last_name?, email?, phone? }
+  const { data } = await client.patch(`/api/leads/${leadId}`, fields)
+  return data
+}
+
 export async function listTickets() {
   const { data } = await client.get('/api/hotel-tickets')
   return data.tickets ?? data
@@ -353,6 +359,12 @@ export async function getContactStats() {
 
 export async function deleteContact(contactId) {
   const { data } = await client.delete(`/api/contacts/${contactId}`)
+  return data
+}
+
+export async function updateContact(contactId, fields) {
+  // fields: { first_name?, last_name?, email?, phone_number? }
+  const { data } = await client.patch(`/api/contacts/${contactId}`, fields)
   return data
 }
 
