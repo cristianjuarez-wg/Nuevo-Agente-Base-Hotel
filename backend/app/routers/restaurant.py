@@ -21,6 +21,18 @@ Router del RESTAURANTE.
     GET    /api/restaurant/folio/{booking_code}
     POST   /api/restaurant/folio/{booking_code}/settle
 
+  Reservas de mesa (Fase 2):
+    GET    /api/restaurant/slots
+    GET    /api/restaurant/table-reservations
+    POST   /api/restaurant/table-reservations
+    PATCH  /api/restaurant/table-reservations/{code}/status
+
+  Vouchers (Fase 3):
+    GET    /api/restaurant/vouchers
+    GET    /api/restaurant/vouchers/{code}
+    POST   /api/restaurant/vouchers
+    POST   /api/restaurant/vouchers/{code}/redeem
+
   Stats:
     GET    /api/restaurant/stats
 """
@@ -78,6 +90,33 @@ class OrderPayload(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: str
+
+
+class TableReservationPayload(BaseModel):
+    fecha: str                          # "YYYY-MM-DD"
+    hora: str                           # "HH:MM" (turno válido)
+    party_size: int = Field(2, ge=1)
+    guest_name: Optional[str] = None
+    guest_phone: Optional[str] = None
+    booking_code: Optional[str] = None  # si es huésped
+    contact_id: Optional[int] = None
+    session_id: Optional[str] = None
+    notes: Optional[str] = None
+    channel: str = "web"
+
+
+class TableReservationStatusUpdate(BaseModel):
+    status: str
+
+
+class VoucherPayload(BaseModel):
+    items: List[OrderItemPayload]
+    buyer_name: Optional[str] = None
+    buyer_phone: Optional[str] = None
+    contact_id: Optional[int] = None
+    session_id: Optional[str] = None
+    notes: Optional[str] = None
+    channel: str = "web"
 
 
 # ── Carta ────────────────────────────────────────────────────────────────────
@@ -226,6 +265,86 @@ def settle_folio(booking_code: str, db: Session = Depends(get_db)):
     if not folio:
         raise HTTPException(404, "Reserva no encontrada.")
     return folio
+
+
+# ── Reservas de mesa (Fase 2) ────────────────────────────────────────────────
+@router.get("/slots")
+def restaurant_slots():
+    """Turnos disponibles del restaurante (almuerzo/cena). Los consume la card del chat."""
+    return {"slots": restaurant_service.RESTAURANT_SLOTS}
+
+
+@router.get("/table-reservations")
+def list_table_reservations(scope: Optional[str] = None, db: Session = Depends(get_db)):
+    """Agenda de reservas de mesa (orden por fecha ASC). scope: today | week | upcoming."""
+    return {"reservations": restaurant_service.list_table_reservations(db, scope=scope)}
+
+
+@router.post("/table-reservations")
+def create_table_reservation(payload: TableReservationPayload, db: Session = Depends(get_db)):
+    result = restaurant_service.create_table_reservation(
+        db,
+        fecha=payload.fecha,
+        hora=payload.hora,
+        party_size=payload.party_size,
+        guest_name=payload.guest_name,
+        guest_phone=payload.guest_phone,
+        contact_id=payload.contact_id,
+        booking_code=payload.booking_code,
+        session_id=payload.session_id,
+        notes=payload.notes,
+        channel=payload.channel,
+    )
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@router.patch("/table-reservations/{code}/status")
+def patch_table_reservation_status(code: str, payload: TableReservationStatusUpdate, db: Session = Depends(get_db)):
+    r = restaurant_service.set_table_reservation_status(db, code, payload.status)
+    if not r:
+        raise HTTPException(404, "Reserva de mesa no encontrada o estado inválido.")
+    return r
+
+
+# ── Vouchers (Fase 3) ─────────────────────────────────────────────────────────
+@router.get("/vouchers")
+def list_vouchers(status: Optional[str] = None, db: Session = Depends(get_db)):
+    return {"vouchers": restaurant_service.list_vouchers(db, status=status)}
+
+
+@router.get("/vouchers/{code}")
+def get_voucher(code: str, db: Session = Depends(get_db)):
+    v = restaurant_service.get_voucher(db, code)
+    if not v:
+        raise HTTPException(404, "Voucher no encontrado.")
+    return v
+
+
+@router.post("/vouchers")
+def create_voucher(payload: VoucherPayload, db: Session = Depends(get_db)):
+    result = restaurant_service.create_voucher(
+        db,
+        items=[i.model_dump() for i in payload.items],
+        buyer_name=payload.buyer_name,
+        buyer_phone=payload.buyer_phone,
+        contact_id=payload.contact_id,
+        session_id=payload.session_id,
+        notes=payload.notes,
+        channel=payload.channel,
+    )
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return result
+
+
+@router.post("/vouchers/{code}/redeem")
+def redeem_voucher(code: str, db: Session = Depends(get_db)):
+    result = restaurant_service.redeem_voucher(db, code)
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return result
 
 
 # ── Stats ────────────────────────────────────────────────────────────────────

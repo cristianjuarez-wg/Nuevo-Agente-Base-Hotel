@@ -703,8 +703,78 @@ def _active_booking_for(db, contact, session_id: Optional[str]):
     return None
 
 
+def _menu_cart_url(ctx: Dict) -> str:
+    """Link a la pantalla #pedido (carta completa), con la sesión para asociar el pedido."""
+    url = f"{settings.LANDING_URL.rstrip('/')}/#pedido"
+    sid = ctx.get("session_id")
+    if sid:
+        url += f"?session={sid}"
+    return url
+
+
+def _build_menu_card(menu: list, ctx: Dict, preselect: Optional[list] = None,
+                     purpose: str = "order") -> Dict:
+    """Card interactiva del menú para el chat: lleva los platos embebidos (no solo un link).
+
+    `preselect` = [{menu_item_id, qty}] para precargar el carrito (pedido por texto, caso 2).
+    `purpose` = "order" (pedir ahora, Fase 1) | "voucher" (compra anticipada, Fase 3).
+    """
+    titulo = "Comprá tu voucher" if purpose == "voucher" else "Carta del restaurante"
+    desc = ("Elegí los platos del voucher (los canjeás cuando vengas)."
+            if purpose == "voucher" else "Cocina patagónica de PLAZA - Hampton's Kitchen House.")
+    return {
+        "type": "menu_interactive",
+        "purpose": purpose,
+        "title": titulo,
+        "description": desc,
+        "items": menu,
+        "session_id": ctx.get("session_id"),
+        "fallback_url": _menu_cart_url(ctx),
+        "preselect": preselect or [],
+    }
+
+
+def _match_menu_items(texto: str, menu: list) -> Dict[str, list]:
+    """Matchea un pedido en lenguaje natural contra la carta. Simple y conservador.
+
+    Devuelve {"matched": [{menu_item_id, qty, name}], "unmatched": [textos no reconocidos]}.
+    Estrategia: por cada plato de la carta, buscar su nombre (o palabras clave del nombre) en
+    el texto; si aparece, lo cuenta. NO inventa: si un pedido del usuario no matchea, lo deja
+    en `unmatched` para que el agente lo aclare.
+    """
+    import re as _re
+    t = (texto or "").lower()
+    # Palabras genéricas que NO distinguen un plato (aparecen en muchos): evitan falsos
+    # positivos como "2 pintas Patagonia" matcheando todas las cervezas "… Patagonia".
+    _GENERIC = {"patagonia", "lata", "casa", "plato", "clasico", "clásico", "patagonico",
+                "patagónico", "artesanal", "especial", "guarnición", "guarnicion"}
+    matched = []
+    for m in menu:
+        name = (m.get("name") or "").lower()
+        if not name:
+            continue
+        words = [w for w in _re.split(r"[\s()]+", name) if len(w) >= 4 and w not in _GENERIC]
+        # Match por la palabra ANCLA: la más larga y distintiva del nombre (ej. "provenzal",
+        # "napolitana", "capuccino", "bolognesa"). Si aparece en el texto, es el plato. Es
+        # conservador: ante ambigüedad no matchea y el agente muestra la carta para elegir.
+        anchor = max(words, key=len) if words else (name.split()[0] if name.split() else "")
+        hit = name in t or (anchor and anchor in t)
+        if hit:
+            # Cantidad: "2 napolitanas" / "2x …" → 2; por defecto 1.
+            qty = 1
+            mqty = _re.search(r"(\d+)\s*(?:x\s*)?[\wáéíóú]*\s*" + _re.escape(anchor), t)
+            if mqty:
+                qty = max(1, int(mqty.group(1)))
+            matched.append({"menu_item_id": m["id"], "qty": qty, "name": m["name"]})
+    return {"matched": matched, "unmatched": []}
+
+
 def _handle_ver_carta(args: Dict, ctx: Dict) -> Dict:
-    """Devuelve la carta del restaurante PLAZA y un link para armar el pedido."""
+    """Adjunta la carta del restaurante PLAZA como tarjeta interactiva en el chat.
+
+    El texto es CORTO (la card muestra los platos); el agente agrega la intro cálida y la
+    pregunta de intención. Devuelve el link a la carta completa por si el huésped la prefiere.
+    """
     db: Optional[Session] = ctx.get("db")
     if db is None:
         return {"tool_result": "Error interno: sin conexión a base de datos."}
@@ -717,7 +787,7 @@ def _handle_ver_carta(args: Dict, ctx: Dict) -> Dict:
     if categoria:
         menu = [m for m in menu if categoria in (m.get("category") or "").lower()] or menu
 
-    # Si el huésped tiene preferencias, resaltarlas para sugerir.
+    # Si el huésped tiene preferencias dietéticas guardadas, recordarlas al agente.
     contact = _resolve_contact(db, ctx)
     pref_note = ""
     if contact:
@@ -726,37 +796,156 @@ def _handle_ver_carta(args: Dict, ctx: Dict) -> Dict:
             prefs = (profile or {}).get("preferences") or {}
             diet = prefs.get("dietary") or prefs.get("dietary_restrictions") or []
             if diet:
-                pref_note = f" (Tené en cuenta sus preferencias: {', '.join(diet)} — sugerí acorde.)"
+                pref_note = f" (Preferencias del huésped: {', '.join(diet)} — sugerí acorde.)"
         except Exception:
             pass
 
-    # Agrupar por categoría para el texto.
-    by_cat: Dict[str, list] = {}
-    for m in menu:
-        by_cat.setdefault(m["category"], []).append(m)
-    lines = ["Carta del restaurante PLAZA - Hampton's Kitchen House:\n"]
-    for cat, items in by_cat.items():
-        lines.append(f"**{cat.capitalize()}**")
-        for m in items[:8]:
-            tags = f" [{', '.join(m['tags'])}]" if m.get("tags") else ""
-            lines.append(f"• {m['name']} — USD {m['price_usd']:.0f}{tags}")
-    cart_url = f"{settings.LANDING_URL.rstrip('/')}/#pedido"
-    sid = ctx.get("session_id")
-    if sid:
-        cart_url += f"?session={sid}"
-    lines.append(f"\nPara armar tu pedido entrá acá: {cart_url}")
-    if pref_note:
-        lines.append(pref_note)
+    # Card interactiva con los platos embebidos (se arma el pedido sin salir del chat).
+    ctx["menu_card"] = _build_menu_card(menu, ctx)
 
-    # Card para el chat web con botón que abre la pantalla de carrito.
-    ctx["menu_card"] = {
-        "type": "menu",
-        "title": "Carta del restaurante",
-        "description": "Cocina patagónica de PLAZA - Hampton's Kitchen House.",
-        "action": {"kind": "open_url", "label": "Ver carta y pedir", "url": cart_url},
+    return {
+        "tool_result": (
+            "Listo, le mostré la carta interactiva de PLAZA - Hampton's Kitchen House en el chat "
+            "(puede tocar los platos para armar el pedido o abrir la carta completa)."
+            + pref_note
+        ),
+        "found": True,
     }
 
-    return {"tool_result": "\n".join(lines), "found": True}
+
+def _handle_armar_pedido_carta(args: Dict, ctx: Dict) -> Dict:
+    """Caso 2: el huésped dijo qué quiere por texto → devolver la carta con esos platos precargados.
+
+    El agente pasa `items_texto` (lo que pidió en lenguaje natural). Se matchea contra la carta
+    y se emite la card interactiva con el carrito ya armado para que confirme/ajuste.
+    """
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    texto = (args.get("items_texto") or "").strip()
+    menu = restaurant_service.list_menu(db, include_inactive=False)
+    if not menu:
+        return {"tool_result": "Por ahora no tengo la carta disponible. Probá más tarde."}
+    if not texto:
+        # Sin texto: mostrar la carta vacía como en ver_carta.
+        ctx["menu_card"] = _build_menu_card(menu, ctx)
+        return {"tool_result": "Le mostré la carta para que arme su pedido.", "found": True}
+
+    res = _match_menu_items(texto, menu)
+    matched = res["matched"]
+    if not matched:
+        # No reconocimos nada: mostrar la carta y pedir que lo elija ahí.
+        ctx["menu_card"] = _build_menu_card(menu, ctx)
+        return {
+            "tool_result": (
+                "No logré identificar esos platos en la carta. Le mostré la carta completa "
+                "para que elija directamente. (Pedí que confirme cuál plato quiere si hay dudas.)"
+            ),
+            "found": True,
+        }
+
+    preselect = [{"menu_item_id": m["menu_item_id"], "qty": m["qty"]} for m in matched]
+    ctx["menu_card"] = _build_menu_card(menu, ctx, preselect=preselect)
+    resumen = ", ".join(f"{m['qty']}x {m['name']}" for m in matched)
+    return {
+        "tool_result": (
+            f"Armé el pedido con: {resumen}. Le dejé la carta con eso precargado para que "
+            "confirme o ajuste y elija dónde lo quiere."
+        ),
+        "found": True,
+        "preselect": preselect,
+    }
+
+
+def _build_table_card(ctx: Dict, preset: Optional[Dict] = None) -> Dict:
+    """Card selector de reserva de mesa para el chat (fecha + turno + personas)."""
+    return {
+        "type": "table_reservation",
+        "title": "Reservar una mesa",
+        "description": "Elegí el día, el turno y cuántas personas.",
+        "slots": restaurant_service.RESTAURANT_SLOTS,
+        "session_id": ctx.get("session_id"),
+        "preset": preset or {},
+    }
+
+
+def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
+    """Reserva de mesa del restaurante. Normalmente adjunta el selector (card) para que el
+    huésped elija día/turno/personas. Si el agente ya trae todos los datos, confirma directo.
+    """
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    fecha = (args.get("fecha") or "").strip()
+    turno = (args.get("turno") or args.get("hora") or "").strip()
+    personas = args.get("personas") or 0
+    nombre = (args.get("nombre") or "").strip()
+
+    # Si faltan datos, mostramos el selector embebido (flujo normal).
+    if not (fecha and turno and personas):
+        ctx["table_card"] = _build_table_card(ctx, preset={
+            "fecha": fecha or None, "hora": turno or None,
+            "personas": int(personas) if personas else None, "nombre": nombre or None,
+        })
+        return {
+            "tool_result": (
+                "Le mostré un selector para reservar la mesa (día, turno y personas). "
+                "Pedile que lo complete ahí; no le pidas la hora por texto."
+            ),
+            "found": True,
+        }
+
+    # Datos completos → confirmar directo (camino híbrido).
+    contact = _resolve_contact(db, ctx)
+    result = restaurant_service.create_table_reservation(
+        db,
+        fecha=fecha, hora=turno, party_size=int(personas),
+        guest_name=nombre or None,
+        contact_id=contact.id if contact else None,
+        booking_code=(args.get("codigo_reserva") or "").strip() or None,
+        session_id=ctx.get("session_id"),
+        channel="web",
+    )
+    if "error" in result:
+        # Si el dato vino mal, caemos al selector.
+        ctx["table_card"] = _build_table_card(ctx)
+        return {"tool_result": f"No pude reservar: {result['error']} Le muestro el selector para reintentar."}
+
+    return {
+        "tool_result": (
+            f"¡Mesa reservada! Código {result['code']} para {result['party_size']} persona(s). "
+            "Confirmá con calidez."
+        ),
+        "reservation": result,
+        "found": True,
+    }
+
+
+def _handle_comprar_voucher(args: Dict, ctx: Dict) -> Dict:
+    """Abre la carta en modo VOUCHER para que un visitante compre platos por anticipado.
+
+    El visitante arma su pedido en la card y recibe un código VCH-XXXX para canjear cuando
+    venga. Solo para visitantes (el huésped alojado usa el folio, Fase 1).
+    """
+    db: Optional[Session] = ctx.get("db")
+    if db is None:
+        return {"tool_result": "Error interno: sin conexión a base de datos."}
+
+    menu = restaurant_service.list_menu(db, include_inactive=False)
+    if not menu:
+        return {"tool_result": "Por ahora no tengo la carta disponible. Probá más tarde."}
+
+    ctx["menu_card"] = _build_menu_card(menu, ctx, purpose="voucher")
+    return {
+        "tool_result": (
+            "Le mostré la carta en modo voucher: que elija los platos y confirme; recibirá un "
+            "código VCH-XXXX para canjear cuando venga. Tras emitirlo, ofrecé reservar una mesa "
+            "para usarlo."
+        ),
+        "found": True,
+    }
 
 
 def _handle_registrar_pedido(args: Dict, ctx: Dict) -> Dict:
@@ -895,7 +1084,10 @@ _DISPATCH = {
     "promos_vigentes": _handle_promos_vigentes,
     "calcular_precio_promo": _handle_calcular_precio_promo,
     "ver_carta": _handle_ver_carta,
+    "armar_pedido_carta": _handle_armar_pedido_carta,
     "registrar_pedido": _handle_registrar_pedido,
+    "reservar_mesa": _handle_reservar_mesa,
+    "comprar_voucher": _handle_comprar_voucher,
     "guardar_preferencia": _handle_guardar_preferencia,
 }
 

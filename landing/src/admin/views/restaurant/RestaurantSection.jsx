@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
-import { BookOpen, ClipboardList } from 'lucide-react'
+import { BookOpen, ClipboardList, CalendarClock, Ticket } from 'lucide-react'
 import MenuView from './MenuView'
 import OrdersView from './OrdersView'
+import ReservationsView from './ReservationsView'
+import VouchersView from './VouchersView'
 
 const SUBNAV = [
   { id: 'carta', label: 'Carta', icon: BookOpen },
   { id: 'pedidos', label: 'Pedidos', icon: ClipboardList },
+  { id: 'reservas', label: 'Reservas', icon: CalendarClock },
+  { id: 'vouchers', label: 'Vouchers', icon: Ticket },
 ]
 
 function currentSub() {
@@ -51,6 +55,8 @@ export default function RestaurantSection() {
 
       {sub === 'carta' && <MenuView />}
       {sub === 'pedidos' && <OrdersView />}
+      {sub === 'reservas' && <ReservationsView />}
+      {sub === 'vouchers' && <VouchersView />}
     </div>
   )
 }

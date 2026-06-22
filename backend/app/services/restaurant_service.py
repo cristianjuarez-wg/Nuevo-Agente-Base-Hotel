@@ -12,7 +12,7 @@ El precio NUNCA se confía del cliente/LLM: siempre se recalcula desde la carta.
 import secrets
 import string
 import hashlib
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -21,7 +21,9 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.services.vector_store import get_vector_store
 from app.services import exchange_rate_service
-from app.models.restaurant import MenuItem, RestaurantOrder, OrderItem, ExtraCharge
+from app.models.restaurant import (
+    MenuItem, RestaurantOrder, OrderItem, ExtraCharge, TableReservation, Voucher, VoucherItem,
+)
 from app.models.hotel import Booking, HotelTicket
 from app.core.logging_config import get_logger
 
@@ -343,6 +345,278 @@ def settle_folio(db: Session, booking_code: str) -> Optional[Dict]:
             c.status = "saldado"
     db.commit()
     return get_folio(db, booking_code)
+
+
+# ---------------------------------------------------------------------------
+# Reservas de MESA (Fase 2)
+# ---------------------------------------------------------------------------
+# Turnos del restaurante (constante única, fácil de editar). La card del chat los muestra;
+# el server valida que la hora reservada sea uno de estos.
+RESTAURANT_SLOTS = {
+    "almuerzo": ["12:30", "13:00", "13:30", "14:00", "14:30"],
+    "cena": ["20:00", "20:30", "21:00", "21:30", "22:00"],
+}
+
+
+def _all_slots() -> set:
+    return {h for franja in RESTAURANT_SLOTS.values() for h in franja}
+
+
+def create_table_reservation(
+    db: Session,
+    *,
+    fecha: str,                          # "YYYY-MM-DD"
+    hora: str,                           # "HH:MM" (debe ser un turno válido)
+    party_size: int,
+    guest_name: Optional[str] = None,
+    guest_phone: Optional[str] = None,
+    contact_id: Optional[int] = None,
+    booking_code: Optional[str] = None,  # si es huésped, asocia su reserva
+    session_id: Optional[str] = None,
+    notes: Optional[str] = None,
+    channel: str = "web",
+) -> Dict:
+    """Crea una reserva de mesa. No exige estar in-house (la mesa es pública).
+
+    Valida que la hora sea un turno válido y que la fecha/hora sea futura. Si viene un
+    `booking_code`, la asocia al Booking/Contact (huésped). Genera un ticket de aviso al salón.
+    """
+    if not fecha or not hora:
+        return {"error": "Faltan la fecha o el turno de la reserva."}
+    if hora not in _all_slots():
+        return {"error": "Ese horario no es un turno disponible del restaurante."}
+    party_size = max(1, int(party_size or 1))
+
+    try:
+        reserved_for = datetime.strptime(f"{fecha} {hora}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        return {"error": "Fecha u hora con formato inválido."}
+    if reserved_for < datetime.now():
+        return {"error": "La fecha y hora de la reserva ya pasaron."}
+
+    # Si es huésped (trae código), resolver Booking/Contact. No exige in-house.
+    booking = None
+    if booking_code:
+        booking = db.query(Booking).filter(
+            Booking.code == booking_code.strip().upper()
+        ).first()
+        if booking:
+            contact_id = contact_id or booking.contact_id
+
+    reservation = TableReservation(
+        code=_gen_code("MESA-"),
+        contact_id=contact_id,
+        booking_id=booking.id if booking else None,
+        session_id=session_id,
+        guest_name=guest_name or (booking.guest_name if booking else None),
+        guest_phone=guest_phone or (booking.guest_phone if booking else None),
+        party_size=party_size,
+        reserved_for=reserved_for,
+        status="confirmada",
+        notes=(notes or "").strip() or None,
+        channel=channel,
+    )
+    db.add(reservation)
+    db.flush()
+
+    # Ticket de aviso al salón (igual patrón que los pedidos).
+    quien = reservation.guest_name or "Visitante"
+    cuando = reserved_for.strftime("%d/%m %H:%M")
+    db.add(HotelTicket(
+        ticket_number=_gen_code("HT-", 6),
+        booking_id=booking.id if booking else None,
+        session_id=session_id or reservation.code,
+        subject=f"Reserva de mesa {reservation.code} — {cuando}"
+                + ("" if booking else " (visitante)"),
+        category="table_reservation", priority="medium", status="open",
+        description=f"{quien}: mesa para {party_size} persona(s) el {cuando}."
+        + (f" Notas: {notes}" if notes else ""),
+    ))
+
+    db.commit()
+    db.refresh(reservation)
+    logger.info("Table reservation created", code=reservation.code,
+                reserved_for=reserved_for.isoformat(), party=party_size,
+                guest=bool(booking))
+
+    if contact_id:
+        try:
+            from app.services.contact_service import contact_service
+            contact_service.update_contact_metrics(contact_id, db)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudieron recalcular métricas tras la reserva de mesa", error=str(e))
+
+    result = reservation.to_dict()
+    if booking:
+        result["booking_code"] = booking.code
+    return result
+
+
+def list_table_reservations(db: Session, scope: Optional[str] = None) -> List[Dict]:
+    """Reservas de mesa ordenadas por fecha ASC (agenda: del próximo al más lejano).
+
+    `scope` opcional: "today" | "week" | "upcoming" para los filtros del backoffice.
+    """
+    q = db.query(TableReservation)
+    today = date.today()
+    if scope == "today":
+        start = datetime(today.year, today.month, today.day)
+        end = start + timedelta(days=1)
+        q = q.filter(TableReservation.reserved_for >= start, TableReservation.reserved_for < end)
+    elif scope == "week":
+        start = datetime(today.year, today.month, today.day)
+        end = start + timedelta(days=7)
+        q = q.filter(TableReservation.reserved_for >= start, TableReservation.reserved_for < end)
+    elif scope == "upcoming":
+        q = q.filter(TableReservation.reserved_for >= datetime.now())
+    reservations = q.order_by(TableReservation.reserved_for.asc()).all()
+    return [r.to_dict() for r in reservations]
+
+
+def set_table_reservation_status(db: Session, code: str, status: str) -> Optional[Dict]:
+    valid = ("confirmada", "sentada", "no_show", "cancelada")
+    if status not in valid:
+        return None
+    r = db.query(TableReservation).filter(
+        TableReservation.code == (code or "").strip().upper()
+    ).first()
+    if not r:
+        return None
+    r.status = status
+    db.commit()
+    db.refresh(r)
+    return r.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# Vouchers (Fase 3) — compra anticipada de un visitante de afuera
+# ---------------------------------------------------------------------------
+def _validate_items_and_total(db: Session, items: List[Dict]):
+    """Valida ítems contra la carta y recalcula el total SERVER-SIDE.
+
+    Devuelve (lineas, total_usd, detalle_txt) o ({"error": ...},) si algo es inválido.
+    Reusado por el voucher (mismo criterio que create_order: el precio nunca se confía).
+    """
+    lines = []
+    total_usd = 0.0
+    detalle = []
+    for raw in items:
+        mid = raw.get("menu_item_id")
+        qty = max(1, int(raw.get("qty") or 1))
+        mi = db.query(MenuItem).filter(MenuItem.id == mid, MenuItem.status == "active").first()
+        if not mi:
+            return None, None, None, f"Ítem inválido o no disponible (id={mid})."
+        total_usd += round(mi.price_usd * qty, 2)
+        lines.append((mi, qty))
+        detalle.append(f"{qty}x {mi.name}")
+    return lines, round(total_usd, 2), ", ".join(detalle), None
+
+
+def create_voucher(
+    db: Session,
+    *,
+    items: List[Dict],
+    buyer_name: Optional[str] = None,
+    buyer_phone: Optional[str] = None,
+    contact_id: Optional[int] = None,
+    session_id: Optional[str] = None,
+    notes: Optional[str] = None,
+    channel: str = "web",
+) -> Dict:
+    """Emite un voucher de compra anticipada (visitante). Total recalculado server-side."""
+    if not items:
+        return {"error": "El voucher no tiene ítems."}
+
+    rate = exchange_rate_service.get_current_rate(db)["rate"]
+    lines, total_usd, detalle, err = _validate_items_and_total(db, items)
+    if err:
+        return {"error": err}
+
+    voucher = Voucher(
+        code=_gen_code("VCH-"),
+        contact_id=contact_id,
+        session_id=session_id,
+        buyer_name=(buyer_name or "").strip() or None,
+        buyer_phone=(buyer_phone or "").strip() or None,
+        total_usd=total_usd, total_ars=round(total_usd * rate, 2),
+        status="emitido",
+        notes=(notes or "").strip() or None,
+        channel=channel,
+    )
+    voucher.items = [
+        VoucherItem(menu_item_id=mi.id, name_snapshot=mi.name, qty=qty, unit_price_usd=mi.price_usd)
+        for (mi, qty) in lines
+    ]
+    db.add(voucher)
+    db.flush()
+
+    # Ticket informativo (baja prioridad): un voucher no va a cocina, pero el equipo lo registra.
+    db.add(HotelTicket(
+        ticket_number=_gen_code("HT-", 6),
+        booking_id=None,
+        session_id=session_id or voucher.code,
+        subject=f"Voucher {voucher.code} emitido (visitante)",
+        category="voucher", priority="low", status="open",
+        description=f"{voucher.buyer_name or 'Visitante'}: {detalle}. Total USD {total_usd:.0f}. "
+                    "Pendiente de canje.",
+    ))
+
+    db.commit()
+    db.refresh(voucher)
+    logger.info("Voucher created", code=voucher.code, total_usd=total_usd)
+
+    if contact_id:
+        try:
+            from app.services.contact_service import contact_service
+            contact_service.update_contact_metrics(contact_id, db)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudieron recalcular métricas tras el voucher", error=str(e))
+
+    return voucher.to_dict()
+
+
+def list_vouchers(db: Session, status: Optional[str] = None) -> List[Dict]:
+    q = db.query(Voucher)
+    if status and status != "all":
+        q = q.filter(Voucher.status == status)
+    vouchers = q.order_by(Voucher.created_at.desc()).all()
+    return [v.to_dict() for v in vouchers]
+
+
+def get_voucher(db: Session, code: str) -> Optional[Dict]:
+    v = db.query(Voucher).filter(Voucher.code == (code or "").strip().upper()).first()
+    return v.to_dict() if v else None
+
+
+def redeem_voucher(db: Session, code: str) -> Dict:
+    """Canjea un voucher (staff, backoffice). Sólo si está 'emitido'."""
+    v = db.query(Voucher).filter(Voucher.code == (code or "").strip().upper()).first()
+    if not v:
+        return {"error": "Voucher no encontrado."}
+    if v.status == "canjeado":
+        return {"error": "Ese voucher ya fue canjeado.", "voucher": v.to_dict()}
+    if v.status == "cancelado":
+        return {"error": "Ese voucher está cancelado.", "voucher": v.to_dict()}
+    v.status = "canjeado"
+    v.redeemed_at = datetime.now()
+    db.commit()
+    db.refresh(v)
+    logger.info("Voucher redeemed", code=v.code)
+    return v.to_dict()
+
+
+def link_voucher_to_table(db: Session, voucher_code: str, reservation_code: str) -> Optional[Dict]:
+    """Asocia un voucher a una reserva de mesa (combo)."""
+    v = db.query(Voucher).filter(Voucher.code == (voucher_code or "").strip().upper()).first()
+    r = db.query(TableReservation).filter(
+        TableReservation.code == (reservation_code or "").strip().upper()
+    ).first()
+    if not v or not r:
+        return None
+    v.table_reservation_id = r.id
+    db.commit()
+    db.refresh(v)
+    return v.to_dict()
 
 
 # ---------------------------------------------------------------------------

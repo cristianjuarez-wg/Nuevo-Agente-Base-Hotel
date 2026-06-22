@@ -81,6 +81,7 @@ class HotelContext:
         self.promo_offer: Optional[Dict] = None
         # Card de la carta del restaurante (botón "Ver carta y pedir"), si se mostró.
         self.menu_card: Optional[Dict] = None
+        self.table_card: Optional[Dict] = None
 
     def as_tool_ctx(self) -> Dict:
         return {
@@ -92,6 +93,7 @@ class HotelContext:
             "rooms_offered": self.rooms_offered,
             "promo_offer": self.promo_offer,
             "menu_card": self.menu_card,
+            "table_card": self.table_card,
         }
 
     def absorb(self, tool_ctx: Dict):
@@ -99,6 +101,7 @@ class HotelContext:
         self.rooms_offered = tool_ctx.get("rooms_offered", self.rooms_offered)
         self.promo_offer = tool_ctx.get("promo_offer", self.promo_offer)
         self.menu_card = tool_ctx.get("menu_card", self.menu_card)
+        self.table_card = tool_ctx.get("table_card", self.table_card)
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +308,19 @@ async def ver_carta(ctx: RunContextWrapper[HotelContext], categoria: str = "") -
 
 
 @function_tool
+async def armar_pedido_carta(ctx: RunContextWrapper[HotelContext], items_texto: str) -> str:
+    """Cuando el cliente diga POR TEXTO qué quiere comer/tomar (ej. "quiero el ojo de bife y una
+    pinta"), usá esta tool para devolverle la carta interactiva YA con esos platos precargados,
+    para que confirme o ajuste y elija dónde lo quiere. Pasale en `items_texto` lo que pidió,
+    tal cual. Si algún plato no se reconoce, el sistema te avisa para que lo aclares (NUNCA
+    inventes platos ni precios)."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("armar_pedido_carta", {"items_texto": items_texto}, tool_ctx)
+    ctx.context.absorb(tool_ctx)
+    return result.get("tool_result", "")
+
+
+@function_tool
 async def registrar_pedido(ctx: RunContextWrapper[HotelContext], order_code: str = "") -> str:
     """Confirma y registra un pedido del restaurante que el cliente armó en la pantalla de
     carrito (te dará un código RST-XXXX, o lo trae el contexto al volver del carrito).
@@ -312,6 +328,41 @@ async def registrar_pedido(ctx: RunContextWrapper[HotelContext], order_code: str
     y, si está hospedado, lo cargó al folio de su habitación; vos solo confirmás con calidez."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool("registrar_pedido", {"order_code": order_code}, tool_ctx)
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def reservar_mesa(
+    ctx: RunContextWrapper[HotelContext],
+    fecha: str = "", turno: str = "", personas: int = 0, nombre: str = "",
+    codigo_reserva: str = "",
+) -> str:
+    """Reserva una MESA del restaurante (no es pedir comida ahora). Úsala cuando quieran
+    reservar mesa para un día. La interfaz muestra un selector de día, turno y personas — NO
+    le pidas la hora por texto; de eso se encarga la tarjeta. Si el huésped está alojado podés
+    pasar su `codigo_reserva` (HTL-XXXX) para asociarla. Si ya tenés todos los datos
+    (fecha, turno, personas, nombre) se confirma directo con el código MESA-XXXX; si faltan,
+    se muestra el selector. NO la confundas con `consultar_disponibilidad` (reservar habitación)
+    ni con `ver_carta` (pedir comida)."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("reservar_mesa", {
+        "fecha": fecha, "turno": turno, "personas": personas,
+        "nombre": nombre, "codigo_reserva": codigo_reserva,
+    }, tool_ctx)
+    ctx.context.absorb(tool_ctx)
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def comprar_voucher(ctx: RunContextWrapper[HotelContext]) -> str:
+    """Úsala cuando un VISITANTE de afuera quiera COMPRAR o REGALAR comida por anticipado
+    (un voucher). Abre la carta en modo voucher: el visitante arma su pedido y recibe un código
+    VCH-XXXX para canjear cuando venga al hotel. Tras emitirlo, ofrecé reservar una mesa para
+    usarlo (`reservar_mesa`). NO la uses con un huésped ALOJADO: ese carga su pedido al folio
+    (es `ver_carta`/`registrar_pedido`, no voucher)."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("comprar_voucher", {}, tool_ctx)
+    ctx.context.absorb(tool_ctx)
     return result.get("tool_result", "")
 
 
@@ -338,7 +389,8 @@ async def guardar_preferencia(
 _TOOLS = [
     info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,
     como_llegar, comercios_amigos, promos_vigentes, calcular_precio_promo,
-    ver_carta, registrar_pedido, guardar_preferencia,
+    ver_carta, armar_pedido_carta, registrar_pedido, reservar_mesa, comprar_voucher,
+    guardar_preferencia,
 ]
 
 
@@ -553,6 +605,7 @@ class HotelSDKOrchestrator:
             "rooms_offered": run_ctx.rooms_offered,
             "promo_offer": run_ctx.promo_offer,
             "menu_card": run_ctx.menu_card,
+            "table_card": run_ctx.table_card,
             "tools_used": tools_used,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,

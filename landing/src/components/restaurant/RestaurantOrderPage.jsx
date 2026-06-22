@@ -1,50 +1,20 @@
-import { useEffect, useState, useMemo } from 'react'
-import { Plus, Minus, ShoppingCart, ArrowLeft, Check, Loader2, Leaf, WheatOff, X, BedDouble, Store } from 'lucide-react'
-import { listMenuPublic, createOrder, validateBooking } from '../../services/api'
+import { useEffect, useState } from 'react'
+import { Plus, Minus, ShoppingCart, ArrowLeft, Check, Loader2 } from 'lucide-react'
+import { listMenuPublic, createOrder } from '../../services/api'
 import { formatUSD, formatARS } from '../../lib/format'
-
-const CATEGORIES = [
-  { id: 'tapas', label: 'Tapas' },
-  { id: 'plato', label: 'Platos' },
-  { id: 'sandwich', label: 'Sándwiches' },
-  { id: 'ensalada', label: 'Ensaladas' },
-  { id: 'pizza', label: 'Pizzas' },
-  { id: 'postre', label: 'Postres' },
-  { id: 'cerveza', label: 'Cervezas' },
-  { id: 'trago', label: 'Tragos' },
-  { id: 'vino', label: 'Vinos' },
-  { id: 'cafeteria', label: 'Café' },
-  { id: 'merienda', label: 'Merienda' },
-]
-
-const FALLBACK = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80'
+import { CATEGORIES, MENU_FALLBACK_IMG as FALLBACK, TagBadge } from './menuShared'
+import { useCart } from './useCart'
+import CheckoutPanel from './CheckoutPanel'
 
 function sessionFromHash() {
   const m = window.location.hash.match(/session=([^&]+)/)
   return m ? decodeURIComponent(m[1]) : null
 }
 
-function TagBadge({ tag }) {
-  const map = {
-    vegetariano: { icon: Leaf, label: 'Veggie', cls: 'bg-forest-50 text-forest-600' },
-    vegano: { icon: Leaf, label: 'Vegano', cls: 'bg-forest-50 text-forest-600' },
-    sin_tacc: { icon: WheatOff, label: 'Sin TACC', cls: 'bg-amber-50 text-amber-700' },
-  }
-  const t = map[tag]
-  if (!t) return null
-  const Icon = t.icon
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${t.cls}`}>
-      <Icon size={10} /> {t.label}
-    </span>
-  )
-}
-
 export default function RestaurantOrderPage() {
   const [menu, setMenu] = useState([])
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState('tapas')
-  const [cart, setCart] = useState({})           // { menu_item_id: qty }
   const [notes, setNotes] = useState('')
   const [placing, setPlacing] = useState(false)
   const [done, setDone] = useState(null)         // pedido confirmado
@@ -53,18 +23,11 @@ export default function RestaurantOrderPage() {
   const [validated, setValidated] = useState(null)  // reserva validada in-house | null
   const sessionId = sessionFromHash()
 
+  const { cart, cartItems, totalUsd, totalArs, cartCount, add, sub, orderItems } = useCart(menu)
+
   useEffect(() => {
     listMenuPublic().then(setMenu).catch(() => setMenu([])).finally(() => setLoading(false))
   }, [])
-
-  const byId = useMemo(() => Object.fromEntries(menu.map((m) => [m.id, m])), [menu])
-  const cartItems = Object.entries(cart).filter(([, q]) => q > 0)
-  const totalUsd = cartItems.reduce((s, [id, q]) => s + (byId[id]?.price_usd || 0) * q, 0)
-  const totalArs = cartItems.reduce((s, [id, q]) => s + (byId[id]?.price_ars || 0) * q, 0)
-  const cartCount = cartItems.reduce((s, [, q]) => s + q, 0)
-
-  const add = (id) => setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }))
-  const sub = (id) => setCart((c) => ({ ...c, [id]: Math.max(0, (c[id] || 0) - 1) }))
 
   const visible = menu.filter((m) => m.category === cat)
   const cats = CATEGORIES.filter((c) => menu.some((m) => m.category === c.id))
@@ -75,7 +38,7 @@ export default function RestaurantOrderPage() {
     setPlacing(true)
     try {
       const order = await createOrder({
-        items: cartItems.map(([id, qty]) => ({ menu_item_id: Number(id), qty })),
+        items: orderItems(),
         session_id: sessionId,
         channel: 'web',
         fulfillment: opts.fulfillment,
@@ -228,130 +191,6 @@ export default function RestaurantOrderPage() {
           onConfirm={placeOrder}
         />
       )}
-    </div>
-  )
-}
-
-// ── Panel de checkout: ¿huésped? → validar reserva → destino → confirmar ─────
-function CheckoutPanel({ totalUsd, totalArs, placing, validated, setValidated, onClose, onConfirm }) {
-  const [mode, setMode] = useState(null)        // null | 'guest' | 'visitor'
-  const [code, setCode] = useState('')
-  const [checking, setChecking] = useState(false)
-  const [vError, setVError] = useState('')
-  const [fulfillment, setFulfillment] = useState('salon')
-
-  const isGuest = mode === 'guest' && validated?.valid
-
-  const doValidate = async () => {
-    if (!code.trim()) return
-    setChecking(true)
-    setVError('')
-    try {
-      const r = await validateBooking(code.trim())
-      if (r.valid) {
-        setValidated(r)
-        setFulfillment('room_service')
-      } else {
-        setValidated(null)
-        setVError(r.reason === 'no_alojado'
-          ? 'Esa reserva no figura como alojada hoy. ¿La cargás como retiro/salón con pago directo?'
-          : 'No encontramos una reserva activa con ese código.')
-      }
-    } catch {
-      setVError('No se pudo validar. Intentá de nuevo.')
-    } finally {
-      setChecking(false)
-    }
-  }
-
-  const confirmGuest = () => onConfirm({ fulfillment, payment_mode: 'folio', booking_code: validated.booking_code })
-  const confirmVisitor = (ff) => onConfirm({ fulfillment: ff, payment_mode: 'link' })
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-display text-xl font-600 text-ink">Confirmar pedido</h3>
-          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist"><X size={20} /></button>
-        </div>
-        <p className="mb-5 text-sm text-slatey">Total: <strong className="text-ink">{formatUSD(totalUsd)}</strong> · {formatARS(totalArs)}</p>
-
-        {/* Paso 1: ¿huésped o visitante? */}
-        {!mode && (
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-ink">¿Estás alojado en el hotel?</p>
-            <button onClick={() => setMode('guest')} className="flex w-full items-center gap-3 rounded-xl border border-hilton-200 px-4 py-3 text-left transition hover:bg-hilton-50">
-              <BedDouble size={20} className="text-hilton-600" />
-              <div><p className="text-sm font-medium text-ink">Sí, soy huésped</p><p className="text-xs text-slatey">Cargá el pedido a tu habitación</p></div>
-            </button>
-            <button onClick={() => setMode('visitor')} className="flex w-full items-center gap-3 rounded-xl border border-stone-200 px-4 py-3 text-left transition hover:bg-stone-50">
-              <Store size={20} className="text-slatey" />
-              <div><p className="text-sm font-medium text-ink">No, soy visitante</p><p className="text-xs text-slatey">Pago directo, para salón o retiro</p></div>
-            </button>
-          </div>
-        )}
-
-        {/* Paso 2a: huésped → validar reserva */}
-        {mode === 'guest' && !isGuest && (
-          <div className="space-y-3">
-            <button onClick={() => { setMode(null); setValidated(null); setVError('') }} className="text-xs text-slatey hover:text-ink">← Volver</button>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-ink">Código de reserva</span>
-              <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="HTL-XXXX"
-                     className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm uppercase focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
-            </label>
-            {vError && (
-              <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                {vError}
-                <button onClick={() => confirmVisitor('salon')} className="mt-1 block font-medium underline">Continuar con pago directo →</button>
-              </div>
-            )}
-            <button onClick={doValidate} disabled={checking || !code.trim()} className="btn-primary w-full disabled:opacity-60">
-              {checking ? <Loader2 size={16} className="animate-spin" /> : 'Validar reserva'}
-            </button>
-          </div>
-        )}
-
-        {/* Paso 3a: huésped validado → destino + confirmar al folio */}
-        {isGuest && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 rounded-xl bg-forest-50 px-4 py-3 text-sm text-forest-700">
-              <Check size={16} /> Reserva de <strong>{validated.guest_name}</strong>
-              {validated.room_number && <span>· Hab. {validated.room_number}</span>}
-            </div>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-ink">¿Dónde lo querés?</span>
-              <select value={fulfillment} onChange={(e) => setFulfillment(e.target.value)} className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none">
-                <option value="room_service">A mi habitación</option>
-                <option value="salon">En el salón</option>
-                <option value="retiro">Para retirar</option>
-              </select>
-            </label>
-            <button onClick={confirmGuest} disabled={placing} className="btn-primary w-full disabled:opacity-60">
-              {placing ? <Loader2 size={16} className="animate-spin" /> : 'Cargar a mi habitación'}
-            </button>
-          </div>
-        )}
-
-        {/* Paso 2b: visitante → destino (salón/retiro) + pago directo */}
-        {mode === 'visitor' && (
-          <div className="space-y-3">
-            <button onClick={() => setMode(null)} className="text-xs text-slatey hover:text-ink">← Volver</button>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-ink">¿Dónde lo querés?</span>
-              <select value={fulfillment} onChange={(e) => setFulfillment(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3.5 py-2.5 text-sm focus:border-hilton-400 focus:outline-none">
-                <option value="salon">En el salón</option>
-                <option value="retiro">Para retirar</option>
-              </select>
-            </label>
-            <button onClick={() => confirmVisitor(fulfillment)} disabled={placing} className="btn-primary w-full disabled:opacity-60">
-              {placing ? <Loader2 size={16} className="animate-spin" /> : 'Confirmar y pagar'}
-            </button>
-            <p className="text-center text-xs text-slatey">Te enviaremos el link de pago.</p>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

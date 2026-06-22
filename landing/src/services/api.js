@@ -530,6 +530,50 @@ export async function getRestaurantStats() {
   return data
 }
 
+// ── Reservas de mesa (Fase 2) ───────────────────────────────────────────────
+export async function getRestaurantSlots() {
+  const { data } = await client.get('/api/restaurant/slots')
+  return data.slots ?? {}
+}
+
+export async function createTableReservation(payload) {
+  // payload: { fecha, hora, party_size, guest_name, guest_phone?, booking_code?, session_id?, notes? }
+  const { data } = await client.post('/api/restaurant/table-reservations', payload)
+  return data
+}
+
+export async function listTableReservations(scope) {
+  const { data } = await client.get('/api/restaurant/table-reservations', { params: scope ? { scope } : {} })
+  return data.reservations ?? []
+}
+
+export async function patchTableReservationStatus(code, status) {
+  const { data } = await client.patch(`/api/restaurant/table-reservations/${code}/status`, { status })
+  return data
+}
+
+// ── Vouchers (Fase 3) ───────────────────────────────────────────────────────
+export async function createVoucher(payload) {
+  // payload: { items:[{menu_item_id,qty}], buyer_name, buyer_phone?, session_id?, notes? }
+  const { data } = await client.post('/api/restaurant/vouchers', payload)
+  return data
+}
+
+export async function listVouchers(status) {
+  const { data } = await client.get('/api/restaurant/vouchers', { params: status ? { status } : {} })
+  return data.vouchers ?? []
+}
+
+export async function getVoucher(code) {
+  const { data } = await client.get(`/api/restaurant/vouchers/${code}`)
+  return data
+}
+
+export async function redeemVoucher(code) {
+  const { data } = await client.post(`/api/restaurant/vouchers/${code}/redeem`)
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 

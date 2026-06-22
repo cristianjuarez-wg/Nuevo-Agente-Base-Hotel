@@ -177,6 +177,125 @@ class ExtraCharge(Base):
         return d
 
 
+class TableReservation(Base):
+    """Reserva de MESA del restaurante (no es un pedido de comida).
+
+    La usan tanto visitantes de afuera como huéspedes alojados (que pueden asociarla a su
+    reserva HTL-XXXX, sin obligación de comer/pagar nada al reservar). Se ve en el backoffice
+    como una AGENDA ordenada por `reserved_for` (del próximo al más lejano).
+    """
+    __tablename__ = "table_reservations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, nullable=False, index=True)   # "MESA-XXXX"
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=True, index=True)  # si es huésped
+    session_id = Column(String, nullable=True, index=True)
+
+    guest_name = Column(String, nullable=True)
+    guest_phone = Column(String, nullable=True)
+    party_size = Column(Integer, nullable=False, default=2)           # personas
+    reserved_for = Column(DateTime, nullable=False, index=True)       # fecha + hora del turno
+    # confirmada | sentada | no_show | cancelada
+    status = Column(String, nullable=False, default="confirmada", index=True)
+    notes = Column(Text, nullable=True)
+    channel = Column(String, nullable=False, default="web")           # web | whatsapp
+
+    created_at = Column(DateTime, default=datetime.now, index=True)
+    is_demo = Column(Boolean, default=False, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "contact_id": self.contact_id,
+            "booking_id": self.booking_id,
+            "session_id": self.session_id,
+            "guest_name": self.guest_name,
+            "guest_phone": self.guest_phone,
+            "party_size": self.party_size,
+            "reserved_for": self.reserved_for.isoformat() if self.reserved_for else None,
+            "status": self.status,
+            "notes": self.notes,
+            "channel": self.channel,
+            "is_guest": self.booking_id is not None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Voucher(Base):
+    """Voucher de restaurante (compra anticipada de un VISITANTE de afuera).
+
+    Contiene platos de la carta (snapshot de precio) que el visitante pagó por adelantado y
+    canjea cuando va al hotel. El huésped alojado NO usa voucher (se le carga al folio). El
+    canje lo hace el staff desde el backoffice. Puede asociarse a una reserva de mesa (combo).
+    """
+    __tablename__ = "vouchers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, nullable=False, index=True)   # "VCH-XXXX"
+    contact_id = Column(Integer, ForeignKey("contacts.id"), nullable=True, index=True)
+    session_id = Column(String, nullable=True, index=True)
+    table_reservation_id = Column(Integer, ForeignKey("table_reservations.id"), nullable=True)
+
+    buyer_name = Column(String, nullable=True)
+    buyer_phone = Column(String, nullable=True)
+    total_usd = Column(Float, nullable=False, default=0)
+    total_ars = Column(Float, nullable=False, default=0)
+    # emitido | canjeado | cancelado
+    status = Column(String, nullable=False, default="emitido", index=True)
+    redeemed_at = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+    channel = Column(String, nullable=False, default="web")
+
+    created_at = Column(DateTime, default=datetime.now, index=True)
+    is_demo = Column(Boolean, default=False, index=True)
+
+    items = relationship("VoucherItem", back_populates="voucher", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "code": self.code,
+            "contact_id": self.contact_id,
+            "session_id": self.session_id,
+            "table_reservation_id": self.table_reservation_id,
+            "buyer_name": self.buyer_name,
+            "buyer_phone": self.buyer_phone,
+            "total_usd": self.total_usd,
+            "total_ars": self.total_ars,
+            "status": self.status,
+            "redeemed_at": self.redeemed_at.isoformat() if self.redeemed_at else None,
+            "notes": self.notes,
+            "channel": self.channel,
+            "items": [it.to_dict() for it in self.items],
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class VoucherItem(Base):
+    """Una línea de un voucher (plato + cantidad + precio congelado)."""
+    __tablename__ = "voucher_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    voucher_id = Column(Integer, ForeignKey("vouchers.id"), nullable=False, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=True, index=True)
+    name_snapshot = Column(String, nullable=False)
+    qty = Column(Integer, nullable=False, default=1)
+    unit_price_usd = Column(Float, nullable=False, default=0)
+
+    voucher = relationship("Voucher", back_populates="items")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "menu_item_id": self.menu_item_id,
+            "name": self.name_snapshot,
+            "qty": self.qty,
+            "unit_price_usd": self.unit_price_usd,
+        }
+
+
 # Crea las tablas del restaurante. Las FKs a contacts/bookings requieren que esos
 # modelos ya estén registrados en la metadata; en el arranque normal de la app y en los
 # seeds eso se garantiza (se importan todos los modelos antes). Si se importa este módulo
@@ -189,6 +308,9 @@ try:
             RestaurantOrder.__table__,
             OrderItem.__table__,
             ExtraCharge.__table__,
+            TableReservation.__table__,
+            Voucher.__table__,
+            VoucherItem.__table__,
         ],
     )
 except Exception:  # noqa: BLE001 — el create_all definitivo corre en run_light_migrations

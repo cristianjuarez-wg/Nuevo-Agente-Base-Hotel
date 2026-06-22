@@ -107,6 +107,113 @@ _DATE_REQUEST_HINTS = (
 _BOOKING_FLOW_TOOLS = ("consultar_disponibilidad", "crear_reserva", "consultar_reserva")
 
 
+# Señales en el MENSAJE DEL USUARIO de que pide ver la carta / el menú. Fallback
+# determinístico: si el huésped pide la carta y el LLM no llamó `ver_carta`, igual
+# adjuntamos la card interactiva (que nunca quede "te envío la carta" sin carta).
+_MENU_REQUEST_HINTS = (
+    "carta", "menu", "menú", "para comer", "para cenar", "para almorzar",
+    "para tomar", "qué hay de comer", "que hay de comer", "qué comer", "que comer",
+    "room service", "pedir comida", "restaurante",
+)
+_MENU_TOOLS = ("ver_carta", "armar_pedido_carta")
+# Señales de que el usuario quiere RESERVAR UNA MESA (no ver la carta): en ese caso el
+# fallback de la carta NO debe dispararse aunque el mensaje diga "cenar/comer".
+_TABLE_INTENT_HINTS = ("reservar mesa", "reservar una mesa", "una mesa", "reserva de mesa",
+                       "mesa para", "reservar lugar")
+
+
+def _should_offer_menu(user_message: str, tools_used: list, has_other_cards: bool,
+                       context_type: str = "", db=None) -> bool:
+    """Decide si adjuntar la carta interactiva como fallback determinístico.
+
+    Dispara si: el agente NO usó una tool de carta este turno (si la usó, la card ya viene),
+    no hay otra card con prioridad, no es post-venta, no es intención de reservar mesa, y o
+    bien (a) el MENSAJE pide la carta/menú, o (b) el mensaje parece un PEDIDO (menciona platos).
+    """
+    if has_other_cards:
+        return False
+    if context_type == "postsale":
+        return False
+    if any(t in (tools_used or []) for t in _MENU_TOOLS):
+        return False
+    text = (user_message or "").lower()
+    # Si quiere reservar mesa, la carta no aplica (es otra intención).
+    if any(h in text for h in _TABLE_INTENT_HINTS):
+        return False
+    if any(h in text for h in _MENU_REQUEST_HINTS):
+        return True
+    # (b) Pedido por texto: el mensaje menciona platos concretos de la carta.
+    if db is not None:
+        try:
+            from app.services import restaurant_service
+            from app.services.hotel_tools import _match_menu_items
+            menu = restaurant_service.list_menu(db, include_inactive=False)
+            if _match_menu_items(text, menu).get("matched"):
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def _should_offer_table(user_message: str, tools_used: list, has_other_cards: bool,
+                        context_type: str = "") -> bool:
+    """Fallback determinístico del selector de mesa: si el usuario quiere reservar mesa y el
+    agente no llamó `reservar_mesa` ni hay otra card, igual mostramos el selector."""
+    if has_other_cards:
+        return False
+    if context_type == "postsale":
+        return False
+    if "reservar_mesa" in (tools_used or []):
+        return False
+    text = (user_message or "").lower()
+    return any(h in text for h in _TABLE_INTENT_HINTS)
+
+
+def _build_table_card_fallback(db, session_id: str) -> dict:
+    """Selector de reserva de mesa construido determinísticamente."""
+    from app.services import restaurant_service
+    return {
+        "type": "table_reservation",
+        "title": "Reservar una mesa",
+        "description": "Elegí el día, el turno y cuántas personas.",
+        "slots": restaurant_service.RESTAURANT_SLOTS,
+        "session_id": session_id,
+        "preset": {},
+    }
+
+
+def _build_menu_card_fallback(db, session_id: str, user_message: str = "") -> dict:
+    """Carta interactiva construida determinísticamente (sin pasar por el LLM).
+
+    Si el `user_message` parece un pedido (menciona platos de la carta), precarga el carrito
+    con esos platos (caso 2: pedido por texto que el LLM no ruteó por la tool).
+    """
+    from app.services import restaurant_service
+    from app.services.hotel_tools import _match_menu_items
+    from app.config import settings
+    menu = restaurant_service.list_menu(db, include_inactive=False)
+    if not menu:
+        return None
+    url = f"{settings.LANDING_URL.rstrip('/')}/#pedido"
+    if session_id:
+        url += f"?session={session_id}"
+    preselect = []
+    try:
+        matched = _match_menu_items(user_message or "", menu).get("matched", [])
+        preselect = [{"menu_item_id": m["menu_item_id"], "qty": m["qty"]} for m in matched]
+    except Exception:
+        preselect = []
+    return {
+        "type": "menu_interactive",
+        "title": "Carta del restaurante",
+        "description": "Cocina patagónica de PLAZA - Hampton's Kitchen House.",
+        "items": menu,
+        "session_id": session_id,
+        "fallback_url": url,
+        "preselect": preselect,
+    }
+
+
 def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool,
                              context_type: str = "") -> bool:
     """Decide si adjuntar el selector de fechas.
@@ -285,12 +392,17 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # tiene prioridad: es la respuesta directa a la señal del cliente.
         promo_offer = result.get("promo_offer")
         menu_card = result.get("menu_card")
+        table_card = result.get("table_card")
         if promo_offer:
             cards = [_build_promo_card(promo_offer)]
 
         # Si se mostró la carta del restaurante, agregamos su card con el botón al carrito.
         elif menu_card:
             cards = [menu_card]
+
+        # Selector de reserva de mesa (Fase 2): día + turno + personas.
+        elif table_card:
+            cards = [table_card]
 
         # Si el agente está pidiendo fechas y no mostró habitaciones, ofrecemos el selector.
         # Nunca en post-venta/casual (el huésped con reserva no busca disponibilidad).
@@ -299,6 +411,24 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                                     has_room_cards=bool(cards),
                                     context_type=result.get("context_type", "")):
             cards = [_date_picker_card()]
+
+        # Fallback determinístico: el usuario quiere reservar mesa pero el LLM no llamó la tool.
+        elif _should_offer_table(chat_request.message,
+                                 result.get("tools_used", []),
+                                 has_other_cards=bool(cards),
+                                 context_type=result.get("context_type", "")):
+            cards = [_build_table_card_fallback(db, chat_request.session_id)]
+
+        # Fallback determinístico: el huésped pidió la carta pero el LLM no llamó la tool.
+        # Igual le mostramos la carta interactiva (que nunca quede sin carta).
+        elif _should_offer_menu(chat_request.message,
+                                result.get("tools_used", []),
+                                has_other_cards=bool(cards),
+                                context_type=result.get("context_type", ""),
+                                db=db):
+            fallback = _build_menu_card_fallback(db, chat_request.session_id, chat_request.message)
+            if fallback:
+                cards = [fallback]
 
         processing_time = time.time() - start_time
 
