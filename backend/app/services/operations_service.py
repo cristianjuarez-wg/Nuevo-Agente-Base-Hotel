@@ -267,17 +267,26 @@ def _guest_can_validate(ticket: HotelTicket) -> bool:
 def mark_pre_resolved(
     db: Session, ticket: HotelTicket, staff: Optional[StaffMember], note: str,
     actor_type: str = "staff", actor_name: Optional[str] = None,
+    staff_message: Optional[str] = None,
 ) -> str:
     """El staff marca el ticket como resuelto → queda pre_resuelto a la espera del huésped.
 
     Si NO hay huésped contactable (tarea interna), se cierra directo a "resuelto".
     `actor_type` = "staff" (WhatsApp) o "human" (botón del backoffice). Devuelve el status final.
+    `staff_message`: el texto/transcripción CRUDO que mandó el staff (para la trazabilidad);
+    se registra literal en la bitácora antes del evento de resolución.
     """
     ticket.resolution_note = (note or "").strip()[:1000]
     if staff:
         ticket.resolved_by_staff_id = staff.id
     who = actor_name or (staff.name if staff else None)
     clean_note = (note or "").strip()[:120]
+
+    # Trazabilidad: dejar el mensaje literal del staff como un movimiento propio del ticket,
+    # antes del evento de resolución (lo que dijo Cris, sin interpretar ni truncar).
+    raw = (staff_message or "").strip()
+    if actor_type == "staff" and raw:
+        log_event(db, ticket, "staff_message", actor_type="staff", actor_name=who, note=raw)
 
     if _guest_can_validate(ticket):
         ticket.status = "pre_resuelto"

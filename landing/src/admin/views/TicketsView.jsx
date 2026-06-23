@@ -8,7 +8,7 @@ import {
   assignTicket, setTicketPriority, listStaff,
 } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate,
+  PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate, formatDateTime,
 } from '../ui'
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
@@ -144,7 +144,8 @@ const ACTOR_META = {
   human: { label: 'Backoffice', icon: Hand, cls: 'text-amber-700 bg-amber-50' },
 }
 const ACTION_LABELS = {
-  created: 'creó el ticket', assigned: 'asignó', pre_resolved: 'marcó pre-resuelto',
+  created: 'creó el ticket', assigned: 'asignó', staff_message: 'respondió',
+  pre_resolved: 'marcó pre-resuelto',
   resolved: 'resolvió', reopened: 'reabrió', validated: 'validó', priority: 'cambió la prioridad',
 }
 
@@ -159,6 +160,9 @@ function TicketTimeline({ events }) {
         const Icon = meta.icon
         return (
           <li key={e.id} className="flex items-start gap-2.5 text-sm">
+            <span className="mt-0.5 w-[108px] shrink-0 text-[11px] tabular-nums text-slatey">
+              {formatDateTime(e.created_at)}
+            </span>
             <span className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${meta.cls}`}>
               <Icon size={13} />
             </span>
@@ -168,7 +172,6 @@ function TicketTimeline({ events }) {
                 <span className="text-slatey">{ACTION_LABELS[e.action] || e.action}</span>
                 {e.note && <span className="text-slatey"> · {e.note}</span>}
               </p>
-              <p className="text-[11px] tabular-nums text-slatey">{formatDate(e.created_at)}</p>
             </div>
           </li>
         )

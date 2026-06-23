@@ -76,7 +76,10 @@ async def resolver_ticket(
         )
         return f"Hay varias tareas que podrían ser. ¿Cuál es? {opts}"
 
-    status = ops.mark_pre_resolved(db, ticket, staff, nota or ctx.context.message)
+    status = ops.mark_pre_resolved(
+        db, ticket, staff, nota or ctx.context.message,
+        staff_message=ctx.context.message,
+    )
     where = ops._room_label(ticket)
     if status == "resuelto":
         return (f"Listo, marqué {ticket.ticket_number} ({where}) como RESUELTO 👍 "
