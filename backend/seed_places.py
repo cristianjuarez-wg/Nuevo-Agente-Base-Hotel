@@ -27,6 +27,13 @@ def _maps(query: str) -> str:
     return f"https://www.google.com/maps/search/?api=1&query={quote_plus(query)}"
 
 
+# Foto de Wikimedia Commons por nombre de archivo real (Special:FilePath devuelve la
+# imagen directa y estable). Los nombres fueron verificados en Commons.
+def _wikimedia(filename: str, width: int = 800) -> str:
+    from urllib.parse import quote
+    return f"https://commons.wikimedia.org/wiki/Special:FilePath/{quote(filename)}?width={width}"
+
+
 # (name, category, description, address, price_info, maps_url,
 #  is_partner, discount, phone, whatsapp)
 PLACES = [
@@ -43,6 +50,7 @@ PLACES = [
         "address": "Villa Catedral, San Carlos de Bariloche",
         "price_info": "Pase diario de ski y alquiler de equipos: según temporada. Consultá en recepción.",
         "maps_url": _maps("Cerro Catedral Bariloche"),
+        "image_url": _wikimedia("Base del Cerro Catedral (Bariloche).JPG"),
     },
     {
         "name": "Circuito Chico",
@@ -55,6 +63,7 @@ PLACES = [
         "address": "Av. Bustillo, San Carlos de Bariloche",
         "price_info": "Recorrido libre o excursión guiada de medio día.",
         "maps_url": _maps("Circuito Chico Bariloche"),
+        "image_url": _wikimedia("Bariloche circuito chico - panoramio.jpg"),
     },
     {
         "name": "Cerro Campanario",
@@ -67,6 +76,7 @@ PLACES = [
         "address": "Av. Bustillo km 17,5, San Carlos de Bariloche",
         "price_info": "Aerosilla con costo; hay confitería en la cima.",
         "maps_url": _maps("Cerro Campanario Bariloche aerosilla"),
+        "image_url": _wikimedia("Argentina - View from Cerro Campanario.jpg"),
     },
     {
         "name": "Cerro Tronador y Ventisquero Negro",
@@ -79,6 +89,7 @@ PLACES = [
         "address": "Parque Nacional Nahuel Huapi",
         "price_info": "Excursión de día completo (con guía). Reservá con anticipación.",
         "maps_url": _maps("Cerro Tronador Bariloche"),
+        "image_url": _wikimedia("Cerro tronador desde lago mascardi 01b.jpg"),
     },
     {
         "name": "Isla Victoria y Bosque de Arrayanes",
@@ -91,6 +102,7 @@ PLACES = [
         "address": "Puerto Pañuelo, Av. Bustillo km 25,5",
         "price_info": "Navegación con costo; medio día o día completo.",
         "maps_url": _maps("Isla Victoria Bosque de Arrayanes Bariloche"),
+        "image_url": _wikimedia("Isla Victoria Lago Nahuel Huapi (2408).jpg"),
     },
     {
         "name": "Villa La Angostura",
@@ -103,6 +115,7 @@ PLACES = [
         "address": "Villa La Angostura, Neuquén",
         "price_info": "Escapada de día completo.",
         "maps_url": _maps("Villa La Angostura"),
+        "image_url": _wikimedia("Villa La Angostura Montaje.jpg"),
     },
     {
         "name": "Centro Cívico",
@@ -116,6 +129,7 @@ PLACES = [
         "address": "Centro Cívico, San Carlos de Bariloche",
         "price_info": "Acceso libre. A 150 m del hotel.",
         "maps_url": _maps("Centro Civico Bariloche"),
+        "image_url": _wikimedia("CentrocivicoBarilochenieve.jpg"),
     },
     {
         "name": "Llao Llao y Puerto Pañuelo",
@@ -128,6 +142,7 @@ PLACES = [
         "address": "Av. Bustillo km 25, San Carlos de Bariloche",
         "price_info": "Miradores y senderos de acceso libre.",
         "maps_url": _maps("Llao Llao Puerto Panuelo Bariloche"),
+        "image_url": _wikimedia("Llao Llao Peninsula.jpg"),
     },
 
     # ── GASTRONOMÍA — COMERCIOS AMIGOS (descuentos de DEMO, editables) ──
@@ -142,6 +157,7 @@ PLACES = [
         "address": "Av. Mitre 202, San Carlos de Bariloche",
         "price_info": "Cafetería y tienda de chocolates.",
         "maps_url": _maps("Rapa Nui Bariloche Mitre"),
+        "image_url": _wikimedia("Huevo de chocolate en Bariloche (Argentina).jpg"),
         "is_partner": True,
         "discount": "10% para huéspedes presentando la llave del hotel",
         "phone": "+54 294 442-3999",
@@ -158,6 +174,7 @@ PLACES = [
         "address": "Av. Mitre 298, San Carlos de Bariloche",
         "price_info": "Cafetería y tienda de chocolates.",
         "maps_url": _maps("Mamuschka Bariloche"),
+        "image_url": _wikimedia("Huevo de chocolate en Bariloche..jpg"),
         "is_partner": True,
         "discount": "10% para huéspedes en compras en tienda",
         "phone": "+54 294 442-3294",
@@ -234,11 +251,36 @@ PLACES = [
 async def main():
     db = SessionLocal()
     created = 0
+    updated = 0
     try:
         for p in PLACES:
             exists = db.query(Place).filter(Place.name == p["name"]).first()
             if exists:
-                print(f"[seed-places] '{p['name']}' ya existe (id {exists.id}). Salto.")
+                # Actualiza si cambió algún campo editable (foto, descripción, descuento…),
+                # para que re-correr el seed aplique las mejoras sobre lo ya cargado.
+                campos = {
+                    "category": p["category"],
+                    "description": p.get("description"),
+                    "address": p.get("address"),
+                    "price_info": p.get("price_info"),
+                    "maps_url": p.get("maps_url"),
+                    "image_url": p.get("image_url"),
+                    "is_partner": p.get("is_partner", False),
+                    "discount": p.get("discount"),
+                    "phone": p.get("phone"),
+                    "whatsapp": p.get("whatsapp"),
+                }
+                cambios = {k: v for k, v in campos.items() if getattr(exists, k) != v}
+                if cambios:
+                    for k, v in cambios.items():
+                        setattr(exists, k, v)
+                    db.commit()
+                    db.refresh(exists)
+                    await knowledge_service.reingest(exists)
+                    updated += 1
+                    print(f"[seed-places] '{p['name']}' actualizado ({', '.join(cambios)}).")
+                else:
+                    print(f"[seed-places] '{p['name']}' ya existe sin cambios (id {exists.id}).")
                 continue
             place = Place(
                 name=p["name"],
@@ -247,6 +289,7 @@ async def main():
                 address=p.get("address"),
                 price_info=p.get("price_info"),
                 maps_url=p.get("maps_url"),
+                image_url=p.get("image_url"),
                 is_partner=p.get("is_partner", False),
                 discount=p.get("discount"),
                 phone=p.get("phone"),
@@ -260,7 +303,7 @@ async def main():
             created += 1
             tag = " (comercio amigo)" if place.is_partner else ""
             print(f"[seed-places] '{place.name}'{tag} creado (id {place.id}) y re-ingestado.")
-        print(f"[seed-places] LISTO. {created} lugares nuevos.")
+        print(f"[seed-places] LISTO. {created} nuevos, {updated} actualizados.")
     finally:
         db.close()
 

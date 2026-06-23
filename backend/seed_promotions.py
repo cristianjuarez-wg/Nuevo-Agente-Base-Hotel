@@ -21,13 +21,13 @@ PROMOS = [
     {
         "name": "Promo Residentes",
         "description": (
-            "Tarifa preferencial exclusiva para residentes argentinos. "
-            "Presentando DNI válido al momento del check-in, accedés a una tarifa especial "
-            "diseñada para que los argentinos disfruten de la Patagonia con un beneficio concreto."
+            "Tarifa preferencial exclusiva para residentes argentinos: 15% de descuento sobre la "
+            "tarifa vigente. Presentando DNI argentino al momento del check-in, accedés a este "
+            "beneficio diseñado para que los argentinos disfruten de la Patagonia."
         ),
-        "conditions": "Válida solo para residentes argentinos con DNI. Tarifa sujeta a disponibilidad.",
-        "discount_type": "other",
-        "discount_value": None,
+        "conditions": "Válida solo para residentes argentinos con DNI argentino, presentado al check-in. 15% de descuento sobre la tarifa vigente. Sujeta a disponibilidad.",
+        "discount_type": "percentage",
+        "discount_value": 15,
         "status": "active",
         "valid_from": None,
         "valid_until": None,
@@ -35,10 +35,11 @@ PROMOS = [
     {
         "name": "Stay & Park",
         "description": (
-            "Combiná tu estadía con el estacionamiento privado cubierto del hotel sin costo adicional. "
-            "Ideal para quienes viajan en auto y quieren tener su vehículo seguro durante toda la visita."
+            "Combiná tu estadía con el estacionamiento privado cubierto del hotel sin costo adicional "
+            "(un ahorro de ARS 8.000 por noche). Ideal para quienes viajan en auto y quieren tener su "
+            "vehículo seguro durante toda la visita."
         ),
-        "conditions": "Incluye una plaza de estacionamiento cubierto por noche de estadía. Sujeto a disponibilidad.",
+        "conditions": "Incluye una plaza de estacionamiento cubierto por noche de estadía, sin cargo (valor habitual ARS 8.000/noche). Sujeto a disponibilidad de plazas.",
         "discount_type": "other",
         "discount_value": None,
         "status": "active",
@@ -48,11 +49,12 @@ PROMOS = [
     {
         "name": "Hampton en Familia",
         "description": (
-            "Promoción especial para familias que eligen las habitaciones Family Plan. "
-            "Disfrutá de una tarifa con beneficios pensados para que padres e hijos tengan "
-            "todo el espacio y la comodidad que necesitan en Bariloche."
+            "Promoción especial para familias que eligen las habitaciones Family Plan: los menores "
+            "de hasta 12 años no abonan cargo adicional (sin ocupar plaza) y el desayuno buffet está "
+            "incluido para toda la familia. Pensada para que padres e hijos tengan todo el espacio y "
+            "la comodidad que necesitan en Bariloche."
         ),
-        "conditions": "Válida para habitaciones Family Plan. Menores hasta 12 años sin cargo adicional (sin ocupar plaza).",
+        "conditions": "Válida para habitaciones Family Plan. Menores hasta 12 años sin cargo adicional (sin ocupar plaza). Desayuno buffet incluido para toda la familia. Sujeta a disponibilidad.",
         "discount_type": "other",
         "discount_value": None,
         "status": "active",
@@ -99,15 +101,27 @@ async def seed():
             min_nights = p.get("min_nights")
             exists = db.query(Promotion).filter(Promotion.name == p["name"]).first()
             if exists:
-                # Idempotente: actualiza min_nights si cambió (re-ingesta para el RAG).
-                if exists.min_nights != min_nights:
-                    exists.min_nights = min_nights
+                # Idempotente: actualiza TODOS los campos editables si alguno cambió y
+                # re-ingesta al RAG. Antes solo miraba min_nights, así que editar precio o
+                # condiciones de una promo existente no se aplicaba al re-correr el seed.
+                campos = {
+                    "description": p["description"],
+                    "conditions": p["conditions"],
+                    "discount_type": p["discount_type"],
+                    "discount_value": p["discount_value"],
+                    "min_nights": min_nights,
+                    "status": p["status"],
+                }
+                cambios = {k: v for k, v in campos.items() if getattr(exists, k) != v}
+                if cambios:
+                    for k, v in cambios.items():
+                        setattr(exists, k, v)
                     db.commit()
                     await promotions_service.reingest(exists)
-                    print(f"  ~~  Actualizada (min_nights={min_nights}): {p['name']}")
+                    print(f"  ~~  Actualizada ({', '.join(cambios)}): {p['name']}")
                     updated += 1
                 else:
-                    print(f"  --  Ya existe: {p['name']}")
+                    print(f"  --  Ya existe (sin cambios): {p['name']}")
                 continue
 
             promo = Promotion(

@@ -16,9 +16,9 @@ El Hampton by Hilton Bariloche es el primer Hilton de la Patagonia y se posicion
 ## Políticas generales
 - **Check-in**: a partir de las 15:00.
 - **Check-out**: hasta las 11:00.
-- **Mascotas**: el hotel es pet friendly; se admiten mascotas consultando condiciones.
+- **Mascotas**: el hotel es pet friendly. Se admite **una mascota de hasta ~15 kg por habitación**, con un cargo de **ARS 6.000 por noche** (limpieza, valor referencial). No se admite en el restaurante ni en el área de desayuno. Conviene avisar al reservar.
 - **Accesibilidad**: hay habitaciones y áreas comunes adaptadas para personas con movilidad reducida.
-- **Estacionamiento**: privado y cubierto, con costo adicional.
+- **Estacionamiento**: privado y cubierto, **ARS 8.000 por noche** por vehículo (valor referencial, sujeto a disponibilidad). Incluido sin cargo en la promo "Stay & Park".
 - **Desayuno**: buffet incluido en todas las tarifas.
 
 ## Política de cancelación y cambios
