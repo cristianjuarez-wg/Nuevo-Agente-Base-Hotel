@@ -21,7 +21,7 @@ Estados de status usados acá: "asignado", "pre_resuelto", "resuelto" (ver Hotel
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.core.logging_config import get_logger
 from app.models.hotel import HotelTicket, Booking, TicketEvent
@@ -223,6 +223,15 @@ def notify_staff_assignment(staff: Optional[StaffMember], ticket: HotelTicket) -
         "Notificación al staff", ticket_number=ticket.ticket_number,
         staff=staff.name, sent=ok,
     )
+    if not ok:
+        # Dejar traza visible en Operaciones: el ticket quedó asignado pero el aviso por
+        # WhatsApp no salió (canal sin configurar, número no opt-in al sandbox, etc.).
+        _db = object_session(ticket) or object_session(staff)
+        if _db is not None:
+            log_event(
+                _db, ticket, "notify_failed", actor_type="agent",
+                note=f"⚠️ No se pudo avisar a {staff.name} por WhatsApp (revisar canal/opt-in del número).",
+            )
     return ok
 
 

@@ -35,9 +35,19 @@ class WhatsAppService:
             self._client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
         return self._client
 
-    def _ensure_whatsapp_prefix(self, to: str) -> str:
-        """Twilio exige el prefijo 'whatsapp:' en los números de este canal."""
-        return to if to.startswith("whatsapp:") else f"whatsapp:{to}"
+    def _normalized_to(self, to: str) -> str:
+        """Normaliza el destino a E.164 y le pone el prefijo 'whatsapp:' que Twilio exige.
+
+        Clave para Argentina: WhatsApp necesita el "9" móvil (+549...). Un número guardado
+        como +543417207797 (sin 9) no se entrega; normalize_phone lo convierte a
+        +5493417207797. Si ya viene con prefijo 'whatsapp:' lo respetamos tal cual; si el
+        número es inválido para normalizar, usamos el original (best-effort, no romper).
+        """
+        if to.startswith("whatsapp:"):
+            return to
+        from app.utils.phone_normalizer import to_ar_whatsapp
+        normalized = to_ar_whatsapp(to) or to
+        return f"whatsapp:{normalized}"
 
     def send_text(self, to: str, body: str) -> bool:
         """Envía un mensaje de texto. Devuelve True si Twilio lo aceptó."""
@@ -48,7 +58,7 @@ class WhatsAppService:
         try:
             client.messages.create(
                 from_=settings.TWILIO_WHATSAPP_FROM,
-                to=self._ensure_whatsapp_prefix(to),
+                to=self._normalized_to(to),
                 body=body,
             )
             return True
@@ -94,7 +104,7 @@ class WhatsAppService:
         try:
             client.messages.create(
                 from_=settings.TWILIO_WHATSAPP_FROM,
-                to=self._ensure_whatsapp_prefix(to),
+                to=self._normalized_to(to),
                 body=body,
                 media_url=[media_url],
             )

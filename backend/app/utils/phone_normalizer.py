@@ -105,6 +105,36 @@ def phones_match(a: Optional[str], b: Optional[str]) -> bool:
     return bool(ka) and ka == kb
 
 
+def to_ar_whatsapp(phone: Optional[str]) -> Optional[str]:
+    """Devuelve el número en el formato que WhatsApp Argentina necesita: con el "9" móvil.
+
+    `normalize_phone` NO inserta el 9 cuando el número parece un fijo válido (ej.
+    +543417207797 lo ve como fijo de Rosario), pero para WhatsApp un número argentino debe
+    ir como +549<área><número>. Esta función, específica del canal WhatsApp, primero
+    normaliza a E.164 y luego, si es argentino (+54) con 10 dígitos nacionales sin el 9,
+    inserta el 9. Números no argentinos o que ya tienen el 9 quedan igual.
+
+    Ejemplos:
+        +543417207797  → +5493417207797
+        +5493417207797 → +5493417207797 (sin cambio)
+        +15551234567   → +15551234567   (no AR, sin cambio)
+    """
+    if not phone:
+        return phone
+    e164 = normalize_phone(phone) or phone
+    m = re.match(r'^\+54(\d+)$', e164)
+    if not m:
+        return e164
+    nacional = m.group(1)
+    # Ya es móvil con 9 (+549 + 10 dígitos = 11 dígitos arrancando en 9): sin cambio.
+    if nacional.startswith("9") and len(nacional) == 11:
+        return e164
+    # Nacional de 10 dígitos sin el 9 → insertarlo para que WhatsApp lo entregue.
+    if len(nacional) == 10:
+        return "+549" + nacional
+    return e164
+
+
 def is_whatsapp_capable(phone: str) -> bool:
     """
     Heurística: ¿el número parece un móvil válido (asumible alcanzable por WhatsApp)?
