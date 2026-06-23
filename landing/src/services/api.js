@@ -416,6 +416,13 @@ export async function deleteContact(contactId) {
   return data
 }
 
+// Limpia las conversaciones (historial del agente) atadas a un teléfono. Útil para
+// historiales huérfanos cuyo contacto ya no existe.
+export async function clearConversationByPhone(phone) {
+  const { data } = await client.post('/api/contacts/conversations/clear-by-phone', { phone })
+  return data
+}
+
 export async function updateContact(contactId, fields) {
   // fields: { first_name?, last_name?, email?, phone_number? }
   const { data } = await client.patch(`/api/contacts/${contactId}`, fields)

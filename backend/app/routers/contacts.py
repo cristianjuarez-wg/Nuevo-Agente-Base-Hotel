@@ -21,6 +21,30 @@ contact_service = ContactService()
 summary_service = SummaryService(settings.OPENAI_API_KEY)
 
 
+def _clear_agent_ram_cache(session_ids) -> None:
+    """Limpia el cache en RAM del agente para una lista de session_id.
+
+    Tras borrar conversaciones de la BD, el hilo todavía puede estar vivo en memoria
+    (conversation_history del agente y estado multi-paso). Esto lo descarta para que no
+    revivan hasta el próximo reinicio. Best-effort: cualquier fallo se loguea, nunca
+    revierte un borrado ya confirmado en la BD.
+    """
+    for sid in session_ids:
+        if not sid:
+            continue
+        try:
+            from app.services.agent_service import agent_service
+            agent_service.clear_history(sid)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo limpiar cache RAM del agente",
+                           session_id=sid, error=str(e))
+        try:
+            from app.services.conversation_state_manager import conversation_state_manager
+            conversation_state_manager.clear_state(sid)
+        except Exception:  # noqa: BLE001 — estado multi-paso puede no existir
+            pass
+
+
 # ========================================
 # SCHEMAS (Pydantic Models)
 # ========================================
@@ -287,22 +311,100 @@ async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
         )
 
     # Limpiar el cache en RAM del agente para cada session_id borrado, así el hilo no
-    # revive desde memoria hasta el próximo reinicio del proceso. Best-effort: un fallo
-    # acá no debe revertir el borrado, que ya está confirmado en la BD.
-    for sid in deleted_session_ids:
-        try:
-            from app.services.agent_service import agent_service
-            agent_service.clear_history(sid)
-        except Exception as e:  # noqa: BLE001
-            logger.warning("No se pudo limpiar cache RAM del agente",
-                           session_id=sid, error=str(e))
-        try:
-            from app.services.conversation_state_manager import conversation_state_manager
-            conversation_state_manager.clear_state(sid)
-        except Exception:  # noqa: BLE001 — estado multi-paso puede no existir
-            pass
+    # revive desde memoria hasta el próximo reinicio del proceso.
+    _clear_agent_ram_cache(deleted_session_ids)
 
     return {"success": True, "message": f"Contacto {contact_id} eliminado"}
+
+
+class ClearConversationByPhone(BaseModel):
+    phone: str
+
+
+@router.post("/conversations/clear-by-phone")
+async def clear_conversations_by_phone(
+    payload: ClearConversationByPhone, db: Session = Depends(get_db)
+):
+    """Borra TODAS las conversaciones (y sus mensajes) atadas a un teléfono.
+
+    Pensado para limpiar historiales HUÉRFANOS: conversaciones que quedaron en la BD
+    atadas al session_id de un teléfono (wa_<tel>) cuyo contacto ya no existe (ej. se
+    borró antes del fix que ya borra la conversación). Como el contacto ya no está, no
+    hay forma de limpiarlo desde el resto del backoffice.
+
+    Es un endpoint ACOTADO (solo borra conversaciones por teléfono, nunca SQL libre).
+    Cubre las variantes de session_id con que pudo guardarse el número (con/sin el "9"
+    móvil argentino) y, como red de seguridad, cualquier conversación wa_* cuyos últimos
+    10 dígitos coincidan con el teléfono.
+    """
+    from app.models.conversation import Conversation
+    from app.utils.phone_normalizer import normalize_phone, to_ar_whatsapp, phone_match_key
+
+    normalized = normalize_phone(payload.phone)
+    if not normalized:
+        raise HTTPException(status_code=400, detail="Teléfono inválido.")
+
+    # 1. session_id candidatos (canónico WhatsApp con "9", y la forma sin "9").
+    candidates = set()
+    wa_form = to_ar_whatsapp(payload.phone)
+    if wa_form:
+        candidates.add("wa_" + wa_form.lstrip("+"))
+    candidates.add("wa_" + normalized.lstrip("+"))
+
+    convs = db.query(Conversation).filter(Conversation.session_id.in_(candidates)).all()
+    found_ids = {c.id for c in convs}
+
+    # 2. Red de seguridad: conversaciones wa_* cuyos últimos 10 dígitos coincidan
+    #    (cubre formatos viejos no contemplados por los candidatos).
+    key = phone_match_key(normalized)
+    if key:
+        extra = db.query(Conversation).filter(
+            Conversation.session_id.like(f"wa_%{key}%")
+        ).all()
+        for c in extra:
+            if c.id not in found_ids and phone_match_key(c.session_id) == key:
+                convs.append(c)
+                found_ids.add(c.id)
+
+    if not convs:
+        return {
+            "success": True,
+            "phone": normalized,
+            "deleted_conversations": 0,
+            "deleted_messages": 0,
+            "session_ids": [],
+            "message": "No había conversaciones para ese número.",
+        }
+
+    # 3. Borrar cada conversación (mensajes en cascada vía cascade="all, delete-orphan").
+    from app.models.conversation_message import ConversationMessage
+    deleted_session_ids = [c.session_id for c in convs if c.session_id]
+    deleted_messages = db.query(ConversationMessage).filter(
+        ConversationMessage.session_id.in_(deleted_session_ids)
+    ).count() if deleted_session_ids else 0
+
+    for conv in convs:
+        db.delete(conv)
+
+    try:
+        db.commit()
+    except Exception as e:  # noqa: BLE001
+        db.rollback()
+        logger.error("Error limpiando conversaciones por teléfono",
+                     phone=normalized, error=str(e))
+        raise HTTPException(status_code=500, detail="No se pudo limpiar la conversación.")
+
+    # 4. Limpiar el cache en RAM del agente.
+    _clear_agent_ram_cache(deleted_session_ids)
+
+    return {
+        "success": True,
+        "phone": normalized,
+        "deleted_conversations": len(convs),
+        "deleted_messages": deleted_messages,
+        "session_ids": deleted_session_ids,
+        "message": f"Conversación limpiada ({deleted_messages} mensajes).",
+    }
 
 
 @router.get("/{contact_id}", response_model=Contact360Response)
