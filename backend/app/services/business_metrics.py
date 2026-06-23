@@ -31,6 +31,9 @@ _MESES = {
     "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10,
     "noviembre": 11, "diciembre": 12,
 }
+# Número de mes → nombre, para etiquetas claras ("este mes (junio 2026)").
+_MES_NOMBRE = {1: "enero", 2: "febrero", 3: "marzo", 4: "abril", 5: "mayo", 6: "junio",
+               7: "julio", 8: "agosto", 9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre"}
 # Estaciones del hemisferio SUR (Argentina): rango de meses (inclusive).
 # Invierno cae dentro del mismo año calendario (jun–ago), clave para un hotel de Bariloche.
 _ESTACIONES = {
@@ -64,17 +67,27 @@ def resolve_period(period: str) -> Tuple[date, date, str]:
     end = today + timedelta(days=1)  # exclusivo
     p = (period or "").lower().strip()
 
-    # --- Períodos relativos simples (compatibilidad) ---
+    # --- Períodos relativos simples ---
     if p in ("hoy", "today", "dia", "día"):
         return today, end, "hoy"
-    if p in ("semana", "week", "ultima semana", "última semana", "7"):
+    # Ventanas MÓVILES explícitas (compatibilidad / si el dueño las pide así).
+    if p in ("ultimos 7 dias", "últimos 7 días", "7"):
         return today - timedelta(days=6), end, "los últimos 7 días"
+    if p in ("ultimos 30 dias", "últimos 30 días", "30"):
+        return today - timedelta(days=29), end, "los últimos 30 días"
+    # Períodos CALENDARIO corrientes (lo que un dueño entiende por "esta semana/este mes/este año").
+    if p in ("semana", "week", "esta semana", "ultima semana", "última semana"):
+        monday = today - timedelta(days=today.weekday())  # lunes de esta semana
+        return monday, end, "esta semana"
+    if p in ("mes", "month", "este mes", "ultimo mes", "último mes"):
+        start = today.replace(day=1)
+        return start, _first_of_next_month(today.year, today.month), f"este mes ({_MES_NOMBRE.get(today.month, '')} {today.year})"
+    if p in ("anio", "año", "ano", "year", "este año", "este ano", "ultimo año", "último año", "365"):
+        return date(today.year, 1, 1), date(today.year + 1, 1, 1), f"este año ({today.year})"
     if p in ("trimestre", "ultimo trimestre", "último trimestre", "quarter"):
         return today - timedelta(days=89), end, "el último trimestre"
     if p in ("semestre", "ultimo semestre", "último semestre"):
         return today - timedelta(days=179), end, "el último semestre"
-    if p in ("anio", "año", "ano", "year", "ultimo año", "último año", "365"):
-        return today - timedelta(days=364), end, "el último año"
 
     # --- Estación (hemisferio sur) con año opcional ---
     for est, (m_ini, m_fin) in _ESTACIONES.items():
@@ -102,11 +115,10 @@ def resolve_period(period: str) -> Tuple[date, date, str]:
         year = int(m.group(1))
         return date(year, 1, 1), date(year + 1, 1, 1), str(year)
 
-    if p in ("mes", "month", "ultimo mes", "último mes", "30"):
-        return today - timedelta(days=29), end, "los últimos 30 días"
-
-    # default
-    return today - timedelta(days=29), end, "los últimos 30 días"
+    # default: si no se reconoce el período, asumimos el mes calendario corriente
+    # (lo más intuitivo para el dueño; "los últimos 30 días" se pide explícito).
+    start = today.replace(day=1)
+    return start, _first_of_next_month(today.year, today.month), f"este mes ({_MES_NOMBRE.get(today.month, '')} {today.year})"
 
 
 def parse_two_periods(text: str) -> Optional[Tuple[str, str]]:
@@ -256,6 +268,17 @@ def get_room_ranking(db: Session, start: date, end: date, by: str = "bookings") 
     return ranking
 
 
+def _prorate_window(b, total, w_start: date, w_end: date) -> float:
+    """Fracción del `total` de la reserva `b` que cae dentro de [w_start, w_end) (exclusivo).
+    Genérico (rango arbitrario), para el split realizado/proyectado de get_revenue."""
+    full_nights = (b.check_out - b.check_in).days
+    if not full_nights or not total:
+        return 0.0
+    ci, co = max(b.check_in, w_start), min(b.check_out, w_end)
+    in_range = max((co - ci).days, 0)
+    return (total or 0) * in_range / full_nights
+
+
 def get_revenue(
     db: Session,
     start: date,
@@ -307,9 +330,27 @@ def get_revenue(
     adr = round(usd / nights, 2) if nights else 0.0
     avg_per_booking = round(usd / count, 2) if count else 0.0
 
+    # Split REALIZADO vs PROYECTADO (on-the-books): partimos el rango por HOY. Realizado = lo
+    # que ya ocurrió (estadías hasta hoy); proyectado = reservas confirmadas a futuro dentro del
+    # rango. Reusa _prorate acotando el rango efectivo a cada lado de hoy.
+    today = now_argentina().date()
+    cut = today + timedelta(days=1)  # exclusivo: "hasta hoy" incluye hoy
+
+    def _sum_window(w_start: date, w_end: date) -> Dict:
+        if w_end <= w_start:
+            return {"usd": 0.0, "ars": 0.0, "count": 0}
+        bs = [b for b in bookings if b.check_in < w_end and b.check_out > w_start]
+        u = round(sum(_prorate_window(b, b.total_price_usd, w_start, w_end) for b in bs), 2)
+        a = round(sum(_prorate_window(b, b.total_price_ars, w_start, w_end) for b in bs), 2)
+        return {"usd": u, "ars": a, "count": len(bs)}
+
+    realized = _sum_window(start, min(end, cut))
+    projected = _sum_window(max(start, cut), end)
+
     result: Dict = {
         "usd": usd, "ars": ars, "count": count,
         "nights": nights, "adr": adr, "avg_per_booking": avg_per_booking,
+        "realized": realized, "projected": projected,
     }
 
     if group_by == "room_type":

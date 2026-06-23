@@ -81,10 +81,26 @@ async def consultar_ingresos(ctx: RunContextWrapper[OwnerContext], periodo: str 
     db = ctx.context.db
     start, end, label = bm.resolve_period(periodo)
     rev = bm.get_revenue(db, start, end)
-    return (
+    realized, projected = rev.get("realized", {}), rev.get("projected", {})
+    r_usd, p_usd = realized.get("usd", 0), projected.get("usd", 0)
+    # Gráfico realizado vs proyectado (on-the-books) cuando hay algo que mostrar.
+    if rev["usd"]:
+        ctx.context.chart_url = chart_service.bars_chart_url(
+            ["Realizado", "Reservado a futuro"], [round(r_usd), round(p_usd)],
+            f"Facturación USD — {label}",
+        )
+    base = (
         f"Facturación de {label}: USD {rev['usd']:,.0f} / ARS {rev['ars']:,.0f} "
         f"en {rev['count']} reserva(s)."
     )
+    # Distinguir lo ya facturado de lo comprometido a futuro (on-the-books) si aplica.
+    if p_usd and r_usd:
+        base += (f" De eso, USD {r_usd:,.0f} ya realizados y USD {p_usd:,.0f} por reservas "
+                 f"confirmadas a futuro.")
+    elif p_usd and not r_usd:
+        base += (f" Todo es ingreso COMPROMETIDO por reservas confirmadas a futuro "
+                 f"(aún no realizado): USD {p_usd:,.0f}.")
+    return base
 
 
 @function_tool
