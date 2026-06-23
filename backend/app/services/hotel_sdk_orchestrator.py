@@ -256,7 +256,7 @@ async def promos_vigentes(ctx: RunContextWrapper[HotelContext], consulta: str = 
     """Devuelve las promociones y ofertas especiales VIGENTES del hotel en este momento,
     con descripción de cada una, el tipo de descuento y las condiciones.
     Úsala SIEMPRE que el usuario pregunte EN GENERAL sobre promociones, ofertas, descuentos,
-    4x3, 7x5, Stay & Park, tarifas especiales o 'qué promociones tienen' (listado informativo).
+    tarifas especiales o 'qué promociones tienen' (listado informativo).
     Para CALCULAR el precio con descuento de una estadía concreta, usá `calcular_precio_promo`.
     Devolvé los datos tal cual, sin inventar ni modificar ningún beneficio."""
     tool_ctx = ctx.context.as_tool_ctx()

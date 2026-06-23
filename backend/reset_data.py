@@ -26,17 +26,17 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 
-def _prepare():
-    """Importa todos los modelos y asegura el esquema (como hace seed_demo_data)."""
-    import importlib
-    import pkgutil
-    import app.models.staff  # noqa: F401 — staff antes que hotel (FK staff_members)
-    import app.models as models_pkg
-    for mod in pkgutil.iter_modules(models_pkg.__path__):
-        importlib.import_module(f"app.models.{mod.name}")
-    from app.models.database import Base, engine, run_light_migrations
-    Base.metadata.create_all(bind=engine)
-    run_light_migrations()
+def _engine():
+    """Engine directo a la DB destino (DATABASE_URL), SIN importar los modelos.
+
+    Importar los modelos dispara migraciones a nivel de módulo (ALTER TABLE) que
+    en Postgres abortan la transacción si una columna ya existe. Para borrar datos
+    solo necesitamos SQL crudo por nombre de tabla, así que evitamos todo el ORM.
+    """
+    import os
+    from sqlalchemy import create_engine
+    url = os.environ.get("DATABASE_URL") or "sqlite:///./hotel.db"
+    return create_engine(url)
 
 
 # Tablas de DATOS operativos a vaciar, en orden hijos → padres.
@@ -96,48 +96,64 @@ _CONFIG_TABLES = [
 ]
 
 
-def _counts(db) -> dict:
+def _count_table(conn, t):
+    """COUNT de una tabla por SQL crudo. None si la tabla no existe."""
     from sqlalchemy import text
-    out = {}
-    for t in _DATA_TABLES_IN_ORDER:
-        try:
-            out[t] = db.execute(text(f"SELECT COUNT(*) FROM {t}")).scalar()
-        except Exception:
-            out[t] = None  # tabla inexistente en esta DB
-    return out
+    try:
+        return conn.execute(text(f"SELECT COUNT(*) FROM {t}")).scalar()
+    except Exception:
+        return None
 
 
-def reset(db) -> dict:
-    """Borra todos los datos operativos. Devuelve cuántas filas había por tabla."""
+def _counts(conn) -> dict:
+    return {t: _count_table(conn, t) for t in _DATA_TABLES_IN_ORDER}
+
+
+def reset(conn) -> dict:
+    """Borra todos los datos operativos. Devuelve cuántas filas había por tabla.
+
+    Cada DELETE va en su propia transacción autocommit: si una tabla no existe en
+    esta DB, no aborta el resto (clave en Postgres).
+    """
     from sqlalchemy import text
-    before = _counts(db)
+    before = _counts(conn)
     for t in _DATA_TABLES_IN_ORDER:
         if before.get(t):  # solo si la tabla existe y tiene filas
-            db.execute(text(f"DELETE FROM {t}"))
-    db.commit()
+            conn.execute(text(f"DELETE FROM {t}"))
     return {t: n for t, n in before.items() if n}
 
 
+def _which_db() -> str:
+    import os
+    url = os.environ.get("DATABASE_URL") or "sqlite:///./hotel.db"
+    # Ocultar credenciales al imprimir.
+    if "@" in url:
+        return "postgres @ " + url.split("@", 1)[1]
+    return url
+
+
 def main():
-    _prepare()
-    from app.models.database import SessionLocal
     from sqlalchemy import text
 
     arg = sys.argv[1] if len(sys.argv) > 1 else ""
-    db = SessionLocal()
-    try:
+    engine = _engine()
+    print(f"DB destino: {_which_db()}\n")
+
+    # autocommit por sentencia: un DELETE que falle no invalida los demás.
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         if arg == "--status":
             print("Datos operativos actuales:")
-            for t, n in _counts(db).items():
+            any_data = False
+            for t, n in _counts(conn).items():
                 if n:
-                    print(f"  {t:>26}: {n}")
+                    print(f"  {t:>26}: {n}"); any_data = True
+            if not any_data:
+                print("  (sin datos operativos — base en cero)")
             print("\nConfig preservada:")
             for t in _CONFIG_TABLES:
-                try:
-                    n = db.execute(text(f"SELECT COUNT(*) FROM {t}")).scalar()
+                n = _count_table(conn, t)
+                if n is not None:
                     print(f"  {t:>26}: {n}")
-                except Exception:
-                    pass
             return
 
         if arg not in ("--yes", "-y"):
@@ -147,7 +163,7 @@ def main():
             return
 
         print("Borrando datos operativos…")
-        deleted = reset(db)
+        deleted = reset(conn)
         if deleted:
             print("\nFilas eliminadas por tabla:")
             for t, n in deleted.items():
@@ -156,8 +172,6 @@ def main():
             print("  (no había datos que borrar)")
         print("\n✅ Base en cero. La configuración (habitaciones, temas, conocimiento, "
               "carta, promos) quedó intacta.")
-    finally:
-        db.close()
 
 
 if __name__ == "__main__":
