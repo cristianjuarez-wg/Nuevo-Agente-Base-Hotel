@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
+import { ArrowUpRight } from 'lucide-react'
 import { HOTEL } from '../data/hotelInfo'
 
 // Imagen hero: vista aérea del lago Nahuel Huapi al atardecer (foto oficial del hotel).
@@ -93,6 +94,18 @@ export default function Hero() {
             </a>
             <a href="#habitaciones" className="btn-ghost-light">
               Explorar el hotel
+            </a>
+            {/* Acceso sutil a la presentación (Wigou × Hampton). Sin recuadro: pasa algo
+                desapercibido entre los dos CTA, pero invita a quien tenga curiosidad. */}
+            <a
+              href="/presentacion/hampton-wigou.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center justify-center gap-1.5 px-2 py-3 text-sm font-medium tracking-wide text-white/70 underline-offset-4 transition hover:text-white hover:underline"
+              style={{ minHeight: 44 }}
+            >
+              Ver presentación
+              <ArrowUpRight size={15} className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </a>
           </motion.div>
         </div>
