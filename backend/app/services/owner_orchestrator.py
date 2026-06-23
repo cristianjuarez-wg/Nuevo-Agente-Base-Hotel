@@ -153,10 +153,18 @@ async def consultar_resumen_negocio(ctx: RunContextWrapper[OwnerContext], period
     start, end, label = bm.resolve_period(periodo)
     s = bm.get_business_summary(db, start, end)
     occ, rev, leads, comp = s["occupancy"], s["revenue"], s["leads"], s["complaints"]
+    # Facturación: distinguir realizado de comprometido a futuro (on-the-books) si aplica.
+    r_usd = (rev.get("realized") or {}).get("usd", 0)
+    p_usd = (rev.get("projected") or {}).get("usd", 0)
+    fact = f"• Facturación: USD {rev['usd']:,.0f} / ARS {rev['ars']:,.0f} en {rev['count']} reservas"
+    if p_usd and r_usd:
+        fact += f" (USD {r_usd:,.0f} realizados + USD {p_usd:,.0f} reservados a futuro)"
+    elif p_usd and not r_usd:
+        fact += f" — todo comprometido por reservas a futuro (aún no realizado)"
     return (
         f"Resumen del negocio — {label}:\n"
         f"• Ocupación: {occ['occupancy_pct']}% (de {occ['total_units']} habitaciones).\n"
-        f"• Facturación: USD {rev['usd']:,.0f} / ARS {rev['ars']:,.0f} en {rev['count']} reservas.\n"
+        f"{fact}.\n"
         f"• Leads: {leads['generated']} generados, {leads['closed']} cerrados ({leads['conversion_pct']}%).\n"
         f"• Quejas: {comp['total']} ({comp['open']} abiertas)."
     )
