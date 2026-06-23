@@ -115,7 +115,7 @@ def _as_list(v):
 
 
 def _check_turn(expect: dict, route: str, tools: list, cards: list, response: str,
-                tool_called_any: bool, real_prices: set) -> list:
+                tool_called_any: bool, real_prices: set, room_titles: list = None) -> list:
     """Devuelve la lista de fallos (strings). Vacía = turno OK.
 
     `real_prices` = precios USD que las tools devolvieron en el escenario hasta este turno;
@@ -152,6 +152,19 @@ def _check_turn(expect: dict, route: str, tools: list, cards: list, response: st
             if c in cards:
                 fails.append(f"card {c!r} NO debía aparecer (cards={cards})")
 
+    # Tope de cantidad de tarjetas de habitación (ej. no mostrar las 4).
+    if "card_count_max" in expect:
+        n_room = len([c for c in cards if c == "room"])
+        if n_room > expect["card_count_max"]:
+            fails.append(f"{n_room} tarjetas de habitación, máx esperado {expect['card_count_max']}")
+
+    # Una habitación puntual NO debe aparecer entre las tarjetas (ej. la accesible).
+    if "card_title_not" in expect:
+        titles = room_titles or []
+        for t in _as_list(expect["card_title_not"]):
+            if t in titles:
+                fails.append(f"la habitación {t!r} NO debía aparecer (tarjetas={titles})")
+
     if "response_contains" in expect:
         for s in _as_list(expect["response_contains"]):
             if s.lower() not in resp_low:
@@ -182,6 +195,37 @@ def _check_turn(expect: dict, route: str, tools: list, cards: list, response: st
 
 
 # ── Ejecución ────────────────────────────────────────────────────────────────────
+def _seed_bookings(db, session_id: str, specs: list) -> None:
+    """Siembra reservas de post-venta para el escenario (ej. con una promo aplicada que el
+    flujo normal del agente no produce, como Stay & Park, que es cualitativa). Las reservas
+    quedan atadas al session_id del escenario, así el _cleanup por session_id las borra.
+    Cada spec admite: room_type, nights, guest_name, promo_name (todos opcionales)."""
+    from datetime import date, timedelta
+    from app.models.hotel import Booking, Room
+    for spec in specs:
+        room = (
+            db.query(Room).filter(Room.room_type == spec.get("room_type", "King")).first()
+            or db.query(Room).first()
+        )
+        if not room:
+            continue
+        nights = int(spec.get("nights", 3))
+        ci = date.today() + timedelta(days=30)
+        co = ci + timedelta(days=nights)
+        total_usd = round((room.base_price_usd or 0) * nights, 2)
+        b = Booking(
+            code=spec["code"], room_id=room.id, session_id=session_id,
+            guest_name=spec.get("guest_name", "Huésped Eval"),
+            guest_email="eval@example.com", guest_phone=None,
+            check_in=ci, check_out=co, guests=2, children=0, infants=0, nights=nights,
+            total_price_usd=total_usd, total_price_ars=round(total_usd * 1490, 2),
+            promo_name=spec.get("promo_name"), status="confirmed", payment_status="paid",
+            source="web", generated_by="aura",
+        )
+        db.add(b)
+    db.commit()
+
+
 async def _run_scenario(sc: dict) -> dict:
     db = SessionLocal()
     prefix = sc.get("session_prefix") or "web-eval"
@@ -190,16 +234,19 @@ async def _run_scenario(sc: dict) -> dict:
     turn_results = []
     real_prices = set()  # precios USD reales acumulados de las tools a lo largo del escenario
     try:
+        if sc.get("setup_bookings"):
+            _seed_bookings(db, session_id, sc["setup_bookings"])
         for i, turn in enumerate(sc["turns"], 1):
             msg = turn["user"]
             result = await agent_service.chat(db, msg, session_id, "es")
             route = _route_of(result)
             tools = result.get("tools_used", []) or []
             cards = _build_cards(result, msg, session_id, db)
+            room_titles = [r.get("room_type") or "" for r in result.get("rooms_offered", [])]
             response = result.get("response", "")
             real_prices |= _real_prices_from_trace(result.get("tool_trace", []))
             fails = _check_turn(turn.get("expect", {}), route, tools, cards, response,
-                                tool_any, real_prices)
+                                tool_any, real_prices, room_titles)
             turn_results.append({
                 "n": i, "user": msg, "route": route, "tools": tools,
                 "cards": cards, "response": response, "fails": fails,

@@ -62,6 +62,71 @@ async def _handle_info_hotel(args: Dict, ctx: Dict) -> Dict:
     }
 
 
+# ── Selección determinística de tarjetas de habitación ──────────────────────────
+# El LLM puede recomendar tipos vía `room_types`, pero no lo hace de forma confiable.
+# Para que NUNCA se muestren las 4 (ni la accesible sin pedido), el backend elige las más
+# adecuadas por su cuenta. Reusa el flag `oversized` y el orden best-fit de get_availability.
+
+_ACCESS_KEYWORDS = (
+    "accesible", "accesibilidad", "adaptada", "adaptado",
+    "silla de ruedas", "movilidad reducida", "discapacidad", "discapacitad",
+)
+_ALL_KEYWORDS = (
+    "todas las opciones", "todas las habitaciones", "ver todas",
+    "mostrame todas", "muéstrame todas", "muestrame todas", "quiero ver todas",
+)
+_MAX_ROOM_CARDS = 3  # alinea con settings.WHATSAPP_MAX_ROOM_CARDS
+
+
+def _wants_accessibility(ctx: Dict) -> bool:
+    """True si el huésped pidió accesibilidad (mensaje actual o últimas turnos de usuario)."""
+    text = (ctx.get("message") or "").lower()
+    for h in (ctx.get("history") or [])[-6:]:
+        if isinstance(h, dict) and h.get("role") == "user":
+            text += " " + str(h.get("content") or "").lower()
+    return any(k in text for k in _ACCESS_KEYWORDS)
+
+
+def _wants_all_rooms(ctx: Dict) -> bool:
+    """True si el huésped pidió ver TODAS las opciones (solo el mensaje actual)."""
+    return any(k in (ctx.get("message") or "").lower() for k in _ALL_KEYWORDS)
+
+
+def _is_accessible_room(room: Dict) -> bool:
+    """True si el tipo es la habitación accesible (cubre 'Doble Twin Accesible')."""
+    return "accesible" in (room.get("room_type") or "").lower()
+
+
+def _select_room_cards(rooms: list, requested: list, *, wants_access: bool,
+                       wants_all: bool) -> list:
+    """Elige qué habitaciones van como TARJETAS (`rooms` ya viene best-fit-sorted).
+
+    Prioridades: (1) la accesible se excluye salvo pedido; (2) "todas" → pool capeado;
+    (3) si el LLM pasó tipos válidos, se honran dentro del pool; (4) si no (el bug), se
+    auto-eligen las non-oversized primero (King/Twin para una pareja), capeado a 3.
+    """
+    # 1) Fuera la accesible salvo que la pidan.
+    pool = rooms if wants_access else [r for r in rooms if not _is_accessible_room(r)]
+    if not pool:  # seguridad: si solo quedaba la accesible, no devolver vacío
+        pool = rooms
+    # 2) Pidió ver todas.
+    if wants_all:
+        return pool[:_MAX_ROOM_CARDS]
+    # 3) El LLM pasó tipos válidos → honrarlos DENTRO del pool ya filtrado.
+    if requested:
+        sel = [r for r in pool if (r.get("room_type") or "").strip().lower() in requested]
+        if sel:
+            return sel[:_MAX_ROOM_CARDS]
+        # si filtra a vacío (tipo inexistente o accesible sin pedido) → cae al auto-pick
+    # 4) Auto-pick determinístico: non-oversized primero; completar con oversized si hace falta.
+    non_over = [r for r in pool if not r.get("oversized")]
+    over = [r for r in pool if r.get("oversized")]
+    sel = list(non_over)
+    if len(sel) < 2:
+        sel += over[: (2 - len(sel))]
+    return sel[:_MAX_ROOM_CARDS]
+
+
 def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
     """Consulta habitaciones disponibles en el motor de reserva real."""
     db: Optional[Session] = ctx.get("db")
@@ -131,11 +196,26 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
             )
         }
 
+    # SELECCIÓN de tarjetas: el backend elige las más adecuadas (no depende de que el LLM
+    # pase room_types). Excluye la accesible salvo pedido. Texto y tarjetas usan el MISMO set
+    # seleccionado, para que la prosa de Aura coincida con lo que ve el huésped.
+    requested = args.get("room_types") or []
+    if isinstance(requested, str):
+        requested = [requested]
+    requested = [str(t).strip().lower() for t in requested if str(t).strip()]
+
+    cards = _select_room_cards(
+        rooms, requested,
+        wants_access=_wants_accessibility(ctx),
+        wants_all=_wants_all_rooms(ctx),
+    )
+    ctx["rooms_offered"] = cards
+
     lines = [
         f"Habitaciones disponibles para {composicion}, "
-        f"{rooms[0].get('nights')} noche(s) ({check_in} → {check_out}):\n"
+        f"{cards[0].get('nights')} noche(s) ({check_in} → {check_out}):\n"
     ]
-    for r in rooms:
+    for r in cards:
         lines.append(
             f"• {r['room_type']}: USD {r['total_price_usd']:.0f} / ARS {r['total_price_ars']:,.0f} "
             f"en total ({r['units_available']} unidad(es) disponible(s)). "
@@ -143,30 +223,7 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
             f"Capacidad: {r['capacity']} pax."
         )
 
-    # TARJETAS DEL CHAT: por defecto mostramos solo las que el agente recomienda en su
-    # respuesta (room_types), para que las tarjetas coincidan con el texto y no se muestren
-    # TODAS las disponibles. Si el agente no especifica, se muestran todas (compatibilidad).
-    requested = args.get("room_types") or []
-    if isinstance(requested, str):
-        requested = [requested]
-    requested = [str(t).strip().lower() for t in requested if str(t).strip()]
-
-    cards = rooms
-    if requested:
-        # Match EXACTO (normalizado) contra el nombre del tipo. No usamos "substring" para
-        # evitar falsos positivos: "Twin" NO debe machear "Doble Twin Accesible".
-        def _matches(room_type: str) -> bool:
-            rt = (room_type or "").strip().lower()
-            return rt in requested
-        filtered = [r for r in rooms if _matches(r.get("room_type", ""))]
-        # Si el filtro deja todo vacío (el agente nombró un tipo que no existe/no entra),
-        # mostramos todas: mejor ofrecer algo que una lista vacía.
-        cards = filtered or rooms
-
-    # Guardar las habitaciones en el ctx para que el orquestador arme las tarjetas del chat.
-    ctx["rooms_offered"] = cards
-
-    return {"tool_result": "\n".join(lines), "rooms": rooms}
+    return {"tool_result": "\n".join(lines), "rooms": cards}
 
 
 def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:

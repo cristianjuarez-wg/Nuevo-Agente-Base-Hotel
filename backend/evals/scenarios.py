@@ -69,6 +69,18 @@ SCENARIOS = [
         ],
     },
     {
+        "id": "S1c",
+        "name": "Pareja: backend auto-selecciona, NO accesible ni 4 cards",
+        # El backend elige las 2-3 más adecuadas aunque el LLM no pase room_types, y excluye
+        # la 'Doble Twin Accesible' salvo pedido expreso. Una pareja NO debe ver las 4.
+        "turns": [
+            {"user": f"Hola! disponibilidad del {CI} al {CO} para 2 adultos.",
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
+                        "card_count_max": 3, "card_title_not": "Doble Twin Accesible",
+                        "response_not_contains": ["Accesible"]}},
+        ],
+    },
+    {
         "id": "S2",
         "name": "Varias preguntas en un solo mensaje",
         "turns": [
@@ -403,6 +415,45 @@ SCENARIOS = [
             {"user": f"Disponibilidad del {CI} al {CO} para 2 adultos, por favor.",
              "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
                         "response_not_contains": ["cuántas personas"]}},
+        ],
+    },
+    {
+        "id": "S33",
+        "name": "Post-venta: '¿tengo estacionamiento incluido?' CON promo Stay & Park → confirma sin 'verificá al llegar'",
+        # Caso Gabriel: el huésped pregunta si su reserva incluye estacionamiento. Si la reserva
+        # tiene la promo "Stay & Park", Aura DEBE confirmarlo mirando SU reserva — nunca el
+        # condicional ambiguo "si tu reserva incluye…" ni "verificá al llegar".
+        "setup_bookings": [
+            {"code": "HTL-EV33", "room_type": "King", "nights": 3,
+             "guest_name": "Gabriel Test", "promo_name": "Stay & Park"},
+        ],
+        "turns": [
+            {"user": "Hola, tengo una reserva, mi código es HTL-EV33",
+             "expect": {"route": "postsale"}},
+            {"user": "tengo estacionamiento incluido?",
+             "expect": {"response_contains": ["incluido"],
+                        "response_not_contains": [
+                            "verificá al llegar", "verifica al llegar", "verificar al llegar",
+                            "si tu reserva incluye", "al momento de tu llegada",
+                        ]}},
+        ],
+    },
+    {
+        "id": "S34",
+        "name": "Post-venta: '¿tengo estacionamiento incluido?' SIN promo → dice claro que es con cargo",
+        # Espejo de S33: reserva sin promo de parking. Aura NO debe afirmar que está incluido;
+        # debe decir que es un servicio con cargo (y puede ofrecer sumarlo), sin el condicional ambiguo.
+        "setup_bookings": [
+            {"code": "HTL-EV34", "room_type": "Twin", "nights": 3, "guest_name": "Marta Test"},
+        ],
+        "turns": [
+            {"user": "Hola, tengo una reserva, mi código es HTL-EV34",
+             "expect": {"route": "postsale"}},
+            {"user": "tengo estacionamiento incluido?",
+             "expect": {"response_not_contains": [
+                 "verificá al llegar", "verifica al llegar",
+                 "si tu reserva incluye", "al momento de tu llegada",
+             ]}},
         ],
     },
 ]

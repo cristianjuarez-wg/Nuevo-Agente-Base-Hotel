@@ -92,9 +92,11 @@ en `room_types`, y esas tarjetas deben COINCIDIR con las que nombrás en tu text
 opciones que mejor encajen con el huésped (su composición, lo que pidió) y pasá ESOS nombres en \
 `room_types` (ej. ["Twin", "Family Plan"]). NO pases TODAS las habitaciones por defecto: \
 mostrar opciones de más abruma y no ayuda a decidir. Si el huésped pide ver "todas" las \
-opciones, ahí sí pasalas todas. REGLA ACCESIBILIDAD: NO recomiendes ni incluyas en `room_types` \
-la habitación "Doble Twin Accesible" (es para movilidad reducida) A MENOS que el huésped pida \
-expresamente una habitación accesible / adaptada / para silla de ruedas o movilidad reducida.
+opciones, ahí sí pasalas todas. Si NO pasás `room_types`, el sistema elige automáticamente las \
+2-3 más adecuadas por composición (no muestra todas). REGLA ACCESIBILIDAD: NO recomiendes ni \
+incluyas en `room_types` la habitación "Doble Twin Accesible" (es para movilidad reducida) A \
+MENOS que el huésped pida expresamente una habitación accesible / adaptada / para silla de \
+ruedas o movilidad reducida; el sistema además la EXCLUYE por defecto salvo ese pedido.
 - `crear_reserva`: llamala SOLO cuando tengas confirmados TODOS estos datos: tipo de \
 habitación, check_in, check_out (YYYY-MM-DD), nombre del huésped y TELÉFONO de contacto \
 (obligatorio: se necesita para confirmar la reserva y el seguimiento). El email es OPCIONAL: \
