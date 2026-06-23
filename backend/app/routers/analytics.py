@@ -13,7 +13,6 @@ from app.services.kanban_service import kanban_service
 from app.core.logging_config import get_logger
 from typing import Dict, List
 from datetime import datetime, timedelta
-from collections import Counter
 import re
 
 logger = get_logger(__name__)
@@ -147,100 +146,6 @@ async def get_funnel(channel: str = None, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error("Error getting funnel", error=str(e))
         raise HTTPException(status_code=500, detail=f"Error obteniendo embudo: {str(e)}")
-
-
-@router.get("/destinations/top")
-async def get_top_destinations(db: Session = Depends(get_db)):
-    """
-    Destinos más consultados extraídos de conversaciones reales.
-    Devuelve top 7 con nombre, cantidad de consultas y porcentaje.
-    """
-    try:
-        conversations = db.query(Conversation).filter(
-            Conversation.destinations_mentioned.isnot(None),
-            Conversation.context_type != 'post_sale'
-        ).all()
-
-        counter: Counter = Counter()
-        for conv in conversations:
-            if conv.destinations_mentioned:
-                for dest in conv.destinations_mentioned:
-                    if dest and dest.strip():
-                        counter[dest.strip().title()] += 1
-
-        total = sum(counter.values()) or 1
-        top = [
-            {"name": name, "count": cnt, "percentage": round(cnt / total * 100, 1)}
-            for name, cnt in counter.most_common(7)
-        ]
-
-        return {
-            "success": True,
-            "data": {
-                "destinations": top,
-                "total_mentions": sum(counter.values()),
-                "unique_destinations": len(counter)
-            }
-        }
-    except Exception as e:
-        logger.error("Error getting top destinations", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Error obteniendo destinos: {str(e)}")
-
-
-@router.get("/content/metrics")
-async def get_content_metrics(db: Session = Depends(get_db)):
-    """Métricas de contenido: destinos, paquetes y documentos más consultados"""
-    try:
-        content_metrics = metrics_service.get_content_metrics(db)
-        return {"success": True, "data": content_metrics}
-    except Exception as e:
-        logger.error("Error getting content metrics", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Error obteniendo content metrics: {str(e)}")
-
-
-@router.get("/destinations/popular")
-async def get_popular_destinations(db: Session = Depends(get_db)):
-    """Obtiene destinos más consultados a partir de conversaciones reales"""
-    try:
-        from app.models.conversation_message import ConversationMessage
-        from app.core.geography import geography_service
-
-        messages = (
-            db.query(ConversationMessage.content)
-            .filter(ConversationMessage.role == "user")
-            .limit(2000)
-            .all()
-        )
-
-        country_counter: Counter = Counter()
-        continent_counter: Counter = Counter()
-
-        for (content,) in messages:
-            analysis = geography_service.get_geographic_analysis(content)
-            for country in analysis.get("countries", []):
-                country_counter[country.title()] += 1
-            if analysis.get("continent"):
-                continent_counter[analysis["continent"].title()] += 1
-
-        total_country = sum(country_counter.values()) or 1
-        total_continent = sum(continent_counter.values()) or 1
-
-        return {
-            "success": True,
-            "data": {
-                "countries": [
-                    {"name": n, "queries": c, "percentage": round(c / total_country * 100, 1)}
-                    for n, c in country_counter.most_common(10)
-                ],
-                "continents": [
-                    {"name": n, "queries": c, "percentage": round(c / total_continent * 100, 1)}
-                    for n, c in continent_counter.most_common(10)
-                ]
-            }
-        }
-    except Exception as e:
-        logger.error("Error getting popular destinations", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Error obteniendo destinos populares: {str(e)}")
 
 
 @router.get("/performance/metrics")
