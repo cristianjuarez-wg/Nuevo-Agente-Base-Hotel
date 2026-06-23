@@ -131,6 +131,40 @@ def list_menu_public(db: Session = Depends(get_db)):
     return {"menu": restaurant_service.list_menu(db, include_inactive=False)}
 
 
+@router.post("/menu/seed")
+def seed_menu(force: bool = False, db: Session = Depends(get_db)):
+    """Siembra la carta real (restaurant_menu_seed.MENU) — solo la carta, nada más.
+
+    Idempotente: si ya hay ítems en la carta no hace nada (a menos que ?force=true,
+    que borra la carta demo previa y la vuelve a crear). Pensado para poblar la carta
+    en un entorno nuevo (p. ej. Render) sin correr el populate completo de la demo.
+    """
+    from app.services.restaurant_menu_seed import menu_for_seed
+
+    existing = db.query(MenuItem).count()
+    if existing and not force:
+        return {"ok": True, "seeded": 0, "existing": existing,
+                "message": "Ya hay carta cargada; usá ?force=true para recrearla."}
+
+    if force:
+        db.query(MenuItem).filter(MenuItem.is_demo.is_(True)).delete(synchronize_session=False)
+        db.commit()
+
+    rate = exchange_rate_service.get_current_rate(db)["rate"]
+    rows = menu_for_seed(rate)
+    for row in rows:
+        db.add(MenuItem(
+            name=row["name"], description=row["description"], category=row["category"],
+            price_usd=row["price_usd"], image_url=row["image_url"],
+            allergens=row["allergens"], tags=row["tags"],
+            available=True, status="active", only_dinner=row["only_dinner"],
+            is_demo=True,
+        ))
+    db.commit()
+    logger.info("Menu seeded", count=len(rows), force=force)
+    return {"ok": True, "seeded": len(rows), "force": force}
+
+
 @router.post("/menu")
 async def create_menu_item(payload: MenuItemPayload, db: Session = Depends(get_db)):
     item = MenuItem(
