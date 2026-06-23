@@ -239,11 +239,18 @@ def _build_menu_card_fallback(db, session_id: str, user_message: str = "") -> di
 import re as _re_dates
 
 # Detecta fechas explícitas ya dadas: "2026-07-24", "del 24 al 31", "24/07", "24 de julio".
+# También fechas en lenguaje natural usadas como llegada/rango ("hoy mismo", "desde hoy hasta el
+# domingo", "este finde"): el huésped SÍ dio un punto de partida concreto, así que no hay que
+# reabrir el picker. (Cubre el caso "necesito reserva para hoy hasta el domingo".)
+_DIA_SEMANA = r"(?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)"
 _DATE_GIVEN_PATTERNS = (
     _re_dates.compile(r"\d{4}-\d{2}-\d{2}"),                       # 2026-07-24
     _re_dates.compile(r"\d{1,2}\s*/\s*\d{1,2}"),                   # 24/07
     _re_dates.compile(r"del\s+\d{1,2}\b.*\bal\s+\d{1,2}\b"),       # del 24 al 31
     _re_dates.compile(r"\d{1,2}\s+de\s+(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)", _re_dates.I),
+    _re_dates.compile(r"\bhoy\b|\bma[ñn]ana\b|\bpasado ma[ñn]ana\b", _re_dates.I),   # hoy / mañana
+    _re_dates.compile(rf"\bhasta\s+(?:el\s+)?(?:{_DIA_SEMANA}|hoy|ma[ñn]ana)\b", _re_dates.I),  # hasta el domingo
+    _re_dates.compile(r"\beste\s+(?:fin\s+de\s+semana|finde)\b", _re_dates.I),       # este finde
 )
 
 
@@ -260,6 +267,25 @@ def _dates_already_given(user_message: str, history: list) -> bool:
             blobs.append(m.get("content") or "")
     text = " ".join(blobs).lower()
     return any(p.search(text) for p in _DATE_GIVEN_PATTERNS)
+
+
+def _availability_shown_in_session(db, session_id: str) -> bool:
+    """True si en ESTA sesión la tool de disponibilidad ya devolvió habitaciones.
+
+    Si ya se mostró disponibilidad, el huésped pasó la etapa de elegir fechas: NO hay que
+    ofrecer el date picker aunque la respuesta del agente mencione "Fechas:" (es un resumen de
+    reserva, no un pedido de fechas). Lee el flag que setea el orquestador de pre-venta en
+    Conversation.extra_metadata. Best-effort: ante cualquier problema, asume False.
+    """
+    if not session_id:
+        return False
+    try:
+        from app.models.conversation import Conversation
+        from app.services.hotel_sdk_orchestrator import _AVAILABILITY_SHOWN_FLAG
+        conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+        return bool(conv and (conv.extra_metadata or {}).get(_AVAILABILITY_SHOWN_FLAG))
+    except Exception:
+        return False
 
 
 # Señales de un período VAGO (mes/temporada/duración) SIN un día concreto. Si el huésped
@@ -516,6 +542,12 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # Selector de reserva de mesa (Fase 2): día + turno + personas.
         elif table_card:
             cards = [table_card]
+
+        # Si en esta sesión YA se mostró disponibilidad real, el huésped pasó la etapa de elegir
+        # fechas: NO ofrecemos el date picker aunque la respuesta diga "Fechas: del X al Y" (eso es
+        # el RESUMEN de la reserva al cerrar, no un pedido de fechas). Suprime ambos backstops.
+        elif _availability_shown_in_session(db, chat_request.session_id):
+            pass
 
         # BACKSTOP de fechas vagas: si el huésped mencionó un período (mes/temporada/duración)
         # SIN un día concreto, NO mostramos habitaciones (saldrían de fechas inventadas por el
