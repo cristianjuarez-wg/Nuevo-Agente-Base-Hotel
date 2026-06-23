@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     
     # ChromaDB
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_db"
-    CHROMA_COLLECTION_NAME: str = "travel_documents"
+    CHROMA_COLLECTION_NAME: str = "hotel_documents"
 
     # Almacenamiento de imágenes subidas desde el backoffice (repositorio de conocimiento).
     # En Render apuntar al disco persistente: MEDIA_DIR=/data/uploads_img
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     TOP_K_RESULTS: int = 8
     
     # Agent Config
-    AGENT_PROFILE_PATH: str = "./data/agent_profiles/turismo.json"
+    AGENT_PROFILE_PATH: str = "./data/agent_profiles/hotel.json"
     GEOGRAPHY_DATA_PATH: str = "./data/geography.json"
 
     # Arquitectura del agente sobre el OpenAI Agents SDK (camino de producción).
