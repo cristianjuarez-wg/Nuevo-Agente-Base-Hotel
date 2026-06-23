@@ -203,7 +203,30 @@ class HotelPostSaleService:
             f"Huéspedes: {d['guests']}",
             f"Total: USD {d['total_price_usd']:.0f} / ARS {d['total_price_ars']:,.0f}",
             f"Estado: {d['status']} | Pago: {d['payment_status']}",
+            self._promo_line(booking.promo_name),
         ])
+
+    def _promo_line(self, promo_name: Optional[str]) -> str:
+        """Línea de la promo aplicada a ESTA reserva, con qué incluye (para que el agente
+        responda '¿tengo X incluido?' mirando la reserva, no el RAG genérico). Sin promo →
+        lo dice explícito para que NO asuma inclusiones (los extras son con cargo)."""
+        name = (promo_name or "").strip()
+        if not name:
+            return "Promo aplicada: ninguna (sin inclusiones extra; servicios como estacionamiento son con cargo)"
+        try:
+            from app.models.promotions import Promotion
+            # Buscamos por nombre (no por vigencia): lo que importa es lo que la reserva YA
+            # tiene aplicado, aunque la promo se haya despublicado luego.
+            promo = (
+                self.db.query(Promotion).filter(Promotion.name == name).first()
+            )
+        except Exception:
+            promo = None
+        if promo is not None:
+            detalle = " ".join(filter(None, [promo.description, promo.conditions])).strip()
+            if detalle:
+                return f"Promo aplicada: {name} — {detalle}"
+        return f"Promo aplicada: {name}"
 
     # ------------------------------------------------------------------
     # Análisis de escalación (LLM analiza, código decide)

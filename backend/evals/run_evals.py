@@ -209,6 +209,8 @@ def _seed_bookings(db, session_id: str, specs: list) -> None:
         )
         if not room:
             continue
+        # Idempotente: si un código quedó de una corrida previa que no llegó a limpiar, lo borramos.
+        db.query(Booking).filter(Booking.code == spec["code"]).delete(synchronize_session=False)
         nights = int(spec.get("nights", 3))
         ci = date.today() + timedelta(days=30)
         co = ci + timedelta(days=nights)
