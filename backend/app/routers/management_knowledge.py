@@ -133,6 +133,17 @@ async def upload_text_document(payload: TextDocPayload):
     return {"success": True, "filename": title, "chunks_created": result.get("added", 0)}
 
 
+@router.get("/documents/{filename}/content")
+async def get_document_content(filename: str):
+    """Devuelve el texto completo de un documento (reconstruido desde sus chunks) para el
+    viewer del backoffice. No depende de que el archivo siga en disco."""
+    vs = get_management_vector_store()
+    data = vs.get_document_content(filename)
+    if not data.get("content"):
+        raise HTTPException(status_code=404, detail="No se encontró contenido para ese documento.")
+    return data
+
+
 @router.patch("/documents/{filename}/status")
 async def set_document_status(filename: str, payload: StatusPayload):
     """Activa/desactiva un documento (inactivo = excluido de las búsquedas del consultor)."""

@@ -456,6 +456,13 @@ export async function listManagementDocs() {
   return data.documents ?? []
 }
 
+export async function getManagementDocContent(filename) {
+  const { data } = await client.get(
+    `/api/management-knowledge/documents/${encodeURIComponent(filename)}/content`
+  )
+  return data
+}
+
 export async function uploadManagementDoc(file) {
   const form = new FormData()
   form.append('file', file)

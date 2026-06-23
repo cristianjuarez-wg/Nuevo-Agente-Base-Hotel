@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { GraduationCap, RefreshCw, Upload, Trash2, FileText, Loader2, BrainCircuit } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { GraduationCap, RefreshCw, Upload, Trash2, FileText, Loader2, BrainCircuit, Eye, X } from 'lucide-react'
 import {
   listManagementDocs, uploadManagementDoc, setManagementDocStatus, deleteManagementDoc,
-  resetAdvisorMemory,
+  resetAdvisorMemory, getManagementDocContent,
 } from '../../services/api'
 import { PageHeader, ResponsiveTable, Badge, Loading, EmptyState } from '../ui'
 import { toast } from '../toast'
@@ -16,6 +18,7 @@ export default function AsesoriaView() {
   const [busy, setBusy] = useState(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [viewDoc, setViewDoc] = useState(null)  // documento cuyo contenido se está viendo
   const fileInput = useRef(null)
 
   const load = () => {
@@ -90,9 +93,11 @@ export default function AsesoriaView() {
 
   const columns = [
     { key: 'filename', label: 'Documento', render: (r) => (
-      <span className="flex items-center gap-2 font-medium text-ink">
-        <FileText size={15} className="text-hilton-500" />{r.filename}
-      </span>
+      <button onClick={() => setViewDoc(r)} title="Ver contenido"
+              className="flex items-center gap-2 text-left font-medium text-ink transition hover:text-hilton-700">
+        <FileText size={15} className="text-hilton-500" />
+        <span className="underline-offset-2 hover:underline">{r.filename}</span>
+      </button>
     ) },
     { key: 'status', label: 'Estado', render: (r) => (
       <button onClick={() => toggle(r)} disabled={busy === r.filename} className="disabled:opacity-50">
@@ -102,28 +107,39 @@ export default function AsesoriaView() {
       </button>
     ) },
     { key: 'actions', label: '', render: (r) => (
-      <button onClick={() => remove(r)} disabled={busy === r.filename} title="Eliminar"
-              className="rounded-lg p-2 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
-        <Trash2 size={15} />
-      </button>
+      <div className="flex items-center justify-end gap-1">
+        <button onClick={() => setViewDoc(r)} title="Ver contenido"
+                className="rounded-lg p-2 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700">
+          <Eye size={15} />
+        </button>
+        <button onClick={() => remove(r)} disabled={busy === r.filename} title="Eliminar"
+                className="rounded-lg p-2 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+          <Trash2 size={15} />
+        </button>
+      </div>
     ) },
   ]
 
   const renderCard = (r) => (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span className="flex items-center gap-2 font-medium text-ink">
-          <FileText size={15} className="text-hilton-500" />{r.filename}
-        </span>
+        <button onClick={() => setViewDoc(r)} className="flex items-center gap-2 text-left font-medium text-ink hover:text-hilton-700">
+          <FileText size={15} className="text-hilton-500" /><span className="hover:underline">{r.filename}</span>
+        </button>
       </div>
       <div className="flex items-center justify-between">
         <button onClick={() => toggle(r)} disabled={busy === r.filename}>
           {r.status === 'active' ? <Badge tone="green">Activo</Badge> : <Badge tone="gray">Inactivo</Badge>}
         </button>
-        <button onClick={() => remove(r)} disabled={busy === r.filename}
-                className="rounded-lg p-2 text-slatey hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
-          <Trash2 size={15} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setViewDoc(r)} className="rounded-lg p-2 text-slatey hover:bg-hilton-50 hover:text-hilton-700">
+            <Eye size={15} />
+          </button>
+          <button onClick={() => remove(r)} disabled={busy === r.filename}
+                  className="rounded-lg p-2 text-slatey hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+            <Trash2 size={15} />
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -198,6 +214,58 @@ export default function AsesoriaView() {
           </div>
         </div>
       )}
+
+      {viewDoc && <DocViewerDrawer doc={viewDoc} onClose={() => setViewDoc(null)} />}
+    </div>
+  )
+}
+
+// Panel lateral que muestra el contenido del documento (reconstruido desde el RAG).
+// Renderiza Markdown con react-markdown; los .md se ven con su formato.
+function DocViewerDrawer({ doc, onClose }) {
+  const [content, setContent] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true); setError(false)
+    getManagementDocContent(doc.filename)
+      .then((d) => { if (alive) setContent(d.content || '') })
+      .catch(() => { if (alive) setError(true) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [doc.filename])
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <aside className="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-card-lg animate-slide-up">
+        <div className="flex items-start justify-between border-b border-mist px-5 py-4">
+          <div className="flex items-center gap-2">
+            <FileText size={18} className="text-hilton-500" />
+            <div>
+              <p className="font-serif text-base font-700 text-ink">{doc.filename}</p>
+              <p className="text-xs text-slatey">Material de entrenamiento del asesor</p>
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {loading ? (
+            <Loading label="Cargando documento…" />
+          ) : error ? (
+            <EmptyState icon={FileText} title="No se pudo cargar el contenido"
+                        desc="Probá de nuevo. Si el documento se subió como PDF escaneado (sin texto), puede no tener contenido legible." />
+          ) : (
+            <div className="prose-doc">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   )
 }

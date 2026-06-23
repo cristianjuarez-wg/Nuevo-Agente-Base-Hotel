@@ -266,6 +266,36 @@ class VectorStoreService:
                         error=str(e))
             raise
 
+    def get_document_content(self, filename: str) -> Dict:
+        """Reconstruye el texto completo de un documento desde sus chunks en Chroma.
+
+        Sirve para el viewer del backoffice: une los chunks en orden (chunk_index) sin
+        depender de que el archivo siga en disco. Funciona igual para PDF, Markdown y texto
+        pegado (todos se guardan como chunks con la misma metadata).
+        """
+        try:
+            results = self.collection.get(where={"source": filename})
+            docs = results.get("documents") or []
+            metas = results.get("metadatas") or []
+            if not docs:
+                return {"filename": filename, "content": "", "chunks": 0, "status": None}
+            # Ordenar por chunk_index para reconstruir el orden original del documento.
+            pairs = sorted(
+                zip(docs, metas),
+                key=lambda p: (p[1] or {}).get("chunk_index", 0),
+            )
+            content = "\n\n".join(text for text, _ in pairs if text)
+            status = (metas[0] or {}).get("status", "active") if metas else "active"
+            return {
+                "filename": filename,
+                "content": content,
+                "chunks": len(docs),
+                "status": status,
+            }
+        except Exception as e:
+            logger.error("Error getting document content", source=filename, error=str(e))
+            return {"filename": filename, "content": "", "chunks": 0, "status": None}
+
     def get_all_sources_with_status(self) -> List[Dict]:
         """Obtiene lista de documentos con su estado"""
         try:
