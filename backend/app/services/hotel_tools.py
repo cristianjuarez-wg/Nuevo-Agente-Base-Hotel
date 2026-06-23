@@ -898,13 +898,21 @@ def _handle_armar_pedido_carta(args: Dict, ctx: Dict) -> Dict:
 
 def _build_table_card(ctx: Dict, preset: Optional[Dict] = None) -> Dict:
     """Card selector de reserva de mesa para el chat (fecha + turno + personas)."""
+    db = ctx.get("db")
+    session_id = ctx.get("session_id")
+    # Si ya reservó en esta sesión, no le pedimos el código (se asocia por session_id).
+    # El preset del agente (franja/fecha/personas) tiene prioridad sobre el de la reserva.
+    merged = {}
+    if db is not None:
+        merged.update(restaurant_service.session_guest_preset(db, session_id))
+    merged.update(preset or {})
     return {
         "type": "table_reservation",
         "title": "Reservar una mesa",
         "description": "Elegí el día, el turno y cuántas personas.",
         "slots": restaurant_service.RESTAURANT_SLOTS,
-        "session_id": ctx.get("session_id"),
-        "preset": preset or {},
+        "session_id": session_id,
+        "preset": merged,
     }
 
 
@@ -942,6 +950,9 @@ def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
     turno = (args.get("turno") or args.get("hora") or "").strip()
     personas = args.get("personas") or 0
     nombre = (args.get("nombre") or "").strip()
+    # Pedido especial / ocasión (champán, cumpleaños, aniversario, alergias para la cena…).
+    # Se guarda en la reserva y llega al equipo del salón; no se pierde en el chat.
+    notas = (args.get("notas") or args.get("ocasion") or "").strip() or None
 
     # "El primer día de mi estadía" / "cuando llegue": si el huésped tiene una reserva (de esta
     # sesión o su contacto) y NO dio una fecha, usamos el CHECK-IN de su reserva como fecha de
@@ -968,6 +979,7 @@ def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
             "fecha": fecha or None,
             "personas": int(personas) if personas else None,
             "nombre": nombre or None,
+            "notas": notas,                    # pre-carga el pedido especial en el selector
         }
         if franja:
             preset["franja"] = franja          # preselecciona almuerzo/cena en el selector
@@ -993,6 +1005,7 @@ def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
         contact_id=contact.id if contact else None,
         booking_code=(args.get("codigo_reserva") or "").strip() or None,
         session_id=ctx.get("session_id"),
+        notes=notas,
         channel="web",
     )
     if "error" in result:

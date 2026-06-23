@@ -40,9 +40,14 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
   const [nombre, setNombre] = useState(preset.nombre || '')
   const [isGuest, setIsGuest] = useState(false)
   const [code, setCode] = useState('')
+  const [notas, setNotas] = useState(preset.notas || '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(null)
+
+  // Si el huésped ya reservó en esta sesión, el backend lo marca: no le pedimos el código
+  // (la mesa se asocia por session_id) y mostramos un aviso de reserva vinculada.
+  const guestLinked = !!preset.guest_linked
 
   const horarios = slots[franja] || []
 
@@ -56,8 +61,9 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
       const r = await createTableReservation({
         fecha, hora, party_size: personas,
         guest_name: nombre.trim(),
-        booking_code: isGuest && code.trim() ? code.trim().toUpperCase() : null,
+        booking_code: !guestLinked && isGuest && code.trim() ? code.trim().toUpperCase() : null,
         session_id: card.session_id || null,
+        notes: notas.trim() || null,
       })
       if (r?.error) { setError(r.error); setSaving(false); return }
       setDone(r)
@@ -135,15 +141,31 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
             className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100" />
         </label>
 
-        {/* ¿Alojado? → código de reserva opcional */}
-        <button onClick={() => setIsGuest((v) => !v)}
-          className="flex items-center gap-1.5 text-xs text-slatey hover:text-ink">
-          <BedDouble size={13} /> {isGuest ? t.tableGuestHide : t.tableGuestShow}
-        </button>
-        {isGuest && (
-          <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="HTL-XXXX"
-            className="w-full rounded-xl border border-hilton-200 px-2.5 py-2 text-sm uppercase focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+        {/* Reserva del huésped: si ya reservó en la sesión, está vinculada (no se pide código).
+            Si no, ofrecemos asociar manualmente con el código (visitante alojado de otra sesión). */}
+        {guestLinked ? (
+          <p className="flex items-center gap-1.5 text-xs text-forest-600">
+            <BedDouble size={13} /> {t.tableLinked}
+          </p>
+        ) : (
+          <>
+            <button onClick={() => setIsGuest((v) => !v)}
+              className="flex items-center gap-1.5 text-xs text-slatey hover:text-ink">
+              <BedDouble size={13} /> {isGuest ? t.tableGuestHide : t.tableGuestShow}
+            </button>
+            {isGuest && (
+              <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="HTL-XXXX"
+                className="w-full rounded-xl border border-hilton-200 px-2.5 py-2 text-sm uppercase focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+            )}
+          </>
         )}
+
+        {/* Pedido especial / ocasión → se guarda como nota y llega al equipo del salón. */}
+        <label className="block">
+          <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.tableNotes}</span>
+          <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} placeholder={t.tableNotesPh}
+            className="w-full resize-none rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+        </label>
 
         {error && <p className="text-xs text-red-600">{error}</p>}
 

@@ -52,10 +52,24 @@ function Stepper({ label, hint, value, set, min = 0, max = 9 }) {
  * Selector compacto de fechas + huéspedes dentro del chat (Fase 2).
  * Al confirmar, compone un mensaje en lenguaje natural y lo inyecta vía onAction.
  */
+// Si el backend sugiere un mes ('YYYY-MM'), arrancamos el check-in en una fecha de ese mes
+// para que el calendario ABRA ahí. Usamos el día 1, salvo que el mes sea el actual (entonces
+// hoy, para no quedar antes del min). El usuario puede cambiarlo libremente.
+function initialCheckIn(presetMonth) {
+  if (!presetMonth || !/^\d{4}-\d{2}$/.test(presetMonth)) return ''
+  const today = todayISO()
+  const firstOfMonth = `${presetMonth}-01`
+  return firstOfMonth < today ? today : firstOfMonth
+}
+
 export default function DatePickerCard({ card, onAction, lang = 'es' }) {
   const t = getStrings(lang)
-  const [checkIn, setCheckIn] = useState('')
-  const [checkOut, setCheckOut] = useState('')
+  const presetMonth = card?.preset?.month || null
+  const [checkIn, setCheckIn] = useState(() => initialCheckIn(presetMonth))
+  const [checkOut, setCheckOut] = useState(() => {
+    const ci = initialCheckIn(presetMonth)
+    return ci ? addDaysISO(ci, 2) : ''
+  })
   const [adults, setAdults] = useState(2)
   const [children, setChildren] = useState(0)
   const [infants, setInfants] = useState(0)

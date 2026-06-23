@@ -109,6 +109,7 @@ export default function ChatWidget() {
   const [lang, setLang] = useState(detectInitialLang)
   const [langMenu, setLangMenu] = useState(false)
   const scrollRef = useRef(null)
+  const anchorRef = useRef(null)  // ancla al inicio del último turno del usuario (para posicionar la vista)
   const inputRef = useRef(null)
   const sessionId = useRef(getSessionId())
   const typewriterRef = useRef(null)  // timer del efecto de tipeo (para poder cancelarlo)
@@ -151,9 +152,27 @@ export default function ChatWidget() {
     if (open && !greeted) loadGreeting()
   }, [open, greeted, loadGreeting])
 
-  // Autoscroll al último mensaje
+  // Posicionar la vista al COMIENZO del último turno del usuario cuando manda un mensaje.
+  // Así la respuesta de Aura (texto + cards) se revela debajo y se lee desde arriba, sin
+  // saltar al fondo (antes el scroll iba a scrollHeight y había que subir con respuestas largas).
+  const userMsgCount = messages.filter((m) => m.role === 'user').length
+  const lastUserIndex = messages.map((m) => m.role).lastIndexOf('user')
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    if (anchorRef.current) {
+      anchorRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    } else {
+      // Sin ancla (ej. solo el saludo): mantené la vista al final.
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }
+  }, [userMsgCount])
+
+  // Mientras Aura escribe, seguí el final SOLO si el usuario ya está cerca del fondo (no lo
+  // arrancamos de la lectura si subió). El ancla de arriba gobierna la posición principal.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !busy) return
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    if (nearBottom) el.scrollTo({ top: el.scrollHeight })
   }, [messages, busy])
 
   // Auto-resize del textarea: crece con el contenido (hasta max-h, luego scrollea).
@@ -405,8 +424,12 @@ export default function ChatWidget() {
           <div className="relative flex-1 overflow-hidden bg-white">
             <ChatEffects effect={theme?.effect} />
             <div ref={scrollRef} className="relative z-[1] h-full space-y-3 overflow-y-auto px-4 py-4">
-            {messages.map((m, i) => (
-              <div key={i} className="space-y-2.5">
+            {messages.map((m, i) => {
+              // El último mensaje del usuario es el ancla: al enviarlo, la vista se posiciona
+              // con ese turno arriba, para leer la respuesta de Aura desde el comienzo.
+              const isLastUser = m.role === 'user' && i === lastUserIndex
+              return (
+              <div key={i} ref={isLastUser ? anchorRef : null} className="space-y-2.5">
                 <Bubble role={m.role} accentColor={theme?.accent_color} bubbleBg={theme?.bubble_bg}>{m.content}</Bubble>
                 {m.cards?.length > 0 && (
                   <div className="space-y-2.5">
@@ -426,7 +449,8 @@ export default function ChatWidget() {
                   </div>
                 )}
               </div>
-            ))}
+              )
+            })}
 
             {waiting && (
               <div className="flex justify-start">

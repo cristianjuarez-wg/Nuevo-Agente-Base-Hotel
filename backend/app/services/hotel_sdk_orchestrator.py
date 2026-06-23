@@ -342,7 +342,7 @@ async def registrar_pedido(ctx: RunContextWrapper[HotelContext], order_code: str
 async def reservar_mesa(
     ctx: RunContextWrapper[HotelContext],
     fecha: str = "", turno: str = "", personas: int = 0, nombre: str = "",
-    codigo_reserva: str = "",
+    codigo_reserva: str = "", notas: str = "",
 ) -> str:
     """Reserva una MESA del restaurante (no es pedir comida ahora). Úsala cuando quieran
     reservar mesa para un día. La interfaz muestra un selector de día, turno y personas — NO
@@ -353,12 +353,15 @@ async def reservar_mesa(
     huésped alude a SU estadía ("el primer día", "cuando llegue", "mi primera noche", "el día
     que llego"), NO le pidas la fecha ni asumas hoy: dejá `fecha` VACÍA y el sistema usará el
     check-in de su reserva. Si el huésped está alojado/tiene reserva podés pasar su
-    `codigo_reserva` (HTL-XXXX) para asociarla. NO la confundas con `consultar_disponibilidad`
-    (reservar habitación) ni con `ver_carta` (pedir comida)."""
+    `codigo_reserva` (HTL-XXXX) para asociarla. Si menciona una OCASIÓN o pedido especial
+    (cumpleaños, aniversario, "que los reciban con champán", una alergia para esa cena), pasalo
+    en `notas` tal cual lo dijo: queda guardado en la reserva y el equipo del salón lo tiene en
+    cuenta. NO la confundas con `consultar_disponibilidad` (reservar habitación) ni con
+    `ver_carta` (pedir comida)."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool("reservar_mesa", {
         "fecha": fecha, "turno": turno, "personas": personas,
-        "nombre": nombre, "codigo_reserva": codigo_reserva,
+        "nombre": nombre, "codigo_reserva": codigo_reserva, "notas": notas,
     }, tool_ctx)
     ctx.context.absorb(tool_ctx)
     return result.get("tool_result", "")

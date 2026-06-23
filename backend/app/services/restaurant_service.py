@@ -116,6 +116,26 @@ def _resolve_active_booking(db: Session, contact_id: Optional[int], session_id: 
     return None
 
 
+def session_guest_preset(db: Session, session_id: Optional[str]) -> Dict:
+    """Preset para la card de mesa cuando el huésped YA reservó en ESTA sesión web.
+
+    Si hay una reserva (no cancelada) creada en la sesión, devuelve su nombre y un flag
+    `guest_linked` para que la card no le pida el código (el backend asocia la mesa por
+    session_id). Si no hay, devuelve {} y la card se comporta como hasta ahora (visitante).
+    """
+    if not session_id or session_id.startswith("wa_"):
+        return {}
+    booking = (
+        db.query(Booking)
+        .filter(Booking.session_id == session_id, Booking.status != "cancelled")
+        .order_by(Booking.created_at.desc())
+        .first()
+    )
+    if not booking:
+        return {}
+    return {"guest_linked": True, "nombre": booking.guest_name or None}
+
+
 def validate_booking(db: Session, code: str) -> Dict:
     """Valida un código de reserva para habilitar el room charge.
 

@@ -81,11 +81,16 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 _ROOM_FALLBACK_IMG = "/fotos/habitacion-vista-lago.jpg"
 
 
-def _date_picker_card() -> dict:
-    """Tarjeta de selección de fechas + huéspedes que el front renderiza como controles."""
+def _date_picker_card(suggested_month: str | None = None) -> dict:
+    """Tarjeta de selección de fechas + huéspedes que el front renderiza como controles.
+
+    `suggested_month` ('YYYY-MM') hace que el picker ABRA en ese mes si el huésped lo mencionó.
+    """
     return {
         "type": "date_picker",
         "title": "Elegí las fechas de tu estadía",
+        # El front usa esto para abrir el calendario en el mes mencionado (si lo hay).
+        "preset": {"month": suggested_month} if suggested_month else {},
         "action": {
             "kind": "send_message",
             "label": "Ver disponibilidad",
@@ -194,7 +199,8 @@ def _build_table_card_fallback(db, session_id: str) -> dict:
         "description": "Elegí el día, el turno y cuántas personas.",
         "slots": restaurant_service.RESTAURANT_SLOTS,
         "session_id": session_id,
-        "preset": {},
+        # Si ya reservó en esta sesión, la card no le pide el código (se asocia por session_id).
+        "preset": restaurant_service.session_guest_preset(db, session_id),
     }
 
 
@@ -254,6 +260,36 @@ def _dates_already_given(user_message: str, history: list) -> bool:
             blobs.append(m.get("content") or "")
     text = " ".join(blobs).lower()
     return any(p.search(text) for p in _DATE_GIVEN_PATTERNS)
+
+
+# Meses en español (nombre completo) → número. Para posicionar el date picker en el mes que
+# el huésped mencionó ("alojarme en septiembre").
+_MESES = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6,
+    "julio": 7, "agosto": 8, "septiembre": 9, "setiembre": 9, "octubre": 10,
+    "noviembre": 11, "diciembre": 12,
+}
+_MES_PATTERN = _re_dates.compile(
+    r"\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
+    _re_dates.I,
+)
+
+
+def _suggested_month(user_message: str) -> str | None:
+    """Si el mensaje menciona un mes, devuelve 'YYYY-MM' de la PRÓXIMA ocurrencia de ese mes.
+
+    Si el mes ya pasó este año (o es el mes actual), usa el año siguiente, para que el picker
+    abra en una fecha futura coherente con una estadía. None si no se menciona ningún mes.
+    """
+    if not user_message:
+        return None
+    m = _MES_PATTERN.search(user_message)
+    if not m:
+        return None
+    mes = _MESES[m.group(1).lower()]
+    hoy = datetime.now()
+    anio = hoy.year if mes > hoy.month else hoy.year + 1
+    return f"{anio:04d}-{mes:02d}"
 
 
 def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool,
@@ -461,7 +497,7 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                                         chat_request.message,
                                         agent_service.conversation_history.get(chat_request.session_id, []),
                                     )):
-            cards = [_date_picker_card()]
+            cards = [_date_picker_card(_suggested_month(chat_request.message))]
 
         # Fallback determinístico: el usuario quiere reservar mesa pero el LLM no llamó la tool.
         elif _should_offer_table(chat_request.message,

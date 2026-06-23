@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CalendarClock, RefreshCw, Users, BedDouble, Store, Check, X } from 'lucide-react'
+import { CalendarClock, RefreshCw, Users, BedDouble, Store, Check, X, Sparkles } from 'lucide-react'
 import { listTableReservations, patchTableReservationStatus } from '../../../services/api'
 import { PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDateTime } from '../../ui'
 import { toast } from '../../toast'
@@ -67,6 +67,11 @@ export default function ReservationsView() {
     { key: 'guest_name', label: 'A nombre de', render: (r) => r.guest_name || '—' },
     { key: 'party_size', label: 'Personas', render: (r) => <span className="inline-flex items-center gap-1 tabular-nums text-ink"><Users size={13} className="text-slatey" /> {r.party_size}</span> },
     { key: 'origin', label: 'Origen', render: (r) => <OriginCell r={r} /> },
+    { key: 'notes', label: 'Pedido especial', render: (r) => (
+      r.notes
+        ? <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Sparkles size={13} className="shrink-0" /> {r.notes}</span>
+        : <span className="text-xs text-slatey">—</span>
+    ) },
     { key: 'code', label: 'Código', render: (r) => <span className="font-semibold text-hilton-700">{r.code}</span> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'actions', label: '', render: (r) => <Actions r={r} /> },
@@ -84,6 +89,9 @@ export default function ReservationsView() {
         <OriginCell r={r} />
         <span className="font-semibold text-hilton-700">{r.code}</span>
       </div>
+      {r.notes && (
+        <p className="mt-1.5 inline-flex items-start gap-1 text-xs text-amber-700"><Sparkles size={13} className="mt-0.5 shrink-0" /> {r.notes}</p>
+      )}
       <div className="mt-2"><Actions r={r} /></div>
     </div>
   )

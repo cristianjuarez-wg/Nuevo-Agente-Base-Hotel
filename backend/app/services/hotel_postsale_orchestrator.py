@@ -303,18 +303,21 @@ async def ver_carta(ctx: RunContextWrapper[HotelPostventaContext], categoria: st
 async def reservar_mesa(
     ctx: RunContextWrapper[HotelPostventaContext],
     fecha: str = "", turno: str = "", personas: int = 0, nombre: str = "",
+    notas: str = "",
 ) -> str:
     """Reserva una MESA del restaurante para el huésped. El restaurante tiene turnos ALMUERZO
     y CENA; pasá turno="cena"/"almuerzo" (no "noche"). Si el huésped alude a SU estadía ("el
     primer día", "cuando llegue"), dejá `fecha` VACÍA: se usa el check-in de su reserva. El
-    horario puntual lo elige en el selector."""
+    horario puntual lo elige en el selector. Si menciona una OCASIÓN o pedido especial
+    (cumpleaños, aniversario, recibir con champán, una alergia para esa cena), pasalo en `notas`:
+    queda guardado en la reserva y el equipo del salón lo tiene en cuenta."""
     from app.services.hotel_tools import execute_tool
     tc = ctx.context.restaurant_tool_ctx()
     # Asociar a su reserva por defecto.
     codigo = getattr(ctx.context.booking, "code", "") or ""
     result = await execute_tool("reservar_mesa", {
         "fecha": fecha, "turno": turno, "personas": personas,
-        "nombre": nombre, "codigo_reserva": codigo,
+        "nombre": nombre, "codigo_reserva": codigo, "notas": notas,
     }, tc)
     ctx.context.absorb_restaurant(tc)
     return result.get("tool_result", "")
