@@ -84,6 +84,19 @@ export async function updateLead(leadId, fields) {
   return data
 }
 
+// Kanban de leads: tablero por etapa (new / contacted / won / lost).
+export async function getKanbanLeads() {
+  const { data } = await client.get('/api/kanban/leads')
+  // { success, data: { new, contacted, won, lost }, stats }
+  return { columns: data.data ?? {}, stats: data.stats ?? null }
+}
+
+export async function moveLeadStage(leadId, stage) {
+  // stage ∈ new | contacted | won | lost. Sincroniza el status interno en el backend.
+  const { data } = await client.put(`/api/kanban/leads/${leadId}/stage`, { stage })
+  return data
+}
+
 export async function listTickets() {
   const { data } = await client.get('/api/hotel-tickets')
   return data.tickets ?? data

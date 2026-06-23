@@ -74,6 +74,11 @@ class KanbanService:
             "has_contact": lead.is_complete_lead(),
             "contact_readiness": lead.contact_readiness,
             "kanban_stage": lead.kanban_stage,
+            "channel": lead.channel,
+            "whatsapp_linked": (
+                lead.channel == "whatsapp"
+                or str(lead.session_id or "").startswith("wa_")
+            ),
             "created_at": lead.created_at.isoformat() if lead.created_at else None
         }
     
@@ -126,7 +131,20 @@ class KanbanService:
             
             old_stage = lead.kanban_stage
             lead.update_kanban_stage(new_stage)
-            
+
+            # Sincronizar el status interno con la etapa del tablero, para que las métricas
+            # y la vista de lista sean coherentes con el kanban. won→convertido, lost→inactivo,
+            # nuevo/contactado→activo. (kanban_stage y status eran independientes hasta acá.)
+            _STAGE_TO_STATUS = {
+                "won": "converted",
+                "lost": "inactive",
+                "new": "active",
+                "contacted": "active",
+            }
+            new_status = _STAGE_TO_STATUS.get(new_stage)
+            if new_status:
+                lead.status = new_status
+
             db.commit()
             
             logger.info("Lead stage updated",

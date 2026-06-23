@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2, MessageCircle } from 'lucide-react'
+import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2, MessageCircle, List, LayoutGrid } from 'lucide-react'
 import { listLeads, deleteLead, updateLead } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, WhatsAppDot,
@@ -8,6 +8,7 @@ import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
 import { useTableControls } from '../hooks/useTableControls'
+import KanbanBoard from './KanbanBoard'
 
 const TYPE_FILTERS = [
   { id: 'all', label: 'Todos' },
@@ -16,13 +17,13 @@ const TYPE_FILTERS = [
   { id: 'FRIO', label: 'Fríos' },
 ]
 
-function TypeBadge({ type }) {
+export function TypeBadge({ type }) {
   const t = (type || '').toUpperCase()
   const map = { CALIENTE: 'red', TIBIO: 'amber', FRIO: 'blue' }
   return <Badge tone={map[t] || 'gray'}>{t || '—'}</Badge>
 }
 
-function ScoreBar({ score }) {
+export function ScoreBar({ score }) {
   const s = Number(score) || 0
   return (
     <div className="flex items-center gap-2">
@@ -65,6 +66,7 @@ export default function LeadsView() {
   const [deletingId, setDeletingId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [showAll, setShowAll] = useState(false)  // false = solo calificados (con nombre)
+  const [viewMode, setViewMode] = useState('list')  // 'list' | 'board'
   const [editLead, setEditLead] = useState(null)
 
   const load = (includeUnnamed = showAll) => {
@@ -184,7 +186,30 @@ export default function LeadsView() {
           </button>
         }
       />
-      {loading ? (
+
+      {/* Toggle Lista / Tablero (kanban) */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => setViewMode('list')}
+          className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
+            viewMode === 'list' ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+          }`}
+        >
+          <List size={13} /> Lista
+        </button>
+        <button
+          onClick={() => setViewMode('board')}
+          className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
+            viewMode === 'board' ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+          }`}
+        >
+          <LayoutGrid size={13} /> Tablero
+        </button>
+      </div>
+
+      {viewMode === 'board' ? (
+        <KanbanBoard />
+      ) : loading ? (
         <Loading />
       ) : rows.length === 0 ? (
         <EmptyState icon={UserPlus} title="Aún no hay leads" desc="Cuando el agente capte interesados, aparecerán acá." />
