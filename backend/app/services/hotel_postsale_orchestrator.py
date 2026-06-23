@@ -54,6 +54,7 @@ class HotelPostventaContext:
         self.history = history
         self.escalation_analysis = None  # lo escribe analizar_escalacion
         self.service_requested = False   # lo marca solicitar_servicio (no re-tocar el ticket)
+        self.room_photos_card = None     # lo setea ver_fotos_habitacion (card para el chat)
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +150,41 @@ async def solicitar_servicio(
                 "ofrecele contactar a recepción al +54 294-474-6200.")
 
 
-_TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio]
+@function_tool
+async def ver_fotos_habitacion(ctx: RunContextWrapper[HotelPostventaContext]) -> str:
+    """Muestra al huésped las fotos de la habitación que YA reservó. Úsala cuando pida ver
+    fotos/imágenes de su habitación. La interfaz las muestra como una tarjeta visual en el
+    chat; vos solo confirmá con calidez. NO digas que no tenés acceso a imágenes."""
+    context = ctx.context
+    booking = context.booking
+    room_type = getattr(booking, "room_type", None) or (
+        booking.room.room_type if getattr(booking, "room", None) else None
+    )
+    try:
+        from app.models.hotel import Room
+        db = context.service.db
+        room = db.query(Room).filter(Room.room_type == room_type).first() if room_type else None
+        images = (room.images or []) if room else []
+        if not images:
+            return ("No tengo fotos cargadas de esa habitación ahora mismo. Podés verla en el "
+                    "sitio del hotel; si querés te paso el dato de recepción para más imágenes.")
+        context.room_photos_card = {
+            "type": "room_photos",
+            "title": f"Habitación {room_type}",
+            "description": room.description or "",
+            "images": images,
+            "bed_config": room.bed_config,
+            "view": room.view,
+        }
+        return ("Le mostré las fotos de su habitación en el chat (tarjeta con imágenes). "
+                "Confirmá con calidez y ofrecé ayuda con cualquier otra cosa de su estadía.")
+    except Exception as e:  # noqa: BLE001
+        logger.error("ver_fotos_habitacion falló", error=str(e))
+        return ("No pude cargar las fotos ahora. Ofrecele disculpas y sugerile ver la "
+                "habitación en el sitio del hotel.")
+
+
+_TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio, ver_fotos_habitacion]
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +337,7 @@ class HotelPostSaleSDKOrchestrator:
             "can_auto_resolve": not requires_escalation,
             "tools_used": tools_used,
             "tool_trace": tool_trace,
+            "room_photos_card": run_ctx.room_photos_card,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,
         }

@@ -141,7 +141,10 @@ def _should_offer_menu(user_message: str, tools_used: list, has_other_cards: boo
     """
     if has_other_cards:
         return False
-    if context_type == "postsale":
+    # En charla casual o post-venta NUNCA se ofrece la carta como fallback: solo aplica en
+    # pre-venta cuando el huésped realmente pide comida. (Evita falsos positivos como "página"
+    # matcheando "gin" del trago "Gin Athos" en medio de una charla informal.)
+    if context_type in ("casual", "postsale"):
         return False
     if any(t in (tools_used or []) for t in _MENU_TOOLS):
         return False
@@ -433,7 +436,11 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         promo_offer = result.get("promo_offer")
         menu_card = result.get("menu_card")
         table_card = result.get("table_card")
-        if promo_offer:
+        room_photos_card = result.get("room_photos_card")
+        if room_photos_card:
+            # Post-venta: el huésped pidió ver las fotos de la habitación que reservó.
+            cards = [room_photos_card]
+        elif promo_offer:
             cards = [_build_promo_card(promo_offer)]
 
         # Si se mostró la carta del restaurante, agregamos su card con el botón al carrito.

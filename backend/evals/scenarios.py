@@ -188,6 +188,68 @@ SCENARIOS = [
         ],
     },
     {
+        "id": "S18",
+        "name": "Post-venta tras reservar: no re-pedir código + acciones reales",
+        "turns": [
+            {"user": f"Reservá la Twin del {CI} al {CO} para 2 adultos. Soy Raúl Tarufetti, tel 3415612451, mail wg@wigou.co.",
+             "expect": {"tool_called": "crear_reserva", "response_contains": ["HTL-"]}},
+            {"user": "¿qué puedo hacer con este código?",
+             # No debe re-pedir el código (lo creó en la sesión) ni prometer autoservicio falso.
+             "expect": {"response_not_contains": ["formato HTL-XXXX", "check-in rápido",
+                                                  "check in rápido", "modificar la reserva online",
+                                                  "cancelar online"]}},
+        ],
+    },
+    {
+        "id": "S19",
+        "name": "Post-venta: servicios sin inventar (no sauna/spa)",
+        "tool_called_any": True,  # con que llame UNA tool de info (consultar_info_hotel o info_hotel)
+        "turns": [
+            {"user": f"Reservá la King del {CI} al {CO} para 2 adultos. Soy Ana Gómez, tel 1166667777.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "qué servicios adicionales tengo?",
+             # Debe consultar info (post-venta usa consultar_info_hotel; pre-venta usa info_hotel)
+             # y NUNCA inventar spa/sauna. (palabra completa: "spa" no debe matchear "espacio")
+             "expect": {"tool_called": ["consultar_info_hotel", "info_hotel"],
+                        "response_not_contains_word": ["sauna", "spa"]}},
+        ],
+    },
+    {
+        "id": "S20",
+        "name": "Post-venta: pedir un servicio inexistente (sauna) — honestidad sin contradicción",
+        "tool_called_any": True,  # el T1 es setup: vale consultar disp o reservar directo
+        "turns": [
+            {"user": f"Reservá la King del {CI} al {CO} para 2 adultos. Soy Leo Díaz, tel 1144445555.",
+             "expect": {"tool_called": ["crear_reserva", "consultar_disponibilidad"]}},
+            {"user": "quiero reservar un turno en el sauna",
+             # Debe ser honesta: NO confirmar un sauna que no existe (puede nombrarlo para negarlo).
+             "expect": {"response_not_contains": ["te reservo el sauna", "turno de sauna confirmado",
+                                                  "reservé tu turno", "tu turno de sauna"]}},
+        ],
+    },
+    {
+        "id": "S21",
+        "name": "Post-venta: fotos de la habitación reservada (muestra card)",
+        "turns": [
+            {"user": f"Reservá la Twin del {CI} al {CO} para 2 adultos. Soy Sol Ruiz, tel 1155556666.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "me mostrás fotos de la habitación que reservé?",
+             "expect": {"tool_called": "ver_fotos_habitacion", "card": "room_photos",
+                        "response_not_contains": ["no tengo acceso a imágenes",
+                                                  "no tengo acceso a fotos"]}},
+        ],
+    },
+    {
+        "id": "S17",
+        "name": "Charla casual NO dispara la carta (página≠gin Athos)",
+        "turns": [
+            {"user": "Holala, qué tal todo por Bariloche? mucho frío?",
+             "expect": {"route": "casual", "no_card": "menu_interactive"}},
+            {"user": "Bien, en una call de trabajo. Trabajo en Wigou, te paso la página web?",
+             "expect": {"route": "casual", "no_card": "menu_interactive"}},
+        ],
+    },
+    {
         "id": "S16",
         "name": "Familia + llegada al aeropuerto: traslado verificado con tool (no de memoria)",
         "turns": [

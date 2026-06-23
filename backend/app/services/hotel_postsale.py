@@ -52,6 +52,19 @@ class HotelPostSaleService:
             .first()
         )
 
+    def _find_booking_by_session(self, session_id: str) -> Optional[Booking]:
+        """Reserva creada en ESTA sesión web (la última no cancelada). Permite reconocer al
+        huésped que acaba de reservar en la misma charla, sin pedirle de nuevo el código que
+        el sistema le entregó hace un par de turnos."""
+        if not session_id:
+            return None
+        return (
+            self.db.query(Booking)
+            .filter(Booking.session_id == session_id, Booking.status != "cancelled")
+            .order_by(Booking.created_at.desc())
+            .first()
+        )
+
     def _find_booking_by_phone(self, phone: str) -> Optional[Booking]:
         """Reserva activa o futura más cercana de un teléfono (para huéspedes de WhatsApp,
         ya identificados por su número). Resuelve el contacto con el match tolerante de
@@ -84,13 +97,15 @@ class HotelPostSaleService:
         """Valida que el usuario tenga una reserva. Busca el código en el mensaje y,
         si no está, en el historial reciente."""
         code = _extract_booking_code(message)
+        # Buscar el código en el historial: tanto en lo que escribió el usuario como en lo que
+        # respondió Aura (ej. "¡Reserva confirmada! Código HTL-XXXX" de un crear_reserva en esta
+        # misma charla). Así no le re-pedimos un código que el sistema acaba de entregar.
         if not code and history:
             for msg in reversed(history):
-                if msg.get("role") == "user":
-                    prev = _extract_booking_code(msg.get("content", ""))
-                    if prev:
-                        code = prev
-                        break
+                prev = _extract_booking_code(msg.get("content", ""))
+                if prev:
+                    code = prev
+                    break
 
         # WhatsApp: ya identificamos al huésped por su teléfono (el session_id es wa_<phone>).
         # Si no tipeó el código pero tiene una reserva vigente, la usamos directo —no le pedimos
@@ -98,6 +113,12 @@ class HotelPostSaleService:
         # que este atajo es solo para huéspedes.)
         if not code and (session_id or "").startswith("wa_"):
             booking = self._find_booking_by_phone("+" + session_id[3:])
+            if booking:
+                return {"valid": True, "booking": booking, "code": booking.code}
+
+        # Web: si reservó en ESTA sesión, reconocemos su reserva sin pedir el código de nuevo.
+        if not code:
+            booking = self._find_booking_by_session(session_id)
             if booking:
                 return {"valid": True, "booking": booking, "code": booking.code}
 

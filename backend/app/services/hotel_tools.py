@@ -772,10 +772,14 @@ def _match_menu_items(texto: str, menu: list) -> Dict[str, list]:
             continue
         words = [w for w in _re.split(r"[\s()]+", name) if len(w) >= 4 and w not in _GENERIC]
         # Match por la palabra ANCLA: la más larga y distintiva del nombre (ej. "provenzal",
-        # "napolitana", "capuccino", "bolognesa"). Si aparece en el texto, es el plato. Es
-        # conservador: ante ambigüedad no matchea y el agente muestra la carta para elegir.
-        anchor = max(words, key=len) if words else (name.split()[0] if name.split() else "")
-        hit = name in t or (anchor and anchor in t)
+        # "napolitana", "capuccino", "bolognesa"). Si NO hay una palabra distintiva (todas
+        # cortas o genéricas, ej. "Gin Athos Bariloche"), NO usamos ancla: solo matchea por
+        # nombre completo. Así evitamos que "gin" pegue dentro de "página"/"imagina".
+        anchor = max(words, key=len) if words else ""
+        # El ancla matchea por PALABRA COMPLETA (\b), no substring: "napolitana" sí matchea
+        # "napolitanas" (plural) pero "gin" no matchea "página".
+        anchor_hit = bool(anchor) and _re.search(rf"\b{_re.escape(anchor)}", t) is not None
+        hit = name in t or anchor_hit
         if hit:
             # Cantidad: "2 napolitanas" / "2x …" → 2; por defecto 1.
             qty = 1

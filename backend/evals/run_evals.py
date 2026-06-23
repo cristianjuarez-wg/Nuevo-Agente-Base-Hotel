@@ -42,7 +42,10 @@ def _build_cards(result: dict, user_message: str, session_id: str, db) -> list:
     promo_offer = result.get("promo_offer")
     menu_card = result.get("menu_card")
     table_card = result.get("table_card")
-    if promo_offer:
+    room_photos_card = result.get("room_photos_card")
+    if room_photos_card:
+        cards = [room_photos_card]
+    elif promo_offer:
         cards = [chat_router._build_promo_card(promo_offer)]
     elif menu_card:
         cards = [menu_card]
@@ -155,6 +158,13 @@ def _check_turn(expect: dict, route: str, tools: list, cards: list, response: st
             if s.lower() in resp_low:
                 fails.append(f"la respuesta contiene lo prohibido {s!r}")
 
+    # Igual que el anterior pero por PALABRA COMPLETA (\b): para términos cortos como
+    # "spa"/"sauna" que darían falso positivo por substring (espacio, español, huéspedes).
+    if "response_not_contains_word" in expect:
+        for s in _as_list(expect["response_not_contains_word"]):
+            if re.search(rf"\b{re.escape(s.lower())}\b", resp_low):
+                fails.append(f"la respuesta menciona (palabra) lo prohibido {s!r}")
+
     # Precio anti-alucinación: cualquier "USD X" mencionado debe ser uno de los que devolvieron
     # las tools de precio en el escenario. Un monto que la tool nunca dio = precio inventado.
     if expect.get("price_from_tool"):
@@ -192,7 +202,44 @@ async def _run_scenario(sc: dict) -> dict:
             })
     finally:
         db.close()
-    return {"id": sc["id"], "name": sc["name"], "turns": turn_results}
+    return {"id": sc["id"], "name": sc["name"], "session_id": session_id, "turns": turn_results}
+
+
+def _cleanup(session_ids: list) -> None:
+    """Borra los datos que los evals crearon (reservas, mesas, tickets, leads) por session_id.
+
+    Los evals corren contra la DB real y crean reservas reales; sin esta limpieza, cada corrida
+    satura el inventario (ej. la habitación accesible tiene 2 plazas) y ensucia la base. Best-effort.
+    """
+    if not session_ids:
+        return
+    db = SessionLocal()
+    try:
+        from app.models.hotel import Booking, HotelTicket
+        from app.models.lead import Lead
+        deleted = 0
+        for sid in session_ids:
+            for Model in (Booking, HotelTicket, Lead):
+                try:
+                    n = db.query(Model).filter(Model.session_id == sid).delete(synchronize_session=False)
+                    deleted += n or 0
+                except Exception:
+                    db.rollback()
+            # Reservas de mesa (si el modelo existe)
+            try:
+                from app.models.restaurant import TableReservation
+                db.query(TableReservation).filter(
+                    TableReservation.session_id == sid
+                ).delete(synchronize_session=False)
+            except Exception:
+                db.rollback()
+        db.commit()
+        print(f"\n🧹 Limpieza: {deleted} registros de eval borrados ({len(session_ids)} sesiones).")
+    except Exception as e:  # noqa: BLE001
+        db.rollback()
+        print(f"\n⚠ Limpieza falló (no crítico): {e}")
+    finally:
+        db.close()
 
 
 def _print_report(reports: list) -> int:
@@ -235,6 +282,9 @@ async def _main_async(selected):
         reports.append(await _run_scenario(sc))
     rc = _print_report(reports)
     print(f"\nTiempo total: {time.time()-t0:.1f}s")
+    # Limpiar lo que crearon los evals (reservas/mesas/tickets/leads) para que la corrida sea
+    # repetible y no sature el inventario de la DB real.
+    _cleanup([r["session_id"] for r in reports])
     return rc
 
 

@@ -16,6 +16,15 @@ python -m evals.run_evals -s S5 -s S6
 python -m evals.run_evals --list     # ver los escenarios
 ```
 
+> **Limpieza automática**: al terminar, el runner borra las reservas/mesas/tickets/leads que
+> creó (por `session_id`), para que cada corrida sea repetible. Si interrumpís la corrida a la
+> mitad, puede quedar data de eval; volvé a correr para que limpie, o borrá por `session_id`
+> con prefijo `web-eval`. Nota: la limpieza es AL FINAL, no entre escenarios — en una corrida
+> completa larga, varias reservas conviven y pueden saturar una habitación de pocas plazas
+> (ej. la accesible tiene 2), lo que ocasionalmente hace que un escenario de precios/cards
+> falle de forma espuria. Si un escenario falla en la suite completa pero pasa con `-s SXX`
+> aislado, es esto, no un bug del agente.
+
 Requiere `OPENAI_API_KEY` y la DB de desarrollo sembrada (habitaciones, carta, promos).
 **Gasta OpenAI** y escribe datos demo (leads/reservas de prueba) en la DB — por eso es
 on-demand, no parte de `pytest` ni de CI.
