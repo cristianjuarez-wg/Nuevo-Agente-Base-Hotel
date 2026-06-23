@@ -747,7 +747,10 @@ def _match_menu_items(texto: str, menu: list) -> Dict[str, list]:
     # Palabras genéricas que NO distinguen un plato (aparecen en muchos): evitan falsos
     # positivos como "2 pintas Patagonia" matcheando todas las cervezas "… Patagonia".
     _GENERIC = {"patagonia", "lata", "casa", "plato", "clasico", "clásico", "patagonico",
-                "patagónico", "artesanal", "especial", "guarnición", "guarnicion"}
+                "patagónico", "artesanal", "especial", "guarnición", "guarnicion",
+                # Marcas/lugares que aparecen en nombres de productos y no distinguen un
+                # plato (ej. "Gin Athos Bariloche"): evitan matchear un saludo que los nombra.
+                "bariloche", "athos", "hampton", "plaza"}
     matched = []
     for m in menu:
         name = (m.get("name") or "").lower()

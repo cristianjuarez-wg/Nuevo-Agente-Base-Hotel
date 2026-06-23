@@ -161,7 +161,7 @@ def _should_offer_table(user_message: str, tools_used: list, has_other_cards: bo
     agente no llamó `reservar_mesa` ni hay otra card, igual mostramos el selector."""
     if has_other_cards:
         return False
-    if context_type == "postsale":
+    if context_type in ("postsale", "casual"):
         return False
     if "reservar_mesa" in (tools_used or []):
         return False
