@@ -217,9 +217,15 @@ async def update_contact(contact_id: int, payload: ContactFieldsUpdate, db: Sess
 async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     """Elimina un contacto (pasajero / lead-identidad) del backoffice.
 
-    Para no romper integridad referencial, primero desvincula sus registros
-    relacionados (reservas, leads, conversaciones, paquetes) poniendo su
-    contact_id en NULL, y luego borra el contacto.
+    Reservas y leads se CONSERVAN despersonalizados (contact_id → NULL): son
+    históricos de negocio. En cambio, las CONVERSACIONES (el hilo de chat/WhatsApp)
+    se BORRAN por completo, junto con sus mensajes.
+
+    Por qué borrar la conversación y no solo desvincularla: el session_id de WhatsApp
+    se deriva del teléfono ("wa_<tel>"), y el historial se rehidrata por session_id, no
+    por contact_id. Si solo se desvinculara, al reasignar ese teléfono a otro contacto
+    el agente seguiría trayendo el historial del contacto borrado. Además limpiamos el
+    cache en RAM del agente para esos session_id (ver más abajo).
     """
     from app.models.contact import Contact
     from app.models.hotel import Booking
@@ -230,16 +236,24 @@ async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     if not contact:
         raise HTTPException(status_code=404, detail="Contacto no encontrado")
 
-    # Desvincular dependencias (no borramos su historial, solo lo despersonalizamos).
+    # Desvincular reservas y leads (históricos de negocio: se conservan despersonalizados).
     db.query(Booking).filter(Booking.contact_id == contact_id).update(
         {Booking.contact_id: None}, synchronize_session=False
     )
     db.query(Lead).filter(Lead.contact_id == contact_id).update(
         {Lead.contact_id: None}, synchronize_session=False
     )
-    db.query(Conversation).filter(Conversation.contact_id == contact_id).update(
-        {Conversation.contact_id: None}, synchronize_session=False
-    )
+
+    # Borrar las conversaciones del contacto (con sus mensajes en cascada). Iteramos y
+    # usamos db.delete(conv) — NO un query().delete() masivo — para que se dispare el
+    # cascade="all, delete-orphan" del modelo y se borren los ConversationMessage.
+    # Guardamos los session_id para limpiar después el cache en RAM del agente.
+    conversations = db.query(Conversation).filter(
+        Conversation.contact_id == contact_id
+    ).all()
+    deleted_session_ids = [c.session_id for c in conversations if c.session_id]
+    for conv in conversations:
+        db.delete(conv)
     try:
         from app.models.postsale import SoldPackage
         db.query(SoldPackage).filter(SoldPackage.contact_id == contact_id).update(
@@ -271,6 +285,23 @@ async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
             detail="No se pudo eliminar: el contacto tiene registros vinculados. "
                    "Avisá al equipo para revisar.",
         )
+
+    # Limpiar el cache en RAM del agente para cada session_id borrado, así el hilo no
+    # revive desde memoria hasta el próximo reinicio del proceso. Best-effort: un fallo
+    # acá no debe revertir el borrado, que ya está confirmado en la BD.
+    for sid in deleted_session_ids:
+        try:
+            from app.services.agent_service import agent_service
+            agent_service.clear_history(sid)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo limpiar cache RAM del agente",
+                           session_id=sid, error=str(e))
+        try:
+            from app.services.conversation_state_manager import conversation_state_manager
+            conversation_state_manager.clear_state(sid)
+        except Exception:  # noqa: BLE001 — estado multi-paso puede no existir
+            pass
+
     return {"success": True, "message": f"Contacto {contact_id} eliminado"}
 
 
