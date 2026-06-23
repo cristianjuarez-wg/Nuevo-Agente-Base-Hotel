@@ -50,6 +50,24 @@ function TypingDots() {
   )
 }
 
+// Indicador de espera: puntitos + una frase cálida que rota mientras el backend trabaja
+// (triage + tools tardan, así la espera no se siente muerta). `phrases` viene de i18n.
+function ThinkingIndicator({ phrases }) {
+  const list = Array.isArray(phrases) && phrases.length ? phrases : ['…']
+  const [idx, setIdx] = useState(0)
+  useEffect(() => {
+    if (list.length < 2) return
+    const t = setInterval(() => setIdx((i) => (i + 1) % list.length), 1800)
+    return () => clearInterval(t)
+  }, [list.length])
+  return (
+    <div className="flex items-center gap-2 px-1 py-1">
+      <TypingDots />
+      <span className="text-xs text-slatey/70">{list[idx]}</span>
+    </div>
+  )
+}
+
 function Bubble({ role, children, accentColor, bubbleBg }) {
   const isUser = role === 'user'
   return (
@@ -83,7 +101,8 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState([])
   const [starters, setStarters] = useState([])
   const [input, setInput] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(false)      // ciclo completo (espera + escritura)
+  const [waiting, setWaiting] = useState(false) // solo mientras espera al backend
   const [greeted, setGreeted] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [theme, setTheme] = useState(null)
@@ -92,6 +111,7 @@ export default function ChatWidget() {
   const scrollRef = useRef(null)
   const inputRef = useRef(null)
   const sessionId = useRef(getSessionId())
+  const typewriterRef = useRef(null)  // timer del efecto de tipeo (para poder cancelarlo)
   const t = getStrings(lang)
 
   // Cargar tema visual una sola vez al montar
@@ -117,6 +137,8 @@ export default function ChatWidget() {
   // en el backend para que Aura siga 100% en el idioma elegido.
   const changeLang = useCallback((code) => {
     if (code === lang) { setLangMenu(false); return }
+    if (typewriterRef.current) clearTimeout(typewriterRef.current)
+    setBusy(false); setWaiting(false)
     setLang(code)
     persistLang(code)
     setLangMenu(false)
@@ -142,6 +164,50 @@ export default function ChatWidget() {
     el.style.height = `${el.scrollHeight}px`
   }, [input])
 
+  // Revela el texto del agente palabra por palabra (efecto de tipeo). Si el usuario
+  // prefiere menos movimiento, lo muestra completo de una. Adjunta las cards al final.
+  const typeOutReply = useCallback((fullText, cards) => {
+    const sessionAtStart = sessionId.current
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    // Mensaje assistant vacío al que le vamos creciendo el contenido.
+    setMessages((m) => [...m, { role: 'assistant', content: '', cards: [] }])
+
+    const finish = (content) => {
+      setMessages((m) => {
+        const next = [...m]
+        next[next.length - 1] = { role: 'assistant', content, cards: cards || [] }
+        return next
+      })
+      setBusy(false)
+      inputRef.current?.focus()
+    }
+
+    if (reduceMotion || !fullText) { finish(fullText || '…'); return }
+
+    const words = fullText.split(/(\s+)/)  // conserva los espacios como tokens
+    // Ritmo adaptativo: en textos largos revelamos más tokens por tick para que la
+    // escritura nunca dure de más (tope ~3-4s); en cortos, 2 tokens (palabra+espacio).
+    const perTick = words.length > 80 ? 6 : words.length > 40 ? 4 : 2
+    let i = 0
+    const step = () => {
+      // Si la conversación se reseteó/cambió de idioma a mitad, cortamos sin escribir.
+      if (sessionId.current !== sessionAtStart) { setBusy(false); return }
+      i += perTick
+      const revealed = words.slice(0, i).join('')
+      if (i >= words.length) {
+        finish(fullText)
+        return
+      }
+      setMessages((m) => {
+        const next = [...m]
+        next[next.length - 1] = { ...next[next.length - 1], content: revealed }
+        return next
+      })
+      typewriterRef.current = setTimeout(step, 30)
+    }
+    step()
+  }, [])
+
   const send = useCallback(
     async (text) => {
       const msg = (text ?? input).trim()
@@ -150,23 +216,22 @@ export default function ChatWidget() {
       setInput('')
       setMessages((m) => [...m, { role: 'user', content: msg }])
       setBusy(true)
+      setWaiting(true)
       try {
         const data = await sendMessage({ message: msg, sessionId: sessionId.current, language: lang })
-        setMessages((m) => [
-          ...m,
-          { role: 'assistant', content: data.response || '…', cards: data.cards || [] },
-        ])
+        setWaiting(false)
+        typeOutReply(data.response || '…', data.cards || [])
       } catch {
+        setWaiting(false)
         setMessages((m) => [
           ...m,
           { role: 'assistant', content: getStrings(lang).errorReply },
         ])
-      } finally {
         setBusy(false)
         inputRef.current?.focus()
       }
     },
-    [input, busy, lang]
+    [input, busy, lang, typeOutReply]
   )
 
   // Retorno desde la pantalla de pedido: si el hash trae ?order=RST-XXXX, abrimos el chat
@@ -187,6 +252,8 @@ export default function ChatWidget() {
 
   const resetChat = useCallback(async () => {
     if (busy || resetting) return
+    if (typewriterRef.current) clearTimeout(typewriterRef.current)
+    setWaiting(false)
     setResetting(true)
     try {
       await clearChat(sessionId.current)
@@ -201,6 +268,9 @@ export default function ChatWidget() {
     setResetting(false)
     loadGreeting()
   }, [busy, resetting, loadGreeting])
+
+  // Cleanup: cancelar el typewriter si el componente se desmonta.
+  useEffect(() => () => { if (typewriterRef.current) clearTimeout(typewriterRef.current) }, [])
 
   // Acción de una tarjeta: 'send_message' inyecta un mensaje al chat; 'open_url' abre link.
   const handleCardAction = useCallback(
@@ -358,10 +428,10 @@ export default function ChatWidget() {
               </div>
             ))}
 
-            {busy && (
+            {waiting && (
               <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-md bg-linen px-3 py-2">
-                  <TypingDots />
+                  <ThinkingIndicator phrases={t.thinking} />
                 </div>
               </div>
             )}
