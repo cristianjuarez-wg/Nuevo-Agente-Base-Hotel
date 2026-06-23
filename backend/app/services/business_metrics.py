@@ -263,7 +263,12 @@ def get_revenue(
     room_type: Optional[str] = None,
     group_by: Optional[str] = None,
 ) -> Dict:
-    """Facturación de reservas creadas en el rango (no canceladas), en USD y ARS.
+    """Facturación de las ESTADÍAS que ocurren en el rango (no canceladas), en USD y ARS.
+
+    Filtra por solapamiento de estadía (igual que ocupación y ranking) y PRORRATEA el
+    ingreso por las noches que caen dentro del rango. Así "facturación de invierno" = lo
+    que se factura por las estadías de invierno (mismo idioma que ocupación), no por la
+    fecha en que se hizo la reserva.
 
     - `room_type`: si se indica, filtra por ese tipo de habitación (match flexible).
     - `group_by`: "room_type" → desglose por tipo; "month" → serie mensual (para evolución).
@@ -273,8 +278,8 @@ def get_revenue(
     q = (
         db.query(Booking)
         .filter(
-            Booking.created_at >= start,
-            Booking.created_at < end,
+            Booking.check_in < end,
+            Booking.check_out > start,
             ~Booking.status.in_(_NON_BLOCKING),
         )
     )
@@ -286,10 +291,19 @@ def get_revenue(
             if b.room and rt_norm in (b.room.room_type or "").lower()
         ]
 
-    usd = round(sum((b.total_price_usd or 0) for b in bookings), 2)
-    ars = round(sum((b.total_price_ars or 0) for b in bookings), 2)
+    # Prorrateo: fracción del ingreso de cada reserva = noches dentro del rango / noches totales.
+    def _prorate(b, total):
+        full_nights = (b.check_out - b.check_in).days
+        if not full_nights or not total:
+            return 0.0
+        ci, co = max(b.check_in, start), min(b.check_out, end)
+        in_range = max((co - ci).days, 0)
+        return (total or 0) * in_range / full_nights
+
+    usd = round(sum(_prorate(b, b.total_price_usd) for b in bookings), 2)
+    ars = round(sum(_prorate(b, b.total_price_ars) for b in bookings), 2)
     count = len(bookings)
-    nights = sum((b.nights or 0) for b in bookings)
+    nights = sum(max((min(b.check_out, end) - max(b.check_in, start)).days, 0) for b in bookings)
     adr = round(usd / nights, 2) if nights else 0.0
     avg_per_booking = round(usd / count, 2) if count else 0.0
 
@@ -303,15 +317,16 @@ def get_revenue(
         for b in bookings:
             rt = (b.room.room_type if b.room else "—")
             slot = by.setdefault(rt, {"usd": 0.0, "count": 0})
-            slot["usd"] += (b.total_price_usd or 0)
+            slot["usd"] += _prorate(b, b.total_price_usd)
             slot["count"] += 1
         result["by_room_type"] = {rt: {"usd": round(v["usd"], 2), "count": v["count"]}
                                   for rt, v in by.items()}
     elif group_by == "month":
+        # Serie por mes de ESTADÍA (check_in), coherente con el filtro por estadía.
         series: Dict[str, float] = {}
         for b in bookings:
-            key = b.created_at.strftime("%Y-%m") if b.created_at else "—"
-            series[key] = series.get(key, 0.0) + (b.total_price_usd or 0)
+            key = b.check_in.strftime("%Y-%m") if b.check_in else "—"
+            series[key] = series.get(key, 0.0) + _prorate(b, b.total_price_usd)
         result["by_month"] = [{"month": k, "usd": round(v, 2)}
                               for k, v in sorted(series.items())]
 
@@ -319,9 +334,13 @@ def get_revenue(
 
 
 def get_leads_summary(db: Session, start: date, end: date) -> Dict:
-    """Leads generados en el rango y cuántos se cerraron (su Contact ya tiene compra)."""
-    from app.models.contact import Contact
+    """Leads generados en el rango y cuántos se cerraron.
 
+    Un lead se considera CERRADO si su contacto tiene una reserva (no cancelada) creada
+    EN O DESPUÉS de la fecha del lead. Antes se contaba si el contacto tenía
+    `purchases_made > 0` "alguna vez" — eso inflaba la conversión con compras viejas o
+    de un huésped recurrente que generó un lead nuevo (no atribuibles a este lead).
+    """
     leads = (
         db.query(Lead)
         .filter(Lead.created_at >= start, Lead.created_at < end)
@@ -330,10 +349,20 @@ def get_leads_summary(db: Session, start: date, end: date) -> Dict:
     generated = len(leads)
     closed = 0
     for lead in leads:
-        if lead.contact_id:
-            c = db.query(Contact).filter(Contact.id == lead.contact_id).first()
-            if c and (c.purchases_made or 0) > 0:
-                closed += 1
+        if not lead.contact_id:
+            continue
+        has_booking_after = (
+            db.query(Booking.id)
+            .filter(
+                Booking.contact_id == lead.contact_id,
+                ~Booking.status.in_(_NON_BLOCKING),
+                Booking.created_at >= lead.created_at,
+            )
+            .first()
+            is not None
+        )
+        if has_booking_after:
+            closed += 1
     conversion_pct = round((closed / generated * 100), 1) if generated else 0.0
     return {"generated": generated, "closed": closed, "conversion_pct": conversion_pct}
 

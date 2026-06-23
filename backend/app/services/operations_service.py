@@ -18,6 +18,7 @@ Decisiones:
 
 Estados de status usados acá: "asignado", "pre_resuelto", "resuelto" (ver HotelTicket).
 """
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -55,6 +56,10 @@ def log_event(db: Session, ticket: HotelTicket, action: str,
 
 # Áreas operativas válidas (espejo de StaffMember.area y del `tipo` de solicitar_servicio).
 AREAS = ("mantenimiento", "recepcion", "housekeeping", "general")
+
+# Días tras los cuales un ticket 'pre_resuelto' (resuelto por el staff, sin validación del
+# huésped) deja de contar como carga activa para el balanceo: ya está resuelto de hecho.
+_PRE_RESUELTO_STALE_DAYS = 3
 
 # Mapa del `tipo` de solicitar_servicio → área del equipo.
 _TIPO_TO_AREA = {
@@ -126,16 +131,29 @@ def _pick_staff(db: Session, area: str) -> Optional[StaffMember]:
     if not pool:
         return None
 
-    # Balanceo simple: quien tenga menos tickets "asignado"/"pre_resuelto" encima.
+    # Balanceo simple: quien tenga menos tickets ACTIVOS encima. Un 'pre_resuelto' viejo
+    # (el staff ya lo marcó resuelto y el huésped nunca validó) NO es trabajo pendiente:
+    # no debe contar como carga para siempre y sesgar el round-robin. Lo excluimos pasado
+    # el umbral de validación (_PRE_RESUELTO_STALE_DAYS).
+    stale_cutoff = datetime.now() - timedelta(days=_PRE_RESUELTO_STALE_DAYS)
+
     def _load(s: StaffMember) -> int:
-        return (
+        asignados = (
+            db.query(HotelTicket)
+            .filter(HotelTicket.assigned_staff_id == s.id, HotelTicket.status == "asignado")
+            .count()
+        )
+        # 'pre_resuelto' cuenta como carga SOLO si es reciente (todavía esperable que se valide).
+        pre_recientes = (
             db.query(HotelTicket)
             .filter(
                 HotelTicket.assigned_staff_id == s.id,
-                HotelTicket.status.in_(["asignado", "pre_resuelto"]),
+                HotelTicket.status == "pre_resuelto",
+                HotelTicket.updated_at >= stale_cutoff,
             )
             .count()
         )
+        return asignados + pre_recientes
 
     return min(pool, key=_load)
 

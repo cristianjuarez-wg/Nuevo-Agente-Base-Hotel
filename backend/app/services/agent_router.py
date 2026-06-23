@@ -106,10 +106,13 @@ async def _route_owner(db: Session, phone: str, message: str) -> Dict:
         history = _rehydrate_owner_history(db, session_id)
         _role_histories[session_id] = history
 
-    # Nombre del dueño para personalizar el saludo del consultor.
+    # Nombre del dueño para personalizar el saludo del consultor. Usa el mismo matching
+    # (exacto + tolerante) que resolve_role, para reconocerlo aunque el teléfono esté
+    # cargado con formato viejo.
     owner_name = ""
     try:
-        member = db.query(StaffMember).filter(StaffMember.phone == norm).first()
+        from app.services.role_service import find_staff_member
+        member = find_staff_member(phone, db)
         owner_name = member.name if member else ""
     except Exception:  # noqa: BLE001
         pass
@@ -174,7 +177,10 @@ async def _route_staff(db: Session, phone: str, message: str) -> Dict:
     norm = normalize_phone(phone) or phone
     session_id = "staff_" + norm.lstrip("+")
 
-    staff = db.query(StaffMember).filter(StaffMember.phone == norm).first()
+    # Mismo matching (exacto + tolerante) que resolve_role: antes este re-lookup era
+    # EXACTO y rechazaba a un staffer que resolve_role había aceptado por el tolerante.
+    from app.services.role_service import find_staff_member
+    staff = find_staff_member(phone, db)
     if not staff:
         # No debería pasar (resolve_role ya lo marcó staff), pero por las dudas.
         return {"response": "No te tengo registrado en el equipo. Avisá a recepción para que te den de alta. 🙌"}
