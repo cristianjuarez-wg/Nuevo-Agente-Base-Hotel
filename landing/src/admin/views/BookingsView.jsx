@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2, Trash2 } from 'lucide-react'
+import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2, Trash2, MessageSquare, X } from 'lucide-react'
 import { listBookings, deleteBooking } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatUSD, formatARS, formatDate,
@@ -7,6 +7,7 @@ import {
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
+import ChatTranscript from '../components/ChatTranscript'
 import { useTableControls } from '../hooks/useTableControls'
 
 // Estado temporal de la estadía (derivado en el backend como stay_status).
@@ -58,6 +59,7 @@ export default function BookingsView() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [deletingCode, setDeletingCode] = useState(null)
+  const [chatBooking, setChatBooking] = useState(null)  // reserva cuya conversación se está viendo
 
   const load = () => {
     setLoading(true)
@@ -90,6 +92,16 @@ export default function BookingsView() {
       className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
     >
       <Trash2 size={15} />
+    </button>
+  )
+
+  const ChatButton = ({ r }) => (
+    <button
+      onClick={() => setChatBooking(r)}
+      title="Ver conversación"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700"
+    >
+      <MessageSquare size={15} />
     </button>
   )
 
@@ -150,7 +162,9 @@ export default function BookingsView() {
     ) },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
-    { key: 'actions', label: '', render: (r) => <DeleteButton r={r} /> },
+    { key: 'actions', label: '', render: (r) => (
+      <div className="flex items-center justify-end gap-1"><ChatButton r={r} /><DeleteButton r={r} /></div>
+    ) },
   ]
 
   const renderCard = (r) => (
@@ -169,6 +183,7 @@ export default function BookingsView() {
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>
         <div className="flex items-center gap-1.5">
           <OriginBadge origin={r.origin} />
+          <ChatButton r={r} />
           <DeleteButton r={r} />
         </div>
       </div>
@@ -212,6 +227,33 @@ export default function BookingsView() {
           )}
         </>
       )}
+
+      {chatBooking && (
+        <BookingChatDrawer booking={chatBooking} onClose={() => setChatBooking(null)} />
+      )}
+    </div>
+  )
+}
+
+// Panel lateral con la conversación que originó una reserva (por session_id).
+function BookingChatDrawer({ booking, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-card-lg animate-slide-up">
+        <div className="flex items-start justify-between border-b border-mist px-5 py-4">
+          <div className="min-w-0">
+            <p className="font-serif text-lg font-700 text-hilton-700">{booking.code}</p>
+            <p className="mt-0.5 text-sm text-slatey">{booking.guest_name} · {booking.room_type}</p>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <ChatTranscript sessionId={booking.session_id} />
+        </div>
+      </aside>
     </div>
   )
 }

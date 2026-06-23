@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import {
   Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
   DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt, Pencil, Save, LifeBuoy,
+  MessageSquare, MessageCircle, Globe, ChevronLeft,
 } from 'lucide-react'
-import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio, updateContact } from '../../services/api'
+import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio, updateContact, getContactConversations } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD, formatARS, WhatsAppDot,
 } from '../ui'
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
+import ChatTranscript from '../components/ChatTranscript'
 import { useTableControls } from '../hooks/useTableControls'
 
 function flatten(c) {
@@ -97,10 +99,14 @@ function DetailDrawer({ contactId, onClose }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [folio, setFolio] = useState(null)
+  const [conversations, setConversations] = useState([])
+  const [openChat, setOpenChat] = useState(null)  // conversación abierta en la transcripción
 
   useEffect(() => {
     setLoading(true)
     setFolio(null)
+    setConversations([])
+    setOpenChat(null)
     getGuestProfile(contactId)
       .then((p) => {
         setProfile(p)
@@ -110,6 +116,8 @@ function DetailDrawer({ contactId, onClose }) {
       })
       .catch(() => setProfile(null))
       .finally(() => setLoading(false))
+    // Todas las conversaciones del huésped (web y WhatsApp), para verlas desde el perfil.
+    getContactConversations(contactId).then(setConversations).catch(() => setConversations([]))
   }, [contactId])
 
   const save = async (preferences) => {
@@ -285,11 +293,45 @@ function DetailDrawer({ contactId, onClose }) {
                 </div>
               )}
 
-              {/* Tickets de soporte (post-venta) */}
+              {/* Conversaciones con Aura (web y WhatsApp). Cada una abre su transcripción. */}
+              <div className="rounded-2xl bg-white p-4 shadow-card">
+                <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
+                  <MessageSquare size={13} /> Conversaciones con Aura
+                </h3>
+                {conversations.length === 0 ? (
+                  <p className="text-sm text-slatey">Este huésped no tiene conversaciones registradas.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {conversations.map((cv) => {
+                      const isWa = (cv.channel === 'whatsapp') || (cv.session_id || '').startsWith('wa_')
+                      return (
+                        <button
+                          key={cv.id}
+                          onClick={() => setOpenChat(cv)}
+                          className="flex w-full items-center justify-between gap-2 rounded-xl border border-mist px-3 py-2 text-left transition hover:bg-mist/60"
+                        >
+                          <span className="flex min-w-0 items-center gap-2 text-sm">
+                            <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isWa ? 'bg-green-50 text-green-600' : 'bg-hilton-50 text-hilton-600'}`}>
+                              {isWa ? <MessageCircle size={13} /> : <Globe size={13} />}
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block font-medium text-ink">{isWa ? 'WhatsApp' : 'Chat web'}</span>
+                              <span className="block text-xs text-slatey tabular-nums">{formatDate(cv.started_at)} · {cv.message_count || 0} mensajes</span>
+                            </span>
+                          </span>
+                          <MessageSquare size={14} className="shrink-0 text-slatey" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Tickets de soporte (post-venta): reclamos/consultas del huésped vía sus reservas. */}
               {profile.tickets?.length > 0 && (
                 <div className="rounded-2xl bg-white p-4 shadow-card">
                   <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
-                    <LifeBuoy size={13} /> Tickets de soporte
+                    <LifeBuoy size={13} /> Consultas y reclamos
                   </h3>
                   <div className="space-y-2">
                     {profile.tickets.map((t) => (
@@ -317,6 +359,26 @@ function DetailDrawer({ contactId, onClose }) {
             </div>
           )}
         </div>
+
+        {/* Transcripción de una conversación elegida: se monta sobre el perfil, con volver. */}
+        {openChat && (
+          <div className="absolute inset-0 flex flex-col bg-linen">
+            <header className="flex items-center gap-2 border-b border-hilton-100 bg-white px-5 py-4">
+              <button onClick={() => setOpenChat(null)} aria-label="Volver" className="rounded-lg p-1.5 text-slatey transition hover:bg-mist">
+                <ChevronLeft size={18} />
+              </button>
+              <div className="min-w-0">
+                <h2 className="truncate font-serif text-base font-700 text-ink">Conversación con Aura</h2>
+                <p className="text-xs text-slatey">
+                  {((openChat.channel === 'whatsapp') || (openChat.session_id || '').startsWith('wa_')) ? 'WhatsApp' : 'Chat web'} · {formatDate(openChat.started_at)}
+                </p>
+              </div>
+            </header>
+            <div className="flex-1 overflow-y-auto">
+              <ChatTranscript sessionId={openChat.session_id} />
+            </div>
+          </div>
+        )}
       </aside>
 
       {editing && (

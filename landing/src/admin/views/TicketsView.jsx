@@ -14,6 +14,7 @@ import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
 import ChatTranscript from '../components/ChatTranscript'
+import { FilterChip, FilterGroupLabel } from '../components/FilterChip'
 import { useTableControls } from '../hooks/useTableControls'
 
 // Dos flujos distintos conviven en la misma tabla: OPERACIONES (pedidos de servicio que se
@@ -174,30 +175,6 @@ function TicketTimeline({ events }) {
       })}
     </ol>
   )
-}
-
-// Chip de filtro unificado: mismo lenguaje visual para Estado y Área (una sola familia de
-// acento). Antes convivían pills azules (estado) y verdes (área) en filas separadas, lo que
-// se veía recargado e inconsistente.
-function FilterChip({ active, onClick, label, count }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition ${
-        active
-          ? 'bg-hilton-600 text-white shadow-card'
-          : 'bg-white text-slatey ring-1 ring-mist hover:bg-mist'
-      }`}
-    >
-      {label}
-      {count != null && <span className="tabular-nums opacity-70">({count})</span>}
-    </button>
-  )
-}
-
-// Etiqueta corta para nombrar cada grupo de chips (Estado / Área) sin recurrir a otro color.
-function FilterGroupLabel({ children }) {
-  return <span className="text-[11px] font-medium uppercase tracking-wide text-slatey">{children}</span>
 }
 
 export default function TicketsView() {

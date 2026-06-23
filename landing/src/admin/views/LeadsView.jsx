@@ -8,6 +8,7 @@ import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
 import ChatTranscript from '../components/ChatTranscript'
+import { FilterChip, FilterGroupLabel, FilterDivider } from '../components/FilterChip'
 import { useTableControls } from '../hooks/useTableControls'
 import KanbanBoard from './KanbanBoard'
 
@@ -212,23 +213,24 @@ export default function LeadsView() {
         }
       />
 
-      {/* Toggle Lista / Tablero (kanban) */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      {/* Vista: Lista / Tablero (kanban). Es una decisión de presentación, separada de los
+          filtros — por eso va en su propia fila con un segmented control. */}
+      <div className="mb-4 inline-flex rounded-xl bg-mist p-1">
         <button
           onClick={() => setViewMode('list')}
-          className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
-            viewMode === 'list' ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
+            viewMode === 'list' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
           }`}
         >
-          <List size={13} /> Lista
+          <List size={14} /> Lista
         </button>
         <button
           onClick={() => setViewMode('board')}
-          className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
-            viewMode === 'board' ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
+            viewMode === 'board' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
           }`}
         >
-          <LayoutGrid size={13} /> Tablero
+          <LayoutGrid size={14} /> Tablero
         </button>
       </div>
 
@@ -240,39 +242,32 @@ export default function LeadsView() {
         <EmptyState icon={UserPlus} title="Aún no hay leads" desc="Cuando el agente capte interesados, aparecerán acá." />
       ) : (
         <>
-          <div className="mb-3 flex flex-wrap gap-2">
-            <button
-              onClick={() => setShowAll(false)}
-              className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
-                !showAll ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
-              }`}
-            >
-              Calificados
-            </button>
-            <button
-              onClick={() => setShowAll(true)}
-              className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
-                showAll ? 'bg-green-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
-              }`}
-            >
-              <MessageCircle size={13} /> Todos los contactos
-            </button>
-          </div>
-          <div className="mb-4 flex flex-wrap gap-2">
+          {/* Banda de filtros unificada: Alcance · Temperatura · buscador. Chips homogéneos
+              (mismo lenguaje visual que Operaciones), con etiquetas de grupo y divisor sutil. */}
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+            {/* Alcance: calificados (con nombre) vs todos los contactos captados. */}
+            <FilterGroupLabel>Alcance</FilterGroupLabel>
+            <FilterChip active={!showAll} onClick={() => setShowAll(false)} label="Calificados" />
+            <FilterChip active={showAll} onClick={() => setShowAll(true)} label="Todos los contactos" icon={MessageCircle} />
+
+            <FilterDivider />
+
+            {/* Temperatura del lead. */}
+            <FilterGroupLabel>Temperatura</FilterGroupLabel>
             {TYPE_FILTERS.map((f) => (
-              <button
+              <FilterChip
                 key={f.id}
+                active={filter === f.id}
                 onClick={() => setFilter(f.id)}
-                className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
-                  filter === f.id ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
-                }`}
-              >
-                {f.label} <span className="tabular-nums opacity-70">({counts[f.id] ?? 0})</span>
-              </button>
+                label={f.label}
+                count={counts[f.id] ?? 0}
+              />
             ))}
-          </div>
-          <div className="mb-4">
-            <SearchInput value={query} onChange={setQuery} placeholder="Buscar por nombre, email o interés…" />
+
+            {/* Buscador: a la derecha en desktop, ancho completo en mobile. */}
+            <div className="w-full sm:ml-auto sm:w-72">
+              <SearchInput value={query} onChange={setQuery} placeholder="Buscar por nombre, email o interés…" />
+            </div>
           </div>
           {total === 0 ? (
             <EmptyState icon={UserPlus} title="Sin leads en esta vista" desc="Probá con otro filtro o búsqueda." />

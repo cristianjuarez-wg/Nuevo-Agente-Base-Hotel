@@ -143,6 +143,13 @@ export async function getConversation(sessionId) {
   return data.messages ?? []
 }
 
+// Todas las conversaciones de un contacto (web y WhatsApp; filtra por contact_id). Cada una
+// trae session_id, channel, started_at y message_count para listarlas en el perfil 360°.
+export async function getContactConversations(contactId) {
+  const { data } = await client.get(`/api/contacts/${contactId}/conversations`, { params: { limit: 50 } })
+  return data.conversations ?? []
+}
+
 // ── Consumo IA (tokens / USD) ────────────────────────────────────────────────
 export async function getUsageSummary() {
   const { data } = await client.get('/api/usage/summary')
