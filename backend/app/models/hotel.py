@@ -212,6 +212,17 @@ class Booking(Base):
         }
 
 
+# Estados de un HotelTicket. Conviven dos vocabularios en la MISMA columna `status`:
+#   - Base (post-venta IA):  open / in_progress / resolved / escalated
+#   - Operativo (Fase 4):    asignado / pre_resuelto / resuelto
+# Estas constantes son la ÚNICA fuente de verdad sobre qué estados cuentan como "abierto"
+# (activo, pendiente de cierre) vs "resuelto". Usarlas en TODA query de métricas/ruteo evita
+# que un ticket operativo (asignado/pre_resuelto/resuelto) quede invisible para el dueño o
+# se duplique por no detectarse como post-venta activa.
+TICKET_OPEN_STATES = ("open", "in_progress", "escalated", "asignado", "pre_resuelto")
+TICKET_RESOLVED_STATES = ("resolved", "resuelto")
+
+
 class HotelTicket(Base):
     """Ticket de soporte POST-VENTA de un huésped con reserva (modelo simple del hotel).
 

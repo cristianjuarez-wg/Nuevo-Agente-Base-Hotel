@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db
-from app.models.hotel import HotelTicket
+from app.models.hotel import HotelTicket, TICKET_OPEN_STATES, TICKET_RESOLVED_STATES
 from app.models.staff import StaffMember
 from app.core.logging_config import get_logger
 
@@ -166,8 +166,8 @@ async def ticket_stats(db: Session = Depends(get_db)):
     tickets = db.query(HotelTicket).all()
     total = len(tickets)
     escalated = sum(1 for t in tickets if t.status == "escalated")
-    resolved = sum(1 for t in tickets if t.status == "resolved")
-    open_count = sum(1 for t in tickets if t.status in ("open", "in_progress"))
+    resolved = sum(1 for t in tickets if t.status in TICKET_RESOLVED_STATES)
+    open_count = sum(1 for t in tickets if t.status in TICKET_OPEN_STATES)
     return {
         "total": total,
         "escalated": escalated,

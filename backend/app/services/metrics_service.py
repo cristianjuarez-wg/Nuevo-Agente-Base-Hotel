@@ -609,22 +609,28 @@ class MetricsService:
         Usa HotelTicket (modelo del hotel). Antes apuntaba a SupportTicket (legacy de
         turismo), por eso estas métricas salían siempre en cero para el hotel.
         """
-        from app.models.hotel import HotelTicket
+        from app.models.hotel import HotelTicket, TICKET_OPEN_STATES, TICKET_RESOLVED_STATES
         try:
             total = db.query(func.count(HotelTicket.id)).scalar() or 0
             escalated = db.query(func.count(HotelTicket.id)).filter(
                 HotelTicket.escalated == 1
             ).scalar() or 0
-            # Auto-resueltos por el agente sin escalar (containment efectivo).
+            # Auto-resueltos por el agente sin escalar (containment efectivo). Cuenta ambos
+            # vocabularios de "cerrado": resolved (IA) y resuelto (loop operativo del staff).
+            # Excluye los service_request, que se cuentan aparte (evita doble conteo en
+            # containment cuando un pedido de servicio ya quedó en estado 'resuelto').
             auto_resolved = db.query(func.count(HotelTicket.id)).filter(
-                HotelTicket.status == "resolved", HotelTicket.escalated == 0
+                HotelTicket.status.in_(TICKET_RESOLVED_STATES),
+                HotelTicket.escalated == 0,
+                HotelTicket.category != "service_request",
             ).scalar() or 0
             # Pedidos de servicio enrutados al staff (toallas, mantenimiento, etc.).
             service_requests = db.query(func.count(HotelTicket.id)).filter(
                 HotelTicket.category == "service_request"
             ).scalar() or 0
+            # Abiertos = cualquier estado activo (incluye asignado/pre_resuelto del operativo).
             open_tickets = db.query(func.count(HotelTicket.id)).filter(
-                HotelTicket.status == "open"
+                HotelTicket.status.in_(TICKET_OPEN_STATES)
             ).scalar() or 0
 
             # Containment = atendidos sin escalar (auto-resueltos + pedidos enrutados).

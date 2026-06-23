@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.hotel import Room, Booking, HotelTicket
+from app.models.hotel import Room, Booking, HotelTicket, TICKET_OPEN_STATES
 from app.models.lead import Lead
 from app.utils.timezone_utils import now_argentina
 from app.core.logging_config import get_logger
@@ -352,7 +352,7 @@ def get_complaints(db: Session, start: date, end: date) -> Dict:
             HotelTicket.category == "complaint",
             HotelTicket.created_at >= start,
             HotelTicket.created_at < end,
-            HotelTicket.status.in_(["open", "in_progress", "escalated"]),
+            HotelTicket.status.in_(TICKET_OPEN_STATES),
         )
         .scalar()
         or 0

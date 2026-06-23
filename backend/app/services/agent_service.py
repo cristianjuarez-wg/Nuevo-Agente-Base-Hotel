@@ -535,10 +535,10 @@ class AgentService:
             # Un mensaje con código de reserva o una sesión post-venta activa SIEMPRE es
             # post-venta, sin importar el flag de ruteo: el regex/DB query es infalible y
             # cuesta 0 llamadas LLM. El detector casual solo aplica si NO hay señal dura.
-            from app.models.hotel import HotelTicket
+            from app.models.hotel import HotelTicket, TICKET_OPEN_STATES
             has_active_postsale = db.query(HotelTicket).filter(
                 HotelTicket.session_id == session_id,
-                HotelTicket.status.in_(["open", "in_progress", "escalated"]),
+                HotelTicket.status.in_(TICKET_OPEN_STATES),
             ).first() is not None
             has_booking_code = self._contains_booking_code(message)
 

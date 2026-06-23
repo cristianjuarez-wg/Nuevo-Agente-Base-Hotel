@@ -22,7 +22,7 @@ from app.config import settings
 from app.core.openai_client import get_async_openai
 from app.core.logging_config import get_logger
 from app.utils.timezone_utils import now_argentina
-from app.models.hotel import Booking, HotelTicket
+from app.models.hotel import Booking, HotelTicket, TICKET_OPEN_STATES
 
 logger = get_logger(__name__)
 
@@ -99,7 +99,7 @@ class HotelPostSaleService:
             self.db.query(HotelTicket)
             .filter(
                 HotelTicket.session_id == session_id,
-                HotelTicket.status.in_(["open", "in_progress", "escalated"]),
+                HotelTicket.status.in_(TICKET_OPEN_STATES),
             )
             .order_by(HotelTicket.created_at.desc())
             .first()
@@ -223,6 +223,28 @@ class HotelPostSaleService:
             logger.warning("Hotel ticket escalated",
                            ticket_number=ticket.ticket_number,
                            reason=(analysis or {}).get("escalation_reason"))
+            self.db.commit()
+            # Una escalación (cancelar/reembolso/queja grave) NO puede quedar sin dueño:
+            # la enrutamos a un área del equipo y la notificamos, igual que un pedido de
+            # servicio. Así lo MÁS serio también llega a una persona, no solo al backoffice.
+            try:
+                from app.services import operations_service
+                operations_service.log_event(
+                    self.db, ticket, "escalated", actor_type="agent",
+                    note=f"Escalado: {(analysis or {}).get('escalation_reason', query[:80])}",
+                )
+                # Cancelaciones, reembolsos, cambios y quejas son tema de recepción/gerencia.
+                # El resto cae a la clasificación por keywords del texto.
+                cat = (analysis or {}).get("category", "")
+                area_hint = "recepcion" if cat in ("cancel", "change", "complaint") else None
+                staff = operations_service.classify_and_assign(
+                    self.db, ticket, area_hint=area_hint,
+                )
+                operations_service.notify_staff_assignment(staff, ticket)
+            except Exception as e:  # noqa: BLE001 — no romper la respuesta al huésped
+                logger.warning("No se pudo asignar/notificar la escalación al equipo",
+                               ticket_number=ticket.ticket_number, error=str(e))
+            return ticket.status
         else:
             ticket.status = "resolved"
             ticket.auto_resolved_by_agent = response_text[:2000]
