@@ -342,6 +342,17 @@ def create_booking(
         except Exception as e:  # noqa: BLE001
             logger.warning("No se pudo actualizar métricas del Contact", error=str(e))
 
+    # Marcar como CONVERTIDO el lead que originó esta reserva (si existe). Cubre AMBOS
+    # caminos (agente y web), que pasan por acá. Best-effort: un fallo NUNCA debe romper
+    # la reserva (ya está commiteada arriba).
+    try:
+        from app.services.lead_service import lead_service
+        lead_service.mark_lead_converted(
+            db, session_id=session_id, contact_id=contact_id, booking_code=booking.code,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo marcar el lead como convertido", error=str(e))
+
     logger.info(
         "Booking created",
         code=booking.code,

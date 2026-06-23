@@ -55,9 +55,15 @@ class LeadService:
             
             # 2. Obtener o crear lead en base de datos
             lead = self._get_or_create_lead(db, session_id)
-            
-            # 3. Actualizar lead con nuevo análisis
-            lead.update_from_analysis(analysis, travel_context)
+
+            # 3. Actualizar lead con nuevo análisis.
+            #    BLINDAJE: si el lead YA reservó (convertido/ganado), NO lo re-clasificamos.
+            #    Un mensaje de cortesía post-reserva ("gracias, nos vemos") no tiene intención
+            #    de compra y degradaría a un lead que es, de hecho, el más caliente posible.
+            #    Igual seguimos capturando datos de contacto más abajo (eso no toca el scoring).
+            is_converted = (lead.status == "converted") or (lead.kanban_stage == "won")
+            if not is_converted:
+                lead.update_from_analysis(analysis, travel_context)
             
             # 4. Extraer información de contacto si está presente (con historial)
             logger.info("About to extract contact info",
@@ -263,6 +269,63 @@ class LeadService:
         
         return lead
     
+    def mark_lead_converted(
+        self,
+        db: Session,
+        session_id: Optional[str] = None,
+        contact_id: Optional[int] = None,
+        booking_code: Optional[str] = None,
+    ) -> bool:
+        """Marca como CONVERTIDO el lead que originó una reserva.
+
+        Un lead que reservó es el más caliente posible: lo dejamos CALIENTE/won y lo
+        blindamos para que un mensaje de cortesía posterior ("gracias") no lo degrade
+        (ver el guard en process_message_for_lead).
+
+        Busca por session_id y, si no hay (ej. reserva web sin sesión), por contact_id.
+        Best-effort: si no hay lead o algo falla, NO rompe la reserva (devuelve False).
+        """
+        try:
+            lead = None
+            if session_id:
+                lead = db.query(Lead).filter(Lead.session_id == session_id).first()
+            if not lead and contact_id:
+                lead = (
+                    db.query(Lead)
+                    .filter(Lead.contact_id == contact_id)
+                    .order_by(Lead.updated_at.desc())
+                    .first()
+                )
+            if not lead:
+                # Reserva sin conversación previa (landing puro): no hay lead que convertir.
+                # El Contact 360° ya captura la compra; no fabricamos un lead artificial.
+                logger.info("mark_lead_converted: sin lead asociado a la reserva",
+                            session_id=session_id, contact_id=contact_id)
+                return False
+
+            if lead.status == "converted":
+                return True  # ya estaba convertido (idempotente)
+
+            lead.lead_type = "CALIENTE"
+            lead.interest_score = 10
+            lead.status = "converted"
+            lead.contact_readiness = False
+            lead.update_kanban_stage("won")
+            if booking_code:
+                lead.add_note(f"Reservó — {booking_code}")
+            db.commit()
+            logger.info("Lead marcado como convertido (reservó)",
+                        lead_id=lead.id, session_id=lead.session_id, booking_code=booking_code)
+            return True
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo marcar el lead como convertido",
+                           session_id=session_id, contact_id=contact_id, error=str(e))
+            try:
+                db.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            return False
+
     def _should_extract_contact_info(self, conversation_history: List[Dict]) -> bool:
         """
         Determina si el bot pidió información de contacto en el mensaje anterior
