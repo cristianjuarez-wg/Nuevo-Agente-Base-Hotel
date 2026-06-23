@@ -64,8 +64,11 @@ export async function listBookings() {
   return data.bookings ?? data
 }
 
-export async function listLeads() {
-  const { data } = await client.get('/api/leads/active')
+export async function listLeads(includeUnnamed = false) {
+  // includeUnnamed=true suma los contactos crudos (teléfono sin nombre, ej. WhatsApp que consultó).
+  const { data } = await client.get('/api/leads/active', {
+    params: includeUnnamed ? { include_unnamed: true } : {},
+  })
   // El endpoint devuelve { success, data: [...] }
   return data.data ?? data.leads ?? data
 }

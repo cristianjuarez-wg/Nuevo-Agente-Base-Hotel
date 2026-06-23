@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2 } from 'lucide-react'
+import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2, MessageCircle } from 'lucide-react'
 import { listLeads, deleteLead, updateLead } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, WhatsAppDot,
@@ -64,11 +64,12 @@ export default function LeadsView() {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [showAll, setShowAll] = useState(false)  // false = solo calificados (con nombre)
   const [editLead, setEditLead] = useState(null)
 
-  const load = () => {
+  const load = (includeUnnamed = showAll) => {
     setLoading(true)
-    listLeads()
+    listLeads(includeUnnamed)
       .then((d) => {
         const arr = Array.isArray(d) ? d : d?.leads || []
         setRows(arr.map(flatten))
@@ -76,7 +77,7 @@ export default function LeadsView() {
       .catch(() => setRows([]))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(() => { load(showAll) }, [showAll])
 
   const handleDelete = async (r) => {
     if (!window.confirm(`¿Eliminar el lead de ${r.name}? Esta acción no se puede deshacer.`)) return
@@ -189,6 +190,24 @@ export default function LeadsView() {
         <EmptyState icon={UserPlus} title="Aún no hay leads" desc="Cuando el agente capte interesados, aparecerán acá." />
       ) : (
         <>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowAll(false)}
+              className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
+                !showAll ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+              }`}
+            >
+              Calificados
+            </button>
+            <button
+              onClick={() => setShowAll(true)}
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
+                showAll ? 'bg-green-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+              }`}
+            >
+              <MessageCircle size={13} /> Todos los contactos
+            </button>
+          </div>
           <div className="mb-4 flex flex-wrap gap-2">
             {TYPE_FILTERS.map((f) => (
               <button

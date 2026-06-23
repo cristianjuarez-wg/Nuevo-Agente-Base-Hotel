@@ -47,10 +47,14 @@ async def get_lead_stats():
         )
 
 @router.get("/active")
-async def get_active_leads(limit: int = 50):
-    """Obtiene leads activos ordenados por prioridad"""
+async def get_active_leads(limit: int = 50, include_unnamed: bool = False):
+    """Obtiene leads activos ordenados por prioridad.
+
+    `include_unnamed=true` suma los contactos crudos (teléfono sin nombre, ej. un número de
+    WhatsApp que consultó). Por defecto solo los calificados (con nombre).
+    """
     try:
-        leads = lead_service.get_active_leads(limit=limit)
+        leads = lead_service.get_active_leads(limit=limit, include_unnamed=include_unnamed)
 
         # Indicador "tiene WhatsApp": el lead nos escribió por ese canal (dato real, no
         # heurística). El canal se derivó del session_id "wa_" al crear el lead.

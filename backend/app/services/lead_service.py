@@ -623,15 +623,23 @@ Responde SOLO con el JSON."""
         finally:
             db.close()
     
-    def get_active_leads(self, limit: int = 50) -> List[Dict]:
-        """Obtiene leads activos ordenados por prioridad"""
+    def get_active_leads(self, limit: int = 50, include_unnamed: bool = False) -> List[Dict]:
+        """Obtiene leads activos ordenados por prioridad.
+
+        `include_unnamed=True` incluye los contactos "crudos": leads con teléfono pero sin
+        nombre todavía (ej. un número de WhatsApp que consultó antes de reservar). Por
+        defecto se ocultan (vista de calificados). Siempre se exige email o teléfono para
+        no traer leads totalmente vacíos.
+        """
         db = SessionLocal()
         try:
-            leads = db.query(Lead).filter(
+            filters = [
                 Lead.status == "active",
-                Lead.name.isnot(None),
-                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None)))
-            ).order_by(
+                ((Lead.email.isnot(None)) | (Lead.phone.isnot(None))),
+            ]
+            if not include_unnamed:
+                filters.append(Lead.name.isnot(None))
+            leads = db.query(Lead).filter(*filters).order_by(
                 Lead.updated_at.desc()
             ).limit(limit).all()
             
