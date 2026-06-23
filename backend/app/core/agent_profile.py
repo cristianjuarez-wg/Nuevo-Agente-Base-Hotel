@@ -47,32 +47,13 @@ class AgentProfileManager:
             fecha_actual = f"{dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}"
             hora_actual = now.strftime("%H:%M")
         
-        # Agregar información temporal y contexto geográfico
-        context_with_date = f"""INFORMACIÓN TEMPORAL:
+        # Agregar información temporal (fecha/hora de Argentina, donde está el hotel).
+        # La hora es la del hotel, NO necesariamente la del visitante: no asumas dónde está.
+        context_with_date = f"""INFORMACIÓN TEMPORAL (zona horaria del hotel, Argentina):
 - Fecha actual: {fecha_actual}
 - Hora actual: {hora_actual}
-
-╔══════════════════════════════════════════════════════════════════════╗
-║  CONTEXTO GEOGRÁFICO DEL USUARIO                                    ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-🌍 UBICACIÓN DEL USUARIO (PRE-VENTA):
-- Por defecto, asume que el usuario consulta desde ARGENTINA
-- Si el usuario menciona estar en otro país, ajusta tu respuesta
-- Usa el clima de Argentina como referencia para comparaciones
-
-🌤️ USO DE INFORMACIÓN CLIMÁTICA:
-- Si se proporciona información del clima del destino, úsala para:
-  * Dar recomendaciones de qué empacar
-  * Comparar con el clima actual de Argentina
-  * Sugerir la mejor época para viajar
-  * Hacer la experiencia más personalizada
-
-EJEMPLO DE USO:
-Usuario: "Me gustaría viajar a Japón en marzo"
-Tú: "¡Excelente elección! En marzo, Japón tiene clima primaveral (15°C).
-      Comparado con Argentina en marzo (otoño, 20°C), es un poco más fresco.
-      Te recomiendo llevar abrigo ligero, paraguas y ropa en capas."
+- Esta es la hora LOCAL DEL HOTEL. El visitante puede estar en otra zona horaria.
+  No asumas que es su hora local ni que está físicamente en Bariloche.
 
 {context}"""
         
