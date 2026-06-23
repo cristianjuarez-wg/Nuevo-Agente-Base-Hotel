@@ -134,18 +134,23 @@ async def consultar_disponibilidad(
     guests: int = 1,
     children: int = 0,
     infants: int = 0,
+    room_types: List[str] = [],
 ) -> str:
     """Consulta qué tipos de habitación están disponibles para un rango de fechas y
     cantidad de huéspedes, con el precio total en USD y ARS. Úsala SIEMPRE que el usuario
     quiera reservar o pregunte por disponibilidad/precios para fechas concretas.
     Las fechas deben estar en formato YYYY-MM-DD.
     `guests` = adultos (18+). `children` = niños (3-17, cuentan para la capacidad).
-    `infants` = bebés (0-2, van en cuna y NO cuentan para la capacidad de la habitación)."""
+    `infants` = bebés (0-2, van en cuna y NO cuentan para la capacidad de la habitación).
+    `room_types`: los tipos de habitación que vas a RECOMENDAR en tu respuesta (ej.
+    ["Twin", "Family Plan"]). El sistema muestra como TARJETAS interactivas SOLO esos tipos,
+    para que coincidan con tu texto. Pasá 2-3 opciones, las que mejor encajen con el huésped.
+    Si lo dejás vacío, se muestran TODAS las disponibles (evitá esto: elegí las que recomendás)."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool(
         "consultar_disponibilidad",
         {"check_in": check_in, "check_out": check_out, "guests": guests,
-         "children": children, "infants": infants},
+         "children": children, "infants": infants, "room_types": room_types},
         tool_ctx,
     )
     ctx.context.absorb(tool_ctx)
@@ -255,6 +260,20 @@ async def comercios_amigos(ctx: RunContextWrapper[HotelContext], rubro: str = ""
     búsqueda en Google Maps; compartilo igual."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool("comercios_amigos", {"rubro": rubro}, tool_ctx)
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def excursiones_y_atracciones(ctx: RunContextWrapper[HotelContext], categoria: str = "") -> str:
+    """Devuelve las EXCURSIONES y ATRACCIONES de la zona cargadas en el backoffice
+    (Cerro Catedral, Circuito Chico, miradores, paseos), con su descripción y ubicación.
+    Úsala cuando el huésped pregunte QUÉ HACER, qué visitar, qué paseos/excursiones hay
+    cerca del hotel o pida recomendaciones de lugares para conocer.
+    `categoria` (opcional): tipo de lugar (ej. "excursión", "atracción").
+    NO la confundas con `comercios_amigos` (esa es para dónde COMER con descuento) ni con
+    `como_llegar` (esa arma la ruta a UN destino puntual)."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("excursiones_y_atracciones", {"categoria": categoria}, tool_ctx)
     return result.get("tool_result", "")
 
 
@@ -402,7 +421,7 @@ async def guardar_preferencia(
 
 _TOOLS = [
     info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,
-    como_llegar, comercios_amigos, promos_vigentes, calcular_precio_promo,
+    como_llegar, comercios_amigos, excursiones_y_atracciones, promos_vigentes, calcular_precio_promo,
     ver_carta, armar_pedido_carta, registrar_pedido, reservar_mesa, comprar_voucher,
     guardar_preferencia,
 ]

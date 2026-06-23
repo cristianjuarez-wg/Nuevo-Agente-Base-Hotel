@@ -51,6 +51,10 @@ def _build_cards(result: dict, user_message: str, session_id: str, db) -> list:
         cards = [menu_card]
     elif table_card:
         cards = [table_card]
+    elif chat_router._vague_dates_no_day(
+        user_message, agent_service.conversation_history.get(session_id, []),
+    ):
+        cards = [chat_router._date_picker_card(chat_router._suggested_month(user_message))]
     elif chat_router._should_offer_datepicker(
         result.get("response", ""), result.get("tools_used", []),
         has_room_cards=bool(cards), context_type=result.get("context_type", ""),
@@ -234,10 +238,10 @@ def _cleanup(session_ids: list) -> None:
             except Exception:
                 db.rollback()
         db.commit()
-        print(f"\n🧹 Limpieza: {deleted} registros de eval borrados ({len(session_ids)} sesiones).")
+        print(f"\n[limpieza] {deleted} registros de eval borrados ({len(session_ids)} sesiones).")
     except Exception as e:  # noqa: BLE001
         db.rollback()
-        print(f"\n⚠ Limpieza falló (no crítico): {e}")
+        print(f"\n[!] Limpieza fallo (no critico): {e}")
     finally:
         db.close()
 

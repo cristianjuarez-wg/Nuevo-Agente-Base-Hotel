@@ -143,8 +143,28 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
             f"Capacidad: {r['capacity']} pax."
         )
 
+    # TARJETAS DEL CHAT: por defecto mostramos solo las que el agente recomienda en su
+    # respuesta (room_types), para que las tarjetas coincidan con el texto y no se muestren
+    # TODAS las disponibles. Si el agente no especifica, se muestran todas (compatibilidad).
+    requested = args.get("room_types") or []
+    if isinstance(requested, str):
+        requested = [requested]
+    requested = [str(t).strip().lower() for t in requested if str(t).strip()]
+
+    cards = rooms
+    if requested:
+        # Match EXACTO (normalizado) contra el nombre del tipo. No usamos "substring" para
+        # evitar falsos positivos: "Twin" NO debe machear "Doble Twin Accesible".
+        def _matches(room_type: str) -> bool:
+            rt = (room_type or "").strip().lower()
+            return rt in requested
+        filtered = [r for r in rooms if _matches(r.get("room_type", ""))]
+        # Si el filtro deja todo vacío (el agente nombró un tipo que no existe/no entra),
+        # mostramos todas: mejor ofrecer algo que una lista vacía.
+        cards = filtered or rooms
+
     # Guardar las habitaciones en el ctx para que el orquestador arme las tarjetas del chat.
-    ctx["rooms_offered"] = rooms
+    ctx["rooms_offered"] = cards
 
     return {"tool_result": "\n".join(lines), "rooms": rooms}
 
@@ -522,6 +542,66 @@ def _handle_comercios_amigos(args: Dict, ctx: Dict) -> Dict:
         "tool_result": (
             f"Por ahora no tengo comercios amigos cargados para eso, pero podés ver "
             f"opciones de {termino} cerca del hotel acá:\n{near_hotel_search_url(termino)}"
+        ),
+        "found": True,
+    }
+
+
+def _handle_excursiones_y_atracciones(args: Dict, ctx: Dict) -> Dict:
+    """Lista las excursiones y atracciones (lugares NO-amigo) cargadas en el backoffice.
+
+    Determinístico: consulta la tabla `places` (is_partner=False, activos). Garantiza un
+    listado estable (vs. el RAG, que depende del umbral de similitud). Para comercios con
+    descuento ver `comercios_amigos`; para la ruta a un destino puntual, `como_llegar`.
+    """
+    db = ctx.get("db")
+    categoria = (args.get("categoria") or args.get("query") or "").strip()
+
+    if db is None:
+        return {"tool_result": "No pude acceder a la base de lugares en este momento.", "found": False}
+
+    lugares = (
+        db.query(Place)
+        .filter(Place.is_partner == False, Place.status == "active")  # noqa: E712
+        .order_by(Place.name)
+        .all()
+    )
+
+    # Filtro suave por categoría/rubro sobre nombre/categoría/descripción (si lo pidió).
+    if categoria and lugares:
+        cl = categoria.lower()
+        filtered = [
+            p for p in lugares
+            if cl in (p.name or "").lower()
+            or cl in (p.category or "").lower()
+            or cl in (p.description or "").lower()
+        ]
+        # Si el filtro deja todo vacío, mostramos igual todo (mejor que nada).
+        lugares_a_mostrar = filtered or lugares
+    else:
+        lugares_a_mostrar = lugares
+
+    if lugares_a_mostrar:
+        lines = ["Estas son las excursiones y atracciones cerca del hotel:\n"]
+        for p in lugares_a_mostrar:
+            bits = [f"**{p.name}**"]
+            if p.description:
+                bits.append(p.description)
+            if p.price_info:
+                bits.append(f"💲 {p.price_info}")
+            if p.address:
+                bits.append(f"📍 {p.address}")
+            if p.maps_url:
+                bits.append(f"🗺️ {p.maps_url}")
+            lines.append(" · ".join(bits))
+        return {"tool_result": "\n".join(lines), "found": True}
+
+    # Fallback: nada cargado → búsqueda genérica en Maps.
+    termino = categoria or "excursiones y atracciones"
+    return {
+        "tool_result": (
+            f"Por ahora no tengo excursiones cargadas, pero podés ver opciones de "
+            f"{termino} cerca del hotel acá:\n{near_hotel_search_url(termino)}"
         ),
         "found": True,
     }
@@ -1196,6 +1276,7 @@ _DISPATCH = {
     "info_pago": _handle_info_pago,
     "como_llegar": _handle_como_llegar,
     "comercios_amigos": _handle_comercios_amigos,
+    "excursiones_y_atracciones": _handle_excursiones_y_atracciones,
     "promos_vigentes": _handle_promos_vigentes,
     "calcular_precio_promo": _handle_calcular_precio_promo,
     "ver_carta": _handle_ver_carta,

@@ -182,10 +182,18 @@ def get_availability(
                 "base_price_ars": _ars(room.base_price_usd, rate),
                 "total_price_usd": round(room.base_price_usd * nights, 2),
                 "total_price_ars": _ars(room.base_price_usd * nights, rate),
+                # Sobredimensionada para el grupo (al menos 2 plazas de más): se ofrece como
+                # "más espacio si querés", no como primera opción.
+                "oversized": (room.capacity - occupancy) >= 2,
             }
         )
         results.append(info)
 
+    # Ordenar por ADECUACIÓN al grupo: la que mejor calza (menor holgura de capacidad)
+    # primero; a igual holgura, la de menor capacidad y luego la más económica. Así el texto,
+    # las tarjetas del chat y las cards de WhatsApp muestran primero lo más adecuado (una
+    # pareja ve King/Twin antes que la Family Plan).
+    results.sort(key=lambda r: (r["capacity"] - occupancy, r["capacity"], r["total_price_usd"]))
     return results
 
 

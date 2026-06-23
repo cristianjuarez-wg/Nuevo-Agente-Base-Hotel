@@ -262,6 +262,36 @@ def _dates_already_given(user_message: str, history: list) -> bool:
     return any(p.search(text) for p in _DATE_GIVEN_PATTERNS)
 
 
+# Señales de un período VAGO (mes/temporada/duración) SIN un día concreto. Si el huésped
+# dice esto y NO da un día, no hay que inventar fechas: se le muestra el selector.
+_VAGUE_PERIOD_HINTS = (
+    "verano", "invierno", "otoño", "otono", "primavera",
+    "una semana", "unos dias", "unos días", "quincena", "quince dias", "quince días",
+    "vacaciones", "feriado", "fin de semana largo", "finde largo", "puente",
+)
+
+
+def _vague_dates_no_day(user_message: str, history: list) -> bool:
+    """True si el mensaje actual menciona un período (mes/temporada/duración) PERO sin un día
+    concreto, y el usuario no dio fechas concretas antes.
+
+    Es el backstop del bug "noviembre/una semana": si el LLM se adelantó y mostró habitaciones
+    con fechas inventadas, igual forzamos el selector de fechas en vez de esas cards.
+    """
+    msg = user_message or ""
+    low = msg.lower()
+    has_vague = (_suggested_month(msg) is not None) or any(h in low for h in _VAGUE_PERIOD_HINTS)
+    if not has_vague:
+        return False
+    # Si el MENSAJE ACTUAL ya trae un día/ISO concreto, no es vago.
+    if any(p.search(low) for p in _DATE_GIVEN_PATTERNS):
+        return False
+    # Si en la conversación YA se dieron fechas concretas, tampoco (no reabrir el picker).
+    if _dates_already_given(user_message, history):
+        return False
+    return True
+
+
 # Meses en español (nombre completo) → número. Para posicionar el date picker en el mes que
 # el huésped mencionó ("alojarme en septiembre").
 _MESES = {
@@ -486,6 +516,15 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # Selector de reserva de mesa (Fase 2): día + turno + personas.
         elif table_card:
             cards = [table_card]
+
+        # BACKSTOP de fechas vagas: si el huésped mencionó un período (mes/temporada/duración)
+        # SIN un día concreto, NO mostramos habitaciones (saldrían de fechas inventadas por el
+        # LLM, con un precio irreal). Forzamos el selector para que elija las fechas exactas.
+        elif _vague_dates_no_day(
+            chat_request.message,
+            agent_service.conversation_history.get(chat_request.session_id, []),
+        ):
+            cards = [_date_picker_card(_suggested_month(chat_request.message))]
 
         # Si el agente está pidiendo fechas y no mostró habitaciones, ofrecemos el selector.
         # Nunca en post-venta/casual (el huésped con reserva no busca disponibilidad).

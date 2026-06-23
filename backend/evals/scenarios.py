@@ -363,4 +363,23 @@ SCENARIOS = [
              "expect": {"tool_called": "info_hotel"}},
         ],
     },
+    {
+        "id": "S30",
+        "name": "Fechas VAGAS: no inventar fechas, mostrar el selector (caso real)",
+        # Reproduce el bug real: el huésped dice un MES + una DURACIÓN sin día concreto.
+        # Aura NO debe inventar fechas ni mostrar precio/habitaciones: debe pedir las fechas
+        # exactas y el sistema muestra el date picker. Recién con fechas concretas, habitaciones.
+        "turns": [
+            {"user": "Hola! estoy pensando en viajar en noviembre, somos una pareja, quizás una semana.",
+             # Sin día concreto → NO disponibilidad, NO precio inventado, NO card de habitación,
+             # NO intento de reserva. SÍ el selector de fechas.
+             "expect": {"tool_not_called": ["consultar_disponibilidad", "crear_reserva"],
+                        "card": "date_picker", "no_card": "room",
+                        "price_from_tool": True}},
+            {"user": f"Dale, del {CI} al {CO}, 2 adultos.",
+             # Ahora SÍ hay fechas concretas → disponibilidad y card de habitación, sin picker.
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
+                        "no_card": "date_picker"}},
+        ],
+    },
 ]

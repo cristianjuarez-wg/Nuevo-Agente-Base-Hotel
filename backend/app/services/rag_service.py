@@ -280,60 +280,68 @@ class RAGService:
                 "error": str(e)
             }
     
+    # Cuántos chunks como máximo conservar por documento. >1 para que un documento
+    # multi-sección (ej. un calendario con una fecha por provincia) devuelva la sección
+    # que matchea la consulta y no solo su encabezado. Acotado para no inundar el contexto
+    # con casi-duplicados de un mismo doc.
+    MAX_CHUNKS_PER_DOC = 3
+
     def _deduplicate_by_document(self, results: List[Dict]) -> List[Dict]:
         """
-        Deduplicación inteligente que respeta paquetes multi-país.
-        
-        Para documentos con múltiples países:
-        - Mantiene al menos 1 chunk representativo por país mencionado
-        - Asegura que GPT reciba información completa del paquete
-        
-        Para documentos de un solo país:
-        - Mantiene solo el chunk más relevante (lógica original)
-        
+        Acota la cantidad de chunks por documento conservando los más relevantes.
+
+        Para documentos cortos (un tema = un chunk) el comportamiento es el de siempre:
+        se conserva ese chunk. Para documentos LARGOS multi-sección (ej. un calendario
+        con una fecha por provincia), conservar solo el mejor chunk descarta justo la
+        sección que responde la pregunta (quedaba el encabezado genérico). Por eso
+        mantenemos hasta `MAX_CHUNKS_PER_DOC` chunks por documento, ordenados por
+        similitud, en lugar de uno solo.
+
         Args:
             results: Lista de resultados de búsqueda vectorial
-            
+
         Returns:
-            Lista deduplicada con representación completa de paquetes multi-país
+            Lista acotada por documento, conservando los chunks más relevantes.
         """
         try:
             if not results:
                 return results
-            
+
             # Agrupar resultados por doc_id
             docs_groups = {}
             for result in results:
                 doc_id = result['metadata'].get('doc_id', 'unknown')
                 source = result['metadata'].get('source', 'unknown')
-                
+
                 # Usar source como fallback si no hay doc_id
                 key = doc_id if doc_id != 'unknown' else source
-                
+
                 if key not in docs_groups:
                     docs_groups[key] = []
                 docs_groups[key].append(result)
-            
+
             # Procesar cada documento
             deduplicated = []
             removed_count = 0
-            
+
             for doc_key, doc_results in docs_groups.items():
                 if len(doc_results) == 1:
                     # Solo un chunk, mantenerlo
                     deduplicated.append(doc_results[0])
                     continue
 
-                # Por documento, mantener el chunk más relevante (KB del hotel: un doc por tema).
-                best_result = max(doc_results, key=lambda x: x.get('similarity', 0))
-                deduplicated.append(best_result)
-                removed_count += len(doc_results) - 1
+                # Conservar los chunks más relevantes del documento (hasta el tope), para
+                # que un doc multi-sección no quede reducido a su encabezado.
+                ranked = sorted(doc_results, key=lambda x: x.get('similarity', 0), reverse=True)
+                kept = ranked[: self.MAX_CHUNKS_PER_DOC]
+                deduplicated.extend(kept)
+                removed_count += len(doc_results) - len(kept)
 
                 logger.debug("Document deduplicated",
-                           source=best_result['metadata'].get('source'),
+                           source=kept[0]['metadata'].get('source'),
                            total_chunks=len(doc_results),
-                           selected_chunk=best_result['metadata'].get('chunk_index'),
-                           selected_similarity=f"{best_result.get('similarity', 0):.3f}")
+                           kept_chunks=len(kept),
+                           top_similarity=f"{kept[0].get('similarity', 0):.3f}")
             
             # Ordenar por similitud descendente para mantener el orden de relevancia
             deduplicated.sort(key=lambda x: x.get('similarity', 0), reverse=True)

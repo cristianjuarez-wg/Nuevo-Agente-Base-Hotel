@@ -74,6 +74,11 @@ class HotelPostventaContext:
         if tool_ctx.get("table_card"):
             self.table_card = tool_ctx["table_card"]
 
+    def knowledge_tool_ctx(self) -> Dict:
+        """ctx dict mínimo para reusar los handlers de conocimiento de hotel_tools
+        (info_pago, comercios_amigos, promos_vigentes, excursiones): solo necesitan `db`."""
+        return {"db": self.service.db}
+
 
 # ---------------------------------------------------------------------------
 # TOOL — análisis de severidad/escalación
@@ -334,9 +339,56 @@ async def armar_pedido_carta(ctx: RunContextWrapper[HotelPostventaContext], item
     return result.get("tool_result", "")
 
 
+# ── Conocimiento determinístico en POST-VENTA (capa compartida con pre-venta) ───
+# El huésped alojado también pregunta cómo pagar el saldo, dónde comer con beneficio,
+# qué promos hay o qué excursiones hacer. Reusan los handlers de hotel_tools (datos
+# EXACTOS de la DB) en vez del RAG difuso.
+@function_tool
+async def consultar_pago(ctx: RunContextWrapper[HotelPostventaContext], consulta: str = "") -> str:
+    """Devuelve los datos EXACTOS de pago/transferencia (CBU, alias, titular, medios de pago)
+    cargados por el hotel. Úsala cuando el huésped pregunte cómo pagar el saldo, pida el CBU,
+    el alias, los datos bancarios o una cuenta en otra moneda. Pasale `consulta` con lo que
+    pidió. NUNCA inventes ni modifiques un dato bancario."""
+    from app.services.hotel_tools import execute_tool
+    result = await execute_tool("info_pago", {"consulta": consulta}, ctx.context.knowledge_tool_ctx())
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def comercios_amigos(ctx: RunContextWrapper[HotelPostventaContext], rubro: str = "") -> str:
+    """Devuelve los comercios amigos del hotel (gastronomía con acuerdo) y sus beneficios para
+    huéspedes. Úsala cuando el huésped pida dónde comer con descuento, heladerías, chocolaterías
+    o restaurantes cerca. `rubro` (opcional): tipo de comercio."""
+    from app.services.hotel_tools import execute_tool
+    result = await execute_tool("comercios_amigos", {"rubro": rubro}, ctx.context.knowledge_tool_ctx())
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def promociones_vigentes(ctx: RunContextWrapper[HotelPostventaContext]) -> str:
+    """Devuelve las promociones activas del hotel con sus condiciones EXACTAS. Úsala cuando el
+    huésped pregunte qué promociones o descuentos hay. Si no hay ninguna activa, decilo; no
+    inventes promos."""
+    from app.services.hotel_tools import execute_tool
+    result = await execute_tool("promos_vigentes", {}, ctx.context.knowledge_tool_ctx())
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def excursiones_y_atracciones(ctx: RunContextWrapper[HotelPostventaContext], categoria: str = "") -> str:
+    """Devuelve las excursiones y atracciones de la zona cargadas por el hotel, con descripción
+    y ubicación. Úsala cuando el huésped pregunte qué hacer, qué visitar o qué paseos/excursiones
+    hay cerca. `categoria` (opcional): tipo de lugar. No la confundas con `comercios_amigos`
+    (dónde comer) ni con dudas de la reserva."""
+    from app.services.hotel_tools import execute_tool
+    result = await execute_tool("excursiones_y_atracciones", {"categoria": categoria}, ctx.context.knowledge_tool_ctx())
+    return result.get("tool_result", "")
+
+
 _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
           ver_fotos_habitacion, registrar_preferencia,
-          ver_carta, reservar_mesa, armar_pedido_carta]
+          ver_carta, reservar_mesa, armar_pedido_carta,
+          consultar_pago, comercios_amigos, promociones_vigentes, excursiones_y_atracciones]
 
 
 # ---------------------------------------------------------------------------
