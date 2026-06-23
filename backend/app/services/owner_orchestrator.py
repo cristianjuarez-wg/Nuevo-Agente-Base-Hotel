@@ -94,9 +94,17 @@ async def consultar_leads(ctx: RunContextWrapper[OwnerContext], periodo: str = "
     db = ctx.context.db
     start, end, label = bm.resolve_period(periodo)
     s = bm.get_leads_summary(db, start, end)
+    by_ch = s.get("by_channel") or {}
+    # Torta de origen de los leads (web / whatsapp / …), si hay datos.
+    if by_ch:
+        ctx.context.chart_url = chart_service.pie_chart_url(
+            list(by_ch.keys()), list(by_ch.values()), f"Leads por canal — {label}"
+        )
+    canal_txt = ", ".join(f"{c}: {n}" for c, n in by_ch.items())
     return (
         f"Leads de {label}: {s['generated']} generados, {s['closed']} cerrados "
         f"(conversión {s['conversion_pct']}%)."
+        + (f" Por canal: {canal_txt}." if canal_txt else "")
     )
 
 
@@ -107,7 +115,17 @@ async def consultar_quejas(ctx: RunContextWrapper[OwnerContext], periodo: str = 
     db = ctx.context.db
     start, end, label = bm.resolve_period(periodo)
     c = bm.get_complaints(db, start, end)
-    return f"Quejas de {label}: {c['total']} en total ({c['open']} abiertas, {c['resolved']} resueltas)."
+    # Torta de tickets por categoría (en qué se concentran los pedidos/quejas), si hay datos.
+    by_cat = bm.get_tickets_by_category(db, start, end)
+    if by_cat:
+        ctx.context.chart_url = chart_service.pie_chart_url(
+            list(by_cat.keys()), list(by_cat.values()), f"Tickets por categoría — {label}"
+        )
+    cat_txt = ", ".join(f"{cat}: {n}" for cat, n in by_cat.items())
+    return (
+        f"Quejas de {label}: {c['total']} en total ({c['open']} abiertas, {c['resolved']} resueltas)."
+        + (f" Tickets por categoría: {cat_txt}." if cat_txt else "")
+    )
 
 
 @function_tool
@@ -278,7 +296,12 @@ async def ranking_habitaciones(
         values = [r["nights"] for r in ranking]
     else:
         values = [r["bookings"] for r in ranking]
-    ctx.context.chart_url = chart_service.bars_chart_url(labels, values, f"Ranking ({label})")
+    # Distribución de RESERVAS por tipo → torta (qué parte del total es cada habitación).
+    # Magnitudes (revenue/nights) → barras (comparación/orden).
+    if criterio == "bookings":
+        ctx.context.chart_url = chart_service.pie_chart_url(labels, values, f"Reservas por tipo — {label}")
+    else:
+        ctx.context.chart_url = chart_service.bars_chart_url(labels, values, f"Ranking ({label})")
     detalle = "; ".join(
         f"{r['room_type']}: {r['bookings']} reservas, {r['nights']} noches, USD {r['revenue_usd']:,.0f}"
         for r in ranking

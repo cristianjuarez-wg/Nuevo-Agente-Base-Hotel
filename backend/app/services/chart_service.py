@@ -14,6 +14,8 @@ logger = get_logger(__name__)
 
 _BASE = "https://quickchart.io/chart"
 _HILTON = "#005aa9"
+# Paleta para gráficos de torta (distribuciones): azul Hilton + derivados/acentos.
+_PALETTE = ["#005aa9", "#4a90d9", "#7bb5e8", "#f0a500", "#2e8b57", "#9b59b6", "#e67e22", "#95a5a6"]
 
 
 def build_chart_url(chart_config: dict, width: int = 600, height: int = 350) -> str:
@@ -47,6 +49,28 @@ def occupancy_chart_url(daily: list, label: str = "Ocupación") -> str:
         "options": {
             "plugins": {"legend": {"display": True}},
             "scales": {"y": {"beginAtZero": True, "max": 100, "title": {"display": True, "text": "%"}}},
+        },
+    }
+    return build_chart_url(config)
+
+
+def pie_chart_url(labels: list, values: list, title: str = "") -> str:
+    """Torta (distribución de un total): reservas por tipo de habitación, leads por canal,
+    tickets por categoría. `labels` y `values` en el mismo orden. Cada porción su color."""
+    config = {
+        "type": "doughnut",  # doughnut = torta con centro; más legible que pie en WhatsApp
+        "data": {
+            "labels": labels,
+            "datasets": [{
+                "data": values,
+                "backgroundColor": _PALETTE[:len(values)] or _PALETTE,
+            }],
+        },
+        "options": {
+            "plugins": {
+                "legend": {"position": "right"},
+                "title": {"display": bool(title), "text": title},
+            },
         },
     }
     return build_chart_url(config)

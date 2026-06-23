@@ -364,7 +364,13 @@ def get_leads_summary(db: Session, start: date, end: date) -> Dict:
         if has_booking_after:
             closed += 1
     conversion_pct = round((closed / generated * 100), 1) if generated else 0.0
-    return {"generated": generated, "closed": closed, "conversion_pct": conversion_pct}
+    # Desglose por canal de origen (web | whatsapp | …) para la torta "¿de dónde vienen mis leads?".
+    by_channel: Dict[str, int] = {}
+    for lead in leads:
+        ch = (getattr(lead, "channel", None) or "web").strip().lower()
+        by_channel[ch] = by_channel.get(ch, 0) + 1
+    return {"generated": generated, "closed": closed, "conversion_pct": conversion_pct,
+            "by_channel": by_channel}
 
 
 def get_complaints(db: Session, start: date, end: date) -> Dict:
@@ -387,6 +393,18 @@ def get_complaints(db: Session, start: date, end: date) -> Dict:
         or 0
     )
     return {"total": total, "open": open_, "resolved": total - open_}
+
+
+def get_tickets_by_category(db: Session, start: date, end: date) -> Dict[str, int]:
+    """Distribución de tickets creados en el rango por categoría (complaint, service_request,
+    change, info, general…). Para la torta '¿en qué se concentran los pedidos/quejas?'."""
+    rows = (
+        db.query(HotelTicket.category, func.count(HotelTicket.id))
+        .filter(HotelTicket.created_at >= start, HotelTicket.created_at < end)
+        .group_by(HotelTicket.category)
+        .all()
+    )
+    return {(cat or "otros"): n for cat, n in rows}
 
 
 def get_business_summary(db: Session, start: date, end: date) -> Dict:
