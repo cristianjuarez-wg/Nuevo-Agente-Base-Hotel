@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, learning, reservations, hotel_tickets, usage, knowledge, whatsapp, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban
+from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban
 from app.config import settings
 from app.core.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
@@ -188,7 +188,7 @@ app.include_router(leads.router)
 app.include_router(kanban.router)
 app.include_router(analytics.router)
 # app.include_router(postsale.router)  # turismo legacy (paquetes/SupportTicket); el hotel usa hotel_tickets. Desmontado.
-app.include_router(learning.router)
+# app.include_router(learning.router)  # auto-aprendizaje legacy de turismo (Kami); huérfano en el hotel. Desmontado.
 app.include_router(reservations.router)
 app.include_router(hotel_tickets.router)
 app.include_router(usage.router)
