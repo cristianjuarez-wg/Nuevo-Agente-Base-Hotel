@@ -54,6 +54,13 @@ function workflowOf(category) {
   return cons.cats.includes(category) ? 'consultas' : 'operaciones'
 }
 
+// Quién figura en el ticket: el nombre si lo hay; "Tarea interna" si lo creó el equipo;
+// si no, es un contacto de cara al público sin reserva → "Visitante".
+function guestLabel(r) {
+  if (r.guest_name) return r.guest_name
+  return r.origin === 'staff' ? 'Tarea interna' : 'Visitante'
+}
+
 function StatusBadge({ status }) {
   const map = {
     // Ciclo operativo (Fase 4)
@@ -168,6 +175,30 @@ function TicketTimeline({ events }) {
   )
 }
 
+// Chip de filtro unificado: mismo lenguaje visual para Estado y Área (una sola familia de
+// acento). Antes convivían pills azules (estado) y verdes (área) en filas separadas, lo que
+// se veía recargado e inconsistente.
+function FilterChip({ active, onClick, label, count }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+        active
+          ? 'bg-hilton-600 text-white shadow-card'
+          : 'bg-white text-slatey ring-1 ring-mist hover:bg-mist'
+      }`}
+    >
+      {label}
+      {count != null && <span className="tabular-nums opacity-70">({count})</span>}
+    </button>
+  )
+}
+
+// Etiqueta corta para nombrar cada grupo de chips (Estado / Área) sin recurrir a otro color.
+function FilterGroupLabel({ children }) {
+  return <span className="text-[11px] font-medium uppercase tracking-wide text-slatey">{children}</span>
+}
+
 export default function TicketsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -267,7 +298,7 @@ export default function TicketsView() {
   const colTicket = { key: 'ticket_number', label: 'Ticket', render: (r) => <span className="font-semibold text-hilton-700">{r.ticket_number}</span> }
   const colGuest = { key: 'guest_name', label: 'Huésped / origen', render: (r) => (
     <div>
-      <p className="font-medium text-ink">{r.guest_name || (r.origin === 'staff' ? 'Tarea interna' : '—')}</p>
+      <p className="font-medium text-ink">{guestLabel(r)}</p>
       <p className="text-xs text-slatey">{r.booking_code || (r.room_number ? `Hab. ${r.room_number}` : '')}</p>
     </div>
   ) }
@@ -325,7 +356,7 @@ export default function TicketsView() {
         <StatusBadge status={r.status} />
       </div>
       <p className="font-medium text-ink">
-        {r.guest_name || (r.origin === 'staff' ? 'Tarea interna' : '—')}
+        {guestLabel(r)}
         {(r.booking_code || r.room_number) && (
           <span className="text-xs font-normal text-slatey"> · {r.booking_code || `Hab. ${r.room_number}`}</span>
         )}
@@ -399,40 +430,42 @@ export default function TicketsView() {
             ))}
           </div>
 
-          {/* Filtro por estado (cambia según el flujo). */}
-          <div className="mb-3 flex flex-wrap gap-2">
+          {/* Banda de filtros: Estado · Área en una sola fila con chips homogéneos, y el
+              buscador alineado a la derecha. En mobile todo hace wrap. */}
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+            {/* Estado */}
+            <FilterGroupLabel>Estado</FilterGroupLabel>
             {statusFilters.map((f) => (
-              <button
+              <FilterChip
                 key={f.id}
+                active={filter === f.id}
                 onClick={() => setFilter(f.id)}
-                className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
-                  filter === f.id ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
-                }`}
-              >
-                {f.label} <span className="tabular-nums opacity-70">({counts[f.id] ?? 0})</span>
-              </button>
+                label={f.label}
+                count={counts[f.id] ?? 0}
+              />
             ))}
-          </div>
 
-          {/* Filtro por área (solo en Operaciones). */}
-          {workflow === 'operaciones' && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              {AREA_FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setAreaFilter(f.id)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    areaFilter === f.id ? 'bg-forest-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-forest-50'
-                  }`}
-                >
-                  {f.label} <span className="tabular-nums opacity-70">({areaCounts[f.id] ?? 0})</span>
-                </button>
-              ))}
+            {/* Área (solo en Operaciones), tras un divisor sutil. */}
+            {workflow === 'operaciones' && (
+              <>
+                <span className="mx-1 hidden h-5 w-px bg-mist sm:block" />
+                <FilterGroupLabel>Área</FilterGroupLabel>
+                {AREA_FILTERS.map((f) => (
+                  <FilterChip
+                    key={f.id}
+                    active={areaFilter === f.id}
+                    onClick={() => setAreaFilter(f.id)}
+                    label={f.label}
+                    count={areaCounts[f.id] ?? 0}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* Buscador: empujado a la derecha en desktop; ancho completo en mobile. */}
+            <div className="w-full sm:ml-auto sm:w-72">
+              <SearchInput value={query} onChange={setQuery} placeholder="Buscar por ticket, huésped o asunto…" />
             </div>
-          )}
-
-          <div className="mb-4">
-            <SearchInput value={query} onChange={setQuery} placeholder="Buscar por ticket, huésped o asunto…" />
           </div>
           {total === 0 ? (
             <EmptyState icon={LifeBuoy} title="Sin tickets en esta vista" desc="Probá con otro filtro o búsqueda." />
