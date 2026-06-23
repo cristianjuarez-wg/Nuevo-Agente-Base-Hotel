@@ -78,7 +78,10 @@ class AgentService:
             return False
         try:
             from app.models.hotel import Booking
-            cutoff = datetime.utcnow() - timedelta(hours=self._SESSION_WINDOW_HOURS)
+            # Booking.created_at se guarda con datetime.now() (hora local del server, como todos
+            # los modelos de hotel.py). Comparamos con la MISMA base (now_argentina), NO utcnow,
+            # para que la ventana de 24h sea real en local (UTC-3) y no quede en ~21h.
+            cutoff = now_argentina() - timedelta(hours=self._SESSION_WINDOW_HOURS)
             return db.query(Booking).filter(
                 Booking.session_id == session_id,
                 Booking.status != "cancelled",

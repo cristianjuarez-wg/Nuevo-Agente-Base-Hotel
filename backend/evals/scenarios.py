@@ -24,9 +24,15 @@ Tools del hotel: consultar_disponibilidad, crear_reserva, consultar_reserva, inf
 Cada escenario puede declarar `session_prefix` (ej. "wa_549..." para simular WhatsApp).
 """
 
+from datetime import date, timedelta
+
 # Fechas futuras estables para los escenarios (evitan "la fecha ya pasó").
 CI = "2026-08-20"   # check-in
 CO = "2026-08-24"   # check-out
+
+# Fechas IN-HOUSE (huésped alojado HOY): check-in ayer, check-out mañana. Dinámicas.
+CI_INHOUSE = (date.today() - timedelta(days=1)).isoformat()
+CO_INHOUSE = (date.today() + timedelta(days=2)).isoformat()
 
 
 SCENARIOS = [
@@ -282,6 +288,39 @@ SCENARIOS = [
              "expect": {"tool_called": "crear_reserva"}},
             {"user": "me mostrás la carta del restaurante?",
              "expect": {"route": "postsale", "tool_called": "ver_carta", "card": "menu_interactive"}},
+        ],
+    },
+    {
+        "id": "S27",
+        "name": "G1: reserva FUTURA pide toallas → no registra como in-house",
+        "turns": [
+            {"user": f"Reservá la Twin del {CI} al {CO} para 2 adultos. Soy Diego Paz, tel 1166660010.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "necesito que cambien las toallas de mi habitación",
+             # No debe prometer el servicio ya (la reserva es futura, no está alojado).
+             "expect": {"response_not_contains": ["ya avisé al equipo", "el equipo ya fue avisado",
+                                                  "pedido registrado"]}},
+        ],
+    },
+    {
+        "id": "S28",
+        "name": "G1: reserva FUTURA pide una cuna (anotable) → se anota para la llegada",
+        "turns": [
+            {"user": f"Reservá la King del {CI} al {CO} para 2 adultos. Soy Eva Ríos, tel 1166660011.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "¿pueden dejar una cuna en la habitación para cuando llegue?",
+             # Anotable a futuro: lo toma/registra sin negarse seco.
+             "expect": {"response_not_contains": ["no puedo", "no es posible"]}},
+        ],
+    },
+    {
+        "id": "S29",
+        "name": "G1 regresión: huésped ALOJADO hoy pide arreglar el aire → registra normal",
+        "turns": [
+            {"user": f"Reservá la King del {CI_INHOUSE} al {CO_INHOUSE} para 2 adultos. Soy Fede Luna, tel 1166660012.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "el aire acondicionado de mi habitación no anda",
+             "expect": {"tool_called": "solicitar_servicio"}},
         ],
     },
     {

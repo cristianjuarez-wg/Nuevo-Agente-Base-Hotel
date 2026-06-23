@@ -151,6 +151,24 @@ async def solicitar_servicio(
     """
     try:
         context = ctx.context
+        # GATE in-house: los servicios FÍSICOS en la habitación (toallas, limpieza, algo roto,
+        # room service) solo tienen sentido si el huésped está ALOJADO HOY. Si su reserva es
+        # futura, no se registran como si estuviera en casa: se explican para la llegada.
+        # Los pedidos ANOTABLES (recepción/general: cuna, late check-out, almohada extra) sí
+        # se registran aunque la reserva sea futura.
+        _IN_HOUSE_ONLY = {"housekeeping", "mantenimiento", "room_service"}
+        booking = context.booking
+        stay = booking.stay_status() if booking else None
+        if (tipo or "").strip().lower() in _IN_HOUSE_ONLY and stay != "checked_in":
+            ci = getattr(booking, "check_in", None)
+            cuando = f" Tu estadía arranca el {ci.strftime('%d/%m')}." if ci and stay == "upcoming" else ""
+            return (
+                "NO registres este pedido como si el huésped estuviera alojado: su reserva NO "
+                f"está en curso (estado: {stay}).{cuando} Explicale con calidez que ese servicio "
+                "(toallas, limpieza, reparaciones, room service) es para cuando esté alojado, y "
+                "ofrecele DEJAR ANOTADO el pedido para su llegada si quiere. NO prometas que se "
+                "hace ahora."
+            )
         status = context.service.register_service_request(
             ticket=context.ticket, pedido=pedido, tipo=tipo, urgencia=urgencia,
         )
