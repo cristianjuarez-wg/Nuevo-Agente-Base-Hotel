@@ -7,6 +7,9 @@ python seed_hotel.py || echo "[warn] seed_hotel.py falló, continuando..."
 python seed_room_units.py || echo "[warn] seed_room_units.py falló, continuando..."
 python ingest_docs.py || echo "[warn] ingest_docs.py falló, continuando..."
 python seed_knowledge.py || echo "[warn] seed_knowledge.py falló, continuando..."
+# Lugares y excursiones de Bariloche + comercios amigos (config del agente).
+# Idempotente; re-ingesta al RAG para que el agente recomiende qué hacer en la zona.
+python seed_places.py || echo "[warn] seed_places.py falló, continuando..."
 # Promociones (config): la tabla debe coincidir con el doc RAG promociones.md, o el
 # agente ofrece promos que la tool no puede confirmar. Idempotente; re-ingesta al RAG.
 python seed_promotions.py || echo "[warn] seed_promotions.py falló, continuando..."
