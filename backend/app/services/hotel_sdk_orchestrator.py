@@ -44,10 +44,16 @@ from app.prompts.generation_prompts import NATURALIDAD_BLOCK
 from app.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
+    build_booking_nudge_block,
     build_whatsapp_contact_block,
     build_guest_profile_block,
     build_language_block,
 )
+
+# Flag (en Conversation.extra_metadata) que marca que en esta sesión la tool de disponibilidad
+# ya devolvió habitaciones reales. Si está, el huésped ya vio opciones → toca cerrar la venta
+# (ofrecer reservar), no captar lead pasivo. Se setea al final del turno donde hubo rooms_offered.
+_AVAILABILITY_SHOWN_FLAG = "availability_shown"
 
 logger = get_logger(__name__)
 
@@ -458,6 +464,38 @@ class HotelSDKOrchestrator:
             naturalidad_block=NATURALIDAD_BLOCK,
         )
 
+    def _availability_already_shown(self, db: Session, session_id: str) -> bool:
+        """¿En esta sesión la tool de disponibilidad ya devolvió habitaciones? (turnos previos).
+
+        Lee el flag en Conversation.extra_metadata. Best-effort: ante cualquier problema, asume
+        que NO (cae al comportamiento de captura pasiva, que es el conservador).
+        """
+        try:
+            from app.models.conversation import Conversation
+            conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+            return bool(conv and (conv.extra_metadata or {}).get(_AVAILABILITY_SHOWN_FLAG))
+        except Exception:
+            return False
+
+    def _mark_availability_shown(self, db: Session, session_id: str) -> None:
+        """Marca en la Conversation que ya se mostró disponibilidad real en esta sesión.
+
+        Se llama al final de un turno donde la tool ofreció habitaciones, para que el gating del
+        próximo turno sepa que el huésped ya vio opciones y corresponda ofrecer reservar.
+        """
+        try:
+            from app.models.conversation import Conversation
+            conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+            if not conv:
+                return
+            meta = dict(conv.extra_metadata or {})
+            if not meta.get(_AVAILABILITY_SHOWN_FLAG):
+                meta[_AVAILABILITY_SHOWN_FLAG] = True
+                conv.extra_metadata = meta
+                db.commit()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("No se pudo marcar availability_shown", session_id=session_id, error=str(e))
+
     async def _build_lead_block(
         self, db: Session, message: str, session_id: str, history: List[Dict]
     ) -> tuple[str, Dict, bool]:
@@ -503,7 +541,13 @@ class HotelSDKOrchestrator:
             lead_block = build_whatsapp_contact_block(lead.phone)
         elif should_request_contact:
             main_interest = lead_analysis.get("main_interest", "tu estadía")
-            lead_block = build_contact_request_block(main_interest)
+            # Si en esta charla YA se mostró disponibilidad real (en un turno previo), el huésped
+            # está listo para cerrar: ofrecé reservar, no captura pasiva ("te aviso si se libera").
+            lead_block = (
+                build_booking_nudge_block(main_interest)
+                if self._availability_already_shown(db, session_id)
+                else build_contact_request_block(main_interest)
+            )
 
         # El perfil del huésped va PRIMERO (contexto de quién es), luego el bloque de lead.
         return (guest_block + lead_block), lead_analysis, should_request_contact
@@ -616,6 +660,11 @@ class HotelSDKOrchestrator:
                     session_id=session_id,
                     tools_used=tools_used,
                     duration=f"{duration:.2f}s")
+
+        # Si en este turno se ofrecieron habitaciones, dejá la marca para que el próximo turno
+        # cierre la venta (ofrecer reservar) en vez de captar lead pasivo.
+        if run_ctx.rooms_offered:
+            self._mark_availability_shown(db, session_id)
 
         return {
             "response": response_text,

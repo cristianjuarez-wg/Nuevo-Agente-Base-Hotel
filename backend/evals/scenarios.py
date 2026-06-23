@@ -53,6 +53,22 @@ SCENARIOS = [
         ],
     },
     {
+        "id": "S1b",
+        "name": "Tras ver disponibilidad y elegir: ofrece RESERVAR, no captura pasiva",
+        # Reproduce el caso real: el huésped vio disponibilidad, eligió una habitación y pregunta
+        # un detalle. Aura debe encaminar a reservar — NO desviar a "dejame tus datos y te aviso
+        # si se libera disponibilidad" (sub-venta + contradicción: SÍ hay lugar).
+        "turns": [
+            {"user": f"Hola! disponibilidad del {CI} al {CO} para 2 adultos.",
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room"}},
+            {"user": "La Twin me convence. Incluye estacionamiento? cómo es la pensión?",
+             "expect": {"response_not_contains": [
+                 "se libera disponibilidad", "se confirme la disponibilidad",
+                 "avisar si se libera", "no hay disponibilidad",
+             ]}},
+        ],
+    },
+    {
         "id": "S2",
         "name": "Varias preguntas en un solo mensaje",
         "turns": [
