@@ -185,12 +185,21 @@ class HotelPostSaleService:
     # Contexto de la reserva (para el prompt del orquestador)
     # ------------------------------------------------------------------
     def build_booking_context(self, booking: Booking) -> str:
+        from datetime import date as _date
         d = booking.to_dict()
+        # Marca temporal: ayuda al agente a no hablar como si el huésped "ya estuvo"/"vuelve"
+        # cuando la reserva es futura (caso típico: recién reservó para más adelante).
+        try:
+            ci = booking.check_in if isinstance(booking.check_in, _date) else _date.fromisoformat(str(d["check_in"]))
+            etapa = "FUTURA (el huésped aún no se hospedó)" if ci > _date.today() else "en curso / pasada"
+        except Exception:
+            etapa = "—"
         return "\n".join([
             f"INFORMACIÓN DE LA RESERVA {d['code']}:",
             f"Huésped: {d['guest_name']}",
             f"Habitación: {d.get('room_type', 'N/A')}",
             f"Check-in: {d['check_in']} | Check-out: {d['check_out']} ({d['nights']} noche(s))",
+            f"Etapa de la estadía: {etapa}",
             f"Huéspedes: {d['guests']}",
             f"Total: USD {d['total_price_usd']:.0f} / ARS {d['total_price_ars']:,.0f}",
             f"Estado: {d['status']} | Pago: {d['payment_status']}",

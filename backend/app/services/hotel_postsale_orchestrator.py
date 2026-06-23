@@ -184,7 +184,73 @@ async def ver_fotos_habitacion(ctx: RunContextWrapper[HotelPostventaContext]) ->
                 "habitación en el sitio del hotel.")
 
 
-_TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio, ver_fotos_habitacion]
+@function_tool
+async def registrar_preferencia(
+    ctx: RunContextWrapper[HotelPostventaContext],
+    preferencias: List[str],
+    tipo: str = "",
+) -> str:
+    """Guarda en el perfil del huésped una ALERGIA/intolerancia o preferencia dietética que
+    menciona DESPUÉS de reservar (ej. "soy alérgico al maní", "soy celíaco", "soy vegetariano").
+    Úsala apenas la mencione: NO te limites a decir "lo tendré en cuenta". Las ALERGIAS son
+    seguridad alimentaria: quedan en su perfil y se avisa al equipo del hotel.
+
+    Args:
+        preferencias: lista de lo que dijo (ej. ["maní"] o ["vegetariano"]).
+        tipo: "alergia" si es alergia/intolerancia, "dieta" si es preferencia dietética.
+    """
+    context = ctx.context
+    booking = context.booking
+    db = context.service.db
+    if isinstance(preferencias, str):
+        preferencias = [preferencias]
+    nuevas = [str(p).strip().lower() for p in (preferencias or []) if str(p).strip()]
+    if not nuevas:
+        return "¿Qué alergia o preferencia querés que registre?"
+
+    # En post-venta el huésped se identifica por su reserva → Contact vía booking.contact_id.
+    from app.models.contact import Contact
+    contact = None
+    if getattr(booking, "contact_id", None):
+        contact = db.query(Contact).filter(Contact.id == booking.contact_id).first()
+    if not contact:
+        return ("Lo anoté para esta conversación, pero no pude vincularlo a tu perfil. "
+                "El equipo del hotel lo tendrá en cuenta igual.")
+
+    try:
+        from app.services.hotel_tools import persist_preferences
+        nuevas_alergias, nuevas_dietas = persist_preferences(db, contact, nuevas, tipo or None)
+    except Exception as e:  # noqa: BLE001
+        logger.error("registrar_preferencia (post-venta) falló", error=str(e))
+        return ("No pude guardarlo automáticamente. Avisá al equipo del hotel para que lo "
+                "registre, por las dudas.")
+
+    # Las alergias, además, se avisan al staff (seguridad alimentaria).
+    if nuevas_alergias:
+        try:
+            context.service.register_service_request(
+                ticket=context.ticket,
+                pedido=f"Alergia/intolerancia declarada por el huésped: {', '.join(nuevas_alergias)}. "
+                       "Tener en cuenta en restaurante/desayuno (seguridad alimentaria).",
+                tipo="recepcion", urgencia="alta",
+            )
+            context.service_requested = True
+        except Exception as e:  # noqa: BLE001
+            logger.error("aviso de alergia al staff falló", error=str(e))
+
+    partes = []
+    if nuevas_alergias:
+        partes.append(f"⚠️ Registré tu alergia/intolerancia ({', '.join(nuevas_alergias)}) en tu "
+                      "perfil y avisé al equipo del hotel para que la tengan en cuenta en el "
+                      "restaurante y el desayuno.")
+    if nuevas_dietas:
+        partes.append(f"Guardé tus preferencias ({', '.join(nuevas_dietas)}) en tu perfil.")
+    return (" ".join(partes) or "Listo, lo guardé en tu perfil.") + \
+        " Confirmáselo al huésped con calidez y tranquilidad."
+
+
+_TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
+          ver_fotos_habitacion, registrar_preferencia]
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +377,7 @@ class HotelPostSaleSDKOrchestrator:
         # Si se registró un pedido de servicio, el ticket ya quedó 'open' para el staff:
         # no lo re-tocamos. Si no, aplicamos resolver/escalar según el análisis.
         analysis = run_ctx.escalation_analysis
+        requires_escalation = False  # default: un pedido de servicio no escala (queda 'open').
         if run_ctx.service_requested:
             status = ticket.status  # 'open' (pedido de servicio para el staff)
         else:

@@ -240,6 +240,29 @@ SCENARIOS = [
         ],
     },
     {
+        "id": "S22",
+        "name": "Declara alergia tras reservar (la registra, no proyecta recurrencia)",
+        "tool_called_any": True,  # post-venta: registrar_preferencia; pre-venta: guardar_preferencia
+        "turns": [
+            {"user": f"Reservá la Twin del {CI} al {CO} para 2 adultos. Soy Tomás Vega, tel 1177778888.",
+             "expect": {"tool_called": ["crear_reserva"]}},
+            {"user": "me olvidé de decirte que soy alérgico al maní",
+             "expect": {"tool_called": ["registrar_preferencia", "guardar_preferencia"],
+                        "response_not_contains": ["de siempre", "de vuelta", "tenerte de vuelta"]}},
+        ],
+    },
+    {
+        "id": "S23",
+        "name": "Preferencia dietética tras reservar (se guarda)",
+        "tool_called_any": True,
+        "turns": [
+            {"user": f"Reservá la King del {CI} al {CO} para 2 adultos. Soy Vera Sosa, tel 1188889999.",
+             "expect": {"tool_called": ["crear_reserva"]}},
+            {"user": "ah, soy vegetariana, tenelo en cuenta",
+             "expect": {"tool_called": ["registrar_preferencia", "guardar_preferencia"]}},
+        ],
+    },
+    {
         "id": "S17",
         "name": "Charla casual NO dispara la carta (página≠gin Athos)",
         "turns": [

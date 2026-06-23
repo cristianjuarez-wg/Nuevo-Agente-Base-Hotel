@@ -1093,20 +1093,7 @@ def _handle_guardar_preferencia(args: Dict, ctx: Dict) -> Dict:
     except Exception:
         prefs = {}
 
-    diet = set(prefs.get("dietary") or [])
-    allergies = set(prefs.get("allergies") or [])
-    nuevas_alergias, nuevas_dietas = [], []
-    for p in nuevas:
-        if _clasificar_preferencia(p, tipo_hint) == "allergies":
-            allergies.add(p)
-            nuevas_alergias.append(p)
-        else:
-            diet.add(p)
-            nuevas_dietas.append(p)
-
-    prefs["dietary"] = sorted(diet)
-    prefs["allergies"] = sorted(allergies)
-    contact_service.set_preferences(contact.id, prefs, db)
+    nuevas_alergias, nuevas_dietas = persist_preferences(db, contact, nuevas, tipo_hint)
 
     # Mensaje de confirmación diferenciado: la alergia se confirma con énfasis.
     partes = []
@@ -1124,6 +1111,34 @@ def _handle_guardar_preferencia(args: Dict, ctx: Dict) -> Dict:
         "tool_result": " ".join(partes) or "Listo, lo guardé en tu perfil.",
         "saved": True,
     }
+
+
+def persist_preferences(db, contact, nuevas: list, tipo_hint: Optional[str] = None):
+    """Persiste preferencias/alergias en el perfil del Contact. Reusable por pre y post-venta.
+
+    Clasifica cada item en `allergies` (seguridad alimentaria) o `dietary`, los suma a los ya
+    guardados y los persiste. Devuelve (nuevas_alergias, nuevas_dietas) que efectivamente se
+    agregaron, para el mensaje de confirmación.
+    """
+    try:
+        profile = contact_service.get_guest_profile(contact.id, db)
+        prefs = (profile or {}).get("preferences") or {}
+    except Exception:
+        prefs = {}
+    diet = set(prefs.get("dietary") or [])
+    allergies = set(prefs.get("allergies") or [])
+    nuevas_alergias, nuevas_dietas = [], []
+    for p in nuevas:
+        if _clasificar_preferencia(p, tipo_hint) == "allergies":
+            allergies.add(p)
+            nuevas_alergias.append(p)
+        else:
+            diet.add(p)
+            nuevas_dietas.append(p)
+    prefs["dietary"] = sorted(diet)
+    prefs["allergies"] = sorted(allergies)
+    contact_service.set_preferences(contact.id, prefs, db)
+    return nuevas_alergias, nuevas_dietas
 
 
 # ---------------------------------------------------------------------------
