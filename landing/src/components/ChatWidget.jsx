@@ -110,6 +110,7 @@ export default function ChatWidget() {
   const [langMenu, setLangMenu] = useState(false)
   const scrollRef = useRef(null)
   const anchorRef = useRef(null)  // ancla al inicio del último turno del usuario (para posicionar la vista)
+  const pickerRef = useRef(null)  // card del date picker más reciente (para traerla a la vista cuando aparece)
   const inputRef = useRef(null)
   const sessionId = useRef(getSessionId())
   const typewriterRef = useRef(null)  // timer del efecto de tipeo (para poder cancelarlo)
@@ -174,6 +175,18 @@ export default function ChatWidget() {
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
     if (nearBottom) el.scrollTo({ top: el.scrollHeight })
   }, [messages, busy])
+
+  // Cuando el último turno de Aura trae el DATE PICKER, traelo a la vista completo (incluido su
+  // botón de confirmar). El picker llega DESPUÉS del texto (typeOutReply lo adjunta al final del
+  // tipeo), así que reaccionamos a [messages]; sin esto la card queda debajo del fold y el usuario
+  // responde la fecha por texto sin completar el picker.
+  const lastMsg = messages[messages.length - 1]
+  const lastHasPicker = lastMsg?.role === 'assistant' && lastMsg.cards?.some((c) => c.type === 'date_picker')
+  useEffect(() => {
+    if (lastHasPicker) {
+      pickerRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+    }
+  }, [lastHasPicker])
 
   // Auto-resize del textarea: crece con el contenido (hasta max-h, luego scrollea).
   useEffect(() => {
@@ -437,7 +450,7 @@ export default function ChatWidget() {
                       if (card.type === 'room')
                         return <RoomCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
                       if (card.type === 'date_picker')
-                        return <DatePickerCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
+                        return <div key={ci} ref={pickerRef}><DatePickerCard card={card} onAction={handleCardAction} lang={lang} /></div>
                       if (card.type === 'menu_interactive')
                         return <MenuOrderCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
                       if (card.type === 'table_reservation')
