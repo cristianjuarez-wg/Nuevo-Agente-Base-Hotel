@@ -3,6 +3,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Usar BD en memoria para tests (nunca toca documents.db)
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-key")
@@ -26,7 +27,14 @@ from app.main import app
 from app.models.database import Base, get_db
 
 TEST_DB_URL = "sqlite:///:memory:"
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+# StaticPool: una sola conexión compartida. Sin esto, cada conexión de `:memory:` abre su
+# propia base vacía, y un test que crea tablas con la sesión `db` no las ve cuando el request
+# HTTP del fixture `client` usa otra conexión del pool (faltaría la tabla).
+engine = create_engine(
+    TEST_DB_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

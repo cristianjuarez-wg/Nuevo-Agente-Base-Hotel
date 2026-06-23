@@ -13,13 +13,14 @@ import {
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
+import ChatTranscript from '../components/ChatTranscript'
 import { useTableControls } from '../hooks/useTableControls'
 
 // Dos flujos distintos conviven en la misma tabla: OPERACIONES (pedidos de servicio que se
 // asignan al equipo) y CONSULTAS (post-venta informativa que el agente responde o escala).
 // El toggle los separa; cada uno trae sus propios filtros de estado.
 const WORKFLOWS = [
-  { id: 'operaciones', label: 'Operaciones', cats: ['service_request', 'general', 'restaurant'] },
+  { id: 'operaciones', label: 'Operaciones', cats: ['service_request', 'general', 'restaurant', 'table_reservation', 'voucher'] },
   { id: 'consultas', label: 'Consultas', cats: ['info', 'change', 'cancel', 'complaint'] },
 ]
 
@@ -633,6 +634,10 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
 
           <p className="px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-slatey">Actividad</p>
           <TicketTimeline events={ticket.events} />
+
+          {/* La charla con Aura que originó el ticket (vía session_id). */}
+          <p className="border-t border-mist px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-slatey">Conversación</p>
+          <ChatTranscript sessionId={ticket.session_id} />
         </div>
 
         {ticket.resolution_note && (

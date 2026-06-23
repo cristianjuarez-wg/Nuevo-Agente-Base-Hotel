@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2, MessageCircle, List, LayoutGrid } from 'lucide-react'
+import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2, MessageCircle, MessageSquare, List, LayoutGrid } from 'lucide-react'
 import { listLeads, deleteLead, updateLead } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, WhatsAppDot,
@@ -7,6 +7,7 @@ import {
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
+import ChatTranscript from '../components/ChatTranscript'
 import { useTableControls } from '../hooks/useTableControls'
 import KanbanBoard from './KanbanBoard'
 
@@ -21,6 +22,14 @@ export function TypeBadge({ type }) {
   const t = (type || '').toUpperCase()
   const map = { CALIENTE: 'red', TIBIO: 'amber', FRIO: 'blue' }
   return <Badge tone={map[t] || 'gray'}>{t || '—'}</Badge>
+}
+
+// Distintivo para leads que YA reservaron (convertidos). Se muestra junto al TypeBadge
+// para que el equipo comercial los identifique de un vistazo.
+export function WonBadge({ status, stage }) {
+  const won = status === 'converted' || stage === 'won'
+  if (!won) return null
+  return <Badge tone="green">Reservó</Badge>
 }
 
 export function ScoreBar({ score }) {
@@ -54,9 +63,11 @@ function flatten(lead) {
     score: cl.interest_score,
     interest: ti.main_interest,
     status: md.status,
+    kanbanStage: lead.kanban?.stage,
     origin: md.origin,
     created_at: md.created_at,
     whatsappLinked: lead.whatsapp_linked,
+    sessionId: lead.session_id,
   }
 }
 
@@ -68,6 +79,7 @@ export default function LeadsView() {
   const [showAll, setShowAll] = useState(false)  // false = solo calificados (con nombre)
   const [viewMode, setViewMode] = useState('list')  // 'list' | 'board'
   const [editLead, setEditLead] = useState(null)
+  const [chatLead, setChatLead] = useState(null)  // lead cuyo historial de chat se está viendo
 
   const load = (includeUnnamed = showAll) => {
     setLoading(true)
@@ -106,6 +118,16 @@ export default function LeadsView() {
     </button>
   )
 
+  const ChatButton = ({ r }) => (
+    <button
+      onClick={() => setChatLead(r)}
+      title="Ver conversación"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700"
+    >
+      <MessageSquare size={15} />
+    </button>
+  )
+
   const EditButton = ({ r }) => (
     <button
       onClick={() => setEditLead(r)}
@@ -127,11 +149,13 @@ export default function LeadsView() {
     ) },
     { key: 'interest', label: 'Interés', render: (r) => r.interest || '—' },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
-    { key: 'type', label: 'Tipo', render: (r) => <TypeBadge type={r.type} /> },
+    { key: 'type', label: 'Tipo', render: (r) => (
+      <div className="flex items-center gap-1.5"><TypeBadge type={r.type} /><WonBadge status={r.status} stage={r.kanbanStage} /></div>
+    ) },
     { key: 'score', label: 'Score', sortable: true, render: (r) => <ScoreBar score={r.score} /> },
     { key: 'created_at', label: 'Fecha', sortable: true, render: (r) => formatDate(r.created_at) },
     { key: 'actions', label: '', render: (r) => (
-      <div className="flex items-center justify-end gap-1"><EditButton r={r} /><DeleteButton r={r} /></div>
+      <div className="flex items-center justify-end gap-1"><ChatButton r={r} /><EditButton r={r} /><DeleteButton r={r} /></div>
     ) },
   ]
 
@@ -141,6 +165,7 @@ export default function LeadsView() {
         <span className="font-medium text-ink">{r.name}</span>
         <div className="flex items-center gap-1.5">
           <OriginBadge origin={r.origin} />
+          <WonBadge status={r.status} stage={r.kanbanStage} />
           <TypeBadge type={r.type} />
         </div>
       </div>
@@ -151,7 +176,7 @@ export default function LeadsView() {
       </div>
       <div className="mt-2 flex items-center justify-between">
         <ScoreBar score={r.score} />
-        <div className="flex items-center gap-1"><EditButton r={r} /><DeleteButton r={r} /></div>
+        <div className="flex items-center gap-1"><ChatButton r={r} /><EditButton r={r} /><DeleteButton r={r} /></div>
       </div>
     </div>
   )
@@ -267,6 +292,38 @@ export default function LeadsView() {
           onSaved={() => { setEditLead(null); load() }}
         />
       )}
+
+      {chatLead && (
+        <LeadChatDrawer lead={chatLead} onClose={() => setChatLead(null)} />
+      )}
+    </div>
+  )
+}
+
+// ── Panel lateral con la charla con Aura que generó el lead ──────────────────
+function LeadChatDrawer({ lead, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-card-lg animate-slide-up">
+        <div className="flex items-start justify-between border-b border-mist px-5 py-4">
+          <div>
+            <p className="font-serif text-lg font-700 text-hilton-700">{lead.name}</p>
+            <p className="mt-0.5 text-sm text-slatey">Conversación con Aura</p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <TypeBadge type={lead.type} />
+              <WonBadge status={lead.status} stage={lead.kanbanStage} />
+              {lead.interest && <span className="text-xs text-slatey">{lead.interest}</span>}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <ChatTranscript sessionId={lead.sessionId} />
+        </div>
+      </aside>
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { useTableControls } from '../../hooks/useTableControls'
 const STATUS = [
   { id: 'all', label: 'Todos' },
   { id: 'pendiente', label: 'Pendientes' },
+  { id: 'confirmado', label: 'Confirmados' },
   { id: 'en_preparacion', label: 'En preparación' },
   { id: 'entregado', label: 'Entregados' },
 ]

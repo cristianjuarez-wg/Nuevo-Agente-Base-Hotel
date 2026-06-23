@@ -137,6 +137,12 @@ export async function setTicketPriority(ticketId, priority) {
   return data.ticket ?? data
 }
 
+// Transcripción de la charla con Aura que originó un ticket o un lead (por session_id).
+export async function getConversation(sessionId) {
+  const { data } = await client.get(`/api/conversations/${encodeURIComponent(sessionId)}/messages`)
+  return data.messages ?? []
+}
+
 // ── Consumo IA (tokens / USD) ────────────────────────────────────────────────
 export async function getUsageSummary() {
   const { data } = await client.get('/api/usage/summary')
