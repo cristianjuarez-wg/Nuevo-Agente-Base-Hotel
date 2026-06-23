@@ -67,6 +67,26 @@ class AgentService:
         upper = message.upper()
         return any(re.search(p, upper) for p in self.BOOKING_CODE_PATTERNS)
 
+    def _session_has_recent_booking(self, db, session_id: str) -> bool:
+        """True si en ESTA sesión web se creó una reserva dentro de la ventana de sesión (24h).
+
+        Reconoce al huésped que reservó por web durante su sesión sin re-pedirle el código,
+        aunque el ticket de post-venta ya esté cerrado. Solo aplica a sesiones web (WhatsApp se
+        identifica por teléfono). Pasada la ventana, vuelve a pedir el código (gate normal).
+        """
+        if not session_id or session_id.startswith("wa_"):
+            return False
+        try:
+            from app.models.hotel import Booking
+            cutoff = datetime.utcnow() - timedelta(hours=self._SESSION_WINDOW_HOURS)
+            return db.query(Booking).filter(
+                Booking.session_id == session_id,
+                Booking.status != "cancelled",
+                Booking.created_at >= cutoff,
+            ).first() is not None
+        except Exception:
+            return False
+
     # Palabras que el huésped usa para confirmar / negar la resolución de su pedido (Fase 4).
     # Se matchean como PALABRA COMPLETA (con \b), no substring: evita que "si" matchee dentro
     # de "sigue" o "anda" dentro de "demandar".
@@ -599,13 +619,17 @@ class AgentService:
                 HotelTicket.status.in_(TICKET_OPEN_STATES),
             ).first() is not None
             has_booking_code = self._contains_booking_code(message)
+            # CONTINUIDAD DE SESIÓN: si en ESTA sesión web se hizo una reserva (dentro de la
+            # ventana de sesión), reconocemos al huésped sin re-pedir el código aunque el ticket
+            # ya esté cerrado. Así el que reservó sigue siendo "huésped" mientras dure la sesión.
+            has_session_booking = self._session_has_recent_booking(db, session_id)
 
             # 🆕 2.5. RUTEO: pre-venta / post-venta / casual.
             # Una señal dura (código de reserva o sesión post-venta activa) SIEMPRE es
             # post-venta y se resuelve sin gastar el triage. En cualquier otro caso, el
             # triage agent del SDK (una sola pasada, con handoffs) desambigua el destino.
             triage = {}  # usage del ruteo (vacío si hubo señal dura y no se invocó)
-            if has_booking_code or has_active_postsale:
+            if has_booking_code or has_active_postsale or has_session_booking:
                 is_postsale = True
             else:
                 from app.services.triage_sdk_orchestrator import (

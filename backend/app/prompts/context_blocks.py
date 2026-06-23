@@ -51,6 +51,14 @@ def build_guest_profile_block(profile: dict) -> str:
         active = profile.get("active_stay") or {}
         lines.append(f"- ESTÁ ALOJADO AHORA (reserva {active.get('code','')}, "
                      f"habitación {active.get('room_type','')}). Tratalo como huésped en casa.")
+    elif profile.get("upcoming_stay"):
+        up = profile.get("upcoming_stay") or {}
+        lines.append(
+            f"- TIENE UNA RESERVA FUTURA (código {up.get('code','')}, "
+            f"habitación {up.get('room_type','')}, check-in {up.get('check_in','')} → "
+            f"check-out {up.get('check_out','')}). AÚN NO se hospedó. Si habla de 'el primer día "
+            f"de mi estadía' o 'cuando llegue', se refiere al check-in {up.get('check_in','')}."
+        )
     if profile.get("is_recurring"):
         lines.append(f"- Es un huésped RECURRENTE: {profile.get('stays_count')} estadías. "
                      f"Última: {profile.get('last_stay')}.")

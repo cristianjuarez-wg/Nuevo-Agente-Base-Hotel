@@ -493,6 +493,12 @@ class ContactService:
             (b for b in bookings if b.check_in and b.check_out and b.check_in <= today <= b.check_out),
             None,
         )
+        # Reserva FUTURA más próxima (reservó pero aún no llegó). Para que el agente sepa
+        # "tiene una reserva para el X" y resuelva "el primer día de mi estadía" = ese check_in.
+        upcoming = min(
+            (b for b in bookings if b.check_in and b.status != "cancelled" and b.check_in > today),
+            key=lambda b: b.check_in, default=None,
+        )
         # Habitación preferida: room_type más frecuente.
         room_counts: Dict[str, int] = {}
         for b in bookings:
@@ -539,6 +545,7 @@ class ContactService:
             "origin": origin_from_channel(_channel),
             "is_staying_now": active is not None,
             "active_stay": active.to_dict() if active else None,
+            "upcoming_stay": upcoming.to_dict() if upcoming else None,
             "stays_count": len(bookings),
             "is_recurring": len(bookings) > 1,
             "first_stay": stays[-1]["check_in"] if stays else None,

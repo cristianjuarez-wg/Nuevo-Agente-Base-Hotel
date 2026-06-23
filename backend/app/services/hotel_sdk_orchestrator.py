@@ -344,9 +344,11 @@ async def reservar_mesa(
     ALMUERZO (mediodía) y CENA (noche). Si el huésped dice "la noche"/"a cenar" pasá
     turno="cena"; si dice "al mediodía"/"a almorzar" pasá turno="almuerzo" (NUNCA pases "noche"
     ni un texto libre como turno). El horario puntual lo elige el huésped en el selector. Si el
-    huésped está alojado podés pasar su `codigo_reserva` (HTL-XXXX) para asociarla. NO la
-    confundas con `consultar_disponibilidad` (reservar habitación) ni con `ver_carta` (pedir
-    comida)."""
+    huésped alude a SU estadía ("el primer día", "cuando llegue", "mi primera noche", "el día
+    que llego"), NO le pidas la fecha ni asumas hoy: dejá `fecha` VACÍA y el sistema usará el
+    check-in de su reserva. Si el huésped está alojado/tiene reserva podés pasar su
+    `codigo_reserva` (HTL-XXXX) para asociarla. NO la confundas con `consultar_disponibilidad`
+    (reservar habitación) ni con `ver_carta` (pedir comida)."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool("reservar_mesa", {
         "fecha": fecha, "turno": turno, "personas": personas,

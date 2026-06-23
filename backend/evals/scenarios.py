@@ -263,6 +263,28 @@ SCENARIOS = [
         ],
     },
     {
+        "id": "S24",
+        "name": "Mesa 'el primer día de mi estadía' usa el check-in de la reserva (no fecha random)",
+        "turns": [
+            {"user": f"Reservá la Twin del {CI} al {CO} para 2 adultos. Soy Bruno Lima, tel 1166660001.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "quiero reservar una mesa para cenar el primer día de mi estadía",
+             # La mesa debe usar la fecha del CHECK-IN (CI), no hoy ni otra fecha.
+             "expect": {"tool_called": "reservar_mesa", "card": "table_reservation",
+                        "response_contains": [CI[-2:]]}},  # menciona el día del check-in
+        ],
+    },
+    {
+        "id": "S25",
+        "name": "Restaurante disponible en post-venta (huésped reconocido por sesión)",
+        "turns": [
+            {"user": f"Reservá la King del {CI} al {CO} para 2 adultos. Soy Carla Ortiz, tel 1166660002.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "me mostrás la carta del restaurante?",
+             "expect": {"route": "postsale", "tool_called": "ver_carta", "card": "menu_interactive"}},
+        ],
+    },
+    {
         "id": "S17",
         "name": "Charla casual NO dispara la carta (página≠gin Athos)",
         "turns": [

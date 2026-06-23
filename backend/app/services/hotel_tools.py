@@ -713,6 +713,23 @@ def _active_booking_for(db, contact, session_id: Optional[str]):
     return None
 
 
+def _relevant_booking_for(db, contact, session_id: Optional[str]):
+    """Reserva relevante del huésped para resolver 'el primer día de mi estadía': la activa
+    HOY si está alojado, o la próxima FUTURA (check_out >= hoy) más cercana. Busca por contacto
+    y por session_id (web). None si no hay reserva vigente/futura."""
+    today = date.today()
+    q = db.query(Booking).filter(
+        Booking.status != "cancelled", Booking.check_out >= today,
+    ).order_by(Booking.check_in.asc())
+    if contact:
+        b = q.filter(Booking.contact_id == contact.id).first()
+        if b:
+            return b
+    if session_id:
+        return q.filter(Booking.session_id == session_id).first()
+    return None
+
+
 def _menu_cart_url(ctx: Dict) -> str:
     """Link a la pantalla #pedido (carta completa), con la sesión para asociar el pedido."""
     url = f"{settings.LANDING_URL.rstrip('/')}/#pedido"
@@ -925,6 +942,19 @@ def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
     turno = (args.get("turno") or args.get("hora") or "").strip()
     personas = args.get("personas") or 0
     nombre = (args.get("nombre") or "").strip()
+
+    # "El primer día de mi estadía" / "cuando llegue": si el huésped tiene una reserva (de esta
+    # sesión o su contacto) y NO dio una fecha, usamos el CHECK-IN de su reserva como fecha de
+    # la mesa. Evita el selector con fecha vacía/incoherente cuando ya sabemos cuándo llega.
+    derived_from_booking = False
+    if not fecha:
+        contact = _resolve_contact(db, ctx)
+        booking = _relevant_booking_for(db, contact, ctx.get("session_id"))
+        if booking and booking.check_in:
+            fecha = booking.check_in.isoformat()
+            derived_from_booking = True
+            # Si no dio nombre, usamos el de la reserva.
+            nombre = nombre or (booking.guest_name or "")
 
     # ¿El turno es un horario HH:MM puntual y válido? Solo entonces se puede crear directo.
     hora_valida = turno in restaurant_service._all_slots()

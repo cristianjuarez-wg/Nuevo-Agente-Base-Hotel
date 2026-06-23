@@ -55,6 +55,24 @@ class HotelPostventaContext:
         self.escalation_analysis = None  # lo escribe analizar_escalacion
         self.service_requested = False   # lo marca solicitar_servicio (no re-tocar el ticket)
         self.room_photos_card = None     # lo setea ver_fotos_habitacion (card para el chat)
+        self.menu_card = None            # lo setea ver_carta/armar_pedido_carta
+        self.table_card = None           # lo setea reservar_mesa
+
+    def restaurant_tool_ctx(self) -> Dict:
+        """ctx dict para reusar los handlers de restaurante de hotel_tools (execute_tool).
+        Lleva la sesión y el contacto de la reserva para que el huésped no pierda su contexto."""
+        return {
+            "db": self.service.db,
+            "session_id": getattr(self.booking, "session_id", None),
+            "contact_id": getattr(self.booking, "contact_id", None),
+        }
+
+    def absorb_restaurant(self, tool_ctx: Dict):
+        """Recupera las cards que los handlers de restaurante dejaron en el tool_ctx."""
+        if tool_ctx.get("menu_card"):
+            self.menu_card = tool_ctx["menu_card"]
+        if tool_ctx.get("table_card"):
+            self.table_card = tool_ctx["table_card"]
 
 
 # ---------------------------------------------------------------------------
@@ -249,8 +267,55 @@ async def registrar_preferencia(
         " Confirmáselo al huésped con calidez y tranquilidad."
 
 
+# ── Restaurante en POST-VENTA (capa compartida con pre-venta) ───────────────────
+# El huésped que YA reservó puede gestionar el restaurante sin perder el contexto de su
+# reserva (fechas, contacto). Reusan los mismos handlers de hotel_tools vía execute_tool.
+@function_tool
+async def ver_carta(ctx: RunContextWrapper[HotelPostventaContext], categoria: str = "") -> str:
+    """Muestra la carta del restaurante PLAZA como tarjeta interactiva. Úsala cuando el huésped
+    pida ver el menú/carta o qué hay para comer/tomar."""
+    from app.services.hotel_tools import execute_tool
+    tc = ctx.context.restaurant_tool_ctx()
+    result = await execute_tool("ver_carta", {"categoria": categoria}, tc)
+    ctx.context.absorb_restaurant(tc)
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def reservar_mesa(
+    ctx: RunContextWrapper[HotelPostventaContext],
+    fecha: str = "", turno: str = "", personas: int = 0, nombre: str = "",
+) -> str:
+    """Reserva una MESA del restaurante para el huésped. El restaurante tiene turnos ALMUERZO
+    y CENA; pasá turno="cena"/"almuerzo" (no "noche"). Si el huésped alude a SU estadía ("el
+    primer día", "cuando llegue"), dejá `fecha` VACÍA: se usa el check-in de su reserva. El
+    horario puntual lo elige en el selector."""
+    from app.services.hotel_tools import execute_tool
+    tc = ctx.context.restaurant_tool_ctx()
+    # Asociar a su reserva por defecto.
+    codigo = getattr(ctx.context.booking, "code", "") or ""
+    result = await execute_tool("reservar_mesa", {
+        "fecha": fecha, "turno": turno, "personas": personas,
+        "nombre": nombre, "codigo_reserva": codigo,
+    }, tc)
+    ctx.context.absorb_restaurant(tc)
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def armar_pedido_carta(ctx: RunContextWrapper[HotelPostventaContext], items_texto: str = "") -> str:
+    """El huésped dijo qué quiere comer/pedir por texto. Devuelve la carta con esos platos
+    precargados para que confirme el pedido."""
+    from app.services.hotel_tools import execute_tool
+    tc = ctx.context.restaurant_tool_ctx()
+    result = await execute_tool("armar_pedido_carta", {"items_texto": items_texto}, tc)
+    ctx.context.absorb_restaurant(tc)
+    return result.get("tool_result", "")
+
+
 _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
-          ver_fotos_habitacion, registrar_preferencia]
+          ver_fotos_habitacion, registrar_preferencia,
+          ver_carta, reservar_mesa, armar_pedido_carta]
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +470,8 @@ class HotelPostSaleSDKOrchestrator:
             "tools_used": tools_used,
             "tool_trace": tool_trace,
             "room_photos_card": run_ctx.room_photos_card,
+            "menu_card": run_ctx.menu_card,
+            "table_card": run_ctx.table_card,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,
         }
