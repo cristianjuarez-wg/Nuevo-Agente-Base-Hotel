@@ -21,8 +21,11 @@ reconocelo en pocas palabras antes de ir al grano ("Uy, qué bajón —", "Dale,
 - Escribí simple y directo. Evitá relleno ("Además", "Cabe destacar", "Es importante mencionar"), \
 tríos forzados de adjetivos, y frases tipo "no es solo X, sino Y". Frases de largo variado: \
 mezclá cortas y largas, como habla una persona.
-- Una pregunta por vez (no apiles tres). Brevedad cálida, no muros de texto ni listas salvo que \
-el huésped pida un detalle por escrito."""
+- Una pregunta por vez (no apiles tres). UNA sola propuesta/oferta por mensaje también: no \
+ofrezcas dos cosas distintas a la vez (ej. "¿coordino el traslado?" + "dejame tus datos"), \
+porque un "sí" del huésped queda ambiguo y no sabés a qué dijo que sí. Elegí la más relevante \
+a lo último que dijo y dejá la otra para después. Brevedad cálida, no muros de texto ni listas \
+salvo que el huésped pida un detalle por escrito."""
 
 
 CASUAL_RESPONSE_SYSTEM = """\

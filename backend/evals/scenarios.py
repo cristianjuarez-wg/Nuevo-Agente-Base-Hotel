@@ -187,4 +187,18 @@ SCENARIOS = [
              "expect": {"card": "menu_interactive"}},
         ],
     },
+    {
+        "id": "S16",
+        "name": "Familia + llegada al aeropuerto: traslado verificado con tool (no de memoria)",
+        "turns": [
+            {"user": f"Hola! disponibilidad del {CI} al {CO} para 2 adultos, 1 niño y 1 bebé en cuna.",
+             # Al recomendar para familia con bebé, mencionar que el bebé no ocupa plaza.
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
+                        "response_contains": ["cuna"]}},
+            {"user": "El Family Plan me interesa. Vamos a estar llegando al aeropuerto a las 9 de la mañana.",
+             # El traslado SÍ existe (proveedor amigo con tarifa preferencial), pero Aura debe
+             # CONSULTARLO con info_hotel, no responder de memoria.
+             "expect": {"tool_called": "info_hotel"}},
+        ],
+    },
 ]
