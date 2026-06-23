@@ -403,9 +403,10 @@ class AgentService:
                 ])
 
             history_section = f"Historial de la conversación:\n{history_context}" if history_context else ""
-            from app.prompts.generation_prompts import CASUAL_LEAD_CAPTURE_HINT
+            from app.prompts.generation_prompts import CASUAL_LEAD_CAPTURE_HINT, NATURALIDAD_BLOCK
             prompt = CASUAL_RESPONSE_SYSTEM.format(
                 agent_name=profile_manager.get_agent_name(),
+                naturalidad_block=NATURALIDAD_BLOCK,
                 history_section=history_section,
                 message=message,
                 lead_capture_hint=(CASUAL_LEAD_CAPTURE_HINT if capture_lead else ""),
@@ -423,7 +424,7 @@ class AgentService:
                 model=settings.OPENAI_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.8,  # Más creativo para conversación casual
-                max_tokens=150
+                max_tokens=220  # margen para una respuesta cálida sin cortarla a mitad
             )
 
             casual_response = response.choices[0].message.content.strip()

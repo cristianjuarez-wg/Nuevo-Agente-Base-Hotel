@@ -40,6 +40,7 @@ from app.services.lead_service import lead_service
 from app.services.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
 from app.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
+from app.prompts.generation_prompts import NATURALIDAD_BLOCK
 from app.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
@@ -450,6 +451,7 @@ class HotelSDKOrchestrator:
             hora_actual=hora,
             lead_block=lead_block,
             language_block=build_language_block(language),
+            naturalidad_block=NATURALIDAD_BLOCK,
         )
 
     async def _build_lead_block(
