@@ -32,6 +32,10 @@ class AgentService:
     BOOKING_CODE_PATTERNS = [
         r'\bHTL-[A-Z0-9]{4}\b',        # HTL-7F3A (formato real de reservas del hotel)
     ]
+    # Código de reserva de MESA del restaurante (MESA-XXXX). El frontend manda un acuse
+    # ("Confirmé mi reserva de mesa MESA-XXXX") tras crear la mesa en el selector: lo
+    # interceptamos para felicitar, NO para mandarlo al post-venta del hotel (que pide HTL-).
+    TABLE_CODE_PATTERN = r'\bMESA-[A-Z0-9]{4}\b'
 
     # Frases sociales centralizadas. Usadas en: _detect_postsale_context (guard de
     # saludos), _classify_first_message (fallback), y detección de despedidas en chat().
@@ -121,6 +125,53 @@ class AgentService:
             "intent": "resolution_validation",
             "ticket_number": ticket.ticket_number,
             "status": status,
+            "session_info": self.get_session_info(session_id),
+        }
+
+    def _handle_table_confirmation(self, db, message: str, session_id: str, history):
+        """Intercepta el acuse de reserva de mesa ("Confirmé mi reserva de mesa MESA-XXXX").
+
+        El frontend lo envía tras crear la mesa en el selector. Respondemos una felicitación
+        cálida con los datos reales (fecha/turno/personas) y NO seguimos al ruteo (evita que el
+        post-venta del hotel pida un código HTL-). Devuelve None si el mensaje no es ese acuse.
+        """
+        m = re.search(self.TABLE_CODE_PATTERN, (message or "").upper())
+        if not m:
+            return None
+        code = m.group(0)
+
+        # Buscar la reserva real para felicitar con sus datos (si existe).
+        detalle = ""
+        try:
+            from app.models.restaurant import TableReservation
+            r = db.query(TableReservation).filter(
+                TableReservation.code == code
+            ).first()
+            if r:
+                pax = r.party_size
+                partes = []
+                if r.reserved_for:
+                    partes.append("el " + r.reserved_for.strftime("%d/%m a las %H:%M"))
+                if pax:
+                    partes.append(f"para {pax} {'persona' if pax == 1 else 'personas'}")
+                if partes:
+                    detalle = " " + " ".join(partes)
+        except Exception as e:  # noqa: BLE001 — nunca romper el turno por el detalle
+            logger.warning("No se pudo leer la reserva de mesa", code=code, error=str(e))
+
+        response_text = (
+            f"¡Listo! Tu mesa quedó reservada{detalle}. 🍷 "
+            f"Guardá el código **{code}** por si necesitás modificarla. "
+            "¿Querés que te recomiende algo de la carta para esa noche?"
+        )
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": response_text})
+        self._update_session_metadata(session_id)
+        return {
+            "response": response_text,
+            "has_context": True,
+            "context_type": "casual",
+            "intent": "table_reservation_confirmed",
             "session_info": self.get_session_info(session_id),
         }
 
@@ -530,6 +581,13 @@ class AgentService:
             validation_resp = self._handle_resolution_validation(db, message, session_id, history)
             if validation_resp is not None:
                 return validation_resp
+
+            # 🆕 2.37. ACUSE DE RESERVA DE MESA: el frontend envía "Confirmé mi reserva de mesa
+            # MESA-XXXX" tras crear la mesa en el selector. Lo interceptamos para felicitar con
+            # los datos reales — NO debe ir al post-venta del hotel (que pide un código HTL-).
+            table_resp = self._handle_table_confirmation(db, message, session_id, history)
+            if table_resp is not None:
+                return table_resp
 
             # 🆕 2.4. SEÑALES DURAS (determinísticas) — cortocircuitos previos al ruteo.
             # Un mensaje con código de reserva o una sesión post-venta activa SIEMPRE es

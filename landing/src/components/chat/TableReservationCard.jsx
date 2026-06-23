@@ -34,7 +34,7 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
   const preset = card.preset || {}
 
   const [fecha, setFecha] = useState(preset.fecha || '')
-  const [franja, setFranja] = useState('cena')           // almuerzo | cena
+  const [franja, setFranja] = useState(preset.franja === 'almuerzo' ? 'almuerzo' : 'cena')  // almuerzo | cena
   const [hora, setHora] = useState(preset.hora || '')
   const [personas, setPersonas] = useState(preset.personas || 2)
   const [nombre, setNombre] = useState(preset.nombre || '')

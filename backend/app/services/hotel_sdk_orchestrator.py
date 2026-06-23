@@ -340,11 +340,13 @@ async def reservar_mesa(
 ) -> str:
     """Reserva una MESA del restaurante (no es pedir comida ahora). Úsala cuando quieran
     reservar mesa para un día. La interfaz muestra un selector de día, turno y personas — NO
-    le pidas la hora por texto; de eso se encarga la tarjeta. Si el huésped está alojado podés
-    pasar su `codigo_reserva` (HTL-XXXX) para asociarla. Si ya tenés todos los datos
-    (fecha, turno, personas, nombre) se confirma directo con el código MESA-XXXX; si faltan,
-    se muestra el selector. NO la confundas con `consultar_disponibilidad` (reservar habitación)
-    ni con `ver_carta` (pedir comida)."""
+    le pidas la hora por texto; de eso se encarga la tarjeta. El restaurante tiene dos turnos:
+    ALMUERZO (mediodía) y CENA (noche). Si el huésped dice "la noche"/"a cenar" pasá
+    turno="cena"; si dice "al mediodía"/"a almorzar" pasá turno="almuerzo" (NUNCA pases "noche"
+    ni un texto libre como turno). El horario puntual lo elige el huésped en el selector. Si el
+    huésped está alojado podés pasar su `codigo_reserva` (HTL-XXXX) para asociarla. NO la
+    confundas con `consultar_disponibilidad` (reservar habitación) ni con `ver_carta` (pedir
+    comida)."""
     tool_ctx = ctx.context.as_tool_ctx()
     result = await execute_tool("reservar_mesa", {
         "fecha": fecha, "turno": turno, "personas": personas,

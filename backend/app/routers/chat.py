@@ -121,6 +121,15 @@ _MENU_TOOLS = ("ver_carta", "armar_pedido_carta")
 _TABLE_INTENT_HINTS = ("reservar mesa", "reservar una mesa", "una mesa", "reserva de mesa",
                        "mesa para", "reservar lugar")
 
+# Señales de que el usuario quiere RESERVAR UNA HABITACIÓN (no comida): la carta del
+# restaurante NO debe ofrecerse en estos turnos. Defensa en profundidad para que el flujo
+# de reservas del hotel nunca dispare el fallback de menú por una colisión de palabras.
+_ROOM_BOOKING_HINTS = ("reservar la habitación", "reservar la habitacion", "reservar habitación",
+                       "reservar habitacion", "reservar una habitación", "reservar una habitacion",
+                       "quiero reservar", "hacer una reserva", "confirmar la reserva",
+                       "reservar la suite", "reservar el", "quiero la habitación",
+                       "quiero la habitacion")
+
 
 def _should_offer_menu(user_message: str, tools_used: list, has_other_cards: bool,
                        context_type: str = "", db=None) -> bool:
@@ -139,6 +148,10 @@ def _should_offer_menu(user_message: str, tools_used: list, has_other_cards: boo
     text = (user_message or "").lower()
     # Si quiere reservar mesa, la carta no aplica (es otra intención).
     if any(h in text for h in _TABLE_INTENT_HINTS):
+        return False
+    # Si quiere reservar una HABITACIÓN, la carta tampoco aplica: estamos en el flujo de
+    # reserva del hotel, no pidiendo comida.
+    if any(h in text for h in _ROOM_BOOKING_HINTS):
         return False
     if any(h in text for h in _MENU_REQUEST_HINTS):
         return True
@@ -214,19 +227,46 @@ def _build_menu_card_fallback(db, session_id: str, user_message: str = "") -> di
     }
 
 
+import re as _re_dates
+
+# Detecta fechas explícitas ya dadas: "2026-07-24", "del 24 al 31", "24/07", "24 de julio".
+_DATE_GIVEN_PATTERNS = (
+    _re_dates.compile(r"\d{4}-\d{2}-\d{2}"),                       # 2026-07-24
+    _re_dates.compile(r"\d{1,2}\s*/\s*\d{1,2}"),                   # 24/07
+    _re_dates.compile(r"del\s+\d{1,2}\b.*\bal\s+\d{1,2}\b"),       # del 24 al 31
+    _re_dates.compile(r"\d{1,2}\s+de\s+(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)", _re_dates.I),
+)
+
+
+def _dates_already_given(user_message: str, history: list) -> bool:
+    """True si el usuario YA dio fechas concretas (en este mensaje o en el historial).
+
+    Evita reabrir el date picker cuando ya hay fechas: el selector solo sirve para CAPTURAR
+    fechas que faltan, no para repetirlas. Mira el mensaje actual y los mensajes 'user' del
+    historial reciente.
+    """
+    blobs = [user_message or ""]
+    for m in (history or [])[-12:]:
+        if m.get("role") == "user":
+            blobs.append(m.get("content") or "")
+    text = " ".join(blobs).lower()
+    return any(p.search(text) for p in _DATE_GIVEN_PATTERNS)
+
+
 def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool,
-                             context_type: str = "") -> bool:
+                             context_type: str = "", dates_given: bool = False) -> bool:
     """Decide si adjuntar el selector de fechas.
 
-    El picker SOLO tiene sentido en PRE-VENTA (cuando el agente está pidiendo fechas para
-    consultar disponibilidad). En post-venta (huésped con reserva preguntando por su
-    check-in, etc.) o en charla casual NUNCA se ofrece, aunque la respuesta mencione
-    "check-in"/"fecha". También se excluye si ya se mostraron habitaciones o se tocó una
-    tool de reserva en el turno.
+    El picker SOLO tiene sentido en PRE-VENTA cuando el agente está pidiendo fechas que el
+    usuario AÚN NO dio. En post-venta/casual nunca se ofrece; tampoco si ya se mostraron
+    habitaciones, se tocó una tool de reserva en el turno, o el usuario YA dio fechas en la
+    conversación (aunque la respuesta vuelva a mencionar "fecha"/"del 24 al 31").
     """
     if context_type in ("postsale", "casual"):
         return False
     if has_room_cards:
+        return False
+    if dates_given:
         return False
     used = tools_used or []
     if any(t in used for t in _BOOKING_FLOW_TOOLS):
@@ -409,7 +449,11 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         elif _should_offer_datepicker(result.get("response", ""),
                                     result.get("tools_used", []),
                                     has_room_cards=bool(cards),
-                                    context_type=result.get("context_type", "")):
+                                    context_type=result.get("context_type", ""),
+                                    dates_given=_dates_already_given(
+                                        chat_request.message,
+                                        agent_service.conversation_history.get(chat_request.session_id, []),
+                                    )):
             cards = [_date_picker_card()]
 
         # Fallback determinístico: el usuario quiere reservar mesa pero el LLM no llamó la tool.

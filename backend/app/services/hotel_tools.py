@@ -180,6 +180,16 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
         missing.append("fecha de check-out (YYYY-MM-DD)")
     if not guest_name:
         missing.append("nombre del huésped")
+    # En WhatsApp el teléfono ya lo conocemos (viene en el session_id wa_): si el LLM no lo
+    # pasó, lo auto-completamos desde la sesión. Así nunca se lo pedimos de nuevo al huésped.
+    if not guest_phone:
+        sid = ctx.get("session_id") or ""
+        if sid.startswith("wa_"):
+            guest_phone = "+" + sid[3:]
+    # Teléfono OBLIGATORIO para reservar: se necesita para confirmar la reserva y el
+    # seguimiento. El email queda opcional. (El "9" móvil argentino lo normaliza el modelo.)
+    if not guest_phone:
+        missing.append("teléfono de contacto")
     if missing:
         return {
             "tool_result": (
@@ -750,7 +760,11 @@ def _match_menu_items(texto: str, menu: list) -> Dict[str, list]:
                 "patagónico", "artesanal", "especial", "guarnición", "guarnicion",
                 # Marcas/lugares que aparecen en nombres de productos y no distinguen un
                 # plato (ej. "Gin Athos Bariloche"): evitan matchear un saludo que los nombra.
-                "bariloche", "athos", "hampton", "plaza"}
+                "bariloche", "athos", "hampton", "plaza",
+                # Términos del dominio HOTEL que aparecen en nombres de productos (ej. el vino
+                # "Pinot Noir Malma Reserva") y colisionan por substring con el verbo del flujo
+                # de reservas ("reserva" ⊂ "reservar"): jamás deben anclar un plato.
+                "reserva", "reservar", "reservas"}
     matched = []
     for m in menu:
         name = (m.get("name") or "").lower()
@@ -873,9 +887,31 @@ def _build_table_card(ctx: Dict, preset: Optional[Dict] = None) -> Dict:
     }
 
 
+# Mapea lenguaje natural del turno a la FRANJA del restaurante (almuerzo | cena).
+# "noche/cena/a la noche/a cenar" → cena; "mediodía/almuerzo/al mediodía" → almuerzo.
+_FRANJA_CENA_HINTS = ("noche", "cena", "cenar", "nocturn")
+_FRANJA_ALMUERZO_HINTS = ("almuerzo", "almorzar", "mediodia", "mediodía", "medio dia", "medio día")
+
+
+def _franja_desde_texto(turno: str) -> Optional[str]:
+    """Devuelve 'almuerzo'|'cena' si el texto del turno corresponde a una franja, o None."""
+    t = (turno or "").lower()
+    if not t:
+        return None
+    if t in restaurant_service.RESTAURANT_SLOTS:   # ya viene "almuerzo"/"cena"
+        return t
+    if any(h in t for h in _FRANJA_CENA_HINTS):
+        return "cena"
+    if any(h in t for h in _FRANJA_ALMUERZO_HINTS):
+        return "almuerzo"
+    return None
+
+
 def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
     """Reserva de mesa del restaurante. Normalmente adjunta el selector (card) para que el
-    huésped elija día/turno/personas. Si el agente ya trae todos los datos, confirma directo.
+    huésped elija día/turno/personas. Si el agente ya trae un horario HH:MM válido, confirma
+    directo. Si trae una FRANJA en lenguaje natural ("la noche", "cena"), muestra el selector
+    con esa franja preseleccionada (nunca lo trata como "no disponible").
     """
     db: Optional[Session] = ctx.get("db")
     if db is None:
@@ -886,21 +922,35 @@ def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
     personas = args.get("personas") or 0
     nombre = (args.get("nombre") or "").strip()
 
-    # Si faltan datos, mostramos el selector embebido (flujo normal).
-    if not (fecha and turno and personas):
-        ctx["table_card"] = _build_table_card(ctx, preset={
-            "fecha": fecha or None, "hora": turno or None,
-            "personas": int(personas) if personas else None, "nombre": nombre or None,
-        })
-        return {
-            "tool_result": (
-                "Le mostré un selector para reservar la mesa (día, turno y personas). "
-                "Pedile que lo complete ahí; no le pidas la hora por texto."
-            ),
-            "found": True,
-        }
+    # ¿El turno es un horario HH:MM puntual y válido? Solo entonces se puede crear directo.
+    hora_valida = turno in restaurant_service._all_slots()
+    # Si no es un horario puntual, ¿es una franja en lenguaje natural (ej. "la noche" → cena)?
+    franja = _franja_desde_texto(turno) if not hora_valida else None
 
-    # Datos completos → confirmar directo (camino híbrido).
+    # Faltan datos, o el turno es una franja / texto no puntual → mostrar el selector.
+    # El usuario elige el horario exacto ahí (nunca decimos "no disponible" por esto).
+    if not (fecha and personas) or not hora_valida:
+        preset = {
+            "fecha": fecha or None,
+            "personas": int(personas) if personas else None,
+            "nombre": nombre or None,
+        }
+        if franja:
+            preset["franja"] = franja          # preselecciona almuerzo/cena en el selector
+        ctx["table_card"] = _build_table_card(ctx, preset=preset)
+        if franja == "cena":
+            msg = ("Le mostré el selector con el turno CENA preseleccionado para que elija el "
+                   "horario (20:00 a 22:00). Confirmale con calidez que la cena está disponible "
+                   "y pedile que elija el horario ahí; NO le digas que no hay turno de noche.")
+        elif franja == "almuerzo":
+            msg = ("Le mostré el selector con el turno ALMUERZO preseleccionado (12:30 a 14:30). "
+                   "Pedile que elija el horario ahí; NO le pidas la hora por texto.")
+        else:
+            msg = ("Le mostré un selector para reservar la mesa (día, turno y personas). "
+                   "Pedile que lo complete ahí; no le pidas la hora por texto.")
+        return {"tool_result": msg, "found": True}
+
+    # Datos completos con HORARIO VÁLIDO → confirmar directo (camino híbrido).
     contact = _resolve_contact(db, ctx)
     result = restaurant_service.create_table_reservation(
         db,
