@@ -382,4 +382,27 @@ SCENARIOS = [
                         "no_card": "date_picker"}},
         ],
     },
+    {
+        "id": "S31",
+        "name": "Fechas por texto SIN cantidad de personas → pregunta antes de consultar",
+        # Caso Jairo: da fechas concretas a mano pero no dice cuántas personas. Aura NO debe
+        # asumir 1 ("ideal para vos solo"): debe PREGUNTAR la cantidad antes de consultar.
+        "turns": [
+            {"user": f"Hola! tienen disponibilidad del {CI} al {CO}?",
+             "expect": {"tool_not_called": "consultar_disponibilidad", "no_card": "room",
+                        "response_contains": ["cuántas personas"]}},
+            {"user": "somos 2 adultos",
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room"}},
+        ],
+    },
+    {
+        "id": "S32",
+        "name": "Fechas + cantidad en el mismo mensaje → consulta directo (no re-pregunta)",
+        # Regresión: si ya viene la cantidad (como cuando llega del selector), NO preguntar.
+        "turns": [
+            {"user": f"Disponibilidad del {CI} al {CO} para 2 adultos, por favor.",
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
+                        "response_not_contains": ["cuántas personas"]}},
+        ],
+    },
 ]
