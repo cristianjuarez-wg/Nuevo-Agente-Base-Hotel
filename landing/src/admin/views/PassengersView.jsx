@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
   DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt, Pencil, Save, LifeBuoy,
-  MessageSquare, MessageCircle, Globe, ChevronLeft,
+  MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2,
 } from 'lucide-react'
 import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio, updateContact, getContactConversations } from '../../services/api'
 import {
@@ -28,6 +28,19 @@ function flatten(c) {
     inHouse: !!c.is_staying_now,
     last: c.last_interaction_date,
   }
+}
+
+// Estado de un ticket (consulta/reclamo) → badge. Compartido por la lista y el detalle.
+function ticketStatusBadge(t) {
+  if (t.status === 'resolved') return { tone: 'green', label: 'Resuelto' }
+  if (t.status === 'escalated' || t.escalated) return { tone: 'red', label: 'Escalado' }
+  if (t.status === 'in_progress') return { tone: 'blue', label: 'En curso' }
+  return { tone: 'amber', label: 'Abierto' }
+}
+
+const TICKET_CATEGORY_LABELS = {
+  info: 'Información', change: 'Cambio', cancel: 'Cancelación', complaint: 'Reclamo',
+  general: 'General', service_request: 'Servicio',
 }
 
 // ── Panel de detalle 360° (drawer lateral) ───────────────────────────────────
@@ -101,12 +114,14 @@ function DetailDrawer({ contactId, onClose }) {
   const [folio, setFolio] = useState(null)
   const [conversations, setConversations] = useState([])
   const [openChat, setOpenChat] = useState(null)  // conversación abierta en la transcripción
+  const [selectedTicket, setSelectedTicket] = useState(null)  // consulta/reclamo abierto en su detalle
 
   useEffect(() => {
     setLoading(true)
     setFolio(null)
     setConversations([])
     setOpenChat(null)
+    setSelectedTicket(null)
     getGuestProfile(contactId)
       .then((p) => {
         setProfile(p)
@@ -327,24 +342,33 @@ function DetailDrawer({ contactId, onClose }) {
                 )}
               </div>
 
-              {/* Tickets de soporte (post-venta): reclamos/consultas del huésped vía sus reservas. */}
+              {/* Consultas y reclamos (post-venta): cada uno abre su detalle (descripción +
+                  cómo se resolvió + la conversación que lo originó). */}
               {profile.tickets?.length > 0 && (
                 <div className="rounded-2xl bg-white p-4 shadow-card">
                   <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
                     <LifeBuoy size={13} /> Consultas y reclamos
                   </h3>
                   <div className="space-y-2">
-                    {profile.tickets.map((t) => (
-                      <div key={t.id} className="flex items-center justify-between border-b border-mist/60 pb-2 text-sm last:border-0 last:pb-0">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-ink">{t.subject}</p>
-                          <p className="text-xs text-slatey tabular-nums">{t.ticket_number} · {formatDate(t.created_at)}</p>
-                        </div>
-                        <Badge tone={t.status === 'resolved' ? 'green' : t.escalated ? 'red' : 'amber'}>
-                          {t.status === 'resolved' ? 'Resuelto' : t.status === 'escalated' || t.escalated ? 'Escalado' : t.status === 'in_progress' ? 'En curso' : 'Abierto'}
-                        </Badge>
-                      </div>
-                    ))}
+                    {profile.tickets.map((t) => {
+                      const st = ticketStatusBadge(t)
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => setSelectedTicket(t)}
+                          className="flex w-full items-center justify-between gap-2 border-b border-mist/60 pb-2 text-left text-sm transition last:border-0 last:pb-0 hover:opacity-80"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-ink">{t.subject}</p>
+                            <p className="text-xs text-slatey tabular-nums">{t.ticket_number} · {formatDate(t.created_at)}</p>
+                          </div>
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            <Badge tone={st.tone}>{st.label}</Badge>
+                            <ChevronRight size={15} className="text-slatey" />
+                          </span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
@@ -379,11 +403,66 @@ function DetailDrawer({ contactId, onClose }) {
             </div>
           </div>
         )}
+
+        {/* Detalle de una consulta/reclamo: descripción, cómo se resolvió y la conversación. */}
+        {selectedTicket && (
+          <TicketDetailDrawer ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
+        )}
       </aside>
 
       {editing && (
         <EditContactModal contact={c} onClose={() => setEditing(false)} onSave={saveContact} />
       )}
+    </div>
+  )
+}
+
+// ── Detalle de una consulta/reclamo (solo lectura) ──────────────────────────
+// Overlay sobre el perfil del huésped. Muestra el detalle del ticket y la conversación que
+// lo originó. No replica la gestión operativa (eso vive en Operaciones).
+function TicketDetailDrawer({ ticket, onClose }) {
+  const st = ticketStatusBadge(ticket)
+  return (
+    <div className="absolute inset-0 flex flex-col bg-linen">
+      <header className="flex items-start gap-2 border-b border-hilton-100 bg-white px-5 py-4">
+        <button onClick={onClose} aria-label="Volver" className="mt-0.5 rounded-lg p-1.5 text-slatey transition hover:bg-mist">
+          <ChevronLeft size={18} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate font-serif text-base font-700 text-ink">{ticket.subject}</h2>
+          <p className="text-xs text-slatey tabular-nums">{ticket.ticket_number} · {formatDate(ticket.created_at)}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Badge tone={st.tone}>{st.label}</Badge>
+            {ticket.category && <Badge tone="gray">{TICKET_CATEGORY_LABELS[ticket.category] || ticket.category}</Badge>}
+            {ticket.assigned_area && <Badge tone="gray">{ticket.assigned_area}</Badge>}
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {ticket.description && (
+          <div className="rounded-2xl bg-white p-4 shadow-card">
+            <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">Detalle</h3>
+            <p className="whitespace-pre-wrap text-sm text-ink">{ticket.description}</p>
+          </div>
+        )}
+
+        {ticket.resolution_note && (
+          <div className="rounded-2xl bg-forest-50 p-4">
+            <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-forest-700">
+              <CheckCircle2 size={13} /> Cómo se resolvió
+            </h3>
+            <p className="whitespace-pre-wrap text-sm text-ink">{ticket.resolution_note}</p>
+          </div>
+        )}
+
+        <div className="rounded-2xl bg-white shadow-card">
+          <h3 className="flex items-center gap-1.5 px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-slatey">
+            <MessageSquare size={13} /> Conversación
+          </h3>
+          <ChatTranscript sessionId={ticket.session_id} />
+        </div>
+      </div>
     </div>
   )
 }
