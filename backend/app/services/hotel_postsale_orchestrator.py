@@ -248,6 +248,8 @@ class HotelPostSaleSDKOrchestrator:
                 if getattr(item, "type", None) == "tool_call_item"
                 and hasattr(getattr(item, "raw_item", None), "name")
             ]
+            from app.core.audit_log import build_tool_trace
+            tool_trace = build_tool_trace(result)
         except InputGuardrailTripwireTriggered:
             logger.warning("Hotel post-venta: input guardrail tripwire", session_id=session_id)
             response_text = (
@@ -255,6 +257,7 @@ class HotelPostSaleSDKOrchestrator:
                 "¿En qué puedo asistirte con tu estadía? 😊"
             )
             tools_used = []
+            tool_trace = []
         except Exception as e:
             logger.error("Hotel post-venta SDK: Runner failed",
                          session_id=session_id, error=str(e))
@@ -263,6 +266,7 @@ class HotelPostSaleSDKOrchestrator:
                 "Un asesor del hotel va a revisar tu caso a la brevedad."
             )
             tools_used = []
+            tool_trace = []
             run_failed = True
 
         if not response_text:
@@ -297,6 +301,7 @@ class HotelPostSaleSDKOrchestrator:
             "status": status,
             "can_auto_resolve": not requires_escalation,
             "tools_used": tools_used,
+            "tool_trace": tool_trace,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,
         }

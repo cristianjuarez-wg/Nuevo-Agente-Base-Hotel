@@ -448,6 +448,32 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                    session_id=chat_request.session_id,
                    has_context=result.get("has_context", False),
                    processing_time=f"{processing_time:.2f}s")
+
+        # AUDITORÍA: 1 línea JSON por turno con la traza completa (mensaje → ruteo →
+        # tools+args+resultados → respuesta → cards). Para detectar errores de lógica
+        # revisando las charlas turno a turno. Nunca interrumpe la respuesta.
+        try:
+            from app.core.audit_log import log_turn
+            log_turn({
+                "session_id": chat_request.session_id,
+                "language": chat_request.language,
+                "user_message": chat_request.message,
+                "route": result.get("context_type") or result.get("intent"),
+                "response": result.get("response", ""),
+                "tools": result.get("tool_trace", []),
+                "tools_used": result.get("tools_used", []),
+                "cards": [{"type": c.get("type"), "title": c.get("title")} for c in (cards or [])],
+                "has_context": result.get("has_context", False),
+                "document_sources": [s.get("document") for s in result.get("document_sources", []) or []],
+                "lead_analysis": result.get("lead_analysis"),
+                "error": result.get("error", False),
+                "error_type": result.get("error_type"),
+                "tokens": (result.get("usage") or {}).get("total_tokens"),
+                "model": (result.get("usage") or {}).get("model"),
+                "processing_time_s": round(processing_time, 2),
+            })
+        except Exception:
+            pass  # auditar nunca debe afectar la respuesta
         
         # Trackear conversación para métricas - SIEMPRE, no solo cuando hay destinos
         try:

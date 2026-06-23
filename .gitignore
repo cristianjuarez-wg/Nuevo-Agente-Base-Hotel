@@ -23,6 +23,9 @@ backend/chroma_db_postsale/
 backend/uploads/
 backend/vouchers/
 
+# Logs de auditoría del chat (generados en runtime)
+backend/logs/
+
 # OS
 .DS_Store
 Thumbs.db

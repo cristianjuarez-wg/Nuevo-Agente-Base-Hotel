@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"  # json or text
+    # Auditoría del chat de Aura: 1 línea JSON por turno en logs/aura_audit.jsonl
+    # (mensaje, ruta del triage, tools+args+resultados, respuesta, cards, tokens).
+    # None = activo solo en DEBUG; True/False fuerza el estado.
+    AUDIT_CHAT: Optional[bool] = None
     
     class Config:
         env_file = ".env"

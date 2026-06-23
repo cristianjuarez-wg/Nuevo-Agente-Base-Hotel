@@ -583,6 +583,9 @@ class HotelSDKOrchestrator:
                 if getattr(item, "type", None) == "tool_call_item"
                 and hasattr(getattr(item, "raw_item", None), "name")
             ]
+            # Traza detallada (nombre + args + output) para la auditoría del chat.
+            from app.core.audit_log import build_tool_trace
+            tool_trace = build_tool_trace(result)
         except InputGuardrailTripwireTriggered:
             logger.warning("Hotel pre-venta: input guardrail tripwire", session_id=session_id)
             response_text = (
@@ -590,6 +593,7 @@ class HotelSDKOrchestrator:
                 "¿Querés que te muestre las habitaciones o consultemos disponibilidad? 😊"
             )
             tools_used = []
+            tool_trace = []
         except Exception as e:
             logger.error("Hotel pre-venta SDK: Runner failed",
                          session_id=session_id, error=str(e))
@@ -598,6 +602,7 @@ class HotelSDKOrchestrator:
                 "¿Podés intentarlo de nuevo en un momento?"
             )
             tools_used = []
+            tool_trace = []
 
         if not response_text:
             response_text = "Disculpá, no pude generar una respuesta. ¿Podés reformular tu consulta?"
@@ -617,6 +622,7 @@ class HotelSDKOrchestrator:
             "menu_card": run_ctx.menu_card,
             "table_card": run_ctx.table_card,
             "tools_used": tools_used,
+            "tool_trace": tool_trace,
             "processing_time": f"{duration:.2f}s",
             "usage": usage,
             "lead_analysis": {
