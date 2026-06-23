@@ -29,7 +29,7 @@ app_start_time = time.time()
 async def lifespan(app: FastAPI):
     """Maneja el ciclo de vida de la aplicación"""
     # Startup
-    logger.info("🚀 Travel AI Agent starting up",
+    logger.info("🚀 Hampton Bariloche Concierge API starting up",
                environment="production" if not settings.DEBUG else "development",
                log_level=settings.LOG_LEVEL)
     
@@ -57,12 +57,12 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("🛑 Travel AI Agent shutting down")
+    logger.info("🛑 Hampton Bariloche Concierge API shutting down")
 
 # Crear aplicación FastAPI
 app = FastAPI(
-    title="Travel AI Agent API",
-    description="API para agente de IA especializado en turismo con características de producción",
+    title="Hampton Bariloche Concierge API",
+    description="API del concierge virtual del Hampton by Hilton Bariloche (RAG + agente)",
     version="1.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -291,9 +291,9 @@ async def get_app_info():
     uptime_seconds = time.time() - app_start_time
     
     return {
-        "name": "Travel AI Agent",
+        "name": "Hampton Bariloche Concierge",
         "version": "1.1.0",
-        "description": "Agente de IA especializado en turismo con sistema RAG",
+        "description": "Concierge virtual del Hampton by Hilton Bariloche con sistema RAG",
         "uptime_seconds": uptime_seconds,
         "uptime_formatted": f"{uptime_seconds/3600:.1f} horas",
         "environment": "development" if settings.DEBUG else "production",

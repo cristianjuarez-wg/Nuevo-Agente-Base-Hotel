@@ -8,7 +8,7 @@ class AgentSnapshot(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     snapshot_type = Column(String(30), nullable=False)   # agent_profile | config_flag
-    profile_name = Column(String(100), nullable=False)   # turismo | postventa
+    profile_name = Column(String(100), nullable=False)   # hotel | hotel_postventa
     profile_path = Column(String(255), nullable=False)   # ruta relativa al archivo JSON
     snapshot_data = Column(JSON, nullable=False)         # contenido completo del JSON
     reason = Column(Text, nullable=True)                 # ej: "pre_opportunity_42"
