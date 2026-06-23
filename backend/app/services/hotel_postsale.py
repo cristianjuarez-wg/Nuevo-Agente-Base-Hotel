@@ -52,6 +52,32 @@ class HotelPostSaleService:
             .first()
         )
 
+    def _find_booking_by_phone(self, phone: str) -> Optional[Booking]:
+        """Reserva activa o futura más cercana de un teléfono (para huéspedes de WhatsApp,
+        ya identificados por su número). Resuelve el contacto con el match tolerante de
+        ContactService y devuelve su Booking no cancelado con check_out >= hoy más próximo.
+        None si el teléfono no tiene contacto o reserva vigente."""
+        from app.services.contact_service import ContactService
+        from app.utils.phone_normalizer import normalize_phone
+
+        norm = normalize_phone(phone)
+        if not norm:
+            return None
+        contact = ContactService()._find_by_phone(norm, self.db)
+        if not contact:
+            return None
+        today = now_argentina().date()
+        return (
+            self.db.query(Booking)
+            .filter(
+                Booking.contact_id == contact.id,
+                Booking.status != "cancelled",
+                Booking.check_out >= today,
+            )
+            .order_by(Booking.check_in.asc())
+            .first()
+        )
+
     def validate_access(
         self, message: str, session_id: str, history: List[Dict] = None
     ) -> Dict:
@@ -65,6 +91,15 @@ class HotelPostSaleService:
                     if prev:
                         code = prev
                         break
+
+        # WhatsApp: ya identificamos al huésped por su teléfono (el session_id es wa_<phone>).
+        # Si no tipeó el código pero tiene una reserva vigente, la usamos directo —no le pedimos
+        # un código que el sistema ya conoce. (Dueño/staff usan otros prefijos de sesión, así
+        # que este atajo es solo para huéspedes.)
+        if not code and (session_id or "").startswith("wa_"):
+            booking = self._find_booking_by_phone("+" + session_id[3:])
+            if booking:
+                return {"valid": True, "booking": booking, "code": booking.code}
 
         if not code:
             return {
