@@ -460,13 +460,21 @@ class HotelSDKOrchestrator:
         """Análisis de lead transversal (igual que Freeway, sin geo)."""
         lead = lead_service._get_or_create_lead(db, session_id)
         has_contact_info = lead.is_complete_lead()
-
-        # Sin análisis geográfico: pasamos dict vacío (el lead_service lo tolera).
-        lead_analysis, should_request_contact = await lead_service.process_message_for_lead(
-            db, message, session_id, history, "", {}
-        )
-
         is_whatsapp = session_id.startswith("wa_")
+
+        # GATING: el análisis de lead (1+ llamadas LLM) corre antes del agente y lo bloquea.
+        # En el PRIMER turno nunca se pide contacto (should_request_contact exige ≥2 mensajes),
+        # así que lo salteamos para no pagar esa latencia de entrada. Tampoco hace falta si ya
+        # tenemos el lead completo (no hay nada nuevo que captar). En esos casos devolvemos un
+        # análisis neutro y seguimos solo con el perfil del huésped.
+        skip_lead_analysis = len(history) < 2 or has_contact_info
+        if skip_lead_analysis:
+            lead_analysis, should_request_contact = {}, False
+        else:
+            # Sin análisis geográfico: pasamos dict vacío (el lead_service lo tolera).
+            lead_analysis, should_request_contact = await lead_service.process_message_for_lead(
+                db, message, session_id, history, "", {}
+            )
 
         # Perfil del huésped conocido (recurrente/alojado): personaliza la conversación.
         # Se antepone a cualquier bloque de lead cuando hay historial real.

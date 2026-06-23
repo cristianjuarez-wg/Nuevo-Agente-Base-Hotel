@@ -50,9 +50,10 @@ class LeadAnalyzer:
                         message_length=len(message),
                         history_messages=len(conversation_history))
             
-            # Llamar a GPT para análisis
+            # Llamar a GPT para análisis. Clasificación JSON a baja temperatura → el modelo
+            # económico (gpt-4o-mini) alcanza; corre en cada turno, así que el ahorro pesa.
             response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+                model=settings.OPENAI_MODEL_CLASSIFIER,
                 messages=[
                     {"role": "system", "content": analysis_prompt},
                     {"role": "user", "content": f"Analiza este mensaje: '{message}'"}

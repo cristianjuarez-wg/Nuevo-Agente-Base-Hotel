@@ -205,45 +205,12 @@ class RAGService:
             used_semantic_interpretation = False
             semantic_interpretation = None
             
-            if not is_obvious_geographic:
-                # NO es consulta geográfica obvia → Usar interpretación semántica
-                logger.info("Query is not obviously geographic, using semantic interpretation",
-                           query=query[:50])
-                
-                try:
-                    # Interpretar con GPT
-                    semantic_interpretation = await semantic_enhancer.interpret_query(query)
-                    
-                    # Solo usar si la confianza es razonable
-                    if semantic_interpretation.get('confianza', 0) >= 0.3:
-                        # Construir query enriquecido semánticamente
-                        semantically_enriched = semantic_enhancer.build_enriched_query(
-                            query_with_history, semantic_interpretation
-                        )
-                        
-                        # Aplicar también enriquecimiento geográfico por si detecta algo
-                        enriched_query = intelligent_extractor.enrich_query(semantically_enriched)
-                        used_semantic_interpretation = True
-                        
-                        logger.info("Semantic interpretation applied",
-                                   temas=semantic_interpretation.get('temas'),
-                                   tipo_destino=semantic_interpretation.get('tipo_destino'),
-                                   confianza=semantic_interpretation.get('confianza'))
-                    else:
-                        # Confianza baja, usar solo enriquecimiento geográfico
-                        enriched_query = intelligent_extractor.enrich_query(query_with_history)
-                        logger.info("Semantic interpretation confidence too low, using geographic only",
-                                   confianza=semantic_interpretation.get('confianza'))
-                        
-                except Exception as e:
-                    logger.error("Error in semantic interpretation, falling back to geographic",
-                                error=str(e))
-                    enriched_query = intelligent_extractor.enrich_query(query_with_history)
-            else:
-                # Es consulta geográfica obvia → Usar solo enriquecimiento geográfico
-                enriched_query = intelligent_extractor.enrich_query(query_with_history)
-                logger.info("Using geographic enrichment only",
-                           is_obvious_geographic=is_obvious_geographic)
+            # LATENCIA: la interpretación semántica (1 llamada GPT) y la verificación de
+            # relevancia (hasta 3 llamadas GPT, gateada por used_semantic_interpretation)
+            # eran del flujo de turismo. Para la KB chica y curada de un solo hotel, la
+            # similitud del embedding ya ordena bien y el `relevance_mode` no se consumía.
+            # Las salteamos: solo enriquecimiento geográfico (sin LLM) y el embedding.
+            enriched_query = intelligent_extractor.enrich_query(query_with_history)
             
             # 🆕 2.5. PORTERO: Verificar si país mencionado está disponible (ANTES de buscar)
             # Solo para queries geográficas obvias que mencionan países específicos
@@ -320,15 +287,11 @@ class RAGService:
                            continent=geo_analysis.get('continent'),
                            countries=geo_analysis.get('countries'),
                            available_countries_count=len(available_countries))
-            elif used_semantic_interpretation and semantic_interpretation:
-                # Consulta semántica → umbral más bajo porque GPT ya filtró
-                SIMILARITY_THRESHOLD = 0.25
-                logger.info("Semantic query - lower threshold applied",
-                           threshold=SIMILARITY_THRESHOLD,
-                           confianza=semantic_interpretation.get('confianza'))
             else:
-                # Umbral normal para consultas no geográficas sin interpretación
-                SIMILARITY_THRESHOLD = 0.4
+                # Sin interpretación semántica (la salteamos por latencia): usamos un umbral
+                # permisivo (0.25). La KB del hotel es chica y curada, así que confiamos en
+                # el orden por similitud del embedding sin la verificación GPT.
+                SIMILARITY_THRESHOLD = 0.25
             
             max_similarity = max([r.get('similarity', 0) for r in deduplicated_results]) if deduplicated_results else 0
             

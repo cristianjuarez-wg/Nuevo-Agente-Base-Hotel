@@ -451,9 +451,13 @@ Nombre extraído:"""
         if conversation_history:
             bot_requested = self._should_extract_contact_info(conversation_history)
         
-        # Detectar si hay email o teléfono (indica intención de compartir datos)
+        # Detectar si hay email o teléfono (indica intención de compartir datos).
+        # El teléfono se detecta con un patrón parecido a un número real (8+ dígitos, con
+        # espacios/guiones/+ permitidos): así "2 noches del 5 al 9" o "$1200" NO gatillan
+        # una extracción de nombre por error (era el caso del antiguo r'[0-9]{3,}').
         has_email = bool(re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', message))
-        has_phone = bool(re.search(r'[0-9]{3,}', message))
+        digit_count = len(re.sub(r'\D', '', message))
+        has_phone = bool(re.search(r'\+?[\d][\d\s\-().]{7,}\d', message)) and digit_count >= 8
         
         # Solo intentar extraer nombre si:
         # 1. El bot pidió datos, O
