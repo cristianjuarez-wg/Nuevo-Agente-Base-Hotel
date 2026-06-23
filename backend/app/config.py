@@ -4,8 +4,6 @@ from typing import Optional, List
 class Settings(BaseSettings):
     # API Keys
     OPENAI_API_KEY: str
-    FLIGHTAPI_API_KEY: Optional[str] = None
-    WEATHER_API_KEY: Optional[str] = None
 
     # CORS — en producción usar dominios específicos, ej: "https://app.midominio.com,https://admin.midominio.com"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

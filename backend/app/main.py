@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
                    profile_name=profile_info.get("profile_name"),
                    agent_name=profile_info.get("agent_name"))
         
-        logger.info("✅ Travel AI Agent startup completed successfully")
+        logger.info("✅ Hampton Bariloche Concierge API startup completed successfully")
         
     except Exception as e:
         logger.error("❌ Startup error", error=str(e))
@@ -365,7 +365,7 @@ travel_agent_uptime_seconds {uptime}
 if __name__ == "__main__":
     import uvicorn
     
-    logger.info("Starting Travel AI Agent",
+    logger.info("Starting Hampton Bariloche Concierge API",
                host=settings.HOST,
                port=settings.PORT,
                debug=settings.DEBUG)
