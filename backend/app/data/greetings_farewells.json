@@ -2382,60 +2382,25 @@
       "category": "emoji_solo"
     },
     {
-      "text": "buen viaje",
-      "formality": "neutral",
-      "has_emoji": false,
-      "has_typo": false,
-      "category": "turismo"
-    },
-    {
-      "text": "buen viaje!",
-      "formality": "neutral",
-      "has_emoji": false,
-      "has_typo": false,
-      "category": "turismo"
-    },
-    {
-      "text": "que tengas buen viaje",
-      "formality": "neutral",
-      "has_emoji": false,
-      "has_typo": false,
-      "category": "turismo"
-    },
-    {
-      "text": "que tengas un buen viaje",
-      "formality": "formal",
-      "has_emoji": false,
-      "has_typo": false,
-      "category": "turismo"
-    },
-    {
       "text": "que tengas un excelente viaje",
       "formality": "formal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
-    },
-    {
-      "text": "buen viaje y gracias",
-      "formality": "neutral",
-      "has_emoji": false,
-      "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "disfruta",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "disfrutá",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo",
+      "category": "general",
       "region_specific": true
     },
     {
@@ -2443,29 +2408,14 @@
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "disfrutá!",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo",
-      "region_specific": true
-    },
-    {
-      "text": "disfruta el viaje",
-      "formality": "informal",
-      "has_emoji": false,
-      "has_typo": false,
-      "category": "turismo"
-    },
-    {
-      "text": "disfrutá el viaje",
-      "formality": "informal",
-      "has_emoji": false,
-      "has_typo": false,
-      "category": "turismo",
+      "category": "general",
       "region_specific": true
     },
     {
@@ -2473,14 +2423,14 @@
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "disfrutá mucho",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo",
+      "category": "general",
       "region_specific": true
     },
     {
@@ -2488,14 +2438,14 @@
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "disfrutá muchísimo",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo",
+      "category": "general",
       "region_specific": true
     },
     {
@@ -2503,126 +2453,126 @@
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que la pases genial",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que la pases lindo",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que lo pases lindo",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que lo pases genial",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que lo disfrutes",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que lo disfrutes mucho",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "pasala bien",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "pasala genial",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "pasalo bien",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "pasalo genial",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que disfrutes",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que disfrutes mucho",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "pasala lindo",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "pasalo lindo",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que te diviertas",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que te diviertas mucho",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "divertite",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo",
+      "category": "general",
       "region_specific": true
     },
     {
@@ -2630,7 +2580,7 @@
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo",
+      "category": "general",
       "region_specific": true
     },
     {
@@ -2666,35 +2616,35 @@
       "formality": "neutral",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que tengas buenas vacaciones",
       "formality": "neutral",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "felices vacaciones",
       "formality": "formal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "disfruta tus vacaciones",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "disfrutá tus vacaciones",
       "formality": "informal",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo",
+      "category": "general",
       "region_specific": true
     },
     {
@@ -2702,35 +2652,35 @@
       "formality": "neutral",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "linda estadia",
       "formality": "neutral",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "linda estadía",
       "formality": "neutral",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que tengas linda estadia",
       "formality": "neutral",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "que tengas linda estadía",
       "formality": "neutral",
       "has_emoji": false,
       "has_typo": false,
-      "category": "turismo"
+      "category": "general"
     },
     {
       "text": "buen descanso",
