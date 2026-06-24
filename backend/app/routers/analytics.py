@@ -10,6 +10,7 @@ from app.services.agent_service import agent_service
 from app.services.lead_service import lead_service
 from app.services.metrics_service import metrics_service
 from app.services.kanban_service import kanban_service
+from app.services.business_metrics import resolve_period
 from app.core.logging_config import get_logger
 from typing import Dict, List
 from datetime import datetime, timedelta
@@ -19,9 +20,34 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
 @router.get("/dashboard")
-async def get_dashboard_analytics(db: Session = Depends(get_db)):
-    """Obtiene todas las métricas para el dashboard principal con tendencias reales"""
+async def get_dashboard_analytics(period: str = "mes", db: Session = Depends(get_db)):
+    """Métricas del dashboard. Las tarjetas de negocio se filtran por `period`; "En casa hoy"
+    es siempre operativo (hoy). Reutiliza business_metrics → consistente con el asesor."""
     try:
+        from app.services import business_metrics as bm
+        from app.models.hotel import HotelTicket
+        start, end, period_label = resolve_period(period)
+        rev = bm.get_revenue(db, start, end)
+        occ = bm.get_occupancy(db, start, end)
+        leads_sum = bm.get_leads_summary(db, start, end)
+        from datetime import datetime, time as _time
+        tickets_total = db.query(func.count(HotelTicket.id)).filter(
+            HotelTicket.created_at >= datetime.combine(start, _time.min),
+            HotelTicket.created_at < datetime.combine(end, _time.min),
+        ).scalar() or 0
+        period_cards = {
+            "revenue_usd": rev["usd"],
+            "revenue_ars": rev["ars"],
+            "bookings_count": rev["count"],
+            "occupancy_pct": occ["occupancy_pct"],
+            "leads": leads_sum["generated"],
+            "leads_closed": leads_sum["closed"],
+            "conversion_pct": leads_sum["conversion_pct"],
+            "tickets_total": tickets_total,
+            "period_label": period_label,
+        }
+        today_block = bm.get_guests_in_house(db)  # "En casa hoy" — siempre hoy
+
         agent_stats = agent_service.get_service_stats()
         lead_stats = lead_service.get_lead_stats()
         priority_leads = lead_service.get_active_leads(limit=10)
@@ -75,7 +101,11 @@ async def get_dashboard_analytics(db: Session = Depends(get_db)):
                 "active_sessions": agent_stats.get("active_sessions", 0),
                 "model_config": agent_stats.get("model_config", {})
             },
-            "recent_leads": priority_leads[:5]
+            "recent_leads": priority_leads[:5],
+            # Tarjetas filtradas por el período elegido (negocio).
+            "period_cards": period_cards,
+            # "En casa hoy" — operativo, NO depende del período.
+            "today": today_block,
         }
 
         logger.info("Dashboard analytics retrieved", total_conversations=total_conversations)
@@ -105,10 +135,12 @@ async def get_conversations_timeline(period: str = "hourly", db: Session = Depen
 
 
 @router.get("/postsale/metrics")
-async def get_postsale_metrics(db: Session = Depends(get_db)):
-    """Métricas de negocio del agente post-venta: tasa de escalación y auto-resolución."""
+async def get_postsale_metrics(period: str = "mes", db: Session = Depends(get_db)):
+    """Métricas del agente post-venta en un período: escalación y auto-resolución."""
     try:
-        data = metrics_service.get_postsale_metrics(db)
+        start, end, label = resolve_period(period)
+        data = metrics_service.get_postsale_metrics(db, start, end)
+        data["period_label"] = label
         return {"success": True, "data": data}
     except Exception as e:
         logger.error("Error getting postsale metrics", error=str(e))
@@ -116,10 +148,12 @@ async def get_postsale_metrics(db: Session = Depends(get_db)):
 
 
 @router.get("/conversations/heatmap")
-async def get_conversations_heatmap(days: int = 7, channel: str = None, db: Session = Depends(get_db)):
-    """Heatmap de conversaciones (día × hora). channel opcional: web | whatsapp."""
+async def get_conversations_heatmap(period: str = "mes", channel: str = None, db: Session = Depends(get_db)):
+    """Heatmap de conversaciones (día × hora) en un período. channel opcional: web | whatsapp."""
     try:
-        heatmap_data = metrics_service.get_heatmap_data(db, days=days, channel=channel)
+        start, end, label = resolve_period(period)
+        heatmap_data = metrics_service.get_heatmap_data(db, start=start, end=end, channel=channel)
+        heatmap_data["period_label"] = label
         return {"success": True, "data": heatmap_data}
     except Exception as e:
         logger.error("Error getting conversations heatmap", error=str(e))
@@ -127,10 +161,12 @@ async def get_conversations_heatmap(days: int = 7, channel: str = None, db: Sess
 
 
 @router.get("/conversations/channels")
-async def get_conversations_channels(db: Session = Depends(get_db)):
-    """Distribución real de conversaciones por canal (web / whatsapp)."""
+async def get_conversations_channels(period: str = "mes", db: Session = Depends(get_db)):
+    """Distribución de conversaciones por canal (web / whatsapp) en un período."""
     try:
-        data = metrics_service.get_conversations_by_channel(db)
+        start, end, label = resolve_period(period)
+        data = metrics_service.get_conversations_by_channel(db, start, end)
+        data["period_label"] = label
         return {"success": True, "data": data}
     except Exception as e:
         logger.error("Error getting conversations by channel", error=str(e))
@@ -138,10 +174,12 @@ async def get_conversations_channels(db: Session = Depends(get_db)):
 
 
 @router.get("/funnel")
-async def get_funnel(channel: str = None, db: Session = Depends(get_db)):
-    """Embudo real conversaciones → leads → reservas. channel opcional: web | whatsapp."""
+async def get_funnel(period: str = "mes", channel: str = None, db: Session = Depends(get_db)):
+    """Embudo conversaciones → leads → reservas en un período. channel opcional: web | whatsapp."""
     try:
-        data = metrics_service.get_funnel(db, channel=channel)
+        start, end, label = resolve_period(period)
+        data = metrics_service.get_funnel(db, start, end, channel=channel)
+        data["period_label"] = label
         return {"success": True, "data": data}
     except Exception as e:
         logger.error("Error getting funnel", error=str(e))

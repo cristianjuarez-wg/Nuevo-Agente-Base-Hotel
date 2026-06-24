@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics, getRestaurantStats } from '../../services/api'
 import { PageHeader, StatCard, Loading, formatUSD } from '../ui'
+import PeriodSelector from '../components/PeriodSelector'
 
 // Selector de canal: Todos / Web / WhatsApp. Filtra funnel + heatmap.
 const CHANNELS = [
@@ -193,6 +194,7 @@ function Panel({ title, subtitle, children }) {
 
 export default function AnalyticsView() {
   const [channel, setChannel] = useState('all')
+  const [period, setPeriod] = useState('mes')
   const [funnel, setFunnel] = useState(null)
   const [heatmap, setHeatmap] = useState(null)
   const [channels, setChannels] = useState(null)
@@ -203,8 +205,8 @@ export default function AnalyticsView() {
   const load = () => {
     setLoading(true)
     Promise.all([
-      getFunnel(channel), getHeatmap(channel, 30), getChannelStats(),
-      getAgentQualityMetrics().catch(() => null),
+      getFunnel(channel, period), getHeatmap(channel, period), getChannelStats(period),
+      getAgentQualityMetrics(period).catch(() => null),
       getRestaurantStats().catch(() => null),
     ])
       .then(([f, h, c, q, fb]) => {
@@ -222,7 +224,7 @@ export default function AnalyticsView() {
       })
       .finally(() => setLoading(false))
   }
-  useEffect(load, [channel])
+  useEffect(load, [channel, period])
 
   const stages = funnel?.stages || []
   const conv = stages[0]?.count ?? 0
@@ -233,9 +235,10 @@ export default function AnalyticsView() {
     <div>
       <PageHeader
         title="Analíticas"
-        subtitle="Embudo de conversión y actividad del agente por canal."
+        subtitle={`Embudo de conversión y actividad del agente por canal${funnel?.period_label ? ` · ${funnel.period_label}` : ''}.`}
         right={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <PeriodSelector value={period} onChange={setPeriod} />
             <ChannelTabs value={channel} onChange={setChannel} />
             <button onClick={load} className="btn-secondary px-4 py-2 text-xs" aria-label="Actualizar">
               <RefreshCw size={14} /> Actualizar

@@ -373,28 +373,38 @@ export async function getAdminConfig() {
   return data
 }
 
-// ── Analíticas (funnel, heatmap, canales) ────────────────────────────────────
-export async function getFunnel(channel) {
+// ── Analíticas (funnel, heatmap, canales) — filtrables por período ───────────
+function _periodParam(period) {
+  return period ? { period } : {}
+}
+
+export async function getFunnel(channel, period) {
   const { data } = await client.get('/api/analytics/funnel', {
-    params: channel && channel !== 'all' ? { channel } : {},
+    params: { ..._periodParam(period), ...(channel && channel !== 'all' ? { channel } : {}) },
   })
   return data.data ?? data
 }
 
-export async function getHeatmap(channel, days = 30) {
+export async function getHeatmap(channel, period) {
   const { data } = await client.get('/api/analytics/conversations/heatmap', {
-    params: { days, ...(channel && channel !== 'all' ? { channel } : {}) },
+    params: { ..._periodParam(period), ...(channel && channel !== 'all' ? { channel } : {}) },
   })
   return data.data ?? data
 }
 
-export async function getAgentQualityMetrics() {
-  const { data } = await client.get('/api/analytics/postsale/metrics')
+export async function getAgentQualityMetrics(period) {
+  const { data } = await client.get('/api/analytics/postsale/metrics', { params: _periodParam(period) })
   return data.data ?? data
 }
 
-export async function getChannelStats() {
-  const { data } = await client.get('/api/analytics/conversations/channels')
+export async function getChannelStats(period) {
+  const { data } = await client.get('/api/analytics/conversations/channels', { params: _periodParam(period) })
+  return data.data ?? data
+}
+
+// Dashboard period-aware: tarjetas de negocio filtradas + "en casa hoy" operativo.
+export async function getDashboardSummary(period) {
+  const { data } = await client.get('/api/analytics/dashboard', { params: _periodParam(period) })
   return data.data ?? data
 }
 

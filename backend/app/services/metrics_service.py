@@ -229,22 +229,21 @@ class MetricsService:
                 "period": "hourly"
             }
     
-    def get_heatmap_data(self, db: Session, days: int = 7, channel: str = None) -> Dict:
+    def get_heatmap_data(self, db: Session, start=None, end=None, days: int = 7, channel: str = None) -> Dict:
         """
-        Obtiene datos para heatmap de actividad (día × hora)
-        Excluye conversaciones de post-venta
+        Obtiene datos para heatmap de actividad (día × hora) en un período. Excluye post-venta.
 
-        Args:
-            db: Sesión de base de datos
-            days: Número de días a analizar (default: 7)
-            channel: Filtro opcional por canal ("web" | "whatsapp"); None = todos
-
-        Returns:
-            Dict con datos formateados para heatmap
+        Si se pasan `start`/`end` (fechas), filtra started_at en ese rango; si no, usa la
+        ventana móvil de `days` (compatibilidad).
         """
+        from datetime import datetime, time as _time
         try:
-            now = now_argentina()
-            start_time = now - timedelta(days=days)
+            if start is not None:
+                start_time = datetime.combine(start, _time.min)
+                end_time = datetime.combine(end, _time.min)
+            else:
+                start_time = now_argentina() - timedelta(days=days)
+                end_time = None
 
             # Consulta agrupada por día de semana y hora
             # dow: 0=Domingo, 1=Lunes, ..., 6=Sábado
@@ -256,6 +255,8 @@ class MetricsService:
                 Conversation.started_at >= start_time,
                 Conversation.context_type != 'post_sale'  # Excluir soporte
             )
+            if end_time is not None:
+                query = query.filter(Conversation.started_at < end_time)
             if channel in ("web", "whatsapp"):
                 query = query.filter(Conversation.channel == channel)
             heatmap_data = query.group_by('day_of_week', 'hour').all()
@@ -319,24 +320,23 @@ class MetricsService:
                 "end_date": ""
             }
     
-    def get_conversations_by_channel(self, db: Session) -> Dict:
+    def get_conversations_by_channel(self, db: Session, start=None, end=None) -> Dict:
         """
-        Distribución REAL de conversaciones por canal (web / whatsapp).
-        Cuenta sobre Conversation.channel. Excluye post-venta.
-
-        Args:
-            db: Sesión de base de datos
-
-        Returns:
-            Dict con distribución por canal
+        Distribución REAL de conversaciones por canal (web / whatsapp) en un período.
+        Cuenta sobre Conversation.channel (started_at en [start,end)). Excluye post-venta.
         """
+        from datetime import datetime, time as _time
         try:
-            rows = db.query(
+            q = db.query(
                 Conversation.channel,
                 func.count(Conversation.id)
             ).filter(
                 Conversation.context_type != 'post_sale'
-            ).group_by(Conversation.channel).all()
+            )
+            if start:
+                q = q.filter(Conversation.started_at >= datetime.combine(start, _time.min),
+                             Conversation.started_at < datetime.combine(end, _time.min))
+            rows = q.group_by(Conversation.channel).all()
 
             # Normalizar: las conversaciones sin canal seteado se asumen "web".
             counts = {"web": 0, "whatsapp": 0}
@@ -598,40 +598,35 @@ class MetricsService:
             logger.error("Error getting popular destinations", error=str(e))
             return {"top_destinations": []}
 
-    def get_postsale_metrics(self, db: Session) -> Dict:
-        """Métricas de calidad del agente POST-VENTA (soporte al huésped en viaje).
+    def get_postsale_metrics(self, db: Session, start=None, end=None) -> Dict:
+        """Métricas de calidad del agente POST-VENTA (soporte al huésped en viaje), en período.
 
         Mide containment: qué tan bien Aura resuelve sola vs cuánto escala a un humano,
-        más los pedidos de servicio que enruta al staff (service routing). Es la métrica
-        de "calidad del agente como producto" que recomienda el estado del arte
-        (containment / escalation rate).
-
-        Usa HotelTicket (modelo del hotel). Antes apuntaba a SupportTicket (legacy de
-        turismo), por eso estas métricas salían siempre en cero para el hotel.
+        más los pedidos de servicio que enruta al staff (service routing). Filtra los tickets
+        por HotelTicket.created_at en [start,end) si se pasa el período.
         """
         from app.models.hotel import HotelTicket, TICKET_OPEN_STATES, TICKET_RESOLVED_STATES
+        from datetime import datetime, time as _time
         try:
-            total = db.query(func.count(HotelTicket.id)).scalar() or 0
-            escalated = db.query(func.count(HotelTicket.id)).filter(
-                HotelTicket.escalated == 1
-            ).scalar() or 0
-            # Auto-resueltos por el agente sin escalar (containment efectivo). Cuenta ambos
-            # vocabularios de "cerrado": resolved (IA) y resuelto (loop operativo del staff).
-            # Excluye los service_request, que se cuentan aparte (evita doble conteo en
-            # containment cuando un pedido de servicio ya quedó en estado 'resuelto').
-            auto_resolved = db.query(func.count(HotelTicket.id)).filter(
+            dt_start = datetime.combine(start, _time.min) if start else None
+            dt_end = datetime.combine(end, _time.min) if end else None
+
+            def _q():
+                q = db.query(func.count(HotelTicket.id))
+                if dt_start is not None:
+                    q = q.filter(HotelTicket.created_at >= dt_start, HotelTicket.created_at < dt_end)
+                return q
+
+            total = _q().scalar() or 0
+            escalated = _q().filter(HotelTicket.escalated == 1).scalar() or 0
+            # Auto-resueltos sin escalar (containment). Excluye service_request (se cuentan aparte).
+            auto_resolved = _q().filter(
                 HotelTicket.status.in_(TICKET_RESOLVED_STATES),
                 HotelTicket.escalated == 0,
                 HotelTicket.category != "service_request",
             ).scalar() or 0
-            # Pedidos de servicio enrutados al staff (toallas, mantenimiento, etc.).
-            service_requests = db.query(func.count(HotelTicket.id)).filter(
-                HotelTicket.category == "service_request"
-            ).scalar() or 0
-            # Abiertos = cualquier estado activo (incluye asignado/pre_resuelto del operativo).
-            open_tickets = db.query(func.count(HotelTicket.id)).filter(
-                HotelTicket.status.in_(TICKET_OPEN_STATES)
-            ).scalar() or 0
+            service_requests = _q().filter(HotelTicket.category == "service_request").scalar() or 0
+            open_tickets = _q().filter(HotelTicket.status.in_(TICKET_OPEN_STATES)).scalar() or 0
 
             # Containment = atendidos sin escalar (auto-resueltos + pedidos enrutados).
             contained = auto_resolved + service_requests
@@ -657,50 +652,75 @@ class MetricsService:
                 "escalation_rate": 0.0, "auto_resolution_rate": 0.0,
             }
 
-    def get_funnel(self, db: Session, channel: str = None) -> Dict:
-        """Embudo REAL conversaciones → leads → reservas, opcionalmente por canal.
+    def get_funnel(self, db: Session, start=None, end=None, channel: str = None) -> Dict:
+        """Embudo conversaciones → leads → reservas en un PERÍODO, opcionalmente por canal.
 
-        Usa datos persistidos (no sesiones en memoria):
-          - Conversaciones: tabla conversations (excluye post-venta).
-          - Leads: tabla leads.
-          - Reservas: tabla bookings vinculadas a un Contact (contact_id NOT NULL),
-            no canceladas. El canal de la reserva se infiere del Lead/Conversation del
-            mismo Contact, o del session_id de la reserva si lo tiene.
+        COHERENCIA garantizada (un embudo real es jerárquico): cada etapa es subconjunto
+        de la anterior, así las tasas NUNCA pasan de 100% — con cualquier dato.
+          - Conversaciones: tabla conversations (pre-venta) creadas en [start,end).
+          - Leads: leads creados en el período, ACOTADO a ≤ conversaciones (las charlas web
+            anónimas no llevan contact_id, por eso el clamp en vez de un join puro).
+          - Reservas: bookings creados en el período cuyo CONTACTO fue lead en el período
+            (downstream join — los leads sí llevan contact_id), y ACOTADO a ≤ leads.
+
+        `start`/`end` son fechas (end exclusivo). Si no se pasan, cuenta todo (compatibilidad).
         """
         from app.models.hotel import Booking
-        from app.models.contact import Contact
+        from datetime import datetime, time as _time
         try:
             ch = channel if channel in ("web", "whatsapp") else None
+            # Límites datetime para comparar contra started_at/created_at.
+            dt_start = datetime.combine(start, _time.min) if start else None
+            dt_end = datetime.combine(end, _time.min) if end else None
 
-            # 1) Conversaciones (pre-venta)
-            conv_q = db.query(func.count(Conversation.id)).filter(
-                Conversation.context_type != 'post_sale'
+            def _in_range(q, col):
+                if dt_start is not None:
+                    q = q.filter(col >= dt_start, col < dt_end)
+                return q
+
+            # 1) Conversaciones (pre-venta) en el período.
+            conv_q = _in_range(
+                db.query(func.count(Conversation.id)).filter(Conversation.context_type != 'post_sale'),
+                Conversation.started_at,
             )
             if ch:
                 conv_q = conv_q.filter(Conversation.channel == ch)
             conversations = conv_q.scalar() or 0
 
-            # 2) Leads (ya tienen channel)
-            lead_q = db.query(func.count(Lead.id))
-            if ch:
-                lead_q = lead_q.filter(Lead.channel == ch)
-            leads = lead_q.scalar() or 0
-
-            # 3) Reservas vinculadas a Contact, no canceladas.
-            book_q = db.query(func.count(Booking.id)).filter(
-                Booking.status != "cancelled",
-                Booking.contact_id.isnot(None),
+            # 2) Leads del período (con su contact_id, para el join de reservas).
+            lead_rows_q = _in_range(
+                db.query(Lead.id, Lead.contact_id), Lead.created_at,
             )
             if ch:
-                # Canal de la reserva: por session_id (wa_ = whatsapp) cuando exista,
-                # con fallback a "web" para reservas sin session de WhatsApp.
+                lead_rows_q = lead_rows_q.filter(Lead.channel == ch)
+            lead_rows = lead_rows_q.all()
+            leads_raw = len(lead_rows)
+            lead_contact_ids = {r.contact_id for r in lead_rows if r.contact_id is not None}
+
+            # 3) Reservas del período cuyo contacto fue lead en el período (downstream).
+            book_q = _in_range(
+                db.query(func.count(Booking.id)).filter(
+                    Booking.status != "cancelled",
+                    Booking.contact_id.isnot(None),
+                ),
+                Booking.created_at,
+            )
+            if lead_contact_ids:
+                book_q = book_q.filter(Booking.contact_id.in_(lead_contact_ids))
+            else:
+                book_q = book_q.filter(False)  # sin leads en el período → sin reservas downstream
+            if ch:
                 if ch == "whatsapp":
                     book_q = book_q.filter(Booking.session_id.like("wa_%"))
-                else:  # web
+                else:
                     book_q = book_q.filter(
                         (Booking.session_id.is_(None)) | (~Booking.session_id.like("wa_%"))
                     )
-            reservations = book_q.scalar() or 0
+            reservations_raw = book_q.scalar() or 0
+
+            # Clamps de coherencia: conversaciones ≥ leads ≥ reservas.
+            leads = min(leads_raw, conversations)
+            reservations = min(reservations_raw, leads)
 
             def rate(part, whole):
                 return round((part / whole * 100), 1) if whole > 0 else 0.0

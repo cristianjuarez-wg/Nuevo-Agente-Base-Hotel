@@ -2,64 +2,63 @@ import { useEffect, useState } from 'react'
 import {
   CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, ArrowRight, AlertTriangle, BedDouble, UtensilsCrossed,
 } from 'lucide-react'
-import { listBookings, listLeads, getTicketStats, getRestaurantStats } from '../../services/api'
+import { getDashboardSummary, listBookings, getTicketStats, getRestaurantStats } from '../../services/api'
 import { PageHeader, StatCard, Loading, OriginBadge, formatUSD, formatDate } from '../ui'
+import PeriodSelector from '../components/PeriodSelector'
 
 export default function DashboardView({ go }) {
+  const [period, setPeriod] = useState('mes')
   const [data, setData] = useState(null)
+  const [recent, setRecent] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     Promise.all([
-      listBookings().catch(() => []),
-      listLeads().catch(() => []),
+      getDashboardSummary(period).catch(() => null),
       getTicketStats().catch(() => ({ total: 0, escalated: 0, resolved: 0, open: 0 })),
       getRestaurantStats().catch(() => ({ revenue_fnb_usd: 0, orders_total: 0, orders_today: 0 })),
+      listBookings().catch(() => []),
     ])
-      .then(([bookings, leads, tickets, fnb]) => {
+      .then(([summary, tickets, fnb, bookings]) => {
         const bArr = Array.isArray(bookings) ? bookings : []
-        const lArr = Array.isArray(leads) ? leads : leads?.leads || []
-        const revenueUsd = bArr
-          .filter((b) => b.status !== 'cancelled')
-          .reduce((sum, b) => sum + (b.total_price_usd || 0), 0)
-        const fromAgent = bArr.filter((b) => b.source === 'agente').length
-        // Huéspedes en casa hoy: reservas en curso (stay_status del backend).
-        const inHouse = bArr.filter((b) => b.stay_status === 'checked_in')
-        const guestsInHouse = inHouse.reduce((sum, b) => sum + (b.guests || 0) + (b.children || 0), 0)
-        setData({
-          bookings: bArr, leads: lArr, tickets, revenueUsd, fromAgent,
-          inHouseCount: inHouse.length, guestsInHouse, fnb,
-        })
+        setData({ summary, tickets, fnb })
+        setRecent(bArr.slice(0, 5))
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [period])
 
   if (loading) return <Loading label="Cargando panel…" />
   if (!data) return null
 
-  const recent = [...data.bookings].slice(0, 5)
+  const pc = data.summary?.period_cards || {}
+  const today = data.summary?.today || {}
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle="Resumen de actividad del Hampton by Hilton Bariloche." />
+      <PageHeader
+        title="Dashboard"
+        subtitle={`Resumen del Hampton by Hilton Bariloche${pc.period_label ? ` · ${pc.period_label}` : ''}.`}
+        right={<PeriodSelector value={period} onChange={setPeriod} />}
+      />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           icon={BedDouble}
-          label={`En casa hoy${data.guestsInHouse ? ` · ${data.guestsInHouse} huésp.` : ''}`}
-          value={data.inHouseCount}
+          label={`En casa hoy${today.guests ? ` · ${today.guests} huésp.` : ''}`}
+          value={today.rooms_occupied ?? 0}
           tone="green"
         />
-        <StatCard icon={CalendarCheck} label="Reservas totales" value={data.bookings.length} tone="hilton" />
-        <StatCard icon={DollarSign} label="Ingresos (USD)" value={formatUSD(data.revenueUsd)} tone="green" />
+        <StatCard icon={CalendarCheck} label="Reservas" value={pc.bookings_count ?? 0} tone="hilton" />
+        <StatCard icon={DollarSign} label="Ingresos (USD)" value={formatUSD(pc.revenue_usd || 0)} tone="green" />
         <StatCard
           icon={UtensilsCrossed}
           label={`Restaurante${data.fnb?.orders_today ? ` · ${data.fnb.orders_today} hoy` : ''}`}
           value={formatUSD(data.fnb?.revenue_fnb_usd || 0)}
           tone="amber"
         />
-        <StatCard icon={UserPlus} label="Leads captados" value={data.leads.length} tone="amber" />
-        <StatCard icon={LifeBuoy} label="Tickets soporte" value={data.tickets.total} tone="hilton" />
+        <StatCard icon={UserPlus} label="Leads captados" value={pc.leads ?? 0} tone="amber" />
+        <StatCard icon={LifeBuoy} label="Tickets soporte" value={pc.tickets_total ?? 0} tone="hilton" />
       </div>
 
       {/* Insight del agente */}
@@ -70,11 +69,11 @@ export default function DashboardView({ go }) {
           </div>
           <div className="mt-4 grid grid-cols-3 gap-4">
             <div>
-              <p className="font-serif text-3xl font-700 tabular-nums">{data.fromAgent}</p>
-              <p className="text-xs text-white/75">reservas vía agente</p>
+              <p className="font-serif text-3xl font-700 tabular-nums">{pc.bookings_count ?? 0}</p>
+              <p className="text-xs text-white/75">reservas del período</p>
             </div>
             <div>
-              <p className="font-serif text-3xl font-700 tabular-nums">{data.leads.length}</p>
+              <p className="font-serif text-3xl font-700 tabular-nums">{pc.leads ?? 0}</p>
               <p className="text-xs text-white/75">leads captados</p>
             </div>
             <div>
