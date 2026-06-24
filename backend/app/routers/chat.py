@@ -433,11 +433,62 @@ def _build_promo_card(offer: dict) -> dict:
         },
     }
 
+# Mensaje sintético que el FRONTEND postea tras confirmar un pedido en la tarjeta
+# ("Confirmé mi pedido RST-XXXX" y sus variantes por idioma). Lo manejamos de forma
+# DETERMINÍSTICA acá, sin pasar por el LLM: el pedido YA está hecho y cargado: solo cerramos
+# cálido. Así NUNCA se confunde el RST con un código de reserva HTL (bug del agente).
+import re as _re_chat
+_ORDER_CONFIRM_RE = _re_chat.compile(
+    r"\b(confirm[ée]|i\s+confirmed\s+my\s+order|confirmei\s+meu\s+pedido|j['’]ai\s+confirm[ée])\b"
+    r".*?\b(RST-[A-Z0-9]+)\b",
+    _re_chat.IGNORECASE,
+)
+
+
+def _order_confirmation_shortcut(db: Session, message: str) -> str | None:
+    """Si el mensaje es la confirmación sintética del frontend, devuelve el cierre cálido
+    (con el resumen real del pedido). Si no matchea, devuelve None y sigue el flujo normal."""
+    m = _ORDER_CONFIRM_RE.search(message or "")
+    if not m:
+        return None
+    order_code = m.group(2).upper()
+    try:
+        from app.services.hotel_tools import _handle_registrar_pedido
+        res = _handle_registrar_pedido({"order_code": order_code}, {"db": db})
+        resumen = (res or {}).get("tool_result", "").strip()
+    except Exception as e:  # noqa: BLE001 — nunca dejar al huésped sin cierre
+        logger.warning("Order confirmation shortcut falló", order_code=order_code, error=str(e))
+        resumen = ""
+    if resumen and "no encontré" not in resumen.lower():
+        return f"{resumen}\n\n¿Necesitás algo más? 😊"
+    # Pedido no hallado o error: cierre genérico, NUNCA pedir un código.
+    return "¡Listo! Tu pedido ya quedó registrado 🍽️ ¿Algo más en lo que te pueda ayudar?"
+
+
 @router.post("/message", response_model=ChatResponse)
 @limiter.limit(CHAT_RATE_LIMIT)
 async def send_message(request: Request, chat_request: ChatRequest, db: Session = Depends(get_db)):
     """Envía mensaje al agente y obtiene respuesta"""
     start_time = time.time()
+
+    # Atajo determinístico: confirmación de pedido del frontend → cierre cálido sin LLM.
+    _order_close = _order_confirmation_shortcut(db, chat_request.message)
+    if _order_close is not None:
+        try:
+            hist = agent_service.conversation_history.setdefault(chat_request.session_id, [])
+            hist.append({"role": "user", "content": chat_request.message})
+            hist.append({"role": "assistant", "content": _order_close})
+            agent_service._update_session_metadata(chat_request.session_id)
+            agent_service._save_message_to_db(db=db, session_id=chat_request.session_id,
+                                              role="user", content=chat_request.message)
+            agent_service._save_message_to_db(db=db, session_id=chat_request.session_id,
+                                              role="assistant", content=_order_close)
+        except Exception as e:  # noqa: BLE001 — persistir el historial no debe romper la respuesta
+            logger.warning("No se pudo persistir el cierre de pedido", error=str(e))
+        return ChatResponse(
+            response=_order_close, has_context=False, geography_analysis={},
+            processing_time=f"{time.time() - start_time:.2f}s",
+        )
     
     logger.info("Chat message received",
                session_id=chat_request.session_id,
