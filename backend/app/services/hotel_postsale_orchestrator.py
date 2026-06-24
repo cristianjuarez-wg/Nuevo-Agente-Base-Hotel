@@ -9,7 +9,8 @@ Diferencias con Freeway: sin tools de vuelos ni proveedores (no aplican al hotel
 Firma pública `run(service, booking, ticket, message, session_id, history) -> Dict`.
 """
 import time
-from typing import Dict, List
+from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
 from agents import (
     Agent,
@@ -36,6 +37,9 @@ logger = get_logger(__name__)
 
 MAX_TURNS = 5
 MAX_HISTORY_MESSAGES = 8
+# Minutos desde el último mensaje a partir de los cuales un saludo de apertura vuelve a tener
+# sentido. Por debajo, el mensaje es "continuación inmediata" y NO hay que re-saludar.
+GREETING_GAP_MINUTES = 30
 
 _sdk_client = get_async_openai()
 set_default_openai_client(_sdk_client, use_for_tracing=False)
@@ -438,13 +442,54 @@ class HotelPostSaleSDKOrchestrator:
             lines.append(f"{role}: {m.get('content', '')[:300]}")
         return "\n".join(lines)
 
-    def _build_instructions(self, service, booking, history: List[Dict]) -> str:
+    def _continuity_signal(self, service, session_id: str, history: List[Dict]) -> str:
+        """Señal para el prompt: ¿es continuación inmediata de la charla o retoma tras pausa?
+
+        Decide por el tiempo desde el último mensaje (Conversation.last_message_at, UTC), que
+        se actualiza DESPUÉS de responder → al entrar un mensaje nuevo refleja el intercambio
+        anterior, justo el gap que necesitamos. Si no hay charla previa, es el INICIO.
+        """
+        # Sin historial en RAM → no hay charla previa: es el primer mensaje (saludo OK).
+        if not history:
+            return "INICIO de la conversación: podés abrir con un saludo breve y cálido."
+        last_at = None
+        try:
+            from app.models.conversation import Conversation
+            conv = (
+                service.db.query(Conversation)
+                .filter(Conversation.session_id == session_id)
+                .first()
+            )
+            last_at = conv.last_message_at if conv else None
+        except Exception as e:  # noqa: BLE001 — nunca romper la respuesta por esta señal
+            logger.warning("No se pudo calcular la continuidad de la charla", error=str(e))
+            return ""
+        if last_at is None:
+            return "INICIO de la conversación: podés abrir con un saludo breve y cálido."
+        if last_at.tzinfo is None:
+            last_at = last_at.replace(tzinfo=timezone.utc)
+        gap_min = (datetime.now(timezone.utc) - last_at).total_seconds() / 60.0
+        if gap_min < GREETING_GAP_MINUTES:
+            return (
+                f"CONTINUACIÓN INMEDIATA (el último mensaje fue hace ~{max(int(gap_min), 0)} min): "
+                "ya venís conversando. NO vuelvas a saludar ni a re-confirmar la reserva; "
+                "respondé directo a lo último que dijo el huésped."
+            )
+        if gap_min < 180:
+            return (
+                f"RETOMA tras una pausa (~{int(gap_min)} min): podés abrir con un saludo breve."
+            )
+        horas = int(gap_min // 60)
+        return f"RETOMA tras una pausa (~{horas} h): podés abrir con un saludo breve."
+
+    def _build_instructions(self, service, booking, history: List[Dict], session_id: str = "") -> str:
         booking_context = service.build_booking_context(booking)
         return POSTSALE_TOOL_SYSTEM.format(
             agent_name=profile_manager.get_agent_name(),
             passenger_name=booking.guest_name or "el huésped",
             package_context=booking_context,
             chat_history=self._format_history(history),
+            continuidad=self._continuity_signal(service, session_id, history),
         )
 
     def _build_input_list(self, history: List[Dict], message: str) -> List[Dict]:
@@ -458,7 +503,7 @@ class HotelPostSaleSDKOrchestrator:
     ) -> Dict:
         start = time.time()
 
-        instructions = self._build_instructions(service, booking, history)
+        instructions = self._build_instructions(service, booking, history, session_id)
         agent = Agent[HotelPostventaContext](
             name=profile_manager.get_agent_name(),
             instructions=instructions,
