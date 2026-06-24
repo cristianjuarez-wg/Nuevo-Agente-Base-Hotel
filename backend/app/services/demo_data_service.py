@@ -43,10 +43,12 @@ _RNG = random.Random(20260621)
 # ── Volumen objetivo (realista medio) ───────────────────────────────────────
 # Sube respecto al original (140 reservas) para dar densidad mensual sobre ~17 meses
 # (jun 2025 → nov 2026), así cualquier período que consulte el asesor tiene datos.
-N_CONTACTS = 120
-N_BOOKINGS = 300
-N_LEADS = 90
-N_CONVERSATIONS = 110
+# Pensado como un EMBUDO real: conversaciones (tope) > leads > reservas. Así el embudo del
+# backoffice luce con tasas naturales (conv→lead ~40-60%, lead→reserva ~60%), no aplanado.
+N_CONTACTS = 200
+N_BOOKINGS = 150
+N_LEADS = 250
+N_CONVERSATIONS = 600
 N_TICKETS = 55
 N_STAFF = 5
 
@@ -431,12 +433,12 @@ def populate(db: Session) -> Dict:
     db.commit()
 
     # 5) Conversaciones + mensajes (vinculadas a contactos; algunas a una reserva).
-    for _ in range(N_CONVERSATIONS):
+    for _ci in range(N_CONVERSATIONS):
         contact = _RNG.choice(contacts)
         started = now - timedelta(days=_RNG.randint(1, 390), hours=_RNG.randint(0, 23))
         channel = _RNG.choice(["web", "whatsapp"])
         ctx_type = _RNG.choice(["pre_sale", "pre_sale", "post_sale"])
-        sess = f"demo-conv-{_RNG.randint(10000, 99999)}"
+        sess = f"demo-conv-{_ci:05d}"  # índice secuencial → único (evita colisión UNIQUE)
         n_msgs = _RNG.randint(4, 12)
         conv = Conversation(
             session_id=sess, contact_id=contact.id,
