@@ -322,20 +322,31 @@ IMPORTANTE:
             analysis.get('interest_score', 0) >= 6):
             return True
 
-        # MOMENTO DE CIERRE: el usuario se despide/posterga tras una conversación con
-        # algo de interés. Captamos el contacto para hacer seguimiento antes de que se
-        # vaya sin convertir, de forma natural y no invasiva. Umbral bajo a propósito:
-        # alguien que preguntó y se va es justo a quien conviene retener. Solo excluimos
-        # el caso claramente sin interés (FRÍO con score muy bajo) y charlas de 1 turno.
-        # El interés se evalúa contra el MÁXIMO entre el análisis del turno y el piso
-        # persistido: si el lead YA era TIBIO/CALIENTE, la despedida no lo degrada a "sin
-        # interés" (era la causa de no captar leads calientes que se despedían por WhatsApp).
-        if self._is_exit_intent(message) and conversation_length >= 2:
+        # MOMENTO DE CIERRE: el usuario se despide/posterga/objeta el precio tras una
+        # conversación con algo de interés. Captamos el contacto para hacer seguimiento antes
+        # de que se vaya sin convertir, de forma natural y no invasiva.
+        #
+        # La SEÑAL DE CIERRE se deriva PRIMERO del análisis SEMÁNTICO del LLM (que entiende el
+        # mensaje, no depende de adivinar frases): el modelo ya marca `obstacle` (precio/fechas/
+        # tiempo), `next_action`='solicitar_contacto', etc. La lista de palabras `_is_exit_intent`
+        # queda solo como RED DE RESPALDO barata para despedidas explícitas.
+        obstacle = (analysis.get('obstacle') or '').lower()
+        next_action = (analysis.get('next_action') or '').lower()
+        llm_close_signal = (
+            obstacle in ('precio', 'fechas', 'tiempo')      # el LLM detectó una objeción real
+            or next_action == 'solicitar_contacto'           # el LLM cree que es momento de captar
+        )
+        is_close_moment = llm_close_signal or self._is_exit_intent(message)
+
+        if is_close_moment and conversation_length >= 2:
+            # Umbral bajo a propósito: alguien que preguntó y se va (o objeta el precio) es justo
+            # a quien conviene retener. Solo excluimos el caso claramente sin interés (FRÍO con
+            # score muy bajo). El interés se evalúa contra el MÁXIMO entre el análisis del turno y
+            # el piso persistido: si el lead YA era TIBIO/CALIENTE, la despedida no lo degrada.
             turn_type = analysis.get('lead_type', 'FRIO')
             turn_score = analysis.get('interest_score', 0)
             floor_type = (persisted_floor or {}).get('lead_type', 'FRIO')
             floor_score = (persisted_floor or {}).get('interest_score', 0)
-            # "Sin interés" solo si NI el turno NI el piso muestran interés.
             no_interest = (
                 (turn_type == 'FRIO' and turn_score <= 2) and
                 (floor_type == 'FRIO' and (floor_score or 0) <= 2)
