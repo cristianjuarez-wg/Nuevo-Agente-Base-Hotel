@@ -215,17 +215,9 @@ export default function LeadsView() {
         }
       />
 
-      {/* Vista: Lista / Tablero (kanban). Es una decisión de presentación, separada de los
-          filtros — por eso va en su propia fila con un segmented control. */}
+      {/* Vista: Tablero (vista principal) / Lista. Es una decisión de presentación, separada
+          de los filtros — por eso va en su propia fila con un segmented control. */}
       <div className="mb-4 inline-flex rounded-xl bg-mist p-1">
-        <button
-          onClick={() => setViewMode('list')}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-            viewMode === 'list' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
-          }`}
-        >
-          <List size={14} /> Lista
-        </button>
         <button
           onClick={() => setViewMode('board')}
           className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
@@ -233,6 +225,14 @@ export default function LeadsView() {
           }`}
         >
           <LayoutGrid size={14} /> Tablero
+        </button>
+        <button
+          onClick={() => setViewMode('list')}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
+            viewMode === 'list' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
+          }`}
+        >
+          <List size={14} /> Lista
         </button>
       </div>
 
