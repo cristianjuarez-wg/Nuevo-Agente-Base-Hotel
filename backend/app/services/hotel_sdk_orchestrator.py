@@ -483,6 +483,8 @@ class HotelSDKOrchestrator:
             fecha = now.strftime("%d/%m/%Y")
         hora = now.strftime("%H:%M")
 
+        from app.core.hotel_location import HOTEL_LOCATION_BLOCK
+
         return TOOL_AGENT_SYSTEM.format(
             agent_name=profile_manager.get_agent_name(),
             fecha_actual=fecha,
@@ -490,6 +492,7 @@ class HotelSDKOrchestrator:
             lead_block=lead_block,
             language_block=build_language_block(language),
             naturalidad_block=NATURALIDAD_BLOCK,
+            ubicacion_block=HOTEL_LOCATION_BLOCK,
         )
 
     def _availability_already_shown(self, db: Session, session_id: str) -> bool:

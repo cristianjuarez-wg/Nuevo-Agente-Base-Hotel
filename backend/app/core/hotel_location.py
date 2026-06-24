@@ -22,6 +22,26 @@ HOTEL_CITY = "bariloche"
 HOTEL_AIRPORT = "Aeropuerto de Bariloche (BRC)"
 
 
+# Bloque de ubicación OFICIAL para inyectar en el system prompt del agente. Es el dato
+# fijo y confiable de dónde está el hotel: evita que el agente lo invente o lo recupere
+# mal del RAG. NO incluye distancia exacta al lago a propósito (no la tenemos como dato);
+# para eso el agente deriva a Google Maps vía la tool `como_llegar`.
+HOTEL_LOCATION_BLOCK = """\
+UBICACIÓN OFICIAL DEL HOTEL (dato fijo y confiable — NUNCA lo inventes ni lo cambies):
+- Dirección exacta: Libertad 290, (8400) San Carlos de Bariloche, Río Negro, Argentina.
+- A 150 metros del Centro Cívico de Bariloche (el hotel NO está DENTRO del Centro Cívico: \
+está a 150 m de él, en pleno centro).
+- A 20 minutos del Aeropuerto de Bariloche (BRC).
+- En el centro de la ciudad, cerca del lago Nahuel Huapi y de comercios y gastronomía.
+
+UBICACIÓN — NUNCA INVENTES: la dirección y las distancias del hotel son EXACTAMENTE las \
+de arriba. Si te piden la dirección, dala textual ("Libertad 290, San Carlos de Bariloche"). \
+NUNCA digas que el hotel está "dentro del Centro Cívico" ni inventes una distancia al lago u \
+otros puntos. Para "¿a cuánto está de X?" o "¿cómo llego a X?" (el lago, el Cerro Otto, etc.) \
+usá SIEMPRE la herramienta `como_llegar` y compartí el link de Google Maps: ahí el huésped ve \
+la distancia y el tiempo reales. JAMÁS tires un número de distancia o tiempo de memoria."""
+
+
 def directions_url(origin: str, destination: str, mode: str = "driving") -> str:
     """Arma un link de Google Maps con la ruta origin → destination.
 
