@@ -691,20 +691,26 @@ Responde SOLO con el JSON."""
         finally:
             db.close()
     
-    def get_active_leads(self, limit: int = 50, include_unnamed: bool = False) -> List[Dict]:
-        """Obtiene leads activos ordenados por prioridad.
+    def get_active_leads(self, limit: int = 50, include_unnamed: bool = False,
+                         include_converted: bool = False) -> List[Dict]:
+        """Obtiene leads ordenados por prioridad.
 
         `include_unnamed=True` incluye los contactos "crudos": leads con teléfono pero sin
         nombre todavía (ej. un número de WhatsApp que consultó antes de reservar). Por
         defecto se ocultan (vista de calificados). Siempre se exige email o teléfono para
         no traer leads totalmente vacíos.
+
+        `include_converted=True` trae TODOS los estados (incl. los convertidos/ganados, que
+        reservaron). Por defecto solo `status="active"` — pero la LISTA del backoffice quiere
+        ver todo (igual que el tablero), así que pasa True. El badge "Reservó" los distingue.
         """
         db = SessionLocal()
         try:
             filters = [
-                Lead.status == "active",
                 ((Lead.email.isnot(None)) | (Lead.phone.isnot(None))),
             ]
+            if not include_converted:
+                filters.append(Lead.status == "active")
             if not include_unnamed:
                 filters.append(Lead.name.isnot(None))
             leads = db.query(Lead).filter(*filters).order_by(

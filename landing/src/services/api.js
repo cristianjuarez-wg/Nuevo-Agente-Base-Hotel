@@ -64,11 +64,14 @@ export async function listBookings() {
   return data.bookings ?? data
 }
 
-export async function listLeads(includeUnnamed = false) {
+export async function listLeads(includeUnnamed = false, includeConverted = false) {
   // includeUnnamed=true suma los contactos crudos (teléfono sin nombre, ej. WhatsApp que consultó).
-  const { data } = await client.get('/api/leads/active', {
-    params: includeUnnamed ? { include_unnamed: true } : {},
-  })
+  // includeConverted=true suma los leads ya ganados/convertidos (que reservaron) — la lista los
+  // muestra para no quedar vacía cuando un lead reserva (igual que el tablero).
+  const params = {}
+  if (includeUnnamed) params.include_unnamed = true
+  if (includeConverted) params.include_converted = true
+  const { data } = await client.get('/api/leads/active', { params })
   // El endpoint devuelve { success, data: [...] }
   return data.data ?? data.leads ?? data
 }

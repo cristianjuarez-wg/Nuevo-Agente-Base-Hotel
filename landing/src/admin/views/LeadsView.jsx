@@ -78,13 +78,15 @@ export default function LeadsView() {
   const [deletingId, setDeletingId] = useState(null)
   const [filter, setFilter] = useState('all')
   const [showAll, setShowAll] = useState(false)  // false = solo calificados (con nombre)
-  const [viewMode, setViewMode] = useState('list')  // 'list' | 'board'
+  const [viewMode, setViewMode] = useState('board')  // 'board' | 'list' — el tablero es la vista principal
   const [editLead, setEditLead] = useState(null)
   const [chatLead, setChatLead] = useState(null)  // lead cuyo historial de chat se está viendo
 
   const load = (includeUnnamed = showAll) => {
     setLoading(true)
-    listLeads(includeUnnamed)
+    // includeConverted=true SIEMPRE: la lista muestra TODO (activos + ganados), igual que el
+    // tablero. Si no, los leads que reservaron (status=converted) desaparecían de la lista.
+    listLeads(includeUnnamed, true)
       .then((d) => {
         const arr = Array.isArray(d) ? d : d?.leads || []
         setRows(arr.map(flatten))
