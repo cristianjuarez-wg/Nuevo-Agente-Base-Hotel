@@ -261,15 +261,25 @@ IMPORTANTE:
             "fallback_used": True
         }
     
-    # Señales de que el usuario se está despidiendo o postergando la decisión.
+    # Señales de que el usuario se está despidiendo, postergando o RECHAZANDO POR PRECIO.
     # Es el "momento de cierre": si mostró interés, conviene captar el contacto antes
-    # de que se vaya sin convertir (best practice de captación conversacional).
+    # de que se vaya sin convertir (best practice de captación conversacional). Incluimos
+    # objeciones de precio + despedidas informales porque un lead que se va por precio es
+    # justo a quien conviene retener (ofrecerle avisarle de promos / novedades).
     _EXIT_SIGNALS = (
+        # Postergación / despedida
         "lo voy a pensar", "lo pienso", "lo consulto", "lo veo", "después veo",
         "despues veo", "más adelante", "mas adelante", "otro día", "otro dia",
         "gracias por todo", "muchas gracias", "nada más", "nada mas", "chau",
         "adiós", "adios", "hasta luego", "lo hablo", "tengo que ver", "veré",
         "vere", "let me think", "i'll think", "thanks anyway", "maybe later",
+        # Despedidas informales (cierre con "gracias" suelto / descarte)
+        "gracias igual", "igual gracias", "bueno gracias", "ok gracias", "dale gracias",
+        "dejá", "deja", "déjalo", "dejalo", "lo dejo", "ahí veo", "ahi veo", "después te",
+        # Objeción de precio (rechazo que igual amerita captar para promos)
+        "muy caro", "carísimo", "carisimo", "está caro", "esta caro", "es caro",
+        "se me va de presupuesto", "fuera de presupuesto", "no me alcanza", "es mucho",
+        "demasiado caro", "muy costoso", "no me da el presupuesto", "too expensive",
     )
 
     def _is_exit_intent(self, message: str) -> bool:
@@ -277,14 +287,18 @@ IMPORTANTE:
         return any(sig in text for sig in self._EXIT_SIGNALS)
 
     def should_request_contact(self, analysis: Dict, conversation_length: int,
-                               message: str = "") -> bool:
+                               message: str = "", persisted_floor: Dict = None) -> bool:
         """
         Determina si es el momento apropiado para solicitar datos de contacto
 
         Args:
-            analysis: Resultado del análisis de lead
+            analysis: Resultado del análisis de lead (de ESTE turno)
             conversation_length: Número de mensajes en la conversación
             message: Mensaje actual (para detectar intención de salida/despedida)
+            persisted_floor: Estado YA persistido del lead {lead_type, interest_score} de los
+                turnos previos. El análisis del turno solo mira los últimos mensajes, así que en
+                una DESPEDIDA ("dejame pensarlo") puede leer FRIO aunque el lead ya haya
+                demostrado interés antes. El piso evita esa degradación efímera.
 
         Returns:
             bool: True si debe solicitar contacto
@@ -313,10 +327,21 @@ IMPORTANTE:
         # vaya sin convertir, de forma natural y no invasiva. Umbral bajo a propósito:
         # alguien que preguntó y se va es justo a quien conviene retener. Solo excluimos
         # el caso claramente sin interés (FRÍO con score muy bajo) y charlas de 1 turno.
-        if (self._is_exit_intent(message) and
-                conversation_length >= 2 and
-                not (analysis.get('lead_type') == 'FRIO' and analysis.get('interest_score', 0) <= 2)):
-            return True
+        # El interés se evalúa contra el MÁXIMO entre el análisis del turno y el piso
+        # persistido: si el lead YA era TIBIO/CALIENTE, la despedida no lo degrada a "sin
+        # interés" (era la causa de no captar leads calientes que se despedían por WhatsApp).
+        if self._is_exit_intent(message) and conversation_length >= 2:
+            turn_type = analysis.get('lead_type', 'FRIO')
+            turn_score = analysis.get('interest_score', 0)
+            floor_type = (persisted_floor or {}).get('lead_type', 'FRIO')
+            floor_score = (persisted_floor or {}).get('interest_score', 0)
+            # "Sin interés" solo si NI el turno NI el piso muestran interés.
+            no_interest = (
+                (turn_type == 'FRIO' and turn_score <= 2) and
+                (floor_type == 'FRIO' and (floor_score or 0) <= 2)
+            )
+            if not no_interest:
+                return True
 
         return False
     

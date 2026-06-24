@@ -472,7 +472,8 @@ class AgentService:
     async def _generate_casual_response(self, message: str, history: List[Dict],
                                         language: str = "es", guest_block: str = "",
                                         capture_lead: bool = False,
-                                        availability_shown: bool = False) -> tuple[str, Dict]:
+                                        availability_shown: bool = False,
+                                        is_whatsapp: bool = False) -> tuple[str, Dict]:
         """
         Genera respuesta natural para conversación casual
 
@@ -504,9 +505,14 @@ class AgentService:
             )
             # Si hay que captar y ya se mostró disponibilidad, vamos directo al contacto
             # (sin re-ofrecer disponibilidad ya rechazada). Si no, el cierre estándar.
+            # En WhatsApp usamos siempre el hint AFTER_AVAILABILITY: ya tenemos el teléfono
+            # (viene en el session_id), así que pedimos SOLO el nombre y confirmamos que le
+            # escribimos a este mismo número — sin re-pedir un dato que ya conocemos.
             if capture_lead:
-                lead_hint = (CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY
-                             if availability_shown else CASUAL_LEAD_CAPTURE_HINT)
+                if is_whatsapp or availability_shown:
+                    lead_hint = CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY
+                else:
+                    lead_hint = CASUAL_LEAD_CAPTURE_HINT
             else:
                 lead_hint = ""
             prompt = CASUAL_RESPONSE_SYSTEM.format(
@@ -694,7 +700,8 @@ class AgentService:
                     # contacto, sin re-ofrecer disponibilidad ya vista.
                     availability_shown = self._availability_shown_in_session(db, session_id)
                     response_text, casual_usage = await self._generate_casual_response(
-                        message, history, language, guest_block, capture_lead, availability_shown
+                        message, history, language, guest_block, capture_lead, availability_shown,
+                        is_whatsapp=(session_id or "").startswith("wa_"),
                     )
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})

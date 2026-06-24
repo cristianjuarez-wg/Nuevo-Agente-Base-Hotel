@@ -56,6 +56,14 @@ class LeadService:
             # 2. Obtener o crear lead en base de datos
             lead = self._get_or_create_lead(db, session_id)
 
+            # Piso del lead ANTES de re-analizar este turno: lo que el lead ya demostró en la
+            # charla. El "momento de cierre" lo usa para no degradar a un lead interesado que
+            # se despide (su análisis del turno de despedida puede leer FRIO efímero).
+            persisted_floor = {
+                "lead_type": lead.lead_type,
+                "interest_score": lead.interest_score,
+            }
+
             # 3. Actualizar lead con nuevo análisis.
             #    BLINDAJE: si el lead YA reservó (convertido/ganado), NO lo re-clasificamos.
             #    Un mensaje de cortesía post-reserva ("gracias, nos vemos") no tiene intención
@@ -169,7 +177,7 @@ class LeadService:
             # 5. Determinar si debe solicitar contacto (incluye "momento de cierre":
             #    si el usuario se despide tras mostrar interés, captamos el contacto).
             should_request = lead_analyzer.should_request_contact(
-                analysis, len(conversation_history), message
+                analysis, len(conversation_history), message, persisted_floor=persisted_floor
             )
             
             # No solicitar si ya tiene contacto completo
@@ -354,6 +362,10 @@ class LeadService:
             'compartir tu nombre',
             'compartís tu nombre',
             'tu nombre',
+            'pasame tu nombre',
+            'decime tu nombre',
+            'cómo te llamás',
+            'como te llamas',
             'datos de contacto',
             'información de contacto',
             'nombre, apellido, email',
@@ -362,6 +374,7 @@ class LeadService:
             'me compartís',
             'me podrías compartir',
             'me das tu',
+            'te dejo anotado',  # cierre WhatsApp ("te dejo anotado y te aviso…")
         ]
         
         return any(pattern in last_bot_message for pattern in contact_request_patterns)
