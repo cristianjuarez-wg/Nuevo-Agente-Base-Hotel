@@ -122,8 +122,19 @@ class Lead(Base):
     
     def update_from_analysis(self, analysis: Dict, travel_context: str = ""):
         """Actualiza el lead basado en nuevo análisis"""
-        self.lead_type = analysis.get('lead_type', self.lead_type)
-        self.interest_score = analysis.get('interest_score', self.interest_score)
+        # PISO DE NO-DEGRADACIÓN: el interés de un lead es ACUMULATIVO durante la charla.
+        # Cada turno re-analiza solo el último mensaje, así que un mensaje neutro o de cierre
+        # ("Mi nombre es Rodrigo", "gracias, lo consulto") parece frío y degradaría a un lead
+        # que ya mostró interés (vio precios, dio fechas). El score solo sube o se mantiene:
+        # tomamos el máximo entre lo que el lead ya tenía y lo que dice este turno, y el tipo
+        # acompaña al score que prevalece (no dejamos score 8 con tipo FRIO).
+        new_score = analysis.get('interest_score', self.interest_score)
+        new_type = analysis.get('lead_type', self.lead_type)
+        prev_score = self.interest_score or 0
+        if (new_score or 0) >= prev_score:
+            self.interest_score = new_score
+            self.lead_type = new_type
+        # else: el turno daría un score menor → conservamos score y tipo previos (el pico).
         self.obstacle = analysis.get('obstacle', self.obstacle)
         self.contact_readiness = analysis.get('contact_readiness', self.contact_readiness)
         
