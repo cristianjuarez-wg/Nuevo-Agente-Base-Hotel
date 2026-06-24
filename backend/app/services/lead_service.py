@@ -403,8 +403,11 @@ class LeadService:
         score = 0
         
         # Factor 1: Formato del nombre (+30 puntos)
-        # Debe estar capitalizado correctamente
-        if re.match(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)+$', potential_name):
+        # Debe estar capitalizado correctamente. Acepta nombre de pila solo ("Ramiro") O
+        # nombre + apellido(s) ("Ramiro García") — el grupo de palabras extra es OPCIONAL
+        # (`*`), según lo que el lead haya dado. Antes exigía 2+ palabras (`+`), por lo que un
+        # nombre de pila solo (lo común en WhatsApp) no sumaba y el lead quedaba sin nombre.
+        if re.match(r'^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*$', potential_name):
             score += 30
         
         # Factor 2: Mensaje contiene email o teléfono (+25 puntos)
