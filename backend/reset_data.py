@@ -39,61 +39,13 @@ def _engine():
     return create_engine(url)
 
 
-# Tablas de DATOS operativos a vaciar, en orden hijos → padres.
-# (Nombres de __tablename__; se truncan con DELETE para no tocar el esquema.)
-_DATA_TABLES_IN_ORDER = [
-    # Restaurante (hijos primero)
-    "voucher_items",
-    "vouchers",
-    "table_reservations",
-    "order_items",
-    "extra_charges",
-    "restaurant_orders",
-    # Tickets / soporte del hotel
-    "ticket_events",
-    "hotel_tickets",
-    # Conversaciones y leads
-    "conversation_messages",
-    "lead_messages",
-    "leads",
-    "conversations",
-    # Reservas
-    "bookings",
-    # Contactos y equipo
-    "contacts",
-    "staff_members",
-    # Inteligencia / snapshots (datos, no config)
-    "agent_snapshots",
-    "metrics_snapshots",
-    "action_plans",
-    "learning_opportunities",
-    # Legacy turismo (datos)
-    "package_documents",
-    "package_itinerary",
-    "package_activities",
-    "package_transfers",
-    "package_accommodations",
-    "package_flights",
-    "shared_flights",
-    "package_passengers",
-    "ticket_interactions",
-    "support_tickets",
-    "postsale_sessions",
-    "sold_packages",
-    "tour_packages",
-    "provider_interactions_log",
-    "provider_contacts",
-    "providers",
-    "flight_status_tracking",
-    "terminal_discovery_log",
-]
-
-# Tablas de CONFIG que se PRESERVAN (solo para mostrar en el status; no se tocan):
-_CONFIG_TABLES = [
-    "rooms", "room_units", "chat_themes", "knowledge_entries", "places",
-    "documents", "exchange_rate_config", "agent_budget_config", "promotions",
-    "menu_items", "alert_settings", "geographic_mappings", "airport_terminals",
-]
+# Las listas de tablas viven en app/core/reset_tables.py (fuente única, compartida con
+# el endpoint del backoffice POST /api/demo/reset-all). Se importan acá sin disparar el
+# ORM (el módulo solo define listas + helpers de SQL crudo).
+from app.core.reset_tables import (
+    DATA_TABLES_IN_ORDER as _DATA_TABLES_IN_ORDER,
+    CONFIG_TABLES as _CONFIG_TABLES,
+)
 
 
 def _count_table(conn, t):

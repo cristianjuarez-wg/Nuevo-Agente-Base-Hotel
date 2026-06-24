@@ -527,6 +527,12 @@ export async function clearDemo() {
   return data
 }
 
+// Borra TODO lo operativo (real + demo); conserva la config. Exige confirm === 'RESETEAR'.
+export async function resetAllData(confirm) {
+  const { data } = await client.post('/api/demo/reset-all', { confirm })
+  return data
+}
+
 // ── Restaurante (carta, pedidos, folio, stats) ───────────────────────────────
 export async function listMenuPublic() {
   const { data } = await client.get('/api/restaurant/menu/public')
