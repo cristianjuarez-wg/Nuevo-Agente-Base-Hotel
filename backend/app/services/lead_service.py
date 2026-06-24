@@ -109,11 +109,18 @@ class LeadService:
                            email_after=lead.email,
                            phone_after=lead.phone)
                 
-                # 🆕 VISIÓN 360°: Crear/vincular Contact si hay teléfono
-                if contact_info.get('phone'):
+                # 🆕 VISIÓN 360°: Crear/vincular Contact si tenemos teléfono.
+                # El teléfono puede venir en ESTE mensaje (web: "soy Ana, 11-2233...") o ya
+                # estar en el lead (WhatsApp: el número ES la sesión, se cargó al crearlo).
+                # Usamos el efectivo para que un mensaje que solo trae el NOMBRE ("Mi nombre es
+                # Ramiro") igual cree/vincule el Contact por el teléfono que ya conocemos —
+                # si no, el nombre quedaba solo en el Lead y la conversación sin Contact
+                # (aparecía "Sin nombre" en Conversaciones / perfil 360° vacío).
+                effective_phone = contact_info.get('phone') or lead.phone
+                if effective_phone:
                     try:
                         contact = contact_service.get_or_create_contact(
-                            phone=contact_info.get('phone'),
+                            phone=effective_phone,
                             name=contact_info.get('name'),
                             last_name=contact_info.get('last_name'),
                             email=contact_info.get('email'),
