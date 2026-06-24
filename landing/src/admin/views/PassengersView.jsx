@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import {
   Users, RefreshCw, Mail, Phone, X, BedDouble, CalendarCheck,
   DollarSign, Star, Loader2, Trash2, UtensilsCrossed, Receipt, Pencil, Save, LifeBuoy,
-  MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2, Eraser,
+  MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2,
 } from 'lucide-react'
-import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio, updateContact, getContactConversations, clearConversationByPhone } from '../../services/api'
+import { listPassengers, getGuestProfile, updateGuestPreferences, deleteContact, getFolio, updateContact, getContactConversations } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatUSD, formatARS, WhatsAppDot,
 } from '../ui'
@@ -529,57 +529,6 @@ function PField({ label, value, onChange, placeholder, type = 'text' }) {
   )
 }
 
-// ── Modal "Limpiar conversación por teléfono" ───────────────────────────────
-// Borra el historial del agente atado a un teléfono. Útil para historiales huérfanos
-// (contacto ya borrado) que el agente seguiría rehidratando por session_id.
-function ClearConversationModal({ onClose }) {
-  const [phone, setPhone] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const submit = async () => {
-    const num = phone.trim()
-    if (!num) return
-    if (!window.confirm(`¿Borrar el historial de conversación de ${num}? Esta acción no se puede deshacer.`)) return
-    setBusy(true)
-    try {
-      const res = await clearConversationByPhone(num)
-      if (res.deleted_conversations > 0) {
-        toast.success(`Conversación limpiada (${res.deleted_messages} mensajes).`)
-      } else {
-        toast.info('No había conversaciones para ese número.')
-      }
-      onClose()
-    } catch (e) {
-      const msg = e?.response?.data?.detail || 'No se pudo limpiar la conversación.'
-      toast.error(msg)
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-serif text-lg font-700 text-ink">Limpiar conversación</h3>
-          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist"><X size={20} /></button>
-        </div>
-        <p className="mb-4 text-sm text-slatey">
-          Borra el historial que el agente recuerda de un número de teléfono. Útil cuando un
-          número quedó con conversación vieja (por ejemplo, de un contacto ya eliminado).
-        </p>
-        <PField label="Teléfono" value={phone} onChange={setPhone} placeholder="+54 9 341 …" />
-        <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
-          <button onClick={submit} disabled={busy || !phone.trim()} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-red-700 disabled:opacity-60">
-            {busy ? <Loader2 size={15} className="animate-spin" /> : <Eraser size={15} />} Limpiar
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // Lee un contact_id del hash "#admin/pasajeros/{id}" (deep-link desde Reservas).
 function contactIdFromHash() {
   const parts = window.location.hash.replace('#admin/', '').split('/')
@@ -593,7 +542,6 @@ export default function PassengersView() {
   const [selected, setSelected] = useState(contactIdFromHash)
   const [onlyInHouse, setOnlyInHouse] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
-  const [clearConvOpen, setClearConvOpen] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -705,14 +653,9 @@ export default function PassengersView() {
         title="Huéspedes"
         subtitle="Huéspedes que reservaron al menos una vez. Tocá un nombre para ver su perfil 360°."
         right={
-          <div className="flex items-center gap-2">
-            <button onClick={() => setClearConvOpen(true)} className="btn-secondary px-4 py-2 text-xs" title="Borrar el historial del agente de un teléfono">
-              <Eraser size={14} /> Limpiar conversación
-            </button>
-            <button onClick={load} className="btn-secondary px-4 py-2 text-xs">
-              <RefreshCw size={14} /> Actualizar
-            </button>
-          </div>
+          <button onClick={load} className="btn-secondary px-4 py-2 text-xs">
+            <RefreshCw size={14} /> Actualizar
+          </button>
         }
       />
       {loading ? (
@@ -756,7 +699,6 @@ export default function PassengersView() {
       )}
 
       {selected && <DetailDrawer contactId={selected} onClose={closeDrawer} />}
-      {clearConvOpen && <ClearConversationModal onClose={() => setClearConvOpen(false)} />}
     </div>
   )
 }
