@@ -39,11 +39,14 @@ export default function CheckoutPanel({
 }
 
 function CheckoutBody({ totalUsd, totalArs, placing, validated, setValidated, onClose, onConfirm, inline }) {
-  const [mode, setMode] = useState(null)        // null | 'guest' | 'visitor'
+  // Si entra con una reserva ya validada (huésped alojado reconocido en el chat), arrancamos
+  // directo en modo huésped → saltamos "¿sos huésped?" y "código". El botón "← Volver" sigue
+  // permitiendo elegir "soy visitante" si igual quisiera pagar directo.
+  const [mode, setMode] = useState(validated?.valid ? 'guest' : null)  // null | 'guest' | 'visitor'
   const [code, setCode] = useState('')
   const [checking, setChecking] = useState(false)
   const [vError, setVError] = useState('')
-  const [fulfillment, setFulfillment] = useState('salon')
+  const [fulfillment, setFulfillment] = useState(validated?.valid ? 'room_service' : 'salon')
 
   const isGuest = mode === 'guest' && validated?.valid
 
@@ -119,6 +122,7 @@ function CheckoutBody({ totalUsd, totalArs, placing, validated, setValidated, on
       {/* Paso 3a: huésped validado → destino + confirmar al folio */}
       {isGuest && (
         <div className="space-y-3">
+          <button onClick={() => { setMode('visitor'); setValidated(null) }} className="text-xs text-slatey hover:text-ink">← No soy yo / pagar directo</button>
           <div className="flex items-center gap-2 rounded-xl bg-forest-50 px-4 py-3 text-sm text-forest-700">
             <Check size={16} /> Reserva de <strong>{validated.guest_name}</strong>
             {validated.room_number && <span>· Hab. {validated.room_number}</span>}

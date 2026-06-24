@@ -374,6 +374,11 @@ def _handle_consultar_reserva(args: Dict, ctx: Dict) -> Dict:
             )
         }
 
+    # Recordar el código validado en esta charla: si luego pide comida, el checkout lo reusa
+    # (no le re-preguntamos si es huésped ni el código). El gate de folio (in-house) lo
+    # revalida el server igual.
+    ctx["booking_code"] = booking["code"]
+
     return {
         "tool_result": (
             f"Reserva {booking['code']}:\n"
@@ -886,6 +891,19 @@ def _build_menu_card(menu: list, ctx: Dict, preselect: Optional[list] = None,
     titulo = "Comprá tu voucher" if purpose == "voucher" else "Carta del restaurante"
     desc = ("Elegí los platos del voucher (los canjeás cuando vengas)."
             if purpose == "voucher" else "Cocina patagónica de PLAZA - Hampton's Kitchen House.")
+    # Preset de huésped IN-HOUSE: si el huésped ya validó su reserva (o reservó en esta sesión)
+    # Y está alojado hoy, precargamos el checkout para no re-preguntarle "¿sos huésped?" ni el
+    # código. Solo aplica a pedidos (no a vouchers). El gate de folio lo revalida el server.
+    guest_preset = {}
+    if purpose == "order":
+        db = ctx.get("db")
+        if db is not None:
+            try:
+                guest_preset = restaurant_service.folio_guest_preset(
+                    db, ctx.get("booking_code"), ctx.get("session_id")
+                )
+            except Exception:  # noqa: BLE001 — el preset nunca debe romper la card
+                guest_preset = {}
     return {
         "type": "menu_interactive",
         "purpose": purpose,
@@ -895,6 +913,7 @@ def _build_menu_card(menu: list, ctx: Dict, preselect: Optional[list] = None,
         "session_id": ctx.get("session_id"),
         "fallback_url": _menu_cart_url(ctx),
         "preselect": preselect or [],
+        "guest_preset": guest_preset,
     }
 
 

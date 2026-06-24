@@ -136,6 +136,32 @@ def session_guest_preset(db: Session, session_id: Optional[str]) -> Dict:
     return {"guest_linked": True, "nombre": booking.guest_name or None}
 
 
+def folio_guest_preset(db: Session, booking_code: Optional[str], session_id: Optional[str]) -> Dict:
+    """Preset para el CHECKOUT DE COMIDA: solo si el huésped está ALOJADO HOY (in-house).
+
+    A diferencia de `session_guest_preset` (mesa, que acepta cualquier reserva), el cargo al
+    folio EXIGE estar alojado hoy. Reutiliza `validate_booking` (que filtra checked_in):
+    devuelve `{valid, booking_code, guest_name, room_number}` solo si está in-house; si no,
+    `{}` y el checkout pide los datos como hasta ahora (caso reserva-futura / visitante).
+
+    Fuentes en orden: (1) el código que el huésped ya validó en la charla (booking_code),
+    (2) el booking creado en ESTA sesión web (no WhatsApp).
+    """
+    code = (booking_code or "").strip().upper() or None
+    if not code and session_id and not session_id.startswith("wa_"):
+        b = (
+            db.query(Booking)
+            .filter(Booking.session_id == session_id, Booking.status != "cancelled")
+            .order_by(Booking.created_at.desc())
+            .first()
+        )
+        code = b.code if b else None
+    if not code:
+        return {}
+    res = validate_booking(db, code)
+    return res if res.get("valid") else {}
+
+
 def validate_booking(db: Session, code: str) -> Dict:
     """Valida un código de reserva para habilitar el room charge.
 

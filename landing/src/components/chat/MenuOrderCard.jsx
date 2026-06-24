@@ -62,7 +62,9 @@ export default function MenuOrderCard({ card, onAction, lang = 'es' }) {
 
   const [stage, setStage] = useState('browse')   // 'browse' | 'checkout' | 'done'
   const [placing, setPlacing] = useState(false)
-  const [validated, setValidated] = useState(null)
+  // Si el huésped ya está alojado y validó su reserva, el backend manda guest_preset
+  // (solo in-house): precargamos el checkout para no re-preguntarle si es huésped ni el código.
+  const [validated, setValidated] = useState(card.guest_preset?.valid ? card.guest_preset : null)
   const [done, setDone] = useState(null)
 
   const cats = CATEGORIES.filter((c) => menu.some((m) => m.category === c.id))

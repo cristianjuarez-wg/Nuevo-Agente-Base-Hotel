@@ -89,6 +89,9 @@ class HotelContext:
         # Card de la carta del restaurante (botón "Ver carta y pedir"), si se mostró.
         self.menu_card: Optional[Dict] = None
         self.table_card: Optional[Dict] = None
+        # Código de reserva que el huésped ya validó en ESTA charla (consultar_reserva).
+        # Se reusa para precargar el checkout del restaurante y no re-pedirlo.
+        self.booking_code: Optional[str] = None
 
     def as_tool_ctx(self) -> Dict:
         return {
@@ -101,6 +104,7 @@ class HotelContext:
             "promo_offer": self.promo_offer,
             "menu_card": self.menu_card,
             "table_card": self.table_card,
+            "booking_code": self.booking_code,
         }
 
     def absorb(self, tool_ctx: Dict):
@@ -109,6 +113,7 @@ class HotelContext:
         self.promo_offer = tool_ctx.get("promo_offer", self.promo_offer)
         self.menu_card = tool_ctx.get("menu_card", self.menu_card)
         self.table_card = tool_ctx.get("table_card", self.table_card)
+        self.booking_code = tool_ctx.get("booking_code", self.booking_code)
 
 
 # ---------------------------------------------------------------------------
