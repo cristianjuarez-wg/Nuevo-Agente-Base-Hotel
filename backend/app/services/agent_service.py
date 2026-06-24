@@ -449,9 +449,21 @@ class AgentService:
             logger.warning("No se pudo evaluar captación de lead en casual", error=str(e))
             return False
 
+    def _availability_shown_in_session(self, db, session_id: str) -> bool:
+        """True si en esta sesión la pre-venta ya mostró disponibilidad real (flag en
+        Conversation.extra_metadata). Permite al cierre casual ir directo a captar el
+        contacto en vez de re-ofrecer disponibilidad ya vista. Best-effort."""
+        try:
+            from app.models.conversation import Conversation
+            conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+            return bool(conv and (conv.extra_metadata or {}).get("availability_shown"))
+        except Exception:  # noqa: BLE001
+            return False
+
     async def _generate_casual_response(self, message: str, history: List[Dict],
                                         language: str = "es", guest_block: str = "",
-                                        capture_lead: bool = False) -> tuple[str, Dict]:
+                                        capture_lead: bool = False,
+                                        availability_shown: bool = False) -> tuple[str, Dict]:
         """
         Genera respuesta natural para conversación casual
 
@@ -477,13 +489,23 @@ class AgentService:
                 ])
 
             history_section = f"Historial de la conversación:\n{history_context}" if history_context else ""
-            from app.prompts.generation_prompts import CASUAL_LEAD_CAPTURE_HINT, NATURALIDAD_BLOCK
+            from app.prompts.generation_prompts import (
+                CASUAL_LEAD_CAPTURE_HINT, CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY,
+                NATURALIDAD_BLOCK,
+            )
+            # Si hay que captar y ya se mostró disponibilidad, vamos directo al contacto
+            # (sin re-ofrecer disponibilidad ya rechazada). Si no, el cierre estándar.
+            if capture_lead:
+                lead_hint = (CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY
+                             if availability_shown else CASUAL_LEAD_CAPTURE_HINT)
+            else:
+                lead_hint = ""
             prompt = CASUAL_RESPONSE_SYSTEM.format(
                 agent_name=profile_manager.get_agent_name(),
                 naturalidad_block=NATURALIDAD_BLOCK,
                 history_section=history_section,
                 message=message,
-                lead_capture_hint=(CASUAL_LEAD_CAPTURE_HINT if capture_lead else ""),
+                lead_capture_hint=lead_hint,
             )
             # Si conocemos al huésped (recurrente/alojado), anteponemos su perfil para que
             # el saludo lo reconozca por su nombre en vez de tratarlo como desconocido.
@@ -651,8 +673,11 @@ class AgentService:
                     # lead service decide captar el contacto. Una despedida se rutea a casual,
                     # así que la oferta de dejar datos se inyecta también acá.
                     capture_lead = await self._should_capture_lead_in_casual(db, message, session_id, history)
+                    # ¿Ya se mostró disponibilidad antes? Entonces el cierre va directo al
+                    # contacto, sin re-ofrecer disponibilidad ya vista.
+                    availability_shown = self._availability_shown_in_session(db, session_id)
                     response_text, casual_usage = await self._generate_casual_response(
-                        message, history, language, guest_block, capture_lead
+                        message, history, language, guest_block, capture_lead, availability_shown
                     )
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})

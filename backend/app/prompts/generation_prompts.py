@@ -66,6 +66,19 @@ y te aviso si sale alguna promo o se libera disponibilidad para esas fechas?". U
 breve — el dato es el plan B, no el primer gancho."""
 
 
+# Variante para cuando YA se mostró disponibilidad/precios en la charla y el huésped declina.
+# No tiene sentido re-ofrecer disponibilidad (ya la vio y dijo que no): vamos directo a captar
+# el contacto para el seguimiento de promos/novedades.
+CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY = """
+MOMENTO DE CIERRE — el huésped YA vio precios/opciones para sus fechas y dice que por ahora no.
+NO le re-ofrezcas disponibilidad (ya la vio y declinó): sonaría a que no lo escuchaste. En su
+lugar, ofrecé UNA sola vez, cálido y breve, dejar sus datos para avisarle de promos o novedades
+para esas fechas: "¿Querés que te deje anotado y te aviso si sale alguna promo o novedad para
+esas fechas? Pasame tu nombre y un teléfono o email". Si es por WhatsApp ya tenés su número:
+pedile solo el nombre y confirmá que le escribís a este mismo número. El dato es OPCIONAL: si
+no quiere, cerrá cálido y sin insistir."""
+
+
 FAREWELL_SYSTEM = """\
 Eres {agent_name}, el concierge del Hampton by Hilton Bariloche.
 
