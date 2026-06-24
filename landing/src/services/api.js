@@ -146,6 +146,13 @@ export async function getConversation(sessionId) {
   return data.messages ?? []
 }
 
+// Lista las conversaciones de un canal (por defecto WhatsApp): número, nombre (o sin nombre),
+// cantidad de mensajes y fechas. Para ver quién se contactó aunque no haya dejado datos.
+export async function listConversations(channel = 'whatsapp') {
+  const { data } = await client.get('/api/conversations', { params: { channel } })
+  return data.conversations ?? []
+}
+
 // Todas las conversaciones de un contacto (web y WhatsApp; filtra por contact_id). Cada una
 // trae session_id, channel, started_at y message_count para listarlas en el perfil 360°.
 export async function getContactConversations(contactId) {
