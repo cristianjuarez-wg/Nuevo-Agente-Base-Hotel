@@ -120,11 +120,13 @@ def aplicar_descuento(promo: Promotion, base_price_usd: float, nights: int) -> "
         return None
 
     full = round(base_price_usd * nights, 2)
+    free_nights = 0  # noches bonificadas para ESTA estadía (solo free_night)
 
     if promo.discount_type == "free_night" and promo.discount_value:
         bonif = int(promo.discount_value)
         if bonif <= 0 or bonif >= nights:
             return None  # no tiene sentido bonificar todas (o más) las noches
+        free_nights = bonif
         paid_nights = nights - bonif
         final = round(base_price_usd * paid_nights, 2)
     elif promo.discount_type == "percentage" and promo.discount_value:
@@ -146,6 +148,10 @@ def aplicar_descuento(promo: Promotion, base_price_usd: float, nights: int) -> "
         "full_price_usd": full,
         "final_price_usd": final,
         "savings_usd": savings,
+        # Mecánica concreta para ESTA estadía (no deducible del nombre de la promo).
+        # free_night: cuántas noches paga y cuántas van bonificadas. percentage: 0 noches gratis.
+        "free_nights": free_nights,
+        "paid_nights": nights - free_nights,
     }
 
 

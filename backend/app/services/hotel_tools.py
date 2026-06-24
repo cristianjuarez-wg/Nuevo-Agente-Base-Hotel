@@ -757,9 +757,21 @@ def _handle_calcular_precio_promo(args: Dict, ctx: Dict) -> Dict:
         full_usd = oferta["full_price_usd"]
         final_usd = oferta["final_price_usd"]
         savings_usd = oferta["savings_usd"]
+        free_nights = oferta.get("free_nights", 0)
+        paid_nights = oferta.get("paid_nights", nights)
         full_ars = round(full_usd * rate, 2)
         final_ars = round(final_usd * rate, 2)
         savings_ars = round(savings_usd * rate, 2)
+
+        # Mecánica EXACTA para estas noches (la tool la dicta; el LLM no la deduce del
+        # nombre de la promo). Ej. "4x3" aplicada a 5 noches = pagás 4, 1 bonificada.
+        if free_nights > 0:
+            mecanica = (
+                f"pagás {paid_nights} noche(s) y {free_nights} noche(s) van bonificadas "
+                f"(gratis), sobre un total de {nights} noche(s)"
+            )
+        else:
+            mecanica = f"se aplica un descuento sobre las {nights} noche(s)"
 
         # Datos para que el orquestador arme la card con precio tachado.
         ctx["promo_offer"] = {
@@ -783,10 +795,13 @@ def _handle_calcular_precio_promo(args: Dict, ctx: Dict) -> Dict:
 
         return {
             "tool_result": (
-                f"Promo aplicable a {room.room_type} por {nights} noche(s): "
-                f"**{oferta['promo_name']}**. "
+                f"Promo aplicable a {room.room_type} para {nights} noche(s): "
+                f"**{oferta['promo_name']}** — {mecanica}. "
                 f"Precio sin promo: USD {full_usd:.0f}. "
                 f"Con la promo: USD {final_usd:.0f} (ahorra USD {savings_usd:.0f}). "
+                f"COMUNICÁ LA MECÁNICA TAL CUAL ESTÁ ARRIBA: NO la deduzcas del nombre de la "
+                f"promo. Decí cuántas noches paga y cuántas van gratis para ESTA estadía; "
+                f"no traslades el nombre (ej. '4x3') como si fuera el resultado de estas noches. "
                 f"La tarjeta muestra el precio tachado y el final; comunicá el ahorro con calidez."
             ),
             "found": True,
