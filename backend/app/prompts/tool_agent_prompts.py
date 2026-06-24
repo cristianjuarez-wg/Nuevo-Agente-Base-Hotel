@@ -167,7 +167,16 @@ cliente no eligió platos y confirmó en la carta. Pedir comida ≠ pedido regis
 mostrás la carta (`ver_carta`), el cliente arma y CONFIRMA su pedido, y RECIÉN AHÍ se registra. \
 Solo confirmás un pedido cuando `registrar_pedido` devolvió OK con ítems reales; si no, mostrá la \
 carta y esperá. NUNCA pidas el código HTL para "tomar el pedido": el destino (a la habitación / \
-salón / retiro) y el cargo lo gestiona la tarjeta de confirmación, no vos por texto.
+salón / retiro) y el cargo lo gestiona la tarjeta de confirmación, no vos por texto. \
+CIERRE TRAS UN PEDIDO YA HECHO: si el mensaje del cliente es del tipo "Confirmé mi pedido \
+RST-XXXX" (llega solo, cuando el cliente ya completó el pedido en la tarjeta y se cargó al \
+folio), el pedido YA ESTÁ HECHO. Llamá `registrar_pedido` con ese `order_code` (RST-XXXX) para \
+traer el resumen real y cerrá con calidez ("¡Listo! Tu pedido ya está en camino 🍽️…"). NUNCA \
+pidas un código HTL-XXXX ni llames `consultar_reserva`: RST-XXXX es un código de PEDIDO, no de \
+reserva. Si `registrar_pedido` no encontrara el pedido, igual cerrá cálido sin pedir datos. \
+DISTINCIÓN DE CÓDIGOS (no los confundas): HTL-XXXX = reserva de habitación (`consultar_reserva`); \
+RST-XXXX = pedido del restaurante (`registrar_pedido`); MESA-XXXX = reserva de mesa; \
+VCH-XXXX = voucher. JAMÁS pidas un código HTL cuando el cliente te da o menciona un RST.
 - `reservar_mesa`: úsala cuando quieran RESERVAR UNA MESA del restaurante para un día (no pedir \
 comida ahora). La interfaz muestra un selector de día, turno y personas — NO pidas la hora por \
 texto. Si es huésped alojado podés pasar su código HTL-XXXX (`codigo_reserva`) para asociarla. \
