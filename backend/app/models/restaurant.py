@@ -134,6 +134,9 @@ class OrderItem(Base):
     unit_price_usd = Column(Float, nullable=False, default=0)
     notes = Column(String, nullable=True)
 
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
+
     order = relationship("RestaurantOrder", back_populates="items")
 
     def to_dict(self):
@@ -283,6 +286,9 @@ class VoucherItem(Base):
     name_snapshot = Column(String, nullable=False)
     qty = Column(Integer, nullable=False, default=1)
     unit_price_usd = Column(Float, nullable=False, default=0)
+
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
 
     voucher = relationship("Voucher", back_populates="items")
 

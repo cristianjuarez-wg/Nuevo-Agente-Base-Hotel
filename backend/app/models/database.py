@@ -107,6 +107,11 @@ def run_light_migrations() -> None:
     ensure_column("hotel_tickets", "resolution_note", "TEXT")
     ensure_column("hotel_tickets", "resolved_by_staff_id", "INTEGER")
     ensure_column("hotel_tickets", "guest_validated", "INTEGER")
+    # is_demo en hijos del restaurante/tickets (para que "Limpiar demo" sea explícito; el
+    # reset-all ya los borra por tabla). Antes solo se borraban por cascada del padre.
+    ensure_column("ticket_events", "is_demo", "BOOLEAN")
+    ensure_column("order_items", "is_demo", "BOOLEAN")
+    ensure_column("voucher_items", "is_demo", "BOOLEAN")
     # Backfill: las filas creadas antes de agregar la columna quedan en NULL.
     _backfill("rooms", "status", "active")
     _backfill("staff_members", "area", "general")

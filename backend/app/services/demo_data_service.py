@@ -41,12 +41,47 @@ logger = get_logger(__name__)
 _RNG = random.Random(20260621)
 
 # ── Volumen objetivo (realista medio) ───────────────────────────────────────
-N_CONTACTS = 60
-N_BOOKINGS = 140
-N_LEADS = 40
-N_CONVERSATIONS = 50
-N_TICKETS = 25
+# Sube respecto al original (140 reservas) para dar densidad mensual sobre ~17 meses
+# (jun 2025 → nov 2026), así cualquier período que consulte el asesor tiene datos.
+N_CONTACTS = 120
+N_BOOKINGS = 300
+N_LEADS = 90
+N_CONVERSATIONS = 110
+N_TICKETS = 55
 N_STAFF = 5
+
+# ── Distribución temporal estacional de las reservas ─────────────────────────
+# Las reservas se reparten por MES con peso estacional sobre el rango jun 2025 → nov 2026.
+# Hotel de Bariloche: invierno (ski, jul-ago) y verano (ene-feb) ALTOS; hombros y baja menos.
+# Esto hace que el asesor responda con números realistas a "¿cómo viene el invierno?",
+# "¿el mejor mes?", "invierno 2025 vs 2026", etc.
+_SEASON_WEIGHT = {
+    1: 4, 2: 4,   # ene, feb — verano (pico)
+    7: 4, 8: 4,   # jul, ago — invierno/ski (pico)
+    3: 2, 6: 2, 9: 2, 12: 2,   # hombros / fiestas
+    4: 1, 5: 1, 10: 1, 11: 1,  # baja
+}
+
+
+def _booking_months():
+    """Lista de (año, mes) de jun-2025 a nov-2026 inclusive, con sus pesos estacionales."""
+    months, weights = [], []
+    y, m = 2025, 6
+    while (y, m) <= (2026, 11):
+        months.append((y, m))
+        weights.append(_SEASON_WEIGHT[m])
+        m += 1
+        if m > 12:
+            m, y = 1, y + 1
+    return months, weights
+
+
+_BOOKING_MONTHS, _BOOKING_WEIGHTS = _booking_months()
+
+
+def _days_in_month(year: int, month: int) -> int:
+    import calendar
+    return calendar.monthrange(year, month)[1]
 
 # ── Pools de datos realistas (Argentina / Bariloche) ─────────────────────────
 _FIRST_NAMES = [
@@ -82,11 +117,11 @@ _TICKET_SUBJECTS = [
     ("No recibí el voucher por mail", "complaint"),
 ]
 _STAFF_SEED = [
-    ("Carlos Bianchi", "owner"),
-    ("Lucía Méndez", "staff"),
-    ("Diego Ferreyra", "staff"),
-    ("Paula Ríos", "staff"),
-    ("Andrés Quiroga", "staff"),
+    ("Carlos Bianchi", "owner", "general"),
+    ("Lucía Méndez", "staff", "recepcion"),
+    ("Diego Ferreyra", "staff", "mantenimiento"),
+    ("Paula Ríos", "staff", "housekeeping"),
+    ("Andrés Quiroga", "staff", "recepcion"),
 ]
 
 # Frases para construir conversaciones realistas (user / assistant alternados).
@@ -144,6 +179,9 @@ def counts(db: Session) -> Dict:
         "staff": db.query(StaffMember).filter(StaffMember.is_demo.is_(True)).count(),
         "menu_items": db.query(MenuItem).filter(MenuItem.is_demo.is_(True)).count(),
         "orders": db.query(RestaurantOrder).filter(RestaurantOrder.is_demo.is_(True)).count(),
+        "table_reservations": db.query(TableReservation).filter(TableReservation.is_demo.is_(True)).count(),
+        "vouchers": db.query(Voucher).filter(Voucher.is_demo.is_(True)).count(),
+        "ticket_events": db.query(TicketEvent).filter(TicketEvent.is_demo.is_(True)).count(),
     }
     data["has_data"] = any(v for k, v in data.items() if k != "has_data")
     return data
@@ -198,6 +236,9 @@ def clear(db: Session) -> Dict:
 # ── Población ─────────────────────────────────────────────────────────────────
 def populate(db: Session) -> Dict:
     """Genera el dataset demo completo. Si ya hay datos demo, los regenera (limpia + crea)."""
+    # Re-sembrar el RNG al inicio: así cada poblado parte del MISMO estado y la distribución
+    # es reproducible (solo cambian las fechas absolutas, que son relativas a hoy).
+    _RNG.seed(20260621)
     # Regenerar: empezamos limpio para no acumular y refrescar fechas a hoy.
     clear(db)
 
@@ -215,8 +256,8 @@ def populate(db: Session) -> Dict:
     now = datetime.now()
 
     # 1) Equipo
-    for name, role in _STAFF_SEED[:N_STAFF]:
-        db.add(StaffMember(name=name, phone=_phone(), role=role, active=True, is_demo=True))
+    for name, role, area in _STAFF_SEED[:N_STAFF]:
+        db.add(StaffMember(name=name, phone=_phone(), role=role, area=area, active=True, is_demo=True))
     db.commit()
 
     # 2) Contactos
@@ -234,7 +275,7 @@ def populate(db: Session) -> Dict:
         if has_email:
             email = f"{first.lower()}.{last.lower()}{_RNG.randint(1, 99)}@{_RNG.choice(_EMAIL_DOMAINS)}"
             email = email.replace("í", "i").replace("é", "e").replace("á", "a").replace("ó", "o").replace("ú", "u")
-        first_contact = now - timedelta(days=_RNG.randint(1, 210))
+        first_contact = now - timedelta(days=_RNG.randint(1, 400))
         c = Contact(
             phone_number=phone, email=email,
             first_name=first, last_name=last, full_name=f"{first} {last}",
@@ -255,19 +296,19 @@ def populate(db: Session) -> Dict:
         contact = _RNG.choice(contacts)
         room = _RNG.choice(rooms)
         nights = _RNG.choice([2, 2, 3, 3, 4, 5, 7])
-        bucket = _RNG.random()
-        if bucket < 0.50:           # pasada
-            check_in = today - timedelta(days=_RNG.randint(nights + 1, 180))
-            status = "completed"
-        elif bucket < 0.70:         # en curso / próximas 2 semanas
-            check_in = today + timedelta(days=_RNG.randint(-2, 14))
-            status = "confirmed"
-        else:                       # futura (próximo semestre)
-            check_in = today + timedelta(days=_RNG.randint(15, 180))
-            status = "confirmed"
+        # Fecha por MES con peso estacional (jun 2025 → nov 2026). Más reservas en
+        # invierno (jul-ago) y verano (ene-feb) → ocupación realista para el asesor.
+        yr, mo = _RNG.choices(_BOOKING_MONTHS, weights=_BOOKING_WEIGHTS, k=1)[0]
+        if (yr, mo) == (2026, 11):
+            day = _RNG.randint(1, max(1, 30 - nights))  # cap: el check_out no pasa de nov
+        else:
+            day = _RNG.randint(1, _days_in_month(yr, mo))
+        check_in = date(yr, mo, day)
         check_out = check_in + timedelta(days=nights)
+        # Status según la fecha: ya pasó = completed; aún por venir = confirmed.
+        status = "completed" if check_out <= today else "confirmed"
 
-        # ~8% canceladas (de cualquier bucket).
+        # ~8% canceladas.
         if _RNG.random() < 0.08:
             status = "cancelled"
 
@@ -303,7 +344,40 @@ def populate(db: Session) -> Dict:
             total_price_ars=round(total_usd * rate, 2),
             promo_name=promo_name, full_price_usd=full_price_usd,
             status=status, payment_status="paid", source=source,
-            generated_by="aura", created_at=check_in - timedelta(days=_RNG.randint(2, 40)),
+            generated_by="aura",
+            # Reservada 2-40 días antes del check-in, pero nunca en el futuro (para que la
+            # atribución de conversión de leads — booking.created_at >= lead.created_at — sea sana).
+            created_at=min(
+                datetime.combine(check_in, datetime.min.time()) - timedelta(days=_RNG.randint(2, 40)),
+                now,
+            ),
+            is_demo=True,
+        )
+        db.add(b)
+        bookings.append(b)
+
+    # Garantía de "alojados HOY": unas pocas reservas con check_in <= hoy < check_out, para
+    # que operacion_hoy y la lógica in-house del restaurante nunca queden en cero.
+    for _ in range(4):
+        contact = _RNG.choice(contacts)
+        room = _RNG.choice(rooms)
+        nights = _RNG.choice([2, 3, 4, 5])
+        check_in = today - timedelta(days=_RNG.randint(0, 2))
+        check_out = check_in + timedelta(days=nights)
+        total_usd = round(room.base_price_usd * nights, 2)
+        guests = _RNG.choice([1, 2, 2, 3])
+        children = _RNG.choice([0, 0, 1]) if room.capacity >= 3 else 0
+        session_counter += 1
+        b = Booking(
+            code=_code("HTL-"), room_id=room.id, contact_id=contact.id,
+            session_id=f"demo-{session_counter:04d}",
+            guest_name=contact.full_name, guest_email=contact.email, guest_phone=contact.phone_number,
+            check_in=check_in, check_out=check_out,
+            guests=guests, children=children, infants=0, nights=nights,
+            total_price_usd=total_usd, total_price_ars=round(total_usd * rate, 2),
+            status="confirmed", payment_status="paid", source="agente",
+            generated_by="aura",
+            created_at=min(datetime.combine(check_in, datetime.min.time()) - timedelta(days=_RNG.randint(1, 10)), now),
             is_demo=True,
         )
         db.add(b)
@@ -315,12 +389,31 @@ def populate(db: Session) -> Dict:
     # Asignar unidad física a reservas activas/futuras no canceladas.
     _assign_units(db, bookings, today)
 
-    # 4) Leads (mezcla de contactos con y sin reserva).
+    # 4) Leads (mezcla de contactos con y sin reserva). ~50% se "convierten": su fecha de
+    #    creación se ubica ANTES de una reserva del mismo contacto, para que get_leads_summary
+    #    (que cuenta un lead como cerrado si su contacto reservó luego) dé una conversión real.
+    _LEAD_FLOOR = datetime(2025, 6, 1)  # no anteceder al inicio del rango de datos
+    bookings_by_contact: Dict[int, List[Booking]] = {}
+    for b in bookings:
+        if b.status != "cancelled" and b.contact_id:
+            bookings_by_contact.setdefault(b.contact_id, []).append(b)
+
     for _ in range(N_LEADS):
-        contact = _RNG.choice(contacts)
+        want_convert = _RNG.random() < 0.5
+        contact = None
+        created = None
+        if want_convert and bookings_by_contact:
+            cid = _RNG.choice(list(bookings_by_contact.keys()))
+            contact = next(c for c in contacts if c.id == cid)
+            b = _RNG.choice(bookings_by_contact[cid])
+            # El lead nace 1-20 días ANTES de que esa reserva se creara (atribución de cierre).
+            created = max(b.created_at - timedelta(days=_RNG.randint(1, 20)), _LEAD_FLOOR)
+        else:
+            contact = _RNG.choice(contacts)
+            created = now - timedelta(days=_RNG.randint(1, 390))
+
         lead_type = _RNG.choices(["CALIENTE", "TIBIO", "FRIO"], weights=[3, 4, 3])[0]
         score = {"CALIENTE": _RNG.randint(8, 10), "TIBIO": _RNG.randint(5, 7), "FRIO": _RNG.randint(1, 4)}[lead_type]
-        created = now - timedelta(days=_RNG.randint(1, 180))
         db.add(Lead(
             session_id=f"demo-lead-{_RNG.randint(1000, 9999)}",
             contact_id=contact.id,
@@ -340,7 +433,7 @@ def populate(db: Session) -> Dict:
     # 5) Conversaciones + mensajes (vinculadas a contactos; algunas a una reserva).
     for _ in range(N_CONVERSATIONS):
         contact = _RNG.choice(contacts)
-        started = now - timedelta(days=_RNG.randint(1, 180), hours=_RNG.randint(0, 23))
+        started = now - timedelta(days=_RNG.randint(1, 390), hours=_RNG.randint(0, 23))
         channel = _RNG.choice(["web", "whatsapp"])
         ctx_type = _RNG.choice(["pre_sale", "pre_sale", "post_sale"])
         sess = f"demo-conv-{_RNG.randint(10000, 99999)}"
@@ -367,7 +460,9 @@ def populate(db: Session) -> Dict:
             ))
     db.commit()
 
-    # 6) Tickets de post-venta (contra reservas pasadas o en curso).
+    # 6) Tickets de post-venta (contra reservas pasadas o en curso), con su BITÁCORA
+    #    (TicketEvent) para que la vista "Gestión / Actividad" no quede vacía en la demo.
+    _STAFF_NAMES = [n for (n, role, _a) in _STAFF_SEED if role == "staff"]
     elegibles = [b for b in bookings if b.status != "cancelled" and b.check_in <= today + timedelta(days=7)]
     _RNG.shuffle(elegibles)
     for b in elegibles[:N_TICKETS]:
@@ -376,7 +471,7 @@ def populate(db: Session) -> Dict:
         status = "escalated" if escalated else _RNG.choice(["resolved", "resolved", "open", "in_progress"])
         created = (datetime.combine(b.check_in, datetime.min.time())
                    + timedelta(days=_RNG.randint(0, max(1, b.nights))))
-        db.add(HotelTicket(
+        tk = HotelTicket(
             ticket_number=_code("HT-", 6),
             booking_id=b.id, session_id=b.session_id or f"demo-tk-{b.id}",
             subject=subject, category=category,
@@ -386,7 +481,25 @@ def populate(db: Session) -> Dict:
             auto_resolved_by_agent=(None if escalated else "Resuelto automáticamente por Aura."),
             escalated=1 if escalated else 0,
             created_at=created, updated_at=created, is_demo=True,
-        ))
+        )
+        db.add(tk)
+        db.flush()  # para tener tk.id en los eventos
+
+        # Bitácora: Aura siempre crea; ~60% se asigna; los resueltos cierran.
+        ev_t = created
+        db.add(TicketEvent(ticket_id=tk.id, actor_type="agent", actor_name="Aura",
+                           action="created", note=subject[:80], created_at=ev_t, is_demo=True))
+        if _RNG.random() < 0.6:
+            ev_t = ev_t + timedelta(hours=_RNG.randint(1, 12))
+            who = _RNG.choice(_STAFF_NAMES) if _STAFF_NAMES else "Equipo"
+            db.add(TicketEvent(ticket_id=tk.id, actor_type="agent", actor_name="Aura",
+                               action="assigned", note=f"→ {who}", created_at=ev_t, is_demo=True))
+        if status in ("resolved", "resuelto"):
+            ev_t = ev_t + timedelta(hours=_RNG.randint(1, 48))
+            who = _RNG.choice(_STAFF_NAMES) if _STAFF_NAMES else "Backoffice"
+            db.add(TicketEvent(ticket_id=tk.id,
+                               actor_type=_RNG.choice(["staff", "human"]), actor_name=who,
+                               action="resolved", note="Resuelto.", created_at=ev_t, is_demo=True))
     db.commit()
 
     # 7) Restaurante: carta + pedidos + folios + preferencias dietéticas.
@@ -513,7 +626,7 @@ def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Bookin
             )
             db.commit()
     past = [b for b in bookings if b.status == "completed"]
-    N_ORDERS = 25
+    N_ORDERS = 60
     for i in range(N_ORDERS):
         # 60% de pedidos ligados a una reserva (en curso o pasada); 40% "de afuera".
         booking = None
@@ -556,6 +669,7 @@ def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Bookin
                 name_snapshot=next(m for m in menu_items if m.id == it["menu_item_id"]).name,
                 qty=it["qty"],
                 unit_price_usd=next(m for m in menu_items if m.id == it["menu_item_id"]).price_usd,
+                is_demo=True,
             )
             for it in items
         ]
@@ -570,6 +684,78 @@ def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Bookin
                 amount_usd=total_usd, status="pendiente",
                 created_at=created, is_demo=True,
             ))
+    db.commit()
+
+    now = datetime.now()
+
+    def _walkin_name() -> str:
+        return f"{_RNG.choice(_FIRST_NAMES)} {_RNG.choice(_LAST_NAMES)}"
+
+    # 4) Reservas de mesa (~18): mezcla de próximas y pasadas, algunas ligadas a un huésped.
+    table_reservations: List[TableReservation] = []
+    for _ in range(18):
+        linked_contact = _RNG.random() < 0.5
+        contact = _RNG.choice(contacts) if linked_contact else None
+        # Si el contacto tiene una reserva, ~50% asociamos la mesa a esa estadía.
+        bk = None
+        if contact:
+            cbs = [b for b in bookings if b.contact_id == contact.id and b.status != "cancelled"]
+            if cbs and _RNG.random() < 0.5:
+                bk = _RNG.choice(cbs)
+        upcoming = _RNG.random() < 0.6
+        if upcoming:
+            day = today + timedelta(days=_RNG.randint(0, 30))
+            status = _RNG.choice(["confirmada", "confirmada", "sentada"])
+        else:
+            day = today - timedelta(days=_RNG.randint(1, 120))
+            status = _RNG.choice(["sentada", "sentada", "no_show", "cancelada"])
+        reserved_for = datetime.combine(day, datetime.min.time()) + timedelta(hours=_RNG.choice([20, 21, 21, 22]))
+        tr = TableReservation(
+            code=_code("MESA-"),
+            contact_id=(contact.id if contact else None),
+            booking_id=(bk.id if bk else None),
+            session_id=(bk.session_id if bk else None),
+            guest_name=(contact.full_name if contact else _walkin_name()),
+            guest_phone=(contact.phone_number if contact else _phone()),
+            party_size=_RNG.choice([2, 2, 3, 4, 4, 6]),
+            reserved_for=reserved_for, status=status,
+            channel=_RNG.choice(["web", "whatsapp"]),
+            created_at=min(reserved_for - timedelta(days=_RNG.randint(1, 10)), now),
+            is_demo=True,
+        )
+        db.add(tr)
+        table_reservations.append(tr)
+    db.commit()
+    for tr in table_reservations:
+        db.refresh(tr)
+
+    # 5) Vouchers (~12): compras anticipadas de visitantes; algunos canjeados.
+    for _ in range(12):
+        chosen = _RNG.sample(menu_items, _RNG.randint(1, 3))
+        line_items = [{"mi": mi, "qty": _RNG.choice([1, 1, 2])} for mi in chosen]
+        total_usd = round(sum(li["mi"].price_usd * li["qty"] for li in line_items), 2)
+        created = now - timedelta(days=_RNG.randint(1, 200))
+        st = _RNG.choices(["emitido", "canjeado", "cancelado"], weights=[5, 4, 1])[0]
+        redeemed_at = None
+        if st == "canjeado":
+            redeemed_at = min(created + timedelta(days=_RNG.randint(1, 20)), now)
+        # ~30% de vouchers atados a una reserva de mesa demo.
+        tr_link = _RNG.choice(table_reservations) if (table_reservations and _RNG.random() < 0.3) else None
+        v = Voucher(
+            code=_code("VCH-"),
+            table_reservation_id=(tr_link.id if tr_link else None),
+            buyer_name=_walkin_name(), buyer_phone=_phone(),
+            total_usd=total_usd, total_ars=round(total_usd * rate, 2),
+            status=st, redeemed_at=redeemed_at,
+            channel=_RNG.choice(["web", "whatsapp"]),
+            created_at=created, is_demo=True,
+        )
+        v.items = [
+            VoucherItem(menu_item_id=li["mi"].id, name_snapshot=li["mi"].name,
+                        qty=li["qty"], unit_price_usd=li["mi"].price_usd, is_demo=True)
+            for li in line_items
+        ]
+        db.add(v)
     db.commit()
 
 

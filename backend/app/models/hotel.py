@@ -319,6 +319,9 @@ class TicketEvent(Base):
     note = Column(String, nullable=True)               # detalle ("→ Mantenimiento", "reparé el aire")
     created_at = Column(DateTime, default=datetime.now, index=True)
 
+    # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
+    is_demo = Column(Boolean, default=False, index=True)
+
     def to_dict(self):
         return {
             "id": self.id,
