@@ -74,12 +74,18 @@ def _room_caption(room: dict) -> str:
     return "\n".join(lines)
 
 
-def _send_agent_reply(to_phone: str, result: dict) -> None:
-    """Envía al usuario la respuesta del agente: texto + fotos de habitaciones."""
+def _send_agent_reply(to_phone: str, result: dict) -> bool:
+    """Envía al usuario la respuesta del agente: texto + fotos de habitaciones.
+
+    Devuelve True si el texto principal fue aceptado por Twilio — es lo que define si el
+    huésped recibió la respuesta de Aura. Las fotos son complementarias: su fallo ya se
+    loguea dentro de whatsapp_service.send_media y NO marca el turno como fallido.
+    """
     # 1) Texto principal del agente.
+    sent = True
     body = to_whatsapp_text(result.get("response", ""))
     if body:
-        whatsapp_service.send_text(to_phone, body)
+        sent = whatsapp_service.send_text(to_phone, body)
 
     # 2) Habitaciones ofrecidas este turno -> una foto + caption por habitación.
     rooms = result.get("rooms_offered") or []
@@ -88,6 +94,8 @@ def _send_agent_reply(to_phone: str, result: dict) -> None:
         image = images[0] if images else _FALLBACK_IMG
         caption = _room_caption(room)
         whatsapp_service.send_media(to_phone, caption, image)
+
+    return sent
 
 
 async def _process_and_reply(
@@ -190,8 +198,7 @@ async def _process_and_reply(
         elif role in ("owner", "staff"):
             ok = whatsapp_service.send_text(phone, reply_text)
         else:
-            _send_agent_reply(phone, result)
-            ok = True
+            ok = _send_agent_reply(phone, result)
         # Observabilidad: si el envío falló (Twilio lo rechazó), que quede en los logs con
         # el contexto del turno — es el punto ciego que dejaba al owner sin respuesta.
         if ok is False:
