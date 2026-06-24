@@ -179,12 +179,25 @@ async def _process_and_reply(
 
         # Gerencia puede devolver un gráfico (chart_url) → se envía como media.
         chart_url = result.get("chart_url")
+        # Para owner/staff garantizamos que NUNCA se envíe vacío (Twilio rechaza el envío y
+        # el usuario queda en silencio): si el agente no produjo texto, mandamos un aviso.
+        reply_text = (result.get("response") or "").strip()
+        if role in ("owner", "staff") and not reply_text:
+            reply_text = "Disculpá, no pude generar la respuesta. ¿Me repetís la consulta?"
+
         if chart_url:
-            whatsapp_service.send_media(phone, result.get("response", ""), chart_url)
+            ok = whatsapp_service.send_media(phone, reply_text, chart_url)
         elif role in ("owner", "staff"):
-            whatsapp_service.send_text(phone, result.get("response", ""))
+            ok = whatsapp_service.send_text(phone, reply_text)
         else:
             _send_agent_reply(phone, result)
+            ok = True
+        # Observabilidad: si el envío falló (Twilio lo rechazó), que quede en los logs con
+        # el contexto del turno — es el punto ciego que dejaba al owner sin respuesta.
+        if ok is False:
+            logger.error("WhatsApp: no se pudo enviar la respuesta al usuario",
+                         session_id=session_id, role=role, is_audio=transcribed,
+                         had_chart=bool(chart_url))
     except Exception as e:  # noqa: BLE001
         logger.error("WhatsApp: error procesando mensaje", error=str(e), session_id=session_id)
         whatsapp_service.send_text(
@@ -247,7 +260,19 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     )
 
     # Procesar en background: respondemos 200 a Twilio ya mismo.
-    asyncio.create_task(
+    task = asyncio.create_task(
         _process_and_reply(from_field, body, profile_name, audio_url, audio_type, message_sid)
     )
+    # Si la task lanza una excepción FUERA del try interno (ej. en la transcripción, que
+    # corre antes), sin callback se perdería en silencio ("Task exception was never
+    # retrieved"). El callback la loguea para que el fallo sea visible en Render.
+    def _log_task_exc(t: asyncio.Task) -> None:
+        try:
+            exc = t.exception()
+        except asyncio.CancelledError:
+            return
+        if exc is not None:
+            logger.error("WhatsApp: el procesamiento en background falló sin recuperarse",
+                         error=str(exc), from_field=from_field, is_audio=bool(audio_url))
+    task.add_done_callback(_log_task_exc)
     return Response(status_code=200)

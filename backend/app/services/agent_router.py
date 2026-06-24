@@ -117,7 +117,13 @@ async def _route_owner(db: Session, phone: str, message: str) -> Dict:
     except Exception:  # noqa: BLE001
         pass
 
-    result = await owner_orchestrator.run(db, message, session_id, history, owner_name=owner_name)
+    # Red de seguridad: un fallo del orquestador NO debe dejar al dueño sin respuesta.
+    # Devolvemos un dict válido con "response" para que el webhook siempre tenga qué enviar.
+    try:
+        result = await owner_orchestrator.run(db, message, session_id, history, owner_name=owner_name)
+    except Exception as e:  # noqa: BLE001
+        logger.error("Owner: el orquestador de gerencia falló", session_id=session_id, error=str(e))
+        return {"response": "Disculpá, tuve un problema con los datos del negocio. ¿Probás de nuevo en un momento?"}
 
     # Anti-duplicado de gráfico: si el chart_url de este turno es el MISMO que el último
     # enviado en la sesión, no lo reenviamos (el modelo a veces re-llama la tool aunque ya
