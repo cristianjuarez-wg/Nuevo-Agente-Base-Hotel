@@ -1092,6 +1092,37 @@ def _franja_desde_texto(turno: str) -> Optional[str]:
     return None
 
 
+def _normalizar_turno(turno: str) -> Optional[str]:
+    """Convierte una hora en lenguaje natural a un slot VÁLIDO del restaurante, o None.
+
+    Necesario sobre todo en WhatsApp (sin selector): el huésped escribe "a las 20", "20hs",
+    "8 de la noche" y hay que mapearlo a "20:00" (un turno real) para poder crear la reserva.
+    Solo devuelve horarios que EXISTEN en _all_slots() (no inventa turnos).
+
+    Ejemplos: "a las 20"→"20:00", "20.30"→"20:30", "8 de la noche"→"20:00",
+              "1 de la tarde"→"13:00", "cena"→None (es franja, no hora puntual).
+    """
+    if not turno:
+        return None
+    import re as _re
+    t = turno.strip().lower()
+    slots = restaurant_service._all_slots()
+    # 1) Ya viene como HH:MM válido.
+    if t in slots:
+        return t
+    # 2) Extraer hora[:min] del texto (acepta : o . como separador).
+    m = _re.search(r"(\d{1,2})(?:[:.]?(\d{2}))?", t)
+    if not m:
+        return None
+    hh = int(m.group(1))
+    mm = int(m.group(2)) if m.group(2) else 0
+    # 3) "de la noche/tarde" → pasar 1–11 a la franja vespertina (formato 24h).
+    if hh < 12 and any(k in t for k in ("noche", "tarde", "pm", "p.m")):
+        hh += 12
+    candidato = f"{hh:02d}:{mm:02d}"
+    return candidato if candidato in slots else None
+
+
 def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
     """Reserva de mesa del restaurante. Normalmente adjunta el selector (card) para que el
     huésped elija día/turno/personas. Si el agente ya trae un horario HH:MM válido, confirma
@@ -1123,14 +1154,42 @@ def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
             # Si no dio nombre, usamos el de la reserva.
             nombre = nombre or (booking.guest_name or "")
 
-    # ¿El turno es un horario HH:MM puntual y válido? Solo entonces se puede crear directo.
-    hora_valida = turno in restaurant_service._all_slots()
-    # Si no es un horario puntual, ¿es una franja en lenguaje natural (ej. "la noche" → cena)?
+    # Canal: en WhatsApp NO hay selector interactivo (la table_card no se renderiza), así que la
+    # mesa solo puede reservarse pidiendo la hora por texto y creando directo. En web sí hay selector.
+    session_id = ctx.get("session_id") or ""
+    is_whatsapp = session_id.startswith("wa_")
+
+    # Normalizamos el turno a un slot real ("a las 20" → "20:00"). Clave en WhatsApp, donde la
+    # hora llega en texto libre. Solo da un slot si existe; si no, queda None.
+    hora_norm = _normalizar_turno(turno)
+    hora_valida = hora_norm is not None
+    if hora_valida:
+        turno = hora_norm
+    # Si no es una hora puntual, ¿es una franja en lenguaje natural (ej. "la noche" → cena)?
     franja = _franja_desde_texto(turno) if not hora_valida else None
 
-    # Faltan datos, o el turno es una franja / texto no puntual → mostrar el selector.
-    # El usuario elige el horario exacto ahí (nunca decimos "no disponible" por esto).
+    # Faltan datos o no hay hora puntual válida.
     if not (fecha and personas) or not hora_valida:
+        if is_whatsapp:
+            # WhatsApp: no hay selector → pedimos lo que falte POR TEXTO. found=False para que el
+            # agente NO confirme una reserva inexistente (anti-fantasma).
+            faltan = []
+            if not fecha:
+                faltan.append("para qué día")
+            if not personas:
+                faltan.append("cuántas personas")
+            if not hora_valida:
+                faltan.append("a qué hora exacta (almuerzo 12:30–14:30 o cena 20:00–22:00)")
+            pedido = "; ".join(faltan)
+            return {
+                "tool_result": (
+                    f"AÚN NO está reservada la mesa: falta {pedido}. Pediselo al huésped por "
+                    "texto, con calidez, y cuando lo tengas VOLVÉ a llamar `reservar_mesa` con esos "
+                    "datos. NO confirmes la reserva hasta que esta tool devuelva un código MESA-XXXX."
+                ),
+                "found": False,
+            }
+        # Web: mostramos el selector (camino actual).
         preset = {
             "fecha": fecha or None,
             "personas": int(personas) if personas else None,
@@ -1162,7 +1221,7 @@ def _handle_reservar_mesa(args: Dict, ctx: Dict) -> Dict:
         booking_code=(args.get("codigo_reserva") or "").strip() or None,
         session_id=ctx.get("session_id"),
         notes=notas,
-        channel="web",
+        channel="whatsapp" if is_whatsapp else "web",
     )
     if "error" in result:
         # Si el dato vino mal, caemos al selector.
