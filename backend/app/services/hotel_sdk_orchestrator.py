@@ -45,6 +45,7 @@ from app.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
     build_booking_nudge_block,
+    build_price_objection_capture_block,
     build_whatsapp_contact_block,
     build_guest_profile_block,
     build_language_block,
@@ -568,13 +569,22 @@ class HotelSDKOrchestrator:
             lead_block = build_whatsapp_contact_block(lead.phone)
         elif should_request_contact:
             main_interest = lead_analysis.get("main_interest", "tu estadía")
-            # Si en esta charla YA se mostró disponibilidad real (en un turno previo), el huésped
-            # está listo para cerrar: ofrecé reservar, no captura pasiva ("te aviso si se libera").
-            lead_block = (
-                build_booking_nudge_block(main_interest)
-                if self._availability_already_shown(db, session_id)
-                else build_contact_request_block(main_interest)
-            )
+            if self._availability_already_shown(db, session_id):
+                # Ya vio disponibilidad. Distinguir DOS cierres:
+                #  - OBJETÓ el precio o se está despidiendo ("muy caro", "lo voy a pensar") →
+                #    NO insistir con reservar: captar el contacto para avisarle de PROMOS.
+                #  - Sigue evaluando sin objetar → ofrecé reservar (nudge), como hasta ahora.
+                from app.services.lead_analyzer import lead_analyzer
+                obstacle = (lead_analysis.get("obstacle") or "").lower()
+                is_price_or_exit = obstacle == "precio" or lead_analyzer._is_exit_intent(message)
+                lead_block = (
+                    build_price_objection_capture_block(main_interest)
+                    if is_price_or_exit
+                    else build_booking_nudge_block(main_interest)
+                )
+            else:
+                # Sin disponibilidad mostrada: captura pasiva clásica.
+                lead_block = build_contact_request_block(main_interest)
 
         # El perfil del huésped va PRIMERO (contexto de quién es), luego el bloque de lead.
         return (guest_block + lead_block), lead_analysis, should_request_contact

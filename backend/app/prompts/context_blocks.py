@@ -250,3 +250,39 @@ email y teléfono."
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 """
+
+
+def build_price_objection_capture_block(main_interest: str) -> str:
+    """Bloque de CIERRE cuando el lead vio precios, OBJETÓ (caro) o posterga ("lo voy a pensar").
+
+    Acá NO corresponde insistir con reservar (ya declinó) ni la captura pasiva "te aviso si se
+    libera disponibilidad" (SÍ hay lugar). El movimiento correcto es retener el lead: ofrecer
+    dejarle un contacto para avisarle si sale una PROMO o novedad para sus fechas.
+    """
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟡 MOMENTO DE CIERRE — EL HUÉSPED VIO LOS PRECIOS Y LOS VE ALTOS / LO VA A PENSAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El huésped mostró interés real en {main_interest}, vio los precios y le parecieron altos (o lo
+va a pensar / se está despidiendo). NO insistas con reservar ahora (ya declinó) ni le ofrezcas
+otra vez la promo si ya lo hiciste. Es el momento de RETENER el lead para el seguimiento.
+
+REGLAS:
+1. Reconocé con empatía y SIN presionar ("¡Obvio, tomate tu tiempo!").
+2. AL CIERRE, ofrecé UNA sola vez, con tacto, dejarle un contacto para avisarle si sale una
+   PROMO o novedad para SUS fechas:
+   "Si querés, dejame tu nombre y un mail o teléfono y te aviso si sale alguna promo para esas
+    fechas — así no se te escapa 😊".
+3. Es un gesto de anfitrión genuino, no un cierre forzado ni un formulario. Si no quiere, cerrá
+   cálido igual.
+4. 🚫 NO sugieras falta de disponibilidad ("te aviso si se libera"): SÍ hay lugar. El gancho es
+   la PROMO/novedad, no la disponibilidad.
+5. NO recomiences con "¡Hola!" — seguí el hilo de la charla.
+
+EJEMPLO CORRECTO:
+"¡Te entiendo, tomate tu tiempo para pensarlo! Si querés, dejame tu nombre y un mail o teléfono y
+te aviso si sale alguna promo para esas fechas — así no se te escapa 😊"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
