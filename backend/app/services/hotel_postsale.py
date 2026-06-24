@@ -123,6 +123,15 @@ class HotelPostSaleService:
                 return {"valid": True, "booking": booking, "code": booking.code}
 
         if not code:
+            # Red final: si el huésped solo se está despidiendo/agradeciendo (sin código y sin
+            # otra consulta), NO le pidas un código — cerrá cálido. Cubre el caso de una
+            # despedida que llegó al gate por contexto de post-venta de la sesión.
+            from app.utils.social_text import is_pure_social
+            if is_pure_social(message):
+                return {
+                    "valid": False,
+                    "message": "¡Un placer ayudarte! Que tengas una hermosa estadía en Bariloche 😊",
+                }
             return {
                 "valid": False,
                 "message": (

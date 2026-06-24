@@ -67,6 +67,15 @@ class AgentService:
         upper = message.upper()
         return any(re.search(p, upper) for p in self.BOOKING_CODE_PATTERNS)
 
+    def _is_pure_social(self, message: str) -> bool:
+        """True si el mensaje es SOLO agradecimiento/despedida (sin otra intención).
+
+        Una despedida pura no debe forzar el gate de post-venta (que pediría el código HTL).
+        Lógica centralizada en app.utils.social_text para reusarla también en el gate.
+        """
+        from app.utils.social_text import is_pure_social
+        return is_pure_social(message)
+
     def _session_has_recent_booking(self, db, session_id: str) -> bool:
         """True si en ESTA sesión web se creó una reserva dentro de la ventana de sesión (24h).
 
@@ -639,9 +648,13 @@ class AgentService:
             # post-venta, sin importar el flag de ruteo: el regex/DB query es infalible y
             # cuesta 0 llamadas LLM. El detector casual solo aplica si NO hay señal dura.
             from app.models.hotel import HotelTicket, TICKET_OPEN_STATES
+            # Excluimos los tickets de RESTAURANTE: un pedido a cocina deja un ticket abierto,
+            # pero NO convierte la sesión en "soporte de reserva". Si no, una despedida tras
+            # pedir comida caería en el gate de post-venta que pide el código HTL.
             has_active_postsale = db.query(HotelTicket).filter(
                 HotelTicket.session_id == session_id,
                 HotelTicket.status.in_(TICKET_OPEN_STATES),
+                HotelTicket.category != "restaurant",
             ).first() is not None
             has_booking_code = self._contains_booking_code(message)
             # CONTINUIDAD DE SESIÓN: si en ESTA sesión web se hizo una reserva (dentro de la
@@ -654,7 +667,11 @@ class AgentService:
             # post-venta y se resuelve sin gastar el triage. En cualquier otro caso, el
             # triage agent del SDK (una sola pasada, con handoffs) desambigua el destino.
             triage = {}  # usage del ruteo (vacío si hubo señal dura y no se invocó)
-            if has_booking_code or has_active_postsale or has_session_booking:
+            # Una DESPEDIDA pura ("gracias, nada más", "chau") NO debe forzar post-venta aunque
+            # la sesión tenga contexto de reserva: es un cierre, no una consulta. Va a casual.
+            # (Si el mensaje trae un código de reserva, sí es señal explícita → post-venta.)
+            is_pure_social = self._is_pure_social(message) and not has_booking_code
+            if (has_booking_code or has_active_postsale or has_session_booking) and not is_pure_social:
                 is_postsale = True
             else:
                 from app.services.triage_sdk_orchestrator import (
