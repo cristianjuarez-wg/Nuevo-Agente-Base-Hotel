@@ -188,12 +188,16 @@ export default function ChatWidget() {
     }
   }, [lastHasPicker])
 
-  // Auto-resize del textarea: crece con el contenido (hasta max-h, luego scrollea).
+  // Auto-resize del textarea: crece con el contenido hasta max-h (128px = max-h-32) y recién
+  // ahí muestra scroll. Sin esto, overflow-y-auto fijo pintaba el scrollbar aun vacío (por
+  // redondeo subpíxel del padding/interlineado).
   useEffect(() => {
     const el = inputRef.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    const max = 128  // px — coincide con la clase max-h-32
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden'
   }, [input])
 
   // Revela el texto del agente palabra por palabra (efecto de tipeo). Si el usuario
@@ -511,7 +515,7 @@ export default function ChatWidget() {
                 }
               }}
               placeholder={t.placeholder}
-              className="max-h-32 flex-1 resize-none overflow-y-auto rounded-2xl border border-stone-200 bg-linen px-4 py-2.5 text-sm leading-relaxed text-ink placeholder:text-slatey focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="max-h-32 flex-1 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-linen px-4 py-2.5 text-sm leading-relaxed text-ink placeholder:text-slatey focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100"
             />
             <button
               type="submit"
