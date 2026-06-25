@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     # Límite por IP en el endpoint del agente (protección contra abuso / gasto descontrolado).
     RATE_LIMIT_PER_MINUTE: int = 20
     RATE_LIMIT_PER_HOUR: int = 300
+
+    # Clave para acciones CRÍTICAS del backoffice (topes de gasto/uso, cotización, reset/demo).
+    # Si está vacía (None/""), esas acciones NO se bloquean (dev/local sin fricción). En
+    # producción (Render) se setea con un valor real y el front pide la clave (header X-Admin-Key).
+    ADMIN_KEY: Optional[str] = None
     
     # Retry & Circuit Breaker
     OPENAI_MAX_RETRIES: int = 3

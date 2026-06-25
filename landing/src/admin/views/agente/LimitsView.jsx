@@ -5,12 +5,14 @@ import {
   getExchangeRate, updateExchangeRate,
 } from '../../../services/api'
 import { PageHeader, Loading, Badge, formatARS, formatDateTime } from '../../ui'
+import { useAdminGate } from '../../components/useAdminGate'
 
 export default function LimitsView() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [security, setSecurity] = useState(null)
+  const { runProtected, gateModal } = useAdminGate()
 
   // Form de topes
   const [daily, setDaily] = useState('')
@@ -37,15 +39,17 @@ export default function LimitsView() {
   const save = async () => {
     setSaving(true)
     setSavedMsg('')
+    const payload = {
+      daily_limit_usd: daily === '' ? null : Number(daily),
+      monthly_limit_usd: monthly === '' ? null : Number(monthly),
+      enabled,
+    }
     try {
-      const payload = {
-        daily_limit_usd: daily === '' ? null : Number(daily),
-        monthly_limit_usd: monthly === '' ? null : Number(monthly),
-        enabled,
-      }
-      await updateUsageConfig(payload)
-      setSavedMsg('Topes guardados.')
-      getUsageSummary().catch(() => {})
+      await runProtected(async () => {
+        await updateUsageConfig(payload)
+        setSavedMsg('Topes guardados.')
+        getUsageSummary().catch(() => {})
+      })
     } catch (e) {
       setSavedMsg('No se pudo guardar. Intentá de nuevo.')
     } finally {
@@ -62,6 +66,8 @@ export default function LimitsView() {
         title="Límites y seguridad"
         subtitle="Protegé la cuenta del agente: topes de gasto y límite de mensajes por usuario."
       />
+
+      {gateModal}
 
       {/* Tipo de cambio USD → ARS */}
       <ExchangeRatePanel />
@@ -171,6 +177,7 @@ function ExchangeRatePanel() {
   const [current, setCurrent] = useState(null)   // { rate, mode, source, updated_at }
   const [mode, setMode] = useState('auto')
   const [manualRate, setManualRate] = useState('')
+  const { runProtected, gateModal } = useAdminGate()
 
   const load = () => {
     setLoading(true)
@@ -194,12 +201,14 @@ function ExchangeRatePanel() {
     setSaving(true)
     setSavedMsg('')
     try {
-      const d = await updateExchangeRate({
-        mode,
-        manual_rate: mode === 'manual' ? Number(manualRate) : (manualRate === '' ? null : Number(manualRate)),
+      await runProtected(async () => {
+        const d = await updateExchangeRate({
+          mode,
+          manual_rate: mode === 'manual' ? Number(manualRate) : (manualRate === '' ? null : Number(manualRate)),
+        })
+        setCurrent(d.current || null)
+        setSavedMsg('Cotización guardada.')
       })
-      setCurrent(d.current || null)
-      setSavedMsg('Cotización guardada.')
     } catch {
       setSavedMsg('No se pudo guardar. Intentá de nuevo.')
     } finally {
@@ -210,6 +219,7 @@ function ExchangeRatePanel() {
 
   return (
     <div className="mb-6 rounded-2xl bg-white p-5 shadow-card">
+      {gateModal}
       <div className="mb-4 flex items-center gap-2">
         <DollarSign size={18} className="text-hilton-600" />
         <h2 className="font-serif text-lg font-600 text-ink">Tipo de cambio (USD → ARS)</h2>

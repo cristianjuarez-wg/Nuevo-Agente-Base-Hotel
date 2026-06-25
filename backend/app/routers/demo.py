@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db, engine
 from app.services import demo_data_service
 from app.core.reset_tables import reset_all
+from app.core.admin_auth import require_admin_key
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -28,9 +29,11 @@ def demo_status(db: Session = Depends(get_db)):
     return demo_data_service.counts(db)
 
 
-@router.post("/populate")
+@router.post("/populate", dependencies=[Depends(require_admin_key)])
 def demo_populate(db: Session = Depends(get_db)):
-    """Regenera el dataset demo (limpia lo demo previo y crea uno fresco con fechas de hoy)."""
+    """Regenera el dataset demo (limpia lo demo previo y crea uno fresco con fechas de hoy).
+
+    Acción CRÍTICA: protegida por X-Admin-Key."""
     try:
         created = demo_data_service.populate(db)
         return {"ok": True, "created": created}
@@ -39,9 +42,11 @@ def demo_populate(db: Session = Depends(get_db)):
         raise HTTPException(500, f"No se pudo generar la demo: {e}")
 
 
-@router.post("/clear")
+@router.post("/clear", dependencies=[Depends(require_admin_key)])
 def demo_clear(db: Session = Depends(get_db)):
-    """Borra solo los datos marcados como demo."""
+    """Borra solo los datos marcados como demo.
+
+    Acción CRÍTICA: protegida por X-Admin-Key."""
     try:
         deleted = demo_data_service.clear(db)
         return {"ok": True, "deleted": deleted}
@@ -54,7 +59,7 @@ class ResetAllRequest(BaseModel):
     confirm: str
 
 
-@router.post("/reset-all")
+@router.post("/reset-all", dependencies=[Depends(require_admin_key)])
 def demo_reset_all(payload: ResetAllRequest):
     """BORRA TODO lo operativo (reservas, huéspedes, leads, conversaciones, tickets,
     pedidos y reservas del restaurante, vouchers, equipo, snapshots, legacy turismo),

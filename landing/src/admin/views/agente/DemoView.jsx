@@ -3,6 +3,7 @@ import { Database, Sparkles, Trash2, Loader2, X, AlertTriangle, Info, ShieldAler
 import { getDemoStatus, populateDemo, clearDemo, resetAllData } from '../../../services/api'
 import { PageHeader, Loading } from '../../ui'
 import { toast } from '../../toast'
+import { useAdminGate } from '../../components/useAdminGate'
 
 const ENTITY_LABELS = {
   contacts: 'Pasajeros',
@@ -28,6 +29,7 @@ export default function DemoView() {
   const [confirmClear, setConfirmClear] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [resetWord, setResetWord] = useState('')
+  const { runProtected, gateModal } = useAdminGate()
 
   const load = () => {
     setLoading(true)
@@ -41,9 +43,11 @@ export default function DemoView() {
   const handlePopulate = async () => {
     setWorking('populate')
     try {
-      const res = await populateDemo()
-      setStatus(await getDemoStatus())
-      toast.success(`Demo generada: ${summary(res.created)}`)
+      await runProtected(async () => {
+        const res = await populateDemo()
+        setStatus(await getDemoStatus())
+        toast.success(`Demo generada: ${summary(res.created)}`)
+      })
     } catch {
       toast.error('No se pudo generar la demo. Intentá de nuevo.')
     } finally {
@@ -55,9 +59,11 @@ export default function DemoView() {
     setWorking('clear')
     setConfirmClear(false)
     try {
-      await clearDemo()
-      setStatus(await getDemoStatus())
-      toast.success('Datos de demostración eliminados.')
+      await runProtected(async () => {
+        await clearDemo()
+        setStatus(await getDemoStatus())
+        toast.success('Datos de demostración eliminados.')
+      })
     } catch {
       toast.error('No se pudo limpiar la demo. Intentá de nuevo.')
     } finally {
@@ -68,11 +74,13 @@ export default function DemoView() {
   const handleResetAll = async () => {
     setWorking('reset')
     try {
-      const res = await resetAllData('RESETEAR')
-      setStatus(await getDemoStatus())
-      setConfirmReset(false)
-      setResetWord('')
-      toast.success(`Base reseteada: ${res.total} registros borrados.`)
+      await runProtected(async () => {
+        const res = await resetAllData('RESETEAR')
+        setStatus(await getDemoStatus())
+        setConfirmReset(false)
+        setResetWord('')
+        toast.success(`Base reseteada: ${res.total} registros borrados.`)
+      })
     } catch (e) {
       const msg = e?.response?.data?.detail || 'No se pudo resetear. Intentá de nuevo.'
       toast.error(msg)
@@ -88,6 +96,7 @@ export default function DemoView() {
 
   return (
     <div>
+      {gateModal}
       <PageHeader
         title="Datos de demostración"
         subtitle="Poblá el backoffice con pasajeros, reservas, leads, conversaciones y tickets de ejemplo para mostrar la plataforma en acción."

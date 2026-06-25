@@ -9,6 +9,28 @@ const client = axios.create({
   timeout: 90000,
 })
 
+// ── Clave de administración (acciones críticas del backoffice) ───────────────
+// Se guarda en sessionStorage (se borra al cerrar el navegador). El interceptor la
+// adjunta como header X-Admin-Key en cada request; el backend solo la exige en los
+// endpoints críticos (topes, cotización, reset/demo). El resto la ignora.
+const ADMIN_KEY_STORAGE = 'hampton_admin_key'
+
+export function setAdminKey(key) {
+  if (key) sessionStorage.setItem(ADMIN_KEY_STORAGE, key)
+}
+export function getAdminKey() {
+  return sessionStorage.getItem(ADMIN_KEY_STORAGE) || ''
+}
+export function clearAdminKey() {
+  sessionStorage.removeItem(ADMIN_KEY_STORAGE)
+}
+
+client.interceptors.request.use((config) => {
+  const key = getAdminKey()
+  if (key) config.headers['X-Admin-Key'] = key
+  return config
+})
+
 // ── Reservas ───────────────────────────────────────────────────────────────
 export async function getRooms() {
   const { data } = await client.get('/api/reservations/rooms')

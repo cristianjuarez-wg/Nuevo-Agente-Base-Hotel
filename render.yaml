@@ -13,6 +13,8 @@ services:
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false          # se carga manualmente en el dashboard de Render
+      - key: ADMIN_KEY
+        sync: false          # clave para acciones críticas del backoffice (se carga en el dashboard)
       - key: ALLOWED_ORIGINS
         value: "https://hotel-landing.onrender.com"
       - key: BASE_URL

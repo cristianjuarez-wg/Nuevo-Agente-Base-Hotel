@@ -46,7 +46,9 @@ async def get_current_config():
                 "max_file_size_mb": settings.MAX_FILE_SIZE_MB,
                 "rate_limit_enabled": settings.RATE_LIMIT_ENABLED,
                 "rate_limit_per_minute": settings.RATE_LIMIT_PER_MINUTE,
-                "rate_limit_per_hour": settings.RATE_LIMIT_PER_HOUR
+                "rate_limit_per_hour": settings.RATE_LIMIT_PER_HOUR,
+                # ¿Las acciones críticas piden clave? (el front decide si mostrar el modal).
+                "admin_key_required": bool(settings.ADMIN_KEY)
             }
         }
         

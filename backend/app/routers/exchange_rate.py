@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.services import exchange_rate_service
+from app.core.admin_auth import require_admin_key
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -31,9 +32,11 @@ def get_exchange_rate(db: Session = Depends(get_db)):
     return {"current": current, "config": config.to_dict()}
 
 
-@router.put("")
+@router.put("", dependencies=[Depends(require_admin_key)])
 def update_exchange_rate(payload: ExchangeRateUpdate, db: Session = Depends(get_db)):
-    """Actualiza el modo y/o el valor manual de la cotización."""
+    """Actualiza el modo y/o el valor manual de la cotización.
+
+    Acción CRÍTICA (afecta todos los precios): protegida por X-Admin-Key."""
     config = exchange_rate_service.get_config(db)
 
     data = payload.model_dump(exclude_unset=True)

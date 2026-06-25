@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.agent_budget import AgentBudgetConfig  # noqa: F401 (registra la tabla)
 from app.services import usage_service
+from app.core.admin_auth import require_admin_key
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -47,9 +48,11 @@ async def get_config(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error obteniendo configuración: {str(e)}")
 
 
-@router.put("/config")
+@router.put("/config", dependencies=[Depends(require_admin_key)])
 async def update_config(payload: BudgetConfigUpdate, db: Session = Depends(get_db)):
-    """Actualiza los topes de gasto (diario / mensual) y el switch de enforcement."""
+    """Actualiza los topes de gasto (diario / mensual) y el switch de enforcement.
+
+    Acción CRÍTICA: protegida por X-Admin-Key (si hay ADMIN_KEY configurada)."""
     try:
         config = usage_service.get_budget_config(db)
 
