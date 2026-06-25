@@ -571,7 +571,6 @@
       <p class="bigquote" style="margin:0 auto;color:#fff">¿Cuánto te cuesta seguir<br>operando de la <span style="text-decoration:underline;text-decoration-thickness:5px;text-underline-offset:8px">misma manera</span>?</p>
       <p class="lead" style="color:rgba(255,255,255,.92);margin:26px auto 0;text-align:center">Lo que viste no es una idea: es una demo real, funcionando hoy. El siguiente paso es conectarla a <b>tu</b> hotel y a <b>tus</b> números.</p>
       <div class="pills" style="justify-content:center;margin-top:30px">
-        <a class="pill" href="https://wa.me/5493417207797?text=Hola%20Wigou%2C%20vi%20la%20presentaci%C3%B3n%20y%20quiero%20m%C3%A1s%20info" target="_blank" rel="noopener" style="background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3);text-decoration:none;color:inherit">💬 WhatsApp: +54 9 341 720-7797</a>
         <span class="pill" style="background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)">📧 hola@wigou.co</span>
         <span class="pill" style="background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)">📍 Rosario, Argentina</span>
         <span class="pill" style="background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)">🌐 wigou.co</span>
@@ -581,6 +580,17 @@
         <p style="margin-top:10px;font-family:var(--display);font-weight:700;font-size:clamp(1rem,1.8vw,1.3rem);color:#fff;line-height:1.3">La jugada estratégica<br><span style="color:rgba(255,255,255,.85)">de las empresas que evolucionan.</span></p>
       </div>
     </div>
+    <!-- Botón flotante de WhatsApp: vive dentro de este slide, así solo se ve en el cierre
+         (los slides inactivos están en display:none). position:fixed lo ancla a la pantalla. -->
+    <a href="https://wa.me/5493417207797?text=Hola%20Wigou%2C%20vi%20la%20presentaci%C3%B3n%20y%20quiero%20m%C3%A1s%20info"
+       target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp"
+       style="position:fixed;right:28px;bottom:28px;z-index:60;width:62px;height:62px;border-radius:50%;
+              background:#25D366;display:flex;align-items:center;justify-content:center;
+              box-shadow:0 8px 24px rgba(0,0,0,.28);transition:transform .18s ease">
+      <svg viewBox="0 0 32 32" width="34" height="34" fill="#fff" aria-hidden="true">
+        <path d="M16.04 3.2c-7.1 0-12.86 5.76-12.86 12.86 0 2.27.6 4.48 1.73 6.43L3.2 28.8l6.5-1.7a12.8 12.8 0 0 0 6.34 1.62h.01c7.1 0 12.86-5.76 12.86-12.86 0-3.44-1.34-6.67-3.77-9.1a12.78 12.78 0 0 0-9.1-3.76zm0 23.34h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-4.02 1.05 1.07-3.92-.25-.4a10.6 10.6 0 0 1-1.62-5.64c0-5.86 4.77-10.62 10.63-10.62a10.6 10.6 0 0 1 7.5 3.11 10.6 10.6 0 0 1 3.11 7.51c0 5.86-4.77 10.62-10.62 10.62zm5.83-7.95c-.32-.16-1.89-.93-2.18-1.04-.29-.11-.5-.16-.71.16-.21.32-.82 1.04-1 1.25-.18.21-.37.24-.69.08-.32-.16-1.35-.5-2.57-1.59-.95-.85-1.59-1.9-1.78-2.22-.18-.32-.02-.49.14-.65.14-.14.32-.37.48-.56.16-.18.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.71-1.72-.98-2.35-.26-.62-.52-.54-.71-.55l-.61-.01c-.21 0-.56.08-.85.4-.29.32-1.11 1.09-1.11 2.65 0 1.57 1.14 3.08 1.3 3.29.16.21 2.25 3.43 5.44 4.81.76.33 1.35.52 1.81.67.76.24 1.46.21 2.01.13.61-.09 1.89-.77 2.16-1.52.27-.74.27-1.38.19-1.52-.08-.13-.29-.21-.61-.37z"/>
+      </svg>
+    </a>
   </section>
 
 </div>
