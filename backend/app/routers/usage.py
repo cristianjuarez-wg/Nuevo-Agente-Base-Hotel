@@ -38,32 +38,6 @@ async def get_summary(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error obteniendo consumo: {str(e)}")
 
 
-@router.post("/reset", dependencies=[Depends(require_admin_key)])
-async def reset_usage(db: Session = Depends(get_db)):
-    """TEMPORAL: pone en 0 el contador de consumo SIN borrar las conversaciones.
-
-    El consumo se calcula sumando ConversationMessage.tokens_used de los mensajes del agente.
-    Ponemos tokens_used=NULL en esos mensajes: así quedan fuera del agregado (que filtra
-    tokens_used IS NOT NULL) y el contador vuelve a 0, pero las charlas/leads quedan intactos.
-    Acción crítica protegida por X-Admin-Key. Quitar este endpoint tras usarlo.
-    """
-    from app.models.conversation_message import ConversationMessage
-    try:
-        affected = (
-            db.query(ConversationMessage)
-            .filter(ConversationMessage.tokens_used.isnot(None))
-            .update({ConversationMessage.tokens_used: None}, synchronize_session=False)
-        )
-        db.commit()
-        usage_service.invalidate_budget_cache()
-        logger.info("Usage counter reset", messages_cleared=affected)
-        return {"reset": True, "messages_cleared": affected}
-    except Exception as e:
-        db.rollback()
-        logger.error("Error resetting usage", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Error reseteando consumo: {str(e)}")
-
-
 @router.get("/config")
 async def get_config(db: Session = Depends(get_db)):
     """Configuración actual de topes de gasto."""
