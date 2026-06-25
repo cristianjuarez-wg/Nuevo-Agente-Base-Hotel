@@ -434,8 +434,8 @@ export default function ChatWidget() {
                 onClick={resetChat}
                 disabled={busy || resetting}
                 aria-label={t.reset}
-                title={t.reset}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-white/50 transition hover:bg-white/10 hover:text-white/90 disabled:opacity-30"
+                title={t.resetHint}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-sand-300 transition hover:bg-white/10 hover:text-sand-200 disabled:opacity-30"
               >
                 <RotateCcw size={15} className={resetting ? 'animate-spin' : ''} />
               </button>
@@ -513,6 +513,15 @@ export default function ChatWidget() {
               >
                 <Info size={13} /> {t.helpOpen}
               </button>
+            )}
+
+            {/* Aviso de sesión: la charla se recuerda 24 h salvo que se reinicie. Solo al
+                inicio, para que quien prueba la demo no se confunda si Aura "recuerda" lo previo. */}
+            {messages.length <= 1 && !busy && (
+              <p className="mt-1 flex items-start gap-1.5 self-start text-[11px] leading-snug text-slatey/70">
+                <RotateCcw size={11} className="mt-0.5 shrink-0 text-sand-500" />
+                {t.sessionHint}
+              </p>
             )}
             </div>
           </div>
