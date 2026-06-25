@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { MessageCircle, X, Send, Sparkles, RotateCcw, Languages, Check } from 'lucide-react'
+import { MessageCircle, X, Send, Sparkles, RotateCcw, Languages, Check, Info } from 'lucide-react'
+import HelpModal from './HelpModal'
 import { getGreeting, sendMessage, clearChat, getChatTheme } from '../services/api'
 import RoomCard from './chat/RoomCard'
 import DatePickerCard from './chat/DatePickerCard'
@@ -105,6 +106,7 @@ export default function ChatWidget() {
   const [waiting, setWaiting] = useState(false) // solo mientras espera al backend
   const [greeted, setGreeted] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)  // modal "¿Qué puede hacer Aura?"
   const [theme, setTheme] = useState(null)
   const [lang, setLang] = useState(detectInitialLang)
   const [langMenu, setLangMenu] = useState(false)
@@ -349,7 +351,7 @@ export default function ChatWidget() {
 
       {/* Panel de chat */}
       {open && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white animate-slide-up-widget sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[600px] sm:max-h-[85vh] sm:w-[400px] sm:rounded-2xl sm:shadow-widget">
+        <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-white animate-slide-up-widget sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[600px] sm:max-h-[85vh] sm:w-[400px] sm:rounded-2xl sm:shadow-widget">
           {/* Header */}
           <div
             className={`flex items-center justify-between px-4 py-5 text-white sm:rounded-t-2xl${theme?.header_bg ? '' : ' bg-hilton-800'}`}
@@ -377,6 +379,16 @@ export default function ChatWidget() {
 
             {/* Acciones */}
             <div className="flex items-center">
+              {/* Ayuda: qué puede hacer Aura (encauza expectativas) */}
+              <button
+                onClick={() => setHelpOpen(true)}
+                aria-label={t.helpOpen}
+                title={t.helpOpen}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                <Info size={16} />
+              </button>
+
               {/* Selector de idioma */}
               <div className="relative">
                 <button
@@ -491,6 +503,17 @@ export default function ChatWidget() {
                 ))}
               </div>
             )}
+
+            {/* Acceso al modal de ayuda: solo al inicio (antes de conversar), para encauzar
+                qué tiene sentido preguntarle a Aura. Más visible que el ícono del header. */}
+            {messages.length <= 1 && !busy && (
+              <button
+                onClick={() => setHelpOpen(true)}
+                className="mt-1 inline-flex items-center gap-1.5 self-start text-xs font-medium text-timber-600 underline decoration-timber-300 underline-offset-2 transition hover:text-timber-700"
+              >
+                <Info size={13} /> {t.helpOpen}
+              </button>
+            )}
             </div>
           </div>
 
@@ -527,6 +550,15 @@ export default function ChatWidget() {
               <Send size={18} />
             </button>
           </form>
+
+          {/* Modal "¿Qué puede hacer Aura?" — encauza expectativas (qué sí, ejemplos, qué no). */}
+          {helpOpen && (
+            <HelpModal
+              t={t}
+              onClose={() => setHelpOpen(false)}
+              onAsk={(text) => { setHelpOpen(false); send(text) }}
+            />
+          )}
         </div>
       )}
     </>
