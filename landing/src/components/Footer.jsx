@@ -54,7 +54,7 @@ export default function Footer() {
         <div className="mt-12 flex flex-col items-center gap-2 border-t border-white/10 pt-6 text-center text-xs text-white/45 sm:flex-row sm:justify-between">
           <span>© {new Date().getFullYear()} Hampton by Hilton Bariloche · Demo de presentación.</span>
           <a href="#admin" className="inline-flex items-center gap-1.5 text-white/55 transition hover:text-white">
-            <LockKeyhole size={13} strokeWidth={1.6} /> Gestión
+            <LockKeyhole size={13} strokeWidth={1.6} /> Panel de gestión
           </a>
         </div>
       </div>

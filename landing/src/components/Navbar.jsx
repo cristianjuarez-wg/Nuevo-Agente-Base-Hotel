@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LockKeyhole } from 'lucide-react'
 
 const LINKS = [
   { href: '#habitaciones', label: 'Habitaciones' },
@@ -80,6 +80,18 @@ export default function Navbar() {
               Reservar
             </a>
           </li>
+          {/* Acceso interno al panel de gestión (separado de los links de huésped). */}
+          <li>
+            <a
+              href="#admin"
+              title="Acceso al panel de gestión (interno)"
+              className={`inline-flex items-center gap-1.5 text-[13px] font-medium tracking-wide transition-colors hover:text-hilton ${
+                solid ? 'text-ink/55' : 'text-white/70'
+              }`}
+            >
+              <LockKeyhole size={14} strokeWidth={1.7} /> Panel de gestión
+            </a>
+          </li>
         </ul>
 
         {/* Botón menú móvil */}
@@ -114,6 +126,16 @@ export default function Navbar() {
             <li className="pt-4">
               <a href="#reservar" onClick={close} className="btn-primary w-full">
                 Reservar estadía
+              </a>
+            </li>
+            {/* Acceso interno al panel de gestión. */}
+            <li className="pt-3">
+              <a
+                href="#admin"
+                onClick={close}
+                className="flex items-center justify-center gap-2 rounded-xl border border-ink/15 py-3 text-sm font-medium text-ink/70 transition hover:bg-ink/[0.04]"
+              >
+                <LockKeyhole size={15} strokeWidth={1.7} /> Panel de gestión
               </a>
             </li>
           </ul>
