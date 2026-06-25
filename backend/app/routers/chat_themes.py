@@ -131,31 +131,6 @@ def list_themes(db: Session = Depends(get_db)):
     return {"themes": [t.to_dict() for t in themes], "total": len(themes)}
 
 
-@router.post("/api/chat-themes/seed")
-def seed_default_themes(db: Session = Depends(get_db)):
-    """TEMPORAL: siembra los temas estacionales por defecto en la base actual.
-
-    Reutiliza la lista canónica de `seed_themes.THEMES`. Idempotente: omite los que ya
-    existen por nombre (no pisa ni borra los existentes). Se siembran como 'inactive' para
-    respetar la invariante "un solo tema activo a la vez" — el usuario los activa/fija desde
-    el backoffice cuando quiera. Quitar este endpoint una vez sembrado en Render.
-    """
-    from seed_themes import THEMES  # lista canónica de temas (raíz de backend/)
-
-    created, skipped = [], []
-    for t in THEMES:
-        if db.query(ChatTheme).filter(ChatTheme.name == t["name"]).first():
-            skipped.append(t["name"])
-            continue
-        data = {**t, "status": "inactive"}  # no auto-activar al sembrar
-        db.add(ChatTheme(**data))
-        db.commit()
-        created.append(t["name"])
-    total = db.query(ChatTheme).count()
-    logger.info("ChatThemes seeded", created=created, skipped=skipped, total=total)
-    return {"created": created, "skipped": skipped, "total_now": total}
-
-
 @router.post("/api/chat-themes/")
 def create_theme(payload: ThemePayload, db: Session = Depends(get_db)):
     theme = ChatTheme(**payload.model_dump())
