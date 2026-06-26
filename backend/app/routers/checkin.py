@@ -27,9 +27,14 @@ router = APIRouter(prefix="/api/checkin", tags=["Check-in Express"])
 
 
 def _start_one(db: Session, booking: Booking) -> dict:
-    """Arranca el flujo de una reserva y manda el primer WhatsApp. Devuelve el resultado."""
-    if booking.stay_status() not in ("upcoming", "checked_in"):
-        return {"code": booking.code, "sent": False, "reason": "La reserva no está vigente."}
+    """Arranca el flujo de una reserva y manda el primer WhatsApp. Devuelve el resultado.
+
+    Solo aplica a reservas PRÓXIMAS (upcoming): si el huésped ya está alojado, finalizó o
+    canceló, no tiene sentido adelantar el check-in.
+    """
+    if booking.stay_status() != "upcoming":
+        return {"code": booking.code, "sent": False,
+                "reason": "El check-in express solo aplica a reservas próximas (el huésped aún no llegó)."}
     phone = (booking.guest_phone or "").strip()
     if not phone:
         return {"code": booking.code, "sent": False, "reason": "La reserva no tiene teléfono."}

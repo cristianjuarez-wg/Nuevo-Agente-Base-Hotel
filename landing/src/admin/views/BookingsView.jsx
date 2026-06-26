@@ -23,15 +23,18 @@ function StayBadge({ stay }) {
   return <Badge tone={s.tone}>{Icon && <Icon size={11} className="mr-1" />}{s.label}</Badge>
 }
 
-// Estado del check-in express (de booking.pre_checkin.status).
-function CheckinBadge({ pre }) {
+// Estado del check-in express (de booking.pre_checkin.status). Solo aplica a reservas
+// próximas: si el huésped ya está alojado o la estadía terminó, no tiene sentido mostrarlo.
+function CheckinBadge({ pre, stay }) {
   const status = pre?.status
   if (status === 'completed') {
     const arr = pre?.estimated_arrival ? ` · ${pre.estimated_arrival}` : ''
     return <Badge tone="green"><CheckCircle2 size={11} className="mr-1" />Check-in listo{arr}</Badge>
   }
   if (status === 'in_progress') return <Badge tone="amber">Check-in en proceso</Badge>
-  return <Badge tone="gray">Sin check-in</Badge>
+  // "Sin check-in" solo para reservas que aún no llegaron (upcoming).
+  if (stay === 'upcoming') return <Badge tone="gray">Sin check-in</Badge>
+  return <span className="text-slatey">—</span>
 }
 
 const FILTERS = [
@@ -132,9 +135,10 @@ export default function BookingsView() {
     }
   }
 
-  // Botón de check-in express: solo para reservas próximas/en casa, no completadas aún.
+  // Botón de check-in express: SOLO para reservas próximas (aún no llegaron). Si el huésped
+  // ya está en casa o la estadía terminó, no tiene sentido adelantar el check-in.
   const CheckinButton = ({ r }) => {
-    if (!['upcoming', 'checked_in'].includes(r.stay_status)) return null
+    if (r.stay_status !== 'upcoming') return null
     if (r.pre_checkin?.status === 'completed') return null
     return (
       <button
@@ -200,7 +204,7 @@ export default function BookingsView() {
     ) },
     { key: 'stay', label: 'Estadía', sortable: true, sortKey: 'check_in', render: (r) => `${formatDate(r.check_in)} → ${formatDate(r.check_out)}` },
     { key: 'stay_status', label: 'Situación', render: (r) => <StayBadge stay={r.stay_status} /> },
-    { key: 'checkin', label: 'Check-in express', render: (r) => <CheckinBadge pre={r.pre_checkin} /> },
+    { key: 'checkin', label: 'Check-in express', render: (r) => <CheckinBadge pre={r.pre_checkin} stay={r.stay_status} /> },
     { key: 'total', label: 'Total', sortable: true, render: (r) => (
       <span className="tabular-nums">{formatUSD(r.total_price_usd)} <span className="text-slatey">/ {formatARS(r.total_price_ars)}</span></span>
     ) },
@@ -223,7 +227,7 @@ export default function BookingsView() {
         {r.room_number && <span className="ml-1.5 font-semibold tabular-nums text-hilton-700">· N° {r.room_number}</span>}
       </p>
       <p className="mt-1 text-xs text-slatey">{formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)</p>
-      <div className="mt-1.5"><CheckinBadge pre={r.pre_checkin} /></div>
+      <div className="mt-1.5"><CheckinBadge pre={r.pre_checkin} stay={r.stay_status} /></div>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>
         <div className="flex items-center gap-1.5">
