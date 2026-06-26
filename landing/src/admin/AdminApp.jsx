@@ -27,8 +27,8 @@ const LiveConversationsView = lazy(() => import('./views/LiveConversationsView')
 // solo cambian las etiquetas y el orden, y se suman encabezados de grupo.
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operación' },
-  { id: 'reservas', label: 'Reservas', icon: CalendarCheck, group: 'Operación' },
   { id: 'conversaciones', label: 'Conversaciones', icon: MessagesSquare, group: 'Operación' },
+  { id: 'reservas', label: 'Reservas', icon: CalendarCheck, group: 'Operación' },
   { id: 'pasajeros', label: 'Huéspedes', icon: Users, group: 'Operación' },
   { id: 'tickets', label: 'Operaciones', icon: LifeBuoy, group: 'Operación' },
   { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed, group: 'Operación' },
