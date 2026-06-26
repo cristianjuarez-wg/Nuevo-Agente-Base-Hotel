@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2, MessageCircle, MessageSquare, List, LayoutGrid } from 'lucide-react'
-import { listLeads, deleteLead, updateLead } from '../../services/api'
+import { UserPlus, RefreshCw, Mail, Phone, Flame, Trash2, Pencil, X, Save, Loader2, MessageCircle, MessageSquare, List, LayoutGrid, Bot, User, Send, Activity, BedDouble, CheckCircle2, UserCheck, Sparkles } from 'lucide-react'
+import { listLeads, deleteLead, updateLead, listLeadEvents, addLeadFollowUp, summarizeLead } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, WhatsAppDot,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatDate, formatDateTime, WhatsAppDot,
 } from '../ui'
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
@@ -316,8 +316,11 @@ export default function LeadsView() {
   )
 }
 
-// ── Panel lateral con la charla con Aura que generó el lead ──────────────────
+// ── Panel lateral del lead: Actividad (bitácora) + Conversación ──────────────
+// Actividad = acciones de Aura (resumidas) + seguimientos humanos, en una línea de tiempo.
+// Conversación = el chat completo con Aura (reusa ChatTranscript).
 function LeadChatDrawer({ lead, onClose }) {
+  const [tab, setTab] = useState('actividad')  // 'actividad' | 'conversacion'
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
@@ -325,7 +328,6 @@ function LeadChatDrawer({ lead, onClose }) {
         <div className="flex items-start justify-between border-b border-mist px-5 py-4">
           <div>
             <p className="font-serif text-lg font-700 text-hilton-700">{lead.name}</p>
-            <p className="mt-0.5 text-sm text-slatey">Conversación con Aura</p>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <TypeBadge type={lead.type} />
               <WonBadge status={lead.status} stage={lead.kanbanStage} />
@@ -336,10 +338,151 @@ function LeadChatDrawer({ lead, onClose }) {
             <X size={20} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto">
-          <ChatTranscript sessionId={lead.sessionId} />
+
+        {/* Pestañas */}
+        <div className="flex gap-1 border-b border-mist px-3 pt-2">
+          <TabButton active={tab === 'actividad'} onClick={() => setTab('actividad')} icon={Activity}>Actividad</TabButton>
+          <TabButton active={tab === 'conversacion'} onClick={() => setTab('conversacion')} icon={MessageSquare}>Conversación</TabButton>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col">
+          {tab === 'actividad'
+            ? <LeadActivity leadId={lead.id} />
+            : <div className="flex-1 overflow-y-auto"><ChatTranscript sessionId={lead.sessionId} /></div>}
         </div>
       </aside>
+    </div>
+  )
+}
+
+function TabButton({ active, onClick, icon: Icon, children }) {
+  return (
+    <button onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition ${
+        active ? 'border-b-2 border-hilton-600 text-hilton-700' : 'text-slatey hover:text-ink'
+      }`}>
+      <Icon size={15} />{children}
+    </button>
+  )
+}
+
+// Metadata visual por actor y por acción de Aura (íconos/colores + etiqueta legible).
+const LEAD_ACTOR_META = {
+  aura: { label: 'Aura', icon: Bot, cls: 'text-forest-700 bg-forest-50' },
+  human: { label: 'Equipo', icon: UserCheck, cls: 'text-hilton-700 bg-hilton-50' },
+  system: { label: 'Sistema', icon: Activity, cls: 'text-slatey bg-mist' },
+}
+const LEAD_ACTION_ICON = {
+  availability_shown: BedDouble,
+  booking_confirmed: CheckCircle2,
+  contact_requested: User,
+  reengaged: RefreshCw,
+  seguimiento: MessageCircle,
+  resumen: Activity,
+}
+
+// Línea de tiempo de actividad del lead + campo para dejar un seguimiento humano.
+function LeadActivity({ leadId }) {
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [summarizing, setSummarizing] = useState(false)
+
+  const load = () => {
+    listLeadEvents(leadId)
+      .then((e) => setEvents(Array.isArray(e) ? e : []))
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false))
+  }
+  useEffect(load, [leadId])
+
+  const summarize = async () => {
+    setSummarizing(true)
+    try {
+      const r = await summarizeLead(leadId)
+      if (r?.success) { toast.success('Resumen generado'); load() }
+      else toast.error(r?.message || 'No se pudo generar el resumen.')
+    } catch {
+      toast.error('No se pudo generar el resumen.')
+    } finally {
+      setSummarizing(false)
+    }
+  }
+
+  const submit = async () => {
+    const note = draft.trim()
+    if (!note || sending) return
+    setSending(true)
+    try {
+      await addLeadFollowUp(leadId, note)
+      setDraft('')
+      load()
+    } catch {
+      toast.error('No se pudo guardar el seguimiento.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center justify-between border-b border-mist px-4 py-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-slatey">Bitácora</span>
+        <button onClick={summarize} disabled={summarizing}
+          title="Generar un resumen de la charla con IA"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-hilton-200 px-2.5 py-1.5 text-xs font-medium text-hilton-700 transition hover:bg-hilton-50 disabled:opacity-50">
+          {summarizing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Resumir con IA
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-slatey">
+            <Loader2 size={16} className="animate-spin" /> Cargando actividad…
+          </div>
+        ) : events.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slatey">Sin actividad registrada todavía.</p>
+        ) : (
+          <ol className="space-y-2.5">
+            {events.map((e) => {
+              const meta = LEAD_ACTOR_META[e.actor_type] || LEAD_ACTOR_META.aura
+              const Icon = LEAD_ACTION_ICON[e.action] || meta.icon
+              return (
+                <li key={e.id} className="flex items-start gap-2.5 text-sm">
+                  <span className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${meta.cls}`}>
+                    <Icon size={13} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-ink">
+                      <span className="font-medium">{e.actor_name || meta.label}</span>{' '}
+                      <span className="text-slatey">{e.summary || e.note}</span>
+                    </p>
+                    {e.summary && e.note && <p className="text-slatey">{e.note}</p>}
+                    <span className="text-[11px] tabular-nums text-slatey">{formatDateTime(e.created_at)}</span>
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+        )}
+      </div>
+      {/* Agregar seguimiento humano */}
+      <div className="border-t border-mist p-3">
+        <div className="flex items-end gap-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+            rows={1}
+            placeholder="Agregar seguimiento (llamada, nota…)"
+            className="max-h-28 min-h-[40px] flex-1 resize-none rounded-xl border border-mist px-3 py-2 text-sm focus:border-hilton-400 focus:outline-none"
+          />
+          <button onClick={submit} disabled={!draft.trim() || sending}
+            className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-xl bg-hilton-600 text-white transition hover:bg-hilton-700 disabled:opacity-50">
+            {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

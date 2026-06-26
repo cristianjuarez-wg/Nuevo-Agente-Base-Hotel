@@ -68,6 +68,9 @@ class Lead(Base):
     
     # 🆕 Relationship (NUEVO - VISIÓN 360°)
     contact = relationship("Contact", back_populates="leads")
+    # Bitácora de actividad del lead (seguimiento humano + acciones de Aura).
+    events = relationship("LeadEvent", back_populates="lead",
+                          cascade="all, delete-orphan", order_by="LeadEvent.created_at")
 
     def origin(self) -> Dict:
         """Origen unificado del lead (mismo vocabulario que las reservas)."""
@@ -273,3 +276,37 @@ class Lead(Base):
             return f"Hace {minutes} minuto{'s' if minutes > 1 else ''}"
         else:
             return "Justo ahora"
+
+
+class LeadEvent(Base):
+    """Bitácora de actividad de un lead: quién hizo qué (mismo patrón que TicketEvent).
+
+    Mezcla las ACCIONES de Aura (resumidas en una línea: "Ofreció disponibilidad", "Confirmó
+    la reserva") con el SEGUIMIENTO humano (un staffer deja un comentario). Permite ver la
+    historia del lead dentro de su card y alimenta la observabilidad del agente.
+    """
+    __tablename__ = "lead_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False, index=True)
+    # Quién originó la acción: "aura" (el agente) | "human" (equipo desde el backoffice) | "system".
+    actor_type = Column(String(20), nullable=False, default="aura")
+    actor_name = Column(String(120), nullable=True)   # legible (ej. "Aura", "Recepción", el staffer)
+    action = Column(String(50), nullable=False)        # availability_shown | booking_confirmed | contact_requested | reengaged | seguimiento | resumen
+    summary = Column(String(255), nullable=True)       # one-liner mostrable ("Ofreció disponibilidad")
+    note = Column(Text, nullable=True)                 # texto libre (seguimiento humano / resumen IA)
+    created_at = Column(DateTime, default=now_argentina, index=True)
+
+    lead = relationship("Lead", back_populates="events")
+
+    def to_dict(self) -> Dict:
+        return {
+            "id": self.id,
+            "lead_id": self.lead_id,
+            "actor_type": self.actor_type,
+            "actor_name": self.actor_name,
+            "action": self.action,
+            "summary": self.summary,
+            "note": self.note,
+            "created_at": iso_argentina(self.created_at),
+        }

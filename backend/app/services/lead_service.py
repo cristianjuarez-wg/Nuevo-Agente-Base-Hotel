@@ -190,7 +190,15 @@ class LeadService:
             # No solicitar si ya tiene contacto completo
             if lead.is_complete_lead():
                 should_request = False
-            
+
+            # Bitácora: si Aura va a pedir el contacto, lo registramos (idempotente, best-effort).
+            if should_request:
+                try:
+                    from app.services import lead_events_service as les
+                    les.log_aura_action_once(db, lead.id, "contact_requested")
+                except Exception:  # noqa: BLE001
+                    pass
+
             # 6. Preparar respuesta completa
             complete_analysis = {
                 **analysis,
@@ -329,6 +337,13 @@ class LeadService:
             if booking_code:
                 lead.add_note(f"Reservó — {booking_code}")
             db.commit()
+            # Bitácora: registrar la confirmación de reserva como acción de Aura (idempotente).
+            try:
+                from app.services import lead_events_service as les
+                summary = f"Confirmó la reserva {booking_code}" if booking_code else "Confirmó la reserva"
+                les.log_aura_action_once(db, lead.id, "booking_confirmed", summary=summary)
+            except Exception:  # noqa: BLE001 — la bitácora nunca rompe la conversión
+                pass
             logger.info("Lead marcado como convertido (reservó)",
                         lead_id=lead.id, session_id=lead.session_id, booking_code=booking_code)
             return True

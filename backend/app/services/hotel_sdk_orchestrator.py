@@ -524,6 +524,12 @@ class HotelSDKOrchestrator:
                 meta[_AVAILABILITY_SHOWN_FLAG] = True
                 conv.extra_metadata = meta
                 db.commit()
+                # Bitácora del lead: Aura ofreció disponibilidad (idempotente, best-effort).
+                try:
+                    from app.services import lead_events_service as les
+                    les.log_lead_event_by_session(db, session_id, "availability_shown")
+                except Exception:  # noqa: BLE001
+                    pass
         except Exception as e:  # noqa: BLE001
             logger.warning("No se pudo marcar availability_shown", session_id=session_id, error=str(e))
 

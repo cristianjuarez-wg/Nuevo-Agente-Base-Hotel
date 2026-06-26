@@ -21,6 +21,10 @@ class LeadFieldsUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
 
+class LeadFollowUpCreate(BaseModel):
+    note: str
+    actor_name: Optional[str] = None  # quién deja el seguimiento (staffer); default "Backoffice"
+
 class LeadResponse(BaseModel):
     success: bool
     message: str
@@ -192,6 +196,56 @@ async def update_lead(lead_id: int, payload: LeadFieldsUpdate):
     except Exception as e:
         logger.error("Error updating lead", lead_id=lead_id, error=str(e))
         raise HTTPException(status_code=500, detail=f"Error actualizando lead: {str(e)}")
+
+@router.get("/{lead_id}/events")
+async def get_lead_events(lead_id: int, db: Session = Depends(get_db)):
+    """Bitácora de actividad del lead (acciones de Aura + seguimientos humanos), cronológica."""
+    from app.models.lead import Lead, LeadEvent
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail=f"Lead {lead_id} no encontrado")
+    events = (
+        db.query(LeadEvent)
+        .filter(LeadEvent.lead_id == lead_id)
+        .order_by(LeadEvent.created_at.asc(), LeadEvent.id.asc())
+        .all()
+    )
+    return {"success": True, "data": {"lead_id": lead_id, "events": [e.to_dict() for e in events]}}
+
+
+@router.post("/{lead_id}/events")
+async def add_lead_followup(lead_id: int, payload: LeadFollowUpCreate, db: Session = Depends(get_db)):
+    """Agrega un SEGUIMIENTO humano a la bitácora del lead (con autor + fecha/hora)."""
+    from app.models.lead import Lead
+    from app.services import lead_events_service as les
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail=f"Lead {lead_id} no encontrado")
+    note = (payload.note or "").strip()
+    if not note:
+        raise HTTPException(status_code=400, detail="El seguimiento no puede estar vacío")
+    ev = les.log_lead_event(
+        db, lead_id, action="seguimiento", actor_type="human",
+        actor_name=(payload.actor_name or "Backoffice"), note=note,
+    )
+    logger.info("Lead follow-up added", lead_id=lead_id)
+    return {"success": True, "data": ev.to_dict() if ev else None}
+
+
+@router.post("/{lead_id}/summarize")
+async def summarize_lead(lead_id: int, db: Session = Depends(get_db)):
+    """Genera bajo demanda un resumen IA de la charla del lead y lo agrega a la bitácora.
+    Barato (modelo económico) y respeta el freno de gasto; best-effort."""
+    from app.models.lead import Lead
+    from app.services import lead_events_service as les
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail=f"Lead {lead_id} no encontrado")
+    ev = await les.generate_ai_summary(db, lead_id)
+    if ev is None:
+        return {"success": False, "message": "No se pudo generar el resumen (sin charla o presupuesto excedido)."}
+    return {"success": True, "data": ev.to_dict()}
+
 
 @router.patch("/{lead_id}/status")
 async def update_lead_status(lead_id: int, status_update: LeadStatusUpdate):

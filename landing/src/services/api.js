@@ -117,6 +117,23 @@ export async function updateLead(leadId, fields) {
   return data
 }
 
+// Bitácora de actividad del lead: acciones de Aura (resumidas) + seguimientos humanos.
+export async function listLeadEvents(leadId) {
+  const { data } = await client.get(`/api/leads/${leadId}/events`)
+  return data.data?.events ?? []
+}
+
+export async function addLeadFollowUp(leadId, note, actorName = '') {
+  const { data } = await client.post(`/api/leads/${leadId}/events`, { note, actor_name: actorName || undefined })
+  return data
+}
+
+// Genera bajo demanda un resumen IA de la charla del lead (lo agrega a la bitácora).
+export async function summarizeLead(leadId) {
+  const { data } = await client.post(`/api/leads/${leadId}/summarize`)
+  return data
+}
+
 // Kanban de leads: tablero por etapa (new / contacted / won / lost).
 export async function getKanbanLeads() {
   const { data } = await client.get('/api/kanban/leads')
