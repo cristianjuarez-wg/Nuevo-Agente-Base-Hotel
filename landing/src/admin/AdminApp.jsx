@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
-  Users, BarChart3, Briefcase, Bot, UtensilsCrossed, LineChart,
+  Users, BarChart3, Briefcase, Bot, UtensilsCrossed, LineChart, MessagesSquare,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -19,6 +19,8 @@ import { Loading } from './ui'
 // solo cuando el usuario entra a esas secciones, aliviando el bundle inicial.
 const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
 const AgentSection = lazy(() => import('./views/agente/AgentSection'))
+// Bandeja en vivo: hace polling; lazy para no cargarla hasta que se entra a la sección.
+const LiveConversationsView = lazy(() => import('./views/LiveConversationsView'))
 
 // Sidebar agrupado por USO real del gerente: lo operativo del día arriba, lo comercial en
 // el medio, y la configuración/herramientas abajo. Los `id` NO cambian (hash routing intacto);
@@ -26,6 +28,7 @@ const AgentSection = lazy(() => import('./views/agente/AgentSection'))
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operación' },
   { id: 'reservas', label: 'Reservas', icon: CalendarCheck, group: 'Operación' },
+  { id: 'conversaciones', label: 'Conversaciones', icon: MessagesSquare, group: 'Operación' },
   { id: 'pasajeros', label: 'Huéspedes', icon: Users, group: 'Operación' },
   { id: 'tickets', label: 'Operaciones', icon: LifeBuoy, group: 'Operación' },
   { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed, group: 'Operación' },
@@ -100,6 +103,7 @@ export default function AdminApp() {
             {tab === 'dashboard' && <DashboardView go={go} />}
             {tab === 'analiticas' && <AnalyticsView />}
             {tab === 'reservas' && <BookingsView />}
+            {tab === 'conversaciones' && <LiveConversationsView />}
             {tab === 'habitaciones' && <HabitacionesView />}
             {tab === 'restaurante' && <RestaurantSection />}
             {tab === 'pasajeros' && <PassengersView />}

@@ -31,7 +31,9 @@ function Bubble({ role, content, at }) {
 
 // Transcripción de la charla con Aura que originó un ticket o un lead.
 // Reutilizable: recibe el session_id y carga los mensajes del endpoint de conversaciones.
-export default function ChatTranscript({ sessionId }) {
+// `pollMs` (opcional): si se pasa, re-consulta los mensajes cada pollMs ms (bandeja en vivo).
+// Sin pollMs, carga una sola vez (uso en tickets/leads, sin cambios).
+export default function ChatTranscript({ sessionId, pollMs = 0 }) {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -45,12 +47,21 @@ export default function ChatTranscript({ sessionId }) {
     let active = true
     setLoading(true)
     setError(false)
-    getConversation(sessionId)
-      .then((msgs) => { if (active) setMessages(Array.isArray(msgs) ? msgs : []) })
-      .catch(() => { if (active) setError(true) })
-      .finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [sessionId])
+
+    const fetchOnce = (showSpinner) => {
+      if (showSpinner) setLoading(true)
+      return getConversation(sessionId)
+        .then((msgs) => { if (active) { setMessages(Array.isArray(msgs) ? msgs : []); setError(false) } })
+        .catch(() => { if (active && showSpinner) setError(true) })  // en refresh silencioso, no rompemos la vista
+        .finally(() => { if (active && showSpinner) setLoading(false) })
+    }
+
+    fetchOnce(true)
+    if (!pollMs) return () => { active = false }
+
+    const id = setInterval(() => fetchOnce(false), pollMs)  // refrescos silenciosos
+    return () => { active = false; clearInterval(id) }
+  }, [sessionId, pollMs])
 
   if (loading) {
     return (
