@@ -16,7 +16,6 @@ from app.models.database import get_db
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.models.contact import Contact
-from app.core.admin_auth import require_admin_key
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -141,7 +140,9 @@ async def get_conversation_messages(
 
 # ── Toma de control humana (HITL) ─────────────────────────────────────────────
 # Un humano puede tomar el control de una conversación: Aura se pausa, el humano responde,
-# y libera (o la conversación se auto-libera por inactividad). Acciones críticas → X-Admin-Key.
+# y libera (o la conversación se auto-libera por inactividad). NO se exige X-Admin-Key: es una
+# acción operativa frecuente y no destructiva (a diferencia de resetear la base o los topes de
+# gasto, que sí la requieren). El acceso al backoffice es la barrera para estas acciones.
 
 class TakeoverPayload(BaseModel):
     staff_id: Optional[int] = None
@@ -154,7 +155,7 @@ class ReplyPayload(BaseModel):
     staff_name: Optional[str] = ""
 
 
-@router.post("/{session_id}/takeover", dependencies=[Depends(require_admin_key)])
+@router.post("/{session_id}/takeover")
 async def takeover_conversation(session_id: str, payload: TakeoverPayload,
                                 db: Session = Depends(get_db)):
     """Un humano toma el control: Aura deja de responder en esta conversación."""
@@ -165,7 +166,7 @@ async def takeover_conversation(session_id: str, payload: TakeoverPayload,
     return {"taken_over": True, "state": conv_ctrl.get_state(db, session_id)}
 
 
-@router.post("/{session_id}/release", dependencies=[Depends(require_admin_key)])
+@router.post("/{session_id}/release")
 async def release_conversation(session_id: str, db: Session = Depends(get_db)):
     """Libera la conversación: Aura retoma."""
     from app.services import conversation_control_service as conv_ctrl
@@ -173,7 +174,7 @@ async def release_conversation(session_id: str, db: Session = Depends(get_db)):
     return {"released": True}
 
 
-@router.post("/{session_id}/reply", dependencies=[Depends(require_admin_key)])
+@router.post("/{session_id}/reply")
 async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depends(get_db)):
     """Envía una respuesta HUMANA al huésped y la registra en la conversación.
 
