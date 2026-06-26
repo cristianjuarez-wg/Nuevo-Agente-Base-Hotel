@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { MessageCircle, X, Send, Sparkles, RotateCcw, Languages, Check, Info } from 'lucide-react'
 import HelpModal from './HelpModal'
-import { getGreeting, sendMessage, clearChat, getChatTheme, chatWsUrl, getConversation } from '../services/api'
+import { getGreeting, sendMessage, clearChat, getChatTheme, chatWsUrl } from '../services/api'
 import RoomCard from './chat/RoomCard'
 import DatePickerCard from './chat/DatePickerCard'
 import MenuCard from './chat/MenuCard'
@@ -117,13 +117,12 @@ export default function ChatWidget() {
   const sessionId = useRef(getSessionId())
   const typewriterRef = useRef(null)  // timer del efecto de tipeo (para poder cancelarlo)
   const wsRef = useRef(null)          // WebSocket de mensajes humanos en vivo (takeover)
-  const seenHumanRef = useRef(new Set())  // dedupe de respuestas humanas (WS + polling de respaldo)
+  const seenHumanRef = useRef(new Set())  // dedupe de respuestas humanas recibidas por WS
   const t = getStrings(lang)
 
-  // Inyecta una respuesta HUMANA (asesor que tomó la conversación) en el chat, evitando
-  // duplicados: por `key` (id de DB / contenido) y, además, si ese contenido YA está visible
-  // en el chat (cubre las respuestas normales de Aura que el flujo HTTP ya renderizó, para que
-  // el polling de respaldo no las repita). Reutiliza el mismo render que un mensaje de Aura.
+  // Inyecta una respuesta HUMANA (asesor que tomó la conversación), recibida por WebSocket.
+  // Deduplica por `key` (contenido) y no agrega si ese contenido ya está visible. Reutiliza el
+  // mismo render que un mensaje de Aura.
   const injectHumanMessage = useCallback((content, key) => {
     if (!content) return
     const k = String(key ?? content)
@@ -176,8 +175,8 @@ export default function ChatWidget() {
   }, [open, greeted, loadGreeting])
 
   // Canal en vivo para respuestas HUMANAS (cuando un asesor toma la conversación). Mientras el
-  // widget está abierto: WebSocket con reconexión por backoff + un polling de respaldo (por si
-  // el WS está caído). Ambos pasan por injectHumanMessage, que deduplica. Se cierra al cerrar.
+  // widget está abierto: WebSocket con reconexión por backoff. Solo recibe mensajes humanos
+  // (type "human_message"); las respuestas normales de Aura llegan por HTTP y NO pasan por acá.
   useEffect(() => {
     if (!open) return
     let closed = false
@@ -214,35 +213,9 @@ export default function ChatWidget() {
 
     connect()
 
-    // Pre-sembrar el dedupe con los mensajes assistant YA existentes al abrir: así el polling de
-    // respaldo solo inyecta respuestas que aparecen DESPUÉS (las del humano durante un takeover;
-    // las normales de Aura ya las renderiza el flujo HTTP). Evita duplicar la charla previa.
-    let baselineReady = false
-    getConversation(sessionId.current)
-      .then((msgs) => {
-        for (const mm of msgs) {
-          if (mm.role === 'assistant') seenHumanRef.current.add(String(mm.id ?? mm.content))
-        }
-      })
-      .catch(() => {})
-      .finally(() => { baselineReady = true })
-
-    // Respaldo: si el WS está caído justo cuando el humano responde, el polling lo trae igual.
-    // Solo inyecta mensajes assistant NUEVOS (no vistos), por id de DB.
-    const pollId = setInterval(async () => {
-      if (!baselineReady) return
-      try {
-        const msgs = await getConversation(sessionId.current)
-        for (const mm of msgs.slice(-8)) {
-          if (mm.role === 'assistant') injectHumanMessage(mm.content, mm.id ?? mm.content)
-        }
-      } catch { /* silencioso */ }
-    }, 7000)
-
     return () => {
       closed = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
-      clearInterval(pollId)
       try { ws && ws.close() } catch { /* noop */ }
       wsRef.current = null
     }
