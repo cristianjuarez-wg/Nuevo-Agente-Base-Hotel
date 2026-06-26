@@ -15,6 +15,32 @@ def now_argentina():
     """
     return datetime.now(ARGENTINA_TZ).replace(tzinfo=None)
 
+def iso_argentina(dt, source="utc"):
+    """Serializa un datetime a ISO 8601 en hora Argentina, CON offset explícito (-03:00).
+
+    Pensado para la capa de API: garantiza que el frontend reciba una fecha inequívoca y
+    ya en hora local de Argentina, sin importar en qué zona guardó la base.
+
+    Args:
+        dt: datetime (normalmente naive) o None.
+        source: zona en que está guardado `dt`:
+            - "utc" (default): la fecha está en UTC (datetime.utcnow / datetime.now en Render).
+            - "ar": la fecha YA está en hora Argentina (modelos que usan now_argentina:
+              Lead, postsale.*, provider.*). No se le resta nada, solo se le pone el offset.
+
+    Returns:
+        String ISO con offset (ej. "2026-06-25T15:09:03-03:00") o None.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        if source == "ar":
+            dt = ARGENTINA_TZ.localize(dt)
+        else:  # "utc"
+            dt = pytz.utc.localize(dt)
+    return dt.astimezone(ARGENTINA_TZ).isoformat()
+
+
 def to_argentina(utc_datetime):
     """
     Convierte un datetime UTC a hora Argentina

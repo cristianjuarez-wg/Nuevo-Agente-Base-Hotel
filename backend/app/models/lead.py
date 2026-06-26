@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from app.models.database import Base
 from typing import Dict, Optional
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_argentina, iso_argentina
 
 class Lead(Base):
     __tablename__ = "leads"
@@ -97,8 +97,8 @@ class Lead(Base):
                 "travel_context": self.travel_context
             },
             "metadata": {
-                "created_at": self.created_at.isoformat() if self.created_at else None,
-                "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+                "created_at": iso_argentina(self.created_at, source="ar"),
+                "updated_at": iso_argentina(self.updated_at, source="ar"),
                 "status": self.status,
                 "channel": self.channel,
                 "origin": self.origin(),
@@ -109,7 +109,7 @@ class Lead(Base):
             "kanban": {
                 "stage": self.kanban_stage,
                 "notes": self.notes,
-                "last_status_change": self.last_status_change.isoformat() if self.last_status_change else None
+                "last_status_change": iso_argentina(self.last_status_change, source="ar")
             },
             "event_info": {
                 "is_event_lead": self.is_event_lead,

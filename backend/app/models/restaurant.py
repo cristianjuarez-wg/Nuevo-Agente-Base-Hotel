@@ -17,6 +17,7 @@ from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Boolean, 
 from sqlalchemy.orm import relationship
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import iso_argentina
 
 
 class MenuItem(Base):
@@ -118,7 +119,7 @@ class RestaurantOrder(Base):
             "guest_name": self.guest_name,
             "notes": self.notes,
             "items": [it.to_dict() for it in self.items],
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_argentina(self.created_at),
         }
 
 
@@ -173,7 +174,7 @@ class ExtraCharge(Base):
             "description": self.description,
             "amount_usd": self.amount_usd,
             "status": self.status,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_argentina(self.created_at),
         }
         if rate:
             d["amount_ars"] = round((self.amount_usd or 0) * rate, 2)
@@ -217,12 +218,12 @@ class TableReservation(Base):
             "guest_name": self.guest_name,
             "guest_phone": self.guest_phone,
             "party_size": self.party_size,
-            "reserved_for": self.reserved_for.isoformat() if self.reserved_for else None,
+            "reserved_for": iso_argentina(self.reserved_for),
             "status": self.status,
             "notes": self.notes,
             "channel": self.channel,
             "is_guest": self.booking_id is not None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_argentina(self.created_at),
         }
 
 
@@ -268,11 +269,11 @@ class Voucher(Base):
             "total_usd": self.total_usd,
             "total_ars": self.total_ars,
             "status": self.status,
-            "redeemed_at": self.redeemed_at.isoformat() if self.redeemed_at else None,
+            "redeemed_at": iso_argentina(self.redeemed_at),
             "notes": self.notes,
             "channel": self.channel,
             "items": [it.to_dict() for it in self.items],
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_argentina(self.created_at),
         }
 
 

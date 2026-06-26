@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from typing import Dict, Optional
 from app.models.database import Base
+from app.utils.timezone_utils import iso_argentina
 
 
 class ConversationMessage(Base):
@@ -62,7 +63,7 @@ class ConversationMessage(Base):
             "role": self.role,
             "content": self.content,
             "sequence_number": self.sequence_number,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": iso_argentina(self.created_at),
             "context_type": self.context_type,
             "metadata": {
                 "has_context": self.has_context,
