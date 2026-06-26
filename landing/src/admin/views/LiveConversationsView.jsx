@@ -1,12 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2 } from 'lucide-react'
+import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2, Info, BedDouble } from 'lucide-react'
 import {
   listConversations, takeOverConversation, releaseConversation, sendHumanReply,
 } from '../../services/api'
-import { Loading, EmptyState, formatDateTime, WhatsAppDot } from '../ui'
+import { Loading, EmptyState, Badge, formatDateTime, WhatsAppDot } from '../ui'
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import ChatTranscript from '../components/ChatTranscript'
+import DetailDrawer from '../components/DetailDrawer'
+
+// Badge según el estado del interlocutor (lo manda el backend en `guest_status`).
+function GuestStatusBadge({ status }) {
+  if (status === 'in_house') return <Badge tone="green"><BedDouble size={11} className="mr-1" />Alojado ahora</Badge>
+  if (status === 'upcoming') return <Badge tone="amber">Reserva futura</Badge>
+  if (status === 'customer') return <Badge tone="blue">Cliente</Badge>
+  if (status === 'lead') return <Badge tone="gray">Lead</Badge>
+  return null  // anónimo: sin badge
+}
+
+// "hace X" compacto a partir de un ISO (para el aviso de antigüedad en WhatsApp viejo).
+function timeAgo(iso) {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 60) return `hace ${m} min`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `hace ${h} h`
+  const d = Math.floor(h / 24)
+  return `hace ${d} día${d === 1 ? '' : 's'}`
+}
 
 // Cada cuánto refrescamos la lista y la charla abierta (polling — bandeja "en vivo").
 const POLL_MS = 4000
@@ -19,6 +41,7 @@ export default function LiveConversationsView() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(null)  // session_id abierto
+  const [profileId, setProfileId] = useState(null)  // contact_id para el drawer 360°
   const firstLoad = useRef(true)
 
   useEffect(() => {
@@ -36,7 +59,7 @@ export default function LiveConversationsView() {
 
   const q = query.trim().toLowerCase()
   const filtered = !q ? rows : rows.filter((r) =>
-    (r.name || '').toLowerCase().includes(q) ||
+    (r.display_name || r.name || '').toLowerCase().includes(q) ||
     (r.phone || '').toLowerCase().includes(q) ||
     (r.last_message_preview || '').toLowerCase().includes(q)
   )
@@ -69,7 +92,8 @@ export default function LiveConversationsView() {
       {/* Panel derecho: transcripto en vivo + control humano */}
       <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-mist bg-white">
         {selectedConv ? (
-          <ConversationPanel conv={selectedConv} />
+          <ConversationPanel conv={selectedConv}
+                             onOpenProfile={selectedConv.contact_id ? () => setProfileId(selectedConv.contact_id) : null} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slatey">
             <MessageSquare size={28} className="opacity-40" />
@@ -77,17 +101,26 @@ export default function LiveConversationsView() {
           </div>
         )}
       </div>
+
+      {/* Perfil 360° del contacto (se abre al tocar el nombre). */}
+      {profileId && <DetailDrawer contactId={profileId} onClose={() => setProfileId(null)} />}
     </div>
   )
 }
 
 // Panel de una conversación: header con control humano, transcripto en vivo y, si está
 // tomada, el campo para responder como humano (reemplazando a Aura).
-function ConversationPanel({ conv }) {
+function ConversationPanel({ conv, onOpenProfile }) {
   const controlled = !!conv.takeover?.active
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+
+  // Chat web sin actividad reciente: el visitante cerró el navegador, no se le puede
+  // responder (la respuesta humana web se entrega por WebSocket). WhatsApp no tiene este
+  // problema (entrega por Twilio al teléfono).
+  const webOffline = conv.channel === 'web' && !conv.is_live
+  const waStale = conv.channel === 'whatsapp' && !conv.is_live  // retomar contacto viejo
 
   const toggleControl = async () => {
     setBusy(true)
@@ -100,8 +133,11 @@ function ConversationPanel({ conv }) {
         toast.success('Tomaste el control — Aura está en pausa')
       }
       // El polling de la lista refrescará el estado en pocos segundos.
-    } catch {
-      toast.error('No se pudo cambiar el control. Intentá de nuevo.')
+    } catch (e) {
+      const msg = e?.response?.status === 409
+        ? (e?.response?.data?.detail || 'No se puede responder por web: el visitante cerró el chat.')
+        : 'No se pudo cambiar el control. Intentá de nuevo.'
+      toast.error(msg)
     } finally {
       setBusy(false)
     }
@@ -114,44 +150,65 @@ function ConversationPanel({ conv }) {
     try {
       await sendHumanReply(conv.session_id, text)
       setDraft('')
-    } catch {
-      toast.error('No se pudo enviar la respuesta.')
+    } catch (e) {
+      const msg = e?.response?.status === 409
+        ? (e?.response?.data?.detail || 'El visitante cerró el chat web; no se puede responder.')
+        : 'No se pudo enviar la respuesta.'
+      toast.error(msg)
     } finally {
       setSending(false)
     }
   }
 
+  const title = conv.display_name || conv.name || conv.phone || 'Conversación'
+
   return (
     <>
       <div className="flex items-center justify-between gap-3 border-b border-mist px-5 py-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 font-serif text-lg font-700 text-hilton-700">
-            {conv.name || conv.phone || 'Conversación'}
+          <p className="flex flex-wrap items-center gap-2 font-serif text-lg font-700 text-hilton-700">
+            {onOpenProfile ? (
+              <button onClick={onOpenProfile} className="truncate hover:underline" title="Ver perfil 360°">
+                {title}
+              </button>
+            ) : (
+              <span className="truncate">{title}</span>
+            )}
+            <GuestStatusBadge status={conv.guest_status} />
             {conv.is_live && (
               <span className="inline-flex items-center gap-1 text-xs font-sans font-500 text-emerald-600">
                 <Circle size={8} className="fill-emerald-500 text-emerald-500" /> En vivo
               </span>
             )}
           </p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slatey">
+          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-slatey">
             <ChannelBadge channel={conv.channel} phone={conv.phone} />
             {controlled && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-500 text-amber-700">
                 <Hand size={11} /> Bajo control humano
               </span>
             )}
+            {waStale && !controlled && (
+              <span className="text-xs text-slatey/80">· Reanudando contacto · última actividad {timeAgo(conv.last_message_at)}</span>
+            )}
           </p>
         </div>
-        <button onClick={toggleControl} disabled={busy}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-500 transition disabled:opacity-50 ${
-            controlled
-              ? 'bg-hilton-600 text-white hover:bg-hilton-700'
-              : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
-          }`}>
-          {busy ? <Loader2 size={15} className="animate-spin" />
-            : controlled ? <Bot size={15} /> : <Hand size={15} />}
-          {controlled ? 'Devolver a Aura' : 'Tomar control'}
-        </button>
+        {webOffline ? (
+          <span className="inline-flex max-w-[180px] shrink-0 items-start gap-1.5 rounded-lg bg-mist px-3 py-2 text-xs text-slatey" title="El chat web ya no está activo">
+            <Info size={13} className="mt-0.5 shrink-0" /> El visitante cerró el chat. No se puede responder por web.
+          </span>
+        ) : (
+          <button onClick={toggleControl} disabled={busy}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-500 transition disabled:opacity-50 ${
+              controlled
+                ? 'bg-hilton-600 text-white hover:bg-hilton-700'
+                : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+            }`}>
+            {busy ? <Loader2 size={15} className="animate-spin" />
+              : controlled ? <Bot size={15} /> : <Hand size={15} />}
+            {controlled ? 'Devolver a Aura' : 'Tomar control'}
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -194,8 +251,9 @@ function ConversationRow({ r, active, onClick }) {
         <span className="flex min-w-0 items-center gap-1.5">
           {r.is_live && <Circle size={8} className="shrink-0 fill-emerald-500 text-emerald-500" />}
           <span className="truncate font-medium text-ink">
-            {r.name || r.phone || 'Sin nombre'}
+            {r.display_name || r.name || r.phone || 'Visitante web'}
           </span>
+          <GuestStatusBadge status={r.guest_status} />
         </span>
         <span className="shrink-0 text-[11px] tabular-nums text-slatey">{formatDateTime(r.last_message_at)}</span>
       </div>

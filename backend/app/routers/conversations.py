@@ -16,7 +16,11 @@ from app.models.database import get_db
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.models.contact import Contact
+from app.models.lead import Lead
+from app.models.hotel import Booking
 from app.core.logging_config import get_logger
+# Ventana "en vivo" centralizada en el servicio de control (fuente única).
+from app.services.conversation_control_service import LIVE_WINDOW_MINUTES
 
 logger = get_logger(__name__)
 
@@ -26,9 +30,6 @@ router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 def _phone_from_wa_session(session_id: str) -> Optional[str]:
     """Deriva el teléfono (+549...) de un session_id de WhatsApp ('wa_<phone>')."""
     return ("+" + session_id[3:]) if (session_id or "").startswith("wa_") else None
-
-# Una conversación se considera "en vivo" si tuvo actividad en los últimos N minutos.
-LIVE_WINDOW_MINUTES = 5
 
 
 @router.get("")
@@ -82,11 +83,55 @@ async def list_conversations(
     def _phone_from_session(sid: str) -> Optional[str]:
         return ("+" + sid[3:]) if (sid or "").startswith("wa_") else None
 
+    # Bookings en lote (para guest_status: alojado ahora vs reserva futura). Una sola query.
+    from datetime import date as _date
+    today = _date.today()
+    staying_now: set = set()   # contact_ids con estadía activa hoy
+    upcoming: set = set()      # contact_ids con reserva futura
+    if contact_ids:
+        bookings = (
+            db.query(Booking.contact_id, Booking.check_in, Booking.check_out)
+            .filter(Booking.contact_id.in_(contact_ids), Booking.status != "cancelled")
+            .all()
+        )
+        for cid, ci, co in bookings:
+            if ci and co and ci <= today <= co:
+                staying_now.add(cid)
+            elif ci and ci > today:
+                upcoming.add(cid)
+
+    # Leads en lote por session_id (fallback de nombre cuando la conversación no tiene Contact).
+    leads_by_session: dict = {}
+    if session_ids:
+        for ld in db.query(Lead).filter(Lead.session_id.in_(session_ids)).all():
+            # El más reciente por sesión gana (sobrescribe); con nombre real preferido.
+            existing = leads_by_session.get(ld.session_id)
+            if existing is None or (ld.name and not existing.name):
+                leads_by_session[ld.session_id] = ld
+
+    def _guest_status(cid: Optional[int], contact: Optional[Contact]) -> Optional[str]:
+        """Estado del interlocutor, por prioridad de accionabilidad. None si es anónimo."""
+        if not cid or not contact:
+            return None
+        if cid in staying_now:
+            return "in_house"
+        if cid in upcoming:
+            return "upcoming"
+        if (contact.purchases_made or 0) > 0 or contact.contact_type in ("customer", "both"):
+            return "customer"
+        return "lead"
+
     items = []
     for r in rows:
         c = contacts.get(r.contact_id)
         phone = (c.phone_number if c else None) or _phone_from_session(r.session_id)
+        # Nombre: 1) Contact, 2) Lead (por session), 3) display de anónimo según canal.
         name = (c.full_name or c.first_name) if c else None
+        if not name:
+            ld = leads_by_session.get(r.session_id)
+            if ld and ld.name:
+                name = (f"{ld.name} {ld.last_name}".strip() if ld.last_name else ld.name)
+        display_name = name or (phone if r.channel == "whatsapp" and phone else "Visitante web")
         prev = previews.get(r.session_id)
         preview_text = (prev["content"][:120] if prev else "")
         is_live = bool(r.last_message_at and r.last_message_at >= live_cutoff)
@@ -97,6 +142,8 @@ async def list_conversations(
             "contact_id": r.contact_id,
             "phone": phone,
             "name": name,
+            "display_name": display_name,
+            "guest_status": _guest_status(r.contact_id, c),
             "channel": r.channel,
             "started_at": r.started_at.isoformat() if r.started_at else None,
             "last_message_at": r.last_message_at.isoformat() if r.last_message_at else None,
@@ -155,12 +202,19 @@ class ReplyPayload(BaseModel):
     staff_name: Optional[str] = ""
 
 
+_WEB_OFFLINE_MSG = ("El visitante cerró el chat web; no se puede tomar el control. "
+                    "Para retomar contacto, usá WhatsApp.")
+
+
 @router.post("/{session_id}/takeover")
 async def takeover_conversation(session_id: str, payload: TakeoverPayload,
                                 db: Session = Depends(get_db)):
     """Un humano toma el control: Aura deja de responder en esta conversación."""
     from app.services import conversation_control_service as conv_ctrl
-    ok = conv_ctrl.take_over(db, session_id, payload.staff_id, payload.staff_name or "")
+    try:
+        ok = conv_ctrl.take_over(db, session_id, payload.staff_id, payload.staff_name or "")
+    except conv_ctrl.WebChatOffline:
+        raise HTTPException(status_code=409, detail=_WEB_OFFLINE_MSG)
     if not ok:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
     return {"taken_over": True, "state": conv_ctrl.get_state(db, session_id)}
@@ -192,8 +246,12 @@ async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depe
         raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío")
 
     # Si no estaba tomada, la tomamos implícitamente (responder = tomar el control).
+    # Si es un chat web ya inactivo, no se puede entregar la respuesta → 409 (no persistir).
     if not conv_ctrl.is_human_controlled(db, session_id):
-        conv_ctrl.take_over(db, session_id, payload.staff_id, payload.staff_name or "")
+        try:
+            conv_ctrl.take_over(db, session_id, payload.staff_id, payload.staff_name or "")
+        except conv_ctrl.WebChatOffline:
+            raise HTTPException(status_code=409, detail=_WEB_OFFLINE_MSG)
 
     delivered = None
     phone = _phone_from_wa_session(session_id)

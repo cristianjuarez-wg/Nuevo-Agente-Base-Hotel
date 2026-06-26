@@ -350,6 +350,16 @@ def create_booking(
         except Exception as e:  # noqa: BLE001
             logger.warning("No se pudo actualizar métricas del Contact", error=str(e))
 
+        # Vincular la conversación de esta sesión al Contact (si existe): así la bandeja
+        # muestra el nombre del huésped en vez de "Sin nombre" tras reservar.
+        if session_id:
+            try:
+                from app.services.contact_service import contact_service
+                contact_service.link_conversation_by_session(session_id, contact_id, db)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("No se pudo vincular la conversación al Contact tras reservar",
+                               session_id=session_id, error=str(e))
+
     # Marcar como CONVERTIDO el lead que originó esta reserva (si existe). Cubre AMBOS
     # caminos (agente y web), que pasan por acá. Best-effort: un fallo NUNCA debe romper
     # la reserva (ya está commiteada arriba).

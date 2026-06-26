@@ -31,6 +31,16 @@ _TAKEOVER_KEY = "takeover"
 # Minutos sin actividad humana tras los cuales Aura retoma automáticamente la conversación.
 AUTO_RELEASE_MINUTES = 10
 
+# Una conversación se considera "en vivo" si tuvo actividad en los últimos N minutos.
+# Fuente única (la usa también el listado en routers/conversations.py).
+LIVE_WINDOW_MINUTES = 5
+
+
+class WebChatOffline(Exception):
+    """El chat WEB ya no está activo (el visitante cerró el navegador): no se puede tomar
+    control ni responder, porque la respuesta humana se entrega por WebSocket al navegador
+    abierto y no llegaría. WhatsApp no tiene este problema (entrega por Twilio al teléfono)."""
+
 # Cache en RAM: session_id -> bool (controlada o no). Acelera el chequeo en cada mensaje
 # entrante; la DB sigue siendo la verdad. Se rehidrata desde extra_metadata en cache-miss.
 _control_cache: Dict[str, bool] = {}
@@ -96,13 +106,31 @@ def _is_stale(state: Dict) -> bool:
     return datetime.utcnow() - last > timedelta(minutes=AUTO_RELEASE_MINUTES)
 
 
+def _is_web_offline(session_id: str, conv: Conversation) -> bool:
+    """True si es un chat WEB sin actividad reciente (visitante desconectado).
+
+    WhatsApp (session_id 'wa_<phone>') NUNCA está offline: se entrega por Twilio. Web sí,
+    porque la entrega es por WebSocket al navegador abierto. Sin `last_message_at` se considera
+    offline por las dudas (no hay señal de actividad)."""
+    if (session_id or "").startswith("wa_") or (conv.channel == "whatsapp"):
+        return False
+    last = conv.last_message_at
+    if not last:
+        return True
+    return (datetime.utcnow() - last) > timedelta(minutes=LIVE_WINDOW_MINUTES)
+
+
 def take_over(db: Session, session_id: str, staff_id: Optional[int] = None,
               staff_name: str = "") -> bool:
-    """Marca la conversación como bajo control humano. Devuelve True si quedó tomada."""
+    """Marca la conversación como bajo control humano. Devuelve True si quedó tomada.
+
+    Lanza WebChatOffline si es un chat web ya inactivo (no se podría entregar la respuesta)."""
     conv = _get_conv(db, session_id)
     if not conv:
         logger.warning("Takeover: conversación inexistente", session_id=session_id)
         return False
+    if _is_web_offline(session_id, conv):
+        raise WebChatOffline(session_id)
     now = _now_iso()
     _write_takeover(db, conv, {
         "active": True,
