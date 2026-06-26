@@ -8,18 +8,25 @@ Solo lectura: no toca cómo se crean tickets, leads ni la conversación.
 from typing import Optional
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.models.contact import Contact
+from app.core.admin_auth import require_admin_key
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
+
+
+def _phone_from_wa_session(session_id: str) -> Optional[str]:
+    """Deriva el teléfono (+549...) de un session_id de WhatsApp ('wa_<phone>')."""
+    return ("+" + session_id[3:]) if (session_id or "").startswith("wa_") else None
 
 # Una conversación se considera "en vivo" si tuvo actividad en los últimos N minutos.
 LIVE_WINDOW_MINUTES = 5
@@ -84,6 +91,8 @@ async def list_conversations(
         prev = previews.get(r.session_id)
         preview_text = (prev["content"][:120] if prev else "")
         is_live = bool(r.last_message_at and r.last_message_at >= live_cutoff)
+        tk = (r.extra_metadata or {}).get("takeover")
+        takeover = {"active": True, "staff_name": tk.get("staff_name", "")} if (tk and tk.get("active")) else None
         items.append({
             "session_id": r.session_id,
             "contact_id": r.contact_id,
@@ -98,6 +107,7 @@ async def list_conversations(
             "last_message_preview": preview_text,
             "last_message_role": prev["role"] if prev else None,
             "is_live": is_live,
+            "takeover": takeover,
         })
     return {"conversations": items, "total": total, "limit": limit, "offset": offset}
 
@@ -127,3 +137,81 @@ async def get_conversation_messages(
         "messages": [m.to_dict() for m in messages],
         "total": len(messages),
     }
+
+
+# ── Toma de control humana (HITL) ─────────────────────────────────────────────
+# Un humano puede tomar el control de una conversación: Aura se pausa, el humano responde,
+# y libera (o la conversación se auto-libera por inactividad). Acciones críticas → X-Admin-Key.
+
+class TakeoverPayload(BaseModel):
+    staff_id: Optional[int] = None
+    staff_name: Optional[str] = ""
+
+
+class ReplyPayload(BaseModel):
+    message: str
+    staff_id: Optional[int] = None
+    staff_name: Optional[str] = ""
+
+
+@router.post("/{session_id}/takeover", dependencies=[Depends(require_admin_key)])
+async def takeover_conversation(session_id: str, payload: TakeoverPayload,
+                                db: Session = Depends(get_db)):
+    """Un humano toma el control: Aura deja de responder en esta conversación."""
+    from app.services import conversation_control_service as conv_ctrl
+    ok = conv_ctrl.take_over(db, session_id, payload.staff_id, payload.staff_name or "")
+    if not ok:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+    return {"taken_over": True, "state": conv_ctrl.get_state(db, session_id)}
+
+
+@router.post("/{session_id}/release", dependencies=[Depends(require_admin_key)])
+async def release_conversation(session_id: str, db: Session = Depends(get_db)):
+    """Libera la conversación: Aura retoma."""
+    from app.services import conversation_control_service as conv_ctrl
+    conv_ctrl.release(db, session_id, reason="manual")
+    return {"released": True}
+
+
+@router.post("/{session_id}/reply", dependencies=[Depends(require_admin_key)])
+async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depends(get_db)):
+    """Envía una respuesta HUMANA al huésped y la registra en la conversación.
+
+    - WhatsApp: se entrega vía Twilio (whatsapp_service.send_text).
+    - Web: se persiste; el widget la recibirá por WebSocket (realtime de Etapa 2).
+    El mensaje se guarda con role='assistant' + metadata sent_by (staff) para distinguirlo de
+    Aura sin romper las lecturas que asumen user|assistant. Refresca la actividad humana
+    (postpone el auto-release).
+    """
+    from app.services import conversation_control_service as conv_ctrl
+    from app.services.agent_service import agent_service
+
+    text = (payload.message or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío")
+
+    # Si no estaba tomada, la tomamos implícitamente (responder = tomar el control).
+    if not conv_ctrl.is_human_controlled(db, session_id):
+        conv_ctrl.take_over(db, session_id, payload.staff_id, payload.staff_name or "")
+
+    delivered = None
+    phone = _phone_from_wa_session(session_id)
+    if phone:
+        from app.services.whatsapp_service import whatsapp_service
+        delivered = whatsapp_service.send_text(phone, text)
+        if delivered is False:
+            logger.error("Respuesta humana: Twilio rechazó el envío",
+                         session_id=session_id, phone=phone)
+
+    # Persistir el mensaje del humano (visible en la bandeja y en el transcripto).
+    try:
+        agent_service._save_message_to_db(
+            db=db, session_id=session_id, role="assistant",
+            content=text, context_type="pre_sale",
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.error("No se pudo guardar la respuesta humana", session_id=session_id, error=str(e))
+
+    conv_ctrl.touch_activity(db, session_id)
+    # TODO(realtime): empujar este mensaje al widget web por WebSocket cuando esté el canal.
+    return {"sent": True, "delivered_whatsapp": delivered}

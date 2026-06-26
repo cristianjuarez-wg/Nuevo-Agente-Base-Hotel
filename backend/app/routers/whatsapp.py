@@ -164,6 +164,24 @@ async def _process_and_reply(
             except Exception as e:  # noqa: BLE001
                 logger.warning("WhatsApp: no se pudo pre-cargar teléfono en Lead", error=str(e))
 
+        # 🆕 GATE DE TOMA DE CONTROL HUMANA: si un humano tomó esta conversación, Aura NO
+        # responde. Guardamos el mensaje entrante (para que el humano lo vea en la bandeja) y
+        # cortamos sin invocar al agente. Solo aplica a huéspedes (staff/owner no se "toman").
+        if role == "guest":
+            from app.services import conversation_control_service as conv_ctrl
+            if conv_ctrl.is_human_controlled(db, session_id):
+                try:
+                    agent_service._save_message_to_db(
+                        db=db, session_id=session_id, role="user",
+                        content=body, context_type="pre_sale",
+                    )
+                except Exception as e:  # noqa: BLE001 — no romper por el guardado
+                    logger.warning("WhatsApp: no se pudo guardar mensaje en takeover",
+                                   session_id=session_id, error=str(e))
+                logger.info("WhatsApp: conversación bajo control humano, Aura no responde",
+                            session_id=session_id)
+                return  # el humano responderá desde el backoffice
+
         # Despachar al agente correcto según el rol (punto único de ruteo).
         from app.services.agent_router import route_whatsapp
         try:

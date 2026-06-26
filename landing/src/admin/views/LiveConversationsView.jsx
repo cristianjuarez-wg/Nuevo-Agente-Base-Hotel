@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Phone, Globe, RefreshCw, Circle } from 'lucide-react'
-import { listConversations } from '../../services/api'
+import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2 } from 'lucide-react'
+import {
+  listConversations, takeOverConversation, releaseConversation, sendHumanReply,
+} from '../../services/api'
 import { Loading, EmptyState, formatDateTime, WhatsAppDot } from '../ui'
+import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import ChatTranscript from '../components/ChatTranscript'
 
@@ -63,30 +66,10 @@ export default function LiveConversationsView() {
         </div>
       </div>
 
-      {/* Panel derecho: transcripto en vivo */}
+      {/* Panel derecho: transcripto en vivo + control humano */}
       <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-mist bg-white">
         {selectedConv ? (
-          <>
-            <div className="flex items-center justify-between border-b border-mist px-5 py-3">
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 font-serif text-lg font-700 text-hilton-700">
-                  {selectedConv.name || selectedConv.phone || 'Conversación'}
-                  {selectedConv.is_live && (
-                    <span className="inline-flex items-center gap-1 text-xs font-sans font-500 text-emerald-600">
-                      <Circle size={8} className="fill-emerald-500 text-emerald-500" /> En vivo
-                    </span>
-                  )}
-                </p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slatey">
-                  <ChannelBadge channel={selectedConv.channel} phone={selectedConv.phone} />
-                </p>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {/* pollMs activo: los mensajes nuevos de la charla abierta aparecen solos */}
-              <ChatTranscript sessionId={selectedConv.session_id} pollMs={POLL_MS} />
-            </div>
-          </>
+          <ConversationPanel conv={selectedConv} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slatey">
             <MessageSquare size={28} className="opacity-40" />
@@ -95,6 +78,108 @@ export default function LiveConversationsView() {
         )}
       </div>
     </div>
+  )
+}
+
+// Panel de una conversación: header con control humano, transcripto en vivo y, si está
+// tomada, el campo para responder como humano (reemplazando a Aura).
+function ConversationPanel({ conv }) {
+  const controlled = !!conv.takeover?.active
+  const [busy, setBusy] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+
+  const toggleControl = async () => {
+    setBusy(true)
+    try {
+      if (controlled) {
+        await releaseConversation(conv.session_id)
+        toast.success('Aura retomó la conversación')
+      } else {
+        await takeOverConversation(conv.session_id)
+        toast.success('Tomaste el control — Aura está en pausa')
+      }
+      // El polling de la lista refrescará el estado en pocos segundos.
+    } catch {
+      toast.error('No se pudo cambiar el control. ¿Configuraste la clave de administración?')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const send = async () => {
+    const text = draft.trim()
+    if (!text || sending) return
+    setSending(true)
+    try {
+      await sendHumanReply(conv.session_id, text)
+      setDraft('')
+    } catch {
+      toast.error('No se pudo enviar la respuesta.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 border-b border-mist px-5 py-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 font-serif text-lg font-700 text-hilton-700">
+            {conv.name || conv.phone || 'Conversación'}
+            {conv.is_live && (
+              <span className="inline-flex items-center gap-1 text-xs font-sans font-500 text-emerald-600">
+                <Circle size={8} className="fill-emerald-500 text-emerald-500" /> En vivo
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slatey">
+            <ChannelBadge channel={conv.channel} phone={conv.phone} />
+            {controlled && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-500 text-amber-700">
+                <Hand size={11} /> Bajo control humano
+              </span>
+            )}
+          </p>
+        </div>
+        <button onClick={toggleControl} disabled={busy}
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-500 transition disabled:opacity-50 ${
+            controlled
+              ? 'bg-hilton-600 text-white hover:bg-hilton-700'
+              : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+          }`}>
+          {busy ? <Loader2 size={15} className="animate-spin" />
+            : controlled ? <Bot size={15} /> : <Hand size={15} />}
+          {controlled ? 'Devolver a Aura' : 'Tomar control'}
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <ChatTranscript sessionId={conv.session_id} pollMs={POLL_MS} />
+      </div>
+
+      {controlled && (
+        <div className="border-t border-mist p-3">
+          <div className="flex items-end gap-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              rows={1}
+              placeholder="Escribí tu respuesta como humano…"
+              className="max-h-32 min-h-[42px] flex-1 resize-none rounded-xl border border-mist px-3.5 py-2.5 text-sm focus:border-hilton-400 focus:outline-none"
+            />
+            <button onClick={send} disabled={!draft.trim() || sending}
+              className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-hilton-600 text-white transition hover:bg-hilton-700 disabled:opacity-50">
+              {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            </button>
+          </div>
+          <p className="mt-1.5 px-1 text-[11px] text-slatey">
+            Tu mensaje se le envía al huésped{conv.channel === 'whatsapp' ? ' por WhatsApp' : ''}. Aura no responderá hasta que la liberes.
+          </p>
+        </div>
+      )}
+    </>
   )
 }
 

@@ -495,6 +495,29 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                message_length=len(chat_request.message))
     
     try:
+        # 🆕 GATE DE TOMA DE CONTROL HUMANA: si un humano tomó esta conversación, Aura NO
+        # responde. Guardamos el mensaje del visitante (para que el humano lo vea en la bandeja)
+        # y devolvemos un aviso neutro; el agente NO corre. (La respuesta humana llega por
+        # WebSocket en el widget — ver Etapa 2 realtime.)
+        from app.services import conversation_control_service as conv_ctrl
+        if conv_ctrl.is_human_controlled(db, chat_request.session_id):
+            try:
+                agent_service._save_message_to_db(
+                    db=db, session_id=chat_request.session_id, role="user",
+                    content=chat_request.message, context_type="pre_sale",
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Web: no se pudo guardar mensaje en takeover",
+                               session_id=chat_request.session_id, error=str(e))
+            logger.info("Web chat: conversación bajo control humano, Aura no responde",
+                        session_id=chat_request.session_id)
+            return ChatResponse(
+                response="Un asesor de nuestro equipo está con tu consulta. Te responde por acá en un momento. 🙋",
+                has_context=False,
+                geography_analysis={},
+                error=False,
+            )
+
         # Procesar mensaje con el agente (timeout para evitar esperas indefinidas)
         try:
             result = await asyncio.wait_for(

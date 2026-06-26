@@ -175,6 +175,25 @@ export async function listConversations(channel = 'whatsapp') {
   return data.conversations ?? []
 }
 
+// ── Toma de control humana (takeover / HITL) ─────────────────────────────────
+// Acciones críticas: el cliente ya adjunta X-Admin-Key automáticamente si está configurada.
+export async function takeOverConversation(sessionId, { staffId = null, staffName = '' } = {}) {
+  const { data } = await client.post(`/api/conversations/${encodeURIComponent(sessionId)}/takeover`,
+    { staff_id: staffId, staff_name: staffName })
+  return data
+}
+
+export async function releaseConversation(sessionId) {
+  const { data } = await client.post(`/api/conversations/${encodeURIComponent(sessionId)}/release`)
+  return data
+}
+
+export async function sendHumanReply(sessionId, message, { staffId = null, staffName = '' } = {}) {
+  const { data } = await client.post(`/api/conversations/${encodeURIComponent(sessionId)}/reply`,
+    { message, staff_id: staffId, staff_name: staffName })
+  return data
+}
+
 // Todas las conversaciones de un contacto (web y WhatsApp; filtra por contact_id). Cada una
 // trae session_id, channel, started_at y message_count para listarlas en el perfil 360°.
 export async function getContactConversations(contactId) {
