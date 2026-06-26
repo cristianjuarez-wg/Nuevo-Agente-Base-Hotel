@@ -7,6 +7,7 @@ import { Loading, EmptyState, formatDateTime, WhatsAppDot } from '../ui'
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import ChatTranscript from '../components/ChatTranscript'
+import { useAdminGate } from '../components/useAdminGate'
 
 // Cada cuánto refrescamos la lista y la charla abierta (polling — bandeja "en vivo").
 const POLL_MS = 4000
@@ -88,20 +89,25 @@ function ConversationPanel({ conv }) {
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  // Las acciones de takeover son críticas (X-Admin-Key). runProtected abre el modal de clave
+  // ante un 403 y reintenta la acción al confirmarla.
+  const { runProtected, gateModal } = useAdminGate()
 
   const toggleControl = async () => {
     setBusy(true)
     try {
-      if (controlled) {
-        await releaseConversation(conv.session_id)
-        toast.success('Aura retomó la conversación')
-      } else {
-        await takeOverConversation(conv.session_id)
-        toast.success('Tomaste el control — Aura está en pausa')
-      }
+      await runProtected(async () => {
+        if (controlled) {
+          await releaseConversation(conv.session_id)
+          toast.success('Aura retomó la conversación')
+        } else {
+          await takeOverConversation(conv.session_id)
+          toast.success('Tomaste el control — Aura está en pausa')
+        }
+      })
       // El polling de la lista refrescará el estado en pocos segundos.
     } catch {
-      toast.error('No se pudo cambiar el control. ¿Configuraste la clave de administración?')
+      toast.error('No se pudo cambiar el control. Intentá de nuevo.')
     } finally {
       setBusy(false)
     }
@@ -112,8 +118,10 @@ function ConversationPanel({ conv }) {
     if (!text || sending) return
     setSending(true)
     try {
-      await sendHumanReply(conv.session_id, text)
-      setDraft('')
+      await runProtected(async () => {
+        await sendHumanReply(conv.session_id, text)
+        setDraft('')
+      })
     } catch {
       toast.error('No se pudo enviar la respuesta.')
     } finally {
@@ -179,6 +187,7 @@ function ConversationPanel({ conv }) {
           </p>
         </div>
       )}
+      {gateModal}
     </>
   )
 }
