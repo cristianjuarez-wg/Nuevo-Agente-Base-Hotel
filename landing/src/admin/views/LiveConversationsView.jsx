@@ -80,7 +80,7 @@ export default function LiveConversationsView() {
   if (loading) return <Loading label="Cargando conversaciones…" />
 
   return (
-    <div className="flex h-[calc(100dvh-180px)] min-h-[420px] gap-4">
+    <div className="flex h-full min-h-0 flex-1 gap-3">
       {/* Panel izquierdo: lista de conversaciones */}
       <div className="flex w-full max-w-sm shrink-0 flex-col rounded-2xl border border-mist bg-white">
         <div className="border-b border-mist p-3">

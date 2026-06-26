@@ -98,7 +98,12 @@ export default function AdminApp() {
           </a>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        {/* Conversaciones es una bandeja tipo "inbox": ocupa TODO el alto/ancho sin padding ni
+            scroll del main (su propio layout maneja el scroll). El resto de las vistas conserva
+            el padding y el scroll vertical habitual. */}
+        <main className={tab === 'conversaciones'
+          ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4'
+          : 'flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8'}>
           <Suspense fallback={<Loading />}>
             {tab === 'dashboard' && <DashboardView go={go} />}
             {tab === 'analiticas' && <AnalyticsView />}
