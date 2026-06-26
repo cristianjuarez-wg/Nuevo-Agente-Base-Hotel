@@ -118,6 +118,12 @@ export default function ChatWidget() {
   const typewriterRef = useRef(null)  // timer del efecto de tipeo (para poder cancelarlo)
   const wsRef = useRef(null)          // WebSocket de mensajes humanos en vivo (takeover)
   const seenHumanRef = useRef(new Set())  // dedupe de respuestas humanas recibidas por WS
+  // id incremental para keys ESTABLES de los mensajes (no usar el índice del array). Las keys
+  // por índice causaban un bug visual: al crecer el texto del typewriter y luego reemplazarlo
+  // (finish), React reconciliaba por posición y dejaba el fragmento parcial como un mensaje
+  // aparte (se veía el texto cortado + el completo). Con id estable cada burbuja es un nodo fijo.
+  const msgSeq = useRef(0)
+  const sendingRef = useRef(false)   // candado SÍNCRONO anti doble-envío (busy es estado async)
   const t = getStrings(lang)
 
   // Inyecta una respuesta HUMANA (asesor que tomó la conversación), recibida por WebSocket.
@@ -130,7 +136,7 @@ export default function ChatWidget() {
     seenHumanRef.current.add(k)
     setMessages((m) => {
       if (m.some((x) => x.role === 'assistant' && x.content === content)) return m  // ya visible
-      return [...m, { role: 'assistant', content, fromHuman: true }]
+      return [...m, { id: `m${++msgSeq.current}`, role: 'assistant', content, fromHuman: true }]
     })
     if (typewriterRef.current) clearTimeout(typewriterRef.current)
     setWaiting(false)
@@ -147,12 +153,12 @@ export default function ChatWidget() {
     setGreeted(true)
     getGreeting(useLang)
       .then((data) => {
-        setMessages([{ role: 'assistant', content: data.greeting }])
+        setMessages([{ id: `m${++msgSeq.current}`, role: 'assistant', content: data.greeting }])
         // Los starters vienen del perfil (español); solo se muestran en ES para no mezclar.
         setStarters(useLang === 'es' ? (data.conversation_starters?.slice(0, 4) || []) : [])
       })
       .catch(() =>
-        setMessages([{ role: 'assistant', content: getStrings(useLang).greetingFallback }])
+        setMessages([{ id: `m${++msgSeq.current}`, role: 'assistant', content: getStrings(useLang).greetingFallback }])
       )
   }, [lang])
 
@@ -273,16 +279,19 @@ export default function ChatWidget() {
   const typeOutReply = useCallback((fullText, cards) => {
     const sessionAtStart = sessionId.current
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-    // Mensaje assistant vacío al que le vamos creciendo el contenido.
-    setMessages((m) => [...m, { role: 'assistant', content: '', cards: [] }])
+    // Mensaje assistant vacío al que le vamos creciendo el contenido. Id estable: lo
+    // preservamos al reemplazar (finish/revealed) para que React lo trate como el MISMO nodo.
+    const bubble = { id: `m${++msgSeq.current}`, role: 'assistant', content: '', cards: [] }
+    setMessages((m) => [...m, bubble])
 
     const finish = (content) => {
       setMessages((m) => {
         const next = [...m]
-        next[next.length - 1] = { role: 'assistant', content, cards: cards || [] }
+        next[next.length - 1] = { ...bubble, content, cards: cards || [] }
         return next
       })
       setBusy(false)
+      sendingRef.current = false  // liberar el candado anti doble-envío
       inputRef.current?.focus()
     }
 
@@ -295,7 +304,7 @@ export default function ChatWidget() {
     let i = 0
     const step = () => {
       // Si la conversación se reseteó/cambió de idioma a mitad, cortamos sin escribir.
-      if (sessionId.current !== sessionAtStart) { setBusy(false); return }
+      if (sessionId.current !== sessionAtStart) { setBusy(false); sendingRef.current = false; return }
       i += perTick
       const revealed = words.slice(0, i).join('')
       if (i >= words.length) {
@@ -315,10 +324,14 @@ export default function ChatWidget() {
   const send = useCallback(
     async (text) => {
       const msg = (text ?? input).trim()
-      if (!msg || busy) return
+      // Candado SÍNCRONO: el textarea dentro del <form> puede disparar Enter (onKeyDown) y
+      // submit casi a la vez; `busy` es estado async y no frena la segunda llamada en el mismo
+      // tick. El ref sí (se setea ya). Se libera cuando termina el typewriter o ante un error.
+      if (!msg || busy || sendingRef.current) return
+      sendingRef.current = true
       setStarters([])
       setInput('')
-      setMessages((m) => [...m, { role: 'user', content: msg }])
+      setMessages((m) => [...m, { id: `m${++msgSeq.current}`, role: 'user', content: msg }])
       setBusy(true)
       setWaiting(true)
       try {
@@ -329,9 +342,10 @@ export default function ChatWidget() {
         setWaiting(false)
         setMessages((m) => [
           ...m,
-          { role: 'assistant', content: getStrings(lang).errorReply },
+          { id: `m${++msgSeq.current}`, role: 'assistant', content: getStrings(lang).errorReply },
         ])
         setBusy(false)
+        sendingRef.current = false
         inputRef.current?.focus()
       }
     },
@@ -524,7 +538,7 @@ export default function ChatWidget() {
               // con ese turno arriba, para leer la respuesta de Aura desde el comienzo.
               const isLastUser = m.role === 'user' && i === lastUserIndex
               return (
-              <div key={i} ref={isLastUser ? anchorRef : null} className="space-y-2.5">
+              <div key={m.id ?? i} ref={isLastUser ? anchorRef : null} className="space-y-2.5">
                 <Bubble role={m.role} accentColor={theme?.accent_color} bubbleBg={theme?.bubble_bg}>{m.content}</Bubble>
                 {m.cards?.length > 0 && (
                   <div className="space-y-2.5">
