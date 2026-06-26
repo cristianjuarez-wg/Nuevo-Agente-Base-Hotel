@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2, Trash2, MessageSquare, X } from 'lucide-react'
-import { listBookings, deleteBooking } from '../../services/api'
+import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2, Trash2, MessageSquare, X, Send, Loader2 } from 'lucide-react'
+import { listBookings, deleteBooking, sendCheckinExpress } from '../../services/api'
 import {
   PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatUSD, formatARS, formatDate,
 } from '../ui'
@@ -21,6 +21,17 @@ function StayBadge({ stay }) {
   const s = map[stay] || map.upcoming
   const Icon = s.icon
   return <Badge tone={s.tone}>{Icon && <Icon size={11} className="mr-1" />}{s.label}</Badge>
+}
+
+// Estado del check-in express (de booking.pre_checkin.status).
+function CheckinBadge({ pre }) {
+  const status = pre?.status
+  if (status === 'completed') {
+    const arr = pre?.estimated_arrival ? ` · ${pre.estimated_arrival}` : ''
+    return <Badge tone="green"><CheckCircle2 size={11} className="mr-1" />Check-in listo{arr}</Badge>
+  }
+  if (status === 'in_progress') return <Badge tone="amber">Check-in en proceso</Badge>
+  return <Badge tone="gray">Sin check-in</Badge>
 }
 
 const FILTERS = [
@@ -60,6 +71,7 @@ export default function BookingsView() {
   const [filter, setFilter] = useState('all')
   const [deletingCode, setDeletingCode] = useState(null)
   const [chatBooking, setChatBooking] = useState(null)  // reserva cuya conversación se está viendo
+  const [sendingCheckin, setSendingCheckin] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -104,6 +116,37 @@ export default function BookingsView() {
       <MessageSquare size={15} />
     </button>
   )
+
+  const handleSendCheckin = async (r) => {
+    if (!window.confirm(`¿Enviar el check-in express a ${r.guest_name} por WhatsApp? Recibirá un mensaje de Aura para adelantar su llegada.`)) return
+    setSendingCheckin(r.code)
+    try {
+      await sendCheckinExpress(r.code)
+      toast.success(`Check-in express enviado a ${r.guest_name}`)
+      load()
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'No se pudo enviar el check-in express.'
+      toast.error(msg)
+    } finally {
+      setSendingCheckin(null)
+    }
+  }
+
+  // Botón de check-in express: solo para reservas próximas/en casa, no completadas aún.
+  const CheckinButton = ({ r }) => {
+    if (!['upcoming', 'checked_in'].includes(r.stay_status)) return null
+    if (r.pre_checkin?.status === 'completed') return null
+    return (
+      <button
+        onClick={() => handleSendCheckin(r)}
+        disabled={sendingCheckin === r.code}
+        title="Enviar check-in express por WhatsApp"
+        className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-green-50 hover:text-green-600 disabled:opacity-50"
+      >
+        {sendingCheckin === r.code ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+      </button>
+    )
+  }
 
   // Abre el perfil 360° del pasajero (deep-link manejado por PassengersView).
   const goToProfile = (contactId) => {
@@ -157,13 +200,14 @@ export default function BookingsView() {
     ) },
     { key: 'stay', label: 'Estadía', sortable: true, sortKey: 'check_in', render: (r) => `${formatDate(r.check_in)} → ${formatDate(r.check_out)}` },
     { key: 'stay_status', label: 'Situación', render: (r) => <StayBadge stay={r.stay_status} /> },
+    { key: 'checkin', label: 'Check-in express', render: (r) => <CheckinBadge pre={r.pre_checkin} /> },
     { key: 'total', label: 'Total', sortable: true, render: (r) => (
       <span className="tabular-nums">{formatUSD(r.total_price_usd)} <span className="text-slatey">/ {formatARS(r.total_price_ars)}</span></span>
     ) },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'actions', label: '', render: (r) => (
-      <div className="flex items-center justify-end gap-1"><ChatButton r={r} /><DeleteButton r={r} /></div>
+      <div className="flex items-center justify-end gap-1"><CheckinButton r={r} /><ChatButton r={r} /><DeleteButton r={r} /></div>
     ) },
   ]
 
@@ -179,10 +223,12 @@ export default function BookingsView() {
         {r.room_number && <span className="ml-1.5 font-semibold tabular-nums text-hilton-700">· N° {r.room_number}</span>}
       </p>
       <p className="mt-1 text-xs text-slatey">{formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)</p>
+      <div className="mt-1.5"><CheckinBadge pre={r.pre_checkin} /></div>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>
         <div className="flex items-center gap-1.5">
           <OriginBadge origin={r.origin} />
+          <CheckinButton r={r} />
           <ChatButton r={r} />
           <DeleteButton r={r} />
         </div>

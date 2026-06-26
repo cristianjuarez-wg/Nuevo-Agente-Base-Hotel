@@ -129,6 +129,11 @@ class Booking(Base):
     created_by = Column(String(120), nullable=True)    # autor humano (futuro)
     created_at = Column(DateTime, default=datetime.now)
 
+    # Check-in express (Guest Experience Layer): el huésped adelanta su check-in por WhatsApp.
+    # JSON con: status (pending|in_progress|completed), estimated_arrival ("18:30"),
+    # document_url ("/media/checkin/<code>.jpg"), started_at, completed_at.
+    pre_checkin = Column(JSON, nullable=True, default=dict)
+
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
     is_demo = Column(Boolean, default=False, index=True)
 
@@ -210,6 +215,7 @@ class Booking(Base):
             "source": self.source,
             "origin": self.origin(),
             "created_at": iso_argentina(self.created_at),
+            "pre_checkin": self.pre_checkin or {},
         }
 
 
@@ -357,16 +363,16 @@ def _ensure_booking_columns():
     try:
         inspector = inspect(engine)
         existing = {c["name"] for c in inspector.get_columns("bookings")}
-        to_add = []
-        if "children" not in existing:
-            to_add.append("children")
-        if "infants" not in existing:
-            to_add.append("infants")
-        if not to_add:
-            return
+        is_sqlite = engine.dialect.name == "sqlite"
         with engine.begin() as conn:
-            for col in to_add:
-                conn.execute(text(f"ALTER TABLE bookings ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0"))
+            if "children" not in existing:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN children INTEGER NOT NULL DEFAULT 0"))
+            if "infants" not in existing:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN infants INTEGER NOT NULL DEFAULT 0"))
+            if "pre_checkin" not in existing:
+                # JSON nativo en Postgres; TEXT en SQLite (SQLAlchemy mapea JSON sobre TEXT).
+                col_type = "TEXT" if is_sqlite else "JSON"
+                conn.execute(text(f"ALTER TABLE bookings ADD COLUMN pre_checkin {col_type}"))
     except Exception:
         # No bloquear el arranque por la migración; las columnas tienen default en el modelo.
         pass

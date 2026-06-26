@@ -68,6 +68,12 @@ export async function deleteBooking(code) {
   return data
 }
 
+// Check-in express: dispara el flujo por WhatsApp para una reserva (acción protegida).
+export async function sendCheckinExpress(code) {
+  const { data } = await client.post(`/api/checkin/${encodeURIComponent(code)}/send`)
+  return data
+}
+
 // ── Chat del agente (Aura) ───────────────────────────────────────────────────
 export async function getGreeting(lang = 'es') {
   const { data } = await client.get('/api/chat/greeting', { params: { lang } })

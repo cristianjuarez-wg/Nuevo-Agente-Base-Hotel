@@ -98,6 +98,48 @@ def _send_agent_reply(to_phone: str, result: dict) -> bool:
     return sent
 
 
+def _save_checkin_document(media_url: str, content_type: str | None,
+                           session_id: str, db: Session) -> str | None:
+    """Descarga la imagen del documento (Twilio media) y la guarda en MEDIA_DIR/checkin/.
+
+    Devuelve la ruta pública ("/media/checkin/<code>.<ext>") o None si falló. Twilio exige
+    autenticación básica (Account SID + Auth Token) para bajar el media.
+    """
+    import os
+    import requests
+    from app.models.hotel import Booking
+
+    try:
+        # Buscar el código de la reserva en flujo para nombrar el archivo.
+        from app.services import checkin_express_service as checkin
+        b = checkin._get_booking_by_session(db, session_id)
+        code = b.code if b else session_id.replace("wa_", "")
+
+        ext = "jpg"
+        if content_type and "/" in content_type:
+            ext = content_type.split("/")[-1].split(";")[0] or "jpg"
+            ext = {"jpeg": "jpg"}.get(ext, ext)
+
+        auth = None
+        if settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN:
+            auth = (settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        resp = requests.get(media_url, auth=auth, timeout=20)
+        if resp.status_code != 200 or not resp.content:
+            logger.error("Check-in: no se pudo descargar el documento de Twilio",
+                         status=resp.status_code, session_id=session_id)
+            return None
+
+        checkin_dir = os.path.join(settings.MEDIA_DIR, "checkin")
+        os.makedirs(checkin_dir, exist_ok=True)
+        filename = f"{code}.{ext}"
+        with open(os.path.join(checkin_dir, filename), "wb") as f:
+            f.write(resp.content)
+        return f"/media/checkin/{filename}"
+    except Exception as e:  # noqa: BLE001
+        logger.error("Check-in: error guardando el documento", error=str(e), session_id=session_id)
+        return None
+
+
 async def _process_and_reply(
     from_field: str,
     body: str,
@@ -105,6 +147,8 @@ async def _process_and_reply(
     audio_url: str | None = None,
     audio_type: str | None = None,
     message_sid: str | None = None,
+    image_url: str | None = None,
+    image_type: str | None = None,
 ) -> None:
     """Procesa el mensaje con el agente y responde por WhatsApp. Corre en background.
 
@@ -181,6 +225,30 @@ async def _process_and_reply(
                 logger.info("WhatsApp: conversación bajo control humano, Aura no responde",
                             session_id=session_id)
                 return  # el humano responderá desde el backoffice
+
+        # 🆕 GATE CHECK-IN EXPRESS (determinístico, FUERA del LLM). Si esta sesión tiene un
+        # check-in en curso, el flujo lo maneja checkin_express_service — el agente NO se invoca.
+        if role == "guest":
+            from app.services import checkin_express_service as checkin
+            # (a) Llegó una IMAGEN y estábamos esperando el documento → guardarla y cerrar.
+            if image_url and checkin.awaiting_document(db, session_id):
+                doc_url = _save_checkin_document(image_url, image_type, session_id, db)
+                reply = checkin.save_document(db, session_id, doc_url) if doc_url else (
+                    "No pude guardar la imagen 🙇. ¿Podés reenviarla? O escribí *OMITIR* "
+                    "para mostrar el documento al llegar.")
+                whatsapp_service.send_text(phone, to_whatsapp_text(reply))
+                return
+            # (b) Texto dentro del flujo → procesar el paso (sin LLM).
+            if body and checkin.is_in_flow(db, session_id):
+                reply = checkin.handle_text_step(db, session_id, body)
+                whatsapp_service.send_text(phone, to_whatsapp_text(reply))
+                return
+
+        # Imagen fuera del flujo de check-in: no la maneja el agente; avisamos amablemente.
+        if image_url and not body:
+            whatsapp_service.send_text(
+                phone, "Recibí tu imagen 📷, pero no la esperaba ahora. ¿En qué te ayudo?")
+            return
 
         # Despachar al agente correcto según el rol (punto único de ruteo).
         from app.services.agent_router import route_whatsapp
@@ -262,19 +330,25 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
             logger.warning("WhatsApp: firma de Twilio inválida", url=url)
             return Response(status_code=403)
 
-    # Nota de voz: Twilio manda el audio como media (sin Body de texto). Lo detectamos
-    # acá y dejamos que el background task lo transcriba antes de pasárselo al agente.
+    # Media entrante: Twilio la manda sin Body de texto. Distinguimos:
+    #  - audio → nota de voz (la transcribe el background task antes del agente).
+    #  - imagen → puede ser el documento del check-in express (lo maneja un gate aparte).
     audio_url = None
     audio_type = None
+    image_url = None
+    image_type = None
     num_media = int(form.get("NumMedia", "0") or "0")
     if not body and num_media > 0:
         content_type = (form.get("MediaContentType0") or "").lower()
         if content_type.startswith("audio"):
             audio_url = form.get("MediaUrl0")
             audio_type = content_type
+        elif content_type.startswith("image"):
+            image_url = form.get("MediaUrl0")
+            image_type = content_type
 
-    if not body and not audio_url:
-        # Sin texto ni audio (stickers, ubicaciones, imágenes, etc.) — los ignoramos.
+    if not body and not audio_url and not image_url:
+        # Sin texto ni audio ni imagen (stickers, ubicaciones, etc.) — los ignoramos.
         return Response(status_code=200)
 
     logger.info(
@@ -282,11 +356,13 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
         from_field=from_field,
         length=len(body),
         is_audio=bool(audio_url),
+        is_image=bool(image_url),
     )
 
     # Procesar en background: respondemos 200 a Twilio ya mismo.
     task = asyncio.create_task(
-        _process_and_reply(from_field, body, profile_name, audio_url, audio_type, message_sid)
+        _process_and_reply(from_field, body, profile_name, audio_url, audio_type,
+                           message_sid, image_url, image_type)
     )
     # Si la task lanza una excepción FUERA del try interno (ej. en la transcripción, que
     # corre antes), sin callback se perdería en silencio ("Task exception was never

@@ -4,10 +4,32 @@ import {
   DollarSign, Star, Loader2, UtensilsCrossed, Receipt, Pencil, Save, LifeBuoy,
   MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2,
 } from 'lucide-react'
-import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getContactConversations } from '../../services/api'
+import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getContactConversations, MEDIA_BASE } from '../../services/api'
 import { Badge, OriginBadge, Loading, formatDate, formatUSD } from '../ui'
 import { toast } from '../toast'
 import ChatTranscript from './ChatTranscript'
+
+// Datos del check-in express (hora de llegada + documento) si el huésped lo completó.
+function CheckinExpressInfo({ stay }) {
+  const pre = stay?.pre_checkin
+  if (!pre || pre.status !== 'completed') return null
+  const docUrl = pre.document_url
+    ? (pre.document_url.startsWith('http') ? pre.document_url : `${MEDIA_BASE}${pre.document_url}`)
+    : null
+  return (
+    <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+      <p className="flex items-center gap-1.5 font-semibold">✅ Check-in express completado</p>
+      <div className="mt-1 space-y-0.5 text-green-700">
+        {pre.estimated_arrival && <p>🕒 Llega aprox. a las {pre.estimated_arrival}</p>}
+        {docUrl ? (
+          <p>📄 <a href={docUrl} target="_blank" rel="noreferrer" className="underline hover:text-green-900">Ver documento cargado</a></p>
+        ) : (
+          <p>📄 Documento: lo presenta al llegar</p>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // Estado de un ticket (consulta/reclamo) → badge. Compartido por la lista y el detalle.
 function ticketStatusBadge(t) {
@@ -195,6 +217,9 @@ export default function DetailDrawer({ contactId, onClose }) {
                   ))}
                 </div>
               )}
+
+              {/* Check-in express completado (de la estadía activa o próxima) */}
+              <CheckinExpressInfo stay={profile.active_stay || profile.upcoming_stay} />
 
               <div className="grid grid-cols-2 gap-3">
                 <ProfileStat icon={CalendarCheck} label="Estadías" value={profile.stays_count} />
