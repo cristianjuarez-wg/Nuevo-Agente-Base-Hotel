@@ -196,6 +196,12 @@ export async function releaseConversation(sessionId) {
   return data
 }
 
+// Elimina definitivamente una conversación (hilo + mensajes). No toca contacto/reservas.
+export async function deleteConversation(sessionId) {
+  const { data } = await client.delete(`/api/conversations/${encodeURIComponent(sessionId)}`)
+  return data
+}
+
 export async function sendHumanReply(sessionId, message, { staffId = null, staffName = '' } = {}) {
   const { data } = await client.post(`/api/conversations/${encodeURIComponent(sessionId)}/reply`,
     { message, staff_id: staffId, staff_name: staffName })

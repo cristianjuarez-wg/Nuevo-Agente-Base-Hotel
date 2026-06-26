@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2, Info, BedDouble } from 'lucide-react'
+import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2, Info, BedDouble, Trash2 } from 'lucide-react'
 import {
-  listConversations, takeOverConversation, releaseConversation, sendHumanReply,
+  listConversations, takeOverConversation, releaseConversation, sendHumanReply, deleteConversation,
 } from '../../services/api'
 import { Loading, EmptyState, Badge, formatDateTime, WhatsAppDot } from '../ui'
 import { toast } from '../toast'
@@ -66,6 +66,17 @@ export default function LiveConversationsView() {
 
   const selectedConv = rows.find((r) => r.session_id === selected) || null
 
+  const handleDelete = async (sessionId) => {
+    try {
+      await deleteConversation(sessionId)
+      setRows((prev) => prev.filter((r) => r.session_id !== sessionId))
+      if (selected === sessionId) setSelected(null)
+      toast.success('Conversación eliminada')
+    } catch {
+      toast.error('No se pudo eliminar la conversación. Intentá de nuevo.')
+    }
+  }
+
   if (loading) return <Loading label="Cargando conversaciones…" />
 
   return (
@@ -93,7 +104,8 @@ export default function LiveConversationsView() {
       <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-mist bg-white">
         {selectedConv ? (
           <ConversationPanel conv={selectedConv}
-                             onOpenProfile={selectedConv.contact_id ? () => setProfileId(selectedConv.contact_id) : null} />
+                             onOpenProfile={selectedConv.contact_id ? () => setProfileId(selectedConv.contact_id) : null}
+                             onDelete={handleDelete} />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-slatey">
             <MessageSquare size={28} className="opacity-40" />
@@ -110,11 +122,22 @@ export default function LiveConversationsView() {
 
 // Panel de una conversación: header con control humano, transcripto en vivo y, si está
 // tomada, el campo para responder como humano (reemplazando a Aura).
-function ConversationPanel({ conv, onOpenProfile }) {
+function ConversationPanel({ conv, onOpenProfile, onDelete }) {
   const controlled = !!conv.takeover?.active
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const removeConversation = async () => {
+    if (!window.confirm('¿Eliminar esta conversación definitivamente? Se borra el historial de chat (no afecta al contacto ni a sus reservas). Esta acción no se puede deshacer.')) return
+    setDeleting(true)
+    try {
+      await onDelete(conv.session_id)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   // Chat web sin actividad reciente: el visitante cerró el navegador, no se le puede
   // responder (la respuesta humana web se entrega por WebSocket). WhatsApp no tiene este
@@ -193,22 +216,29 @@ function ConversationPanel({ conv, onOpenProfile }) {
             )}
           </p>
         </div>
-        {webOffline ? (
-          <span className="inline-flex max-w-[180px] shrink-0 items-start gap-1.5 rounded-lg bg-mist px-3 py-2 text-xs text-slatey" title="El chat web ya no está activo">
-            <Info size={13} className="mt-0.5 shrink-0" /> El visitante cerró el chat. No se puede responder por web.
-          </span>
-        ) : (
-          <button onClick={toggleControl} disabled={busy}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-500 transition disabled:opacity-50 ${
-              controlled
-                ? 'bg-hilton-600 text-white hover:bg-hilton-700'
-                : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
-            }`}>
-            {busy ? <Loader2 size={15} className="animate-spin" />
-              : controlled ? <Bot size={15} /> : <Hand size={15} />}
-            {controlled ? 'Devolver a Aura' : 'Tomar control'}
+        <div className="flex shrink-0 items-center gap-2">
+          {webOffline ? (
+            <span className="inline-flex max-w-[180px] items-start gap-1.5 rounded-lg bg-mist px-3 py-2 text-xs text-slatey" title="El chat web ya no está activo">
+              <Info size={13} className="mt-0.5 shrink-0" /> El visitante cerró el chat. No se puede responder por web.
+            </span>
+          ) : (
+            <button onClick={toggleControl} disabled={busy}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-500 transition disabled:opacity-50 ${
+                controlled
+                  ? 'bg-hilton-600 text-white hover:bg-hilton-700'
+                  : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+              }`}>
+              {busy ? <Loader2 size={15} className="animate-spin" />
+                : controlled ? <Bot size={15} /> : <Hand size={15} />}
+              {controlled ? 'Devolver a Aura' : 'Tomar control'}
+            </button>
+          )}
+          <button onClick={removeConversation} disabled={deleting}
+            title="Eliminar conversación definitivamente"
+            className="inline-flex items-center justify-center rounded-lg p-2 text-slatey transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+            {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
           </button>
-        )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">

@@ -228,6 +228,41 @@ async def release_conversation(session_id: str, db: Session = Depends(get_db)):
     return {"released": True}
 
 
+@router.delete("/{session_id}")
+async def delete_conversation(session_id: str, db: Session = Depends(get_db)):
+    """Elimina DEFINITIVAMENTE una conversación: el hilo de chat + sus mensajes.
+
+    Borra la `Conversation` (con sus `ConversationMessage` en cascada) y limpia el cache
+    en RAM del agente para ese session_id. NO toca el Contact, ni reservas, ni leads:
+    son datos de negocio. Si el visitante/teléfono vuelve a escribir, arranca de cero.
+    """
+    convs = db.query(Conversation).filter(Conversation.session_id == session_id).all()
+    if not convs:
+        raise HTTPException(status_code=404, detail="Conversación no encontrada")
+
+    deleted_messages = (
+        db.query(ConversationMessage)
+        .filter(ConversationMessage.session_id == session_id)
+        .count()
+    )
+    # db.delete(conv) dispara el cascade="all, delete-orphan" → borra los mensajes.
+    for conv in convs:
+        db.delete(conv)
+    db.commit()
+
+    # Limpiar el cache en RAM del agente (reusa el helper de contacts).
+    try:
+        from app.routers.contacts import _clear_agent_ram_cache
+        _clear_agent_ram_cache([session_id])
+    except Exception as e:  # noqa: BLE001 — no revertir un borrado ya confirmado
+        logger.warning("No se pudo limpiar el cache del agente tras borrar conversación",
+                       session_id=session_id, error=str(e))
+
+    logger.info("Conversación eliminada", session_id=session_id,
+                deleted_messages=deleted_messages)
+    return {"deleted": True, "session_id": session_id, "deleted_messages": deleted_messages}
+
+
 @router.post("/{session_id}/reply")
 async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depends(get_db)):
     """Envía una respuesta HUMANA al huésped y la registra en la conversación.
