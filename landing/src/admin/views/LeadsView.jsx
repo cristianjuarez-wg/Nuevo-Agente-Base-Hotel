@@ -11,7 +11,6 @@ import ChatTranscript from '../components/ChatTranscript'
 import { FilterChip, FilterGroupLabel, FilterDivider } from '../components/FilterChip'
 import { useTableControls } from '../hooks/useTableControls'
 import KanbanBoard from './KanbanBoard'
-import ConversationsView from './ConversationsView'
 
 const TYPE_FILTERS = [
   { id: 'all', label: 'Todos' },
@@ -74,7 +73,6 @@ function flatten(lead) {
 }
 
 export default function LeadsView() {
-  const [section, setSection] = useState('leads')  // 'leads' | 'conversaciones'
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
@@ -209,29 +207,22 @@ export default function LeadsView() {
     <div>
       <PageHeader
         title="Leads"
-        subtitle={section === 'leads'
-          ? 'Interesados captados por el agente durante las conversaciones.'
-          : 'Quién se contactó por WhatsApp, aunque no haya dejado datos.'}
+        subtitle="Interesados captados por el agente durante las conversaciones."
         right={
           <div className="inline-flex rounded-xl bg-mist p-1">
-            <button onClick={() => setSection('leads')}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-                section === 'leads' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'}`}>
+            <button
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-sm font-medium text-hilton-700 shadow-card transition">
               <UserPlus size={14} /> Leads
             </button>
-            <button onClick={() => setSection('conversaciones')}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-                section === 'conversaciones' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'}`}>
+            <button onClick={() => { window.location.hash = 'admin/conversaciones' }}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium text-slatey transition hover:text-ink">
               <MessageSquare size={14} /> Conversaciones
             </button>
           </div>
         }
       />
 
-      {section === 'conversaciones' && <ConversationsView />}
-
-      {section === 'leads' && (
-        <>
+      <>
       {/* Vista: Tablero (vista principal) / Lista. Es una decisión de presentación, separada
           de los filtros — por eso va en su propia fila con un segmented control. */}
       <div className="mb-4 inline-flex rounded-xl bg-mist p-1">
@@ -310,8 +301,7 @@ export default function LeadsView() {
       {chatLead && (
         <LeadChatDrawer lead={chatLead} onClose={() => setChatLead(null)} />
       )}
-        </>
-      )}
+      </>
     </div>
   )
 }
@@ -319,7 +309,7 @@ export default function LeadsView() {
 // ── Panel lateral del lead: Actividad (bitácora) + Conversación ──────────────
 // Actividad = acciones de Aura (resumidas) + seguimientos humanos, en una línea de tiempo.
 // Conversación = el chat completo con Aura (reusa ChatTranscript).
-function LeadChatDrawer({ lead, onClose }) {
+export function LeadChatDrawer({ lead, onClose, onEdit }) {
   const [tab, setTab] = useState('actividad')  // 'actividad' | 'conversacion'
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -334,9 +324,17 @@ function LeadChatDrawer({ lead, onClose }) {
               {lead.interest && <span className="text-xs text-slatey">{lead.interest}</span>}
             </div>
           </div>
-          <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist">
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <button onClick={onEdit} aria-label="Editar datos" title="Editar datos"
+                      className="rounded-lg p-1.5 text-slatey hover:bg-mist hover:text-ink">
+                <Pencil size={17} />
+              </button>
+            )}
+            <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Pestañas */}
@@ -488,7 +486,7 @@ function LeadActivity({ leadId }) {
 }
 
 // ── Modal de edición de datos del lead ──────────────────────────────────────
-function EditLeadModal({ lead, onClose, onSaved }) {
+export function EditLeadModal({ lead, onClose, onSaved }) {
   const [firstName, setFirstName] = useState(lead.firstName || '')
   const [lastName, setLastName] = useState(lead.lastName || '')
   const [email, setEmail] = useState(lead.email || '')

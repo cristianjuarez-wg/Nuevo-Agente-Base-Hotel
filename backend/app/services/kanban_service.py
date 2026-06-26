@@ -74,6 +74,8 @@ class KanbanService:
             "has_contact": lead.is_complete_lead(),
             "contact_readiness": lead.contact_readiness,
             "kanban_stage": lead.kanban_stage,
+            "status": lead.status,
+            "session_id": lead.session_id,  # para abrir la conversación desde la card
             "channel": lead.channel,
             "whatsapp_linked": (
                 lead.channel == "whatsapp"

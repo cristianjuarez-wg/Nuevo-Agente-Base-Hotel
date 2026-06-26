@@ -2,8 +2,26 @@ import { useEffect, useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Inbox, TrendingUp, Trophy, XCircle } from 'lucide-react'
 import { getKanbanLeads, moveLeadStage } from '../../services/api'
 import { OriginBadge, WhatsAppDot, formatNumber } from '../ui'
-import { TypeBadge, ScoreBar } from './LeadsView'
+import { TypeBadge, ScoreBar, LeadChatDrawer, EditLeadModal } from './LeadsView'
 import { toast } from '../toast'
+
+// Mapea el lead del kanban (getKanbanLeads) al shape que esperan LeadChatDrawer/EditLeadModal.
+// El drawer usa name/type/status/kanbanStage/interest/sessionId; el modal usa firstName/lastName/email/phone.
+function toDrawerLead(l) {
+  return {
+    id: l.id,
+    name: l.display_name || l.name || 'Sin nombre',
+    firstName: l.name || '',
+    lastName: l.last_name || '',
+    email: l.email,
+    phone: l.phone,
+    type: l.lead_type,
+    status: l.status,
+    kanbanStage: l.kanban_stage,
+    interest: l.main_interest,
+    sessionId: l.session_id,
+  }
+}
 
 // Las 4 columnas del tablero, en orden, con su acento (color + texto → no solo color).
 const COLUMNS = [
@@ -28,7 +46,7 @@ function StatChip({ icon: Icon, label, value, tone = 'text-slatey' }) {
   )
 }
 
-function LeadCard({ lead, colIndex, onMove, dragging, onDragStart, onDragEnd }) {
+function LeadCard({ lead, colIndex, onMove, onOpen, dragging, onDragStart, onDragEnd }) {
   const prevStage = STAGE_ORDER[colIndex - 1]
   const nextStage = STAGE_ORDER[colIndex + 1]
   const prevLabel = prevStage && COLUMNS[colIndex - 1].label
@@ -38,9 +56,11 @@ function LeadCard({ lead, colIndex, onMove, dragging, onDragStart, onDragEnd }) 
       draggable
       onDragStart={(e) => onDragStart(e, lead.id)}
       onDragEnd={onDragEnd}
-      className={`rounded-2xl bg-white p-4 shadow-card cursor-grab active:cursor-grabbing ${
+      onClick={() => onOpen(lead)}
+      title="Ver y gestionar el lead"
+      className={`rounded-2xl bg-white p-4 shadow-card cursor-pointer transition hover:shadow-card-lg active:cursor-grabbing ${
         dragging ? 'opacity-50' : ''
-      } ${reduceMotion ? '' : 'transition-opacity duration-200'}`}
+      } ${reduceMotion ? '' : 'transition-all duration-200'}`}
     >
       <p className="font-600 text-ink leading-tight">{lead.display_name || 'Sin nombre'}</p>
       {lead.phone && (
@@ -61,7 +81,7 @@ function LeadCard({ lead, colIndex, onMove, dragging, onDragStart, onDragEnd }) 
         {/* Fallback táctil (drag HTML5 no anda en touch): mover de a una etapa. */}
         <div className="flex items-center gap-1">
           <button
-            onClick={() => prevStage && onMove(lead.id, prevStage)}
+            onClick={(e) => { e.stopPropagation(); prevStage && onMove(lead.id, prevStage) }}
             disabled={!prevStage}
             aria-label={prevLabel ? `Mover a ${prevLabel}` : 'Sin etapa anterior'}
             className="grid h-9 w-9 place-items-center rounded-lg text-slatey transition hover:bg-mist disabled:opacity-30"
@@ -69,7 +89,7 @@ function LeadCard({ lead, colIndex, onMove, dragging, onDragStart, onDragEnd }) 
             <ChevronLeft size={16} />
           </button>
           <button
-            onClick={() => nextStage && onMove(lead.id, nextStage)}
+            onClick={(e) => { e.stopPropagation(); nextStage && onMove(lead.id, nextStage) }}
             disabled={!nextStage}
             aria-label={nextLabel ? `Mover a ${nextLabel}` : 'Sin etapa siguiente'}
             className="grid h-9 w-9 place-items-center rounded-lg text-slatey transition hover:bg-mist disabled:opacity-30"
@@ -82,7 +102,7 @@ function LeadCard({ lead, colIndex, onMove, dragging, onDragStart, onDragEnd }) 
   )
 }
 
-function Column({ col, index, leads, dragId, dragOver, onDragStart, onDragEnd, onDragOver, onDrop, onMove }) {
+function Column({ col, index, leads, dragId, dragOver, onDragStart, onDragEnd, onDragOver, onDrop, onMove, onOpen }) {
   return (
     <div
       onDragOver={(e) => onDragOver(e, col.id)}
@@ -109,6 +129,7 @@ function Column({ col, index, leads, dragId, dragOver, onDragStart, onDragEnd, o
               colIndex={index}
               dragging={dragId === lead.id}
               onMove={onMove}
+              onOpen={onOpen}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
             />
@@ -142,6 +163,8 @@ export default function KanbanBoard() {
   const [loading, setLoading] = useState(true)
   const [dragId, setDragId] = useState(null)
   const [dragOver, setDragOver] = useState(null)
+  const [openLead, setOpenLead] = useState(null)   // lead abierto en el panel de gestión
+  const [editLead, setEditLead] = useState(null)   // lead en edición (modal)
   const dragFrom = useRef(null)
 
   const load = () => {
@@ -221,9 +244,26 @@ export default function KanbanBoard() {
             onDragOver={onDragOver}
             onDrop={onDrop}
             onMove={move}
+            onOpen={setOpenLead}
           />
         ))}
       </div>
+
+      {/* Panel de gestión del lead (bitácora + conversación + editar), reusado de la Lista. */}
+      {openLead && (
+        <LeadChatDrawer
+          lead={toDrawerLead(openLead)}
+          onClose={() => setOpenLead(null)}
+          onEdit={() => setEditLead(openLead)}
+        />
+      )}
+      {editLead && (
+        <EditLeadModal
+          lead={toDrawerLead(editLead)}
+          onClose={() => setEditLead(null)}
+          onSaved={() => { setEditLead(null); setOpenLead(null); load() }}
+        />
+      )}
     </div>
   )
 }
