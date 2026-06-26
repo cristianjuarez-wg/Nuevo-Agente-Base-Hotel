@@ -8,7 +8,7 @@ Solo lectura: no toca cómo se crean tickets, leads ni la conversación.
 from typing import Optional
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -214,5 +214,49 @@ async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depe
         logger.error("No se pudo guardar la respuesta humana", session_id=session_id, error=str(e))
 
     conv_ctrl.touch_activity(db, session_id)
-    # TODO(realtime): empujar este mensaje al widget web por WebSocket cuando esté el canal.
-    return {"sent": True, "delivered_whatsapp": delivered}
+
+    # Push en vivo al widget web: si hay un visitante con el chat abierto (WS suscrito a esta
+    # sesión), recibe el mensaje del humano al instante. No-op si no hay listeners (p. ej.
+    # WhatsApp, que ya entregó por Twilio). Best-effort: un fallo no rompe la respuesta.
+    pushed = 0
+    try:
+        from app.services.ws_hub import ws_hub
+        pushed = await ws_hub.broadcast(session_id, {
+            "type": "human_message",
+            "content": text,
+            "staff_name": payload.staff_name or "",
+        })
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo transmitir por WebSocket", session_id=session_id, error=str(e))
+
+    return {"sent": True, "delivered_whatsapp": delivered, "ws_pushed": pushed}
+
+
+@router.websocket("/ws/{session_id}")
+async def conversation_ws(websocket: WebSocket, session_id: str):
+    """Canal de SOLO RECEPCIÓN para el widget del chat web: recibe las respuestas humanas en
+    vivo (cuando un asesor tomó la conversación). El visitante sigue ENVIANDO por HTTP
+    (/api/chat/message); este socket solo empuja mensajes del servidor al cliente.
+
+    Valida el Origin a mano: el CORSMiddleware NO cubre el handshake WebSocket.
+    """
+    from app.services.ws_hub import ws_hub, origin_allowed
+
+    if not origin_allowed(websocket.headers.get("origin")):
+        await websocket.close(code=1008)  # policy violation
+        logger.warning("WS rechazado por Origin", origin=websocket.headers.get("origin"))
+        return
+
+    await websocket.accept()
+    await ws_hub.connect(session_id, websocket)
+    try:
+        # Mantener la conexión viva. No procesamos lo que envíe el cliente (solo ping/keepalive);
+        # receive_text se bloquea hasta que llega algo o el socket se cierra.
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:  # noqa: BLE001
+        logger.warning("WS error", session_id=session_id, error=str(e))
+    finally:
+        await ws_hub.disconnect(session_id, websocket)

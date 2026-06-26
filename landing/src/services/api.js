@@ -3,6 +3,14 @@ import axios from 'axios'
 // Base del backend del hotel (puerto 8010). Configurable por env para el deploy.
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8010'
 
+// URL del WebSocket del chat en vivo, derivada de API_BASE (http->ws, https->wss). Mismo host
+// del backend, así el Origin del handshake es válido. Devuelve la URL completa del canal de
+// una sesión (el visitante recibe por acá las respuestas humanas en vivo).
+export function chatWsUrl(sessionId) {
+  const base = API_BASE.replace(/^http/, 'ws').replace(/\/$/, '')
+  return `${base}/api/conversations/ws/${encodeURIComponent(sessionId)}`
+}
+
 const client = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
