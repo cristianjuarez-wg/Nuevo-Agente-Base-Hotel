@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.models.agent import Agent
+from app.models.staff import StaffMember
 from app.services import agent_performance_service
 from app.core.admin_auth import require_admin_key
 from app.core.logging_config import get_logger
@@ -76,3 +77,77 @@ def get_performance(agent_id: int, period: str = "mes", db: Session = Depends(ge
     if not agent:
         raise HTTPException(404, "Agente no encontrado.")
     return agent_performance_service.get_agent_performance(db, agent, period=period)
+
+
+# ── Parte de fin de día (Etapa 2) ────────────────────────────────────────────
+
+class DailyReportConfig(BaseModel):
+    enabled: bool = False
+    recipient_staff_ids: List[int] = []
+
+
+def _get_agent_or_404(db: Session, agent_id: int) -> Agent:
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if not agent:
+        raise HTTPException(404, "Agente no encontrado.")
+    return agent
+
+
+@router.get("/{agent_id}/daily-report")
+def get_daily_report(agent_id: int, db: Session = Depends(get_db)):
+    """Texto del parte de HOY (calculado on-demand) + la config de envío vigente.
+
+    Siempre disponible: el parte se muestra aunque el envío automático esté apagado.
+    """
+    agent = _get_agent_or_404(db, agent_id)
+    text = agent_performance_service.build_daily_report(db, agent)
+    cfg = agent.daily_report or {"enabled": False, "recipient_staff_ids": []}
+    return {"text": text, "config": cfg}
+
+
+@router.put("/{agent_id}/daily-report/config", dependencies=[Depends(require_admin_key)])
+def update_daily_report_config(agent_id: int, payload: DailyReportConfig, db: Session = Depends(get_db)):
+    """Guarda la config opt-in del parte: activo/inactivo + destinatarios del staff."""
+    agent = _get_agent_or_404(db, agent_id)
+    # Validar que los destinatarios existan en el equipo.
+    valid_ids = []
+    for sid in payload.recipient_staff_ids:
+        if db.query(StaffMember.id).filter(StaffMember.id == sid).first():
+            valid_ids.append(sid)
+    agent.daily_report = {"enabled": bool(payload.enabled), "recipient_staff_ids": valid_ids}
+    db.commit()
+    db.refresh(agent)
+    logger.info("Daily report config updated", agent=agent.name, enabled=agent.daily_report["enabled"])
+    return agent.daily_report
+
+
+@router.post("/{agent_id}/daily-report/send", dependencies=[Depends(require_admin_key)])
+def send_daily_report_now(agent_id: int, db: Session = Depends(get_db)):
+    """Envía el parte AHORA a los destinatarios configurados (disparo manual).
+
+    Funciona aunque el envío automático esté desactivado: el botón manual es independiente.
+    Si no hay destinatarios configurados, devuelve 409 para que el frontend lo avise.
+    """
+    agent = _get_agent_or_404(db, agent_id)
+    cfg = agent.daily_report or {}
+    staff_ids = cfg.get("recipient_staff_ids") or []
+    if not staff_ids:
+        raise HTTPException(409, "No hay destinatarios configurados. Configurá el envío primero.")
+    return agent_performance_service.send_daily_report(db, agent, staff_ids)
+
+
+@router.post("/cron/daily-report", dependencies=[Depends(require_admin_key)])
+def cron_daily_report(db: Session = Depends(get_db)):
+    """Para un cron externo (Render Cron Job / ping): envía el parte de cada agente con
+    el envío automático ACTIVADO a sus destinatarios. (El cron real se programa aparte.)"""
+    results = []
+    agents = db.query(Agent).all()
+    for agent in agents:
+        cfg = agent.daily_report or {}
+        if not cfg.get("enabled"):
+            continue
+        staff_ids = cfg.get("recipient_staff_ids") or []
+        if not staff_ids:
+            continue
+        results.append(agent_performance_service.send_daily_report(db, agent, staff_ids))
+    return {"agents_sent": len(results), "results": results}

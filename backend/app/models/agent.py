@@ -32,6 +32,10 @@ class Agent(Base):
     # Vínculo opcional al miembro del staff (owner/staff ya tienen teléfono cargado).
     staff_member_id = Column(Integer, nullable=True)
     description = Column(Text, nullable=True)
+    # Config del "parte de fin de día" (Etapa 2). Opt-in y por agente:
+    #   {"enabled": bool, "recipient_staff_ids": [int, ...]}
+    # Default: desactivado y sin destinatarios (el parte se muestra, NO se envía).
+    daily_report = Column(JSON, nullable=True, default=dict)
     created_at = Column(DateTime, default=datetime.now)
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
@@ -46,6 +50,7 @@ class Agent(Base):
             "channels": self.channels or [],
             "staff_member_id": self.staff_member_id,
             "description": self.description,
+            "daily_report": self.daily_report or {"enabled": False, "recipient_staff_ids": []},
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

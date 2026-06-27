@@ -767,6 +767,21 @@ export async function getAgentPerformance(id, period = 'mes') {
   return data
 }
 
+export async function getAgentDailyReport(id) {
+  const { data } = await client.get(`/api/agents/${id}/daily-report`)
+  return data
+}
+
+export async function updateAgentDailyReportConfig(id, payload) {
+  const { data } = await client.put(`/api/agents/${id}/daily-report/config`, payload)
+  return data
+}
+
+export async function sendAgentDailyReport(id) {
+  const { data } = await client.post(`/api/agents/${id}/daily-report/send`)
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 

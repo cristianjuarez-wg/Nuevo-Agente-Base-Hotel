@@ -204,3 +204,26 @@ def build_daily_report(db: Session, agent: Agent) -> str:
         if p.get("escalated"):
             parts.append(f"escalé {p['escalated']} a un humano")
     return ", ".join(parts) + "."
+
+
+def send_daily_report(db: Session, agent: Agent, staff_ids: list) -> Dict:
+    """Envía el parte de fin de día del agente a los miembros del staff indicados.
+
+    Devuelve el detalle del envío. Best-effort por destinatario: si un envío falla
+    (o WhatsApp no está configurado), se registra en `skipped` y se sigue con el resto.
+    """
+    from app.models.staff import StaffMember
+    from app.services.whatsapp_service import whatsapp_service
+
+    text = build_daily_report(db, agent)
+    body = f"📋 Parte de {agent.name} — {text}"
+
+    sent, skipped = [], []
+    for sid in staff_ids or []:
+        member = db.query(StaffMember).filter(StaffMember.id == sid).first()
+        if not member or not (member.phone or "").strip():
+            skipped.append({"staff_id": sid, "reason": "sin teléfono o no encontrado"})
+            continue
+        ok = whatsapp_service.send_text(member.phone, body)
+        (sent if ok else skipped).append({"staff_id": sid, "name": member.name})
+    return {"agent": agent.name, "text": text, "sent": sent, "skipped": skipped}
