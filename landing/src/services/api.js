@@ -782,6 +782,32 @@ export async function sendAgentDailyReport(id) {
   return data
 }
 
+export async function listAgentTraining(id) {
+  const { data } = await client.get(`/api/agents/${id}/training`)
+  return data.documents ?? []
+}
+
+export async function uploadAgentTraining(id, { title, file }) {
+  const form = new FormData()
+  form.append('title', title)
+  form.append('file', file)
+  const { data } = await client.post(`/api/agents/${id}/training/upload`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000,
+  })
+  return data
+}
+
+export async function addAgentTrainingText(id, { title, text }) {
+  const { data } = await client.post(`/api/agents/${id}/training/text`, { title, text })
+  return data
+}
+
+export async function deleteAgentTraining(id, docId) {
+  const { data } = await client.delete(`/api/agents/${id}/training/${docId}`)
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 

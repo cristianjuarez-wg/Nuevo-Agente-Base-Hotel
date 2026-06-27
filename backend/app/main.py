@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI):
         # Centro del Empleado Digital: crear la tabla `agents` y sembrar los 3 agentes
         # de fábrica (Aura/Asesor/Operaciones) de forma idempotente.
         from app.models import agent as _agent_model  # noqa: F401  (registra la tabla)
+        from app.models import training_document as _training_doc_model  # noqa: F401
         from app.models.database import SessionLocal
         from app.services.agent_directory import seed_agents
         _seed_db = SessionLocal()
