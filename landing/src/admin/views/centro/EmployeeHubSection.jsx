@@ -61,8 +61,8 @@ export default function EmployeeHubSection() {
   return (
     <div>
       <PageHeader
-        title="Centro del Empleado Digital"
-        subtitle="El legajo de cada empleado digital: identidad, desempeño y, próximamente, entrenamiento y skills."
+        title="Empleados Digitales"
+        subtitle="El legajo de cada empleado digital: identidad, desempeño, entrenamiento y skills."
         right={
           <div className="flex flex-wrap items-center gap-1.5">
             {agents.map((a) => (

@@ -1,30 +1,24 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
-  Users, BarChart3, Briefcase, UtensilsCrossed, LineChart, MessagesSquare, BadgeCheck,
-  BookOpen, Tag, Palette, Gauge, ShieldCheck, Database,
+  Users, BarChart3, UtensilsCrossed, LineChart, MessagesSquare, BadgeCheck,
+  Store, SlidersHorizontal,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
-import HabitacionesView from './views/HabitacionesView'
 import LeadsView from './views/LeadsView'
 import PassengersView from './views/PassengersView'
 import TicketsView from './views/TicketsView'
-import EquipoView from './views/EquipoView'
 import AsesoriaView from './views/AsesoriaView'
 import RestaurantSection from './views/restaurant/RestaurantSection'
-import PromotionsView from './views/agente/PromotionsView'
-import ThemesView from './views/agente/ThemesView'
-import LimitsView from './views/agente/LimitsView'
-import DemoView from './views/agente/DemoView'
-import UsageView from './views/UsageView'
+import ConfiguracionSection from './views/sistema/ConfiguracionSection'
 import { Toaster } from './toast'
 import { Loading } from './ui'
 
-// Lazy: AnalyticsView arrastra Recharts (~130 KB) y KnowledgeView es pesada. Se cargan
-// solo cuando el usuario entra a esas secciones, aliviando el bundle inicial.
+// Lazy: AnalyticsView arrastra Recharts (~130 KB) y NegocioSection arrastra KnowledgeView
+// (pesada). Se cargan solo cuando el usuario entra a esas secciones, aliviando el bundle.
 const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
-const KnowledgeView = lazy(() => import('./views/agente/KnowledgeView'))
+const NegocioSection = lazy(() => import('./views/negocio/NegocioSection'))
 const EmployeeHubSection = lazy(() => import('./views/centro/EmployeeHubSection'))
 // Bandeja en vivo: hace polling; lazy para no cargarla hasta que se entra a la sección.
 const LiveConversationsView = lazy(() => import('./views/LiveConversationsView'))
@@ -41,18 +35,14 @@ const NAV = [
   { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed, group: 'Operación' },
   { id: 'leads', label: 'Leads', icon: UserPlus, group: 'Comercial' },
   { id: 'analiticas', label: 'Analíticas', icon: BarChart3, group: 'Comercial' },
-  // Negocio: recursos del hotel que el agente CONSUME (no son del agente). Doc §9.2.
-  { id: 'conocimiento', label: 'Conocimiento', icon: BookOpen, group: 'Negocio' },
-  { id: 'promociones', label: 'Promociones', icon: Tag, group: 'Negocio' },
-  { id: 'habitaciones', label: 'Habitaciones', icon: Hotel, group: 'Negocio' },
-  // Plataforma: el agente (su legajo) + config global del sistema.
-  { id: 'centro', label: 'Centro del Empleado Digital', icon: BadgeCheck, group: 'Plataforma' },
-  { id: 'equipo', label: 'Equipo', icon: Briefcase, group: 'Plataforma' },
-  { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Plataforma' },
-  { id: 'temas', label: 'Temas del chat', icon: Palette, group: 'Plataforma' },
-  { id: 'limites', label: 'Límites y seguridad', icon: ShieldCheck, group: 'Plataforma' },
-  { id: 'consumo', label: 'Consumo IA', icon: Gauge, group: 'Plataforma' },
-  { id: 'demo', label: 'Demo', icon: Database, group: 'Plataforma' },
+  // Negocio: recursos del hotel que el agente CONSUME (Conocimiento/Promos/Habitaciones,
+  // con sub-pestañas internas). Doc §9.2.
+  { id: 'negocio', label: 'Negocio', icon: Store, group: 'Negocio' },
+  // Agente: el diferencial del producto, en grupo propio destacado.
+  { id: 'centro', label: 'Empleados Digitales', icon: BadgeCheck, group: 'Agente' },
+  // Sistema: config global (Equipo/Temas/Límites/Consumo/Demo) + el asesor de gerencia.
+  { id: 'configuracion', label: 'Configuración', icon: SlidersHorizontal, group: 'Sistema' },
+  { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Sistema' },
 ]
 
 // Devuelve el primer segmento tras #admin/ (ej "agente" en "#admin/agente/conocimiento").
@@ -124,22 +114,16 @@ export default function AdminApp() {
             {tab === 'analiticas' && <AnalyticsView />}
             {tab === 'reservas' && <BookingsView />}
             {tab === 'conversaciones' && <LiveConversationsView />}
-            {tab === 'habitaciones' && <HabitacionesView />}
             {tab === 'restaurante' && <RestaurantSection />}
             {tab === 'pasajeros' && <PassengersView />}
             {tab === 'leads' && <LeadsView />}
             {tab === 'tickets' && <TicketsView />}
-            {tab === 'equipo' && <EquipoView />}
             {tab === 'asesoria' && <AsesoriaView />}
             {tab === 'centro' && <EmployeeHubSection />}
-            {/* Negocio (recursos que el agente consume) */}
-            {tab === 'conocimiento' && <KnowledgeView />}
-            {tab === 'promociones' && <PromotionsView />}
-            {/* Plataforma (config global) */}
-            {tab === 'temas' && <ThemesView />}
-            {tab === 'limites' && <LimitsView />}
-            {tab === 'consumo' && <UsageView />}
-            {tab === 'demo' && <DemoView />}
+            {/* Negocio: Conocimiento / Promociones / Habitaciones (sub-pestañas internas) */}
+            {tab === 'negocio' && <NegocioSection />}
+            {/* Sistema: Equipo / Temas / Límites / Consumo / Demo (sub-pestañas internas) */}
+            {tab === 'configuracion' && <ConfiguracionSection />}
           </Suspense>
         </main>
       </div>
