@@ -20,7 +20,8 @@ from app.models.database import get_db
 from app.models.agent import Agent
 from app.models.staff import StaffMember
 from app.models.training_document import TrainingDocument
-from app.services import agent_performance_service
+from app.models.skill import Skill, AgentSkill
+from app.services import agent_performance_service, skill_service
 from app.config import settings
 from app.core.admin_auth import require_admin_key
 from app.core.logging_config import get_logger
@@ -244,3 +245,42 @@ def delete_training_document(agent_id: int, doc_id: int, db: Session = Depends(g
     db.delete(doc)
     db.commit()
     return {"deleted": True, "id": doc_id}
+
+
+# ── Skills + políticas (Etapa 4) ─────────────────────────────────────────────
+
+class AgentSkillUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    policy_values: Optional[dict] = None
+
+
+@router.get("/{agent_id}/skills")
+def list_skills(agent_id: int, db: Session = Depends(get_db)):
+    """Skills disponibles con la config (habilitada + valores) de este agente."""
+    _get_agent_or_404(db, agent_id)
+    return {"skills": skill_service.list_agent_skills(db, agent_id)}
+
+
+@router.put("/{agent_id}/skills/{skill_id}", dependencies=[Depends(require_admin_key)])
+def update_agent_skill(agent_id: int, skill_id: int, payload: AgentSkillUpdate, db: Session = Depends(get_db)):
+    """Habilita/configura una skill para un agente.
+
+    INVARIANTE §2.5: los valores se validan contra el schema y se RECORTAN al techo
+    duro server-side. Devuelve los valores efectivos + notas de los recortes aplicados.
+    """
+    _get_agent_or_404(db, agent_id)
+    skill = db.query(Skill).filter(Skill.id == skill_id).first()
+    if not skill:
+        raise HTTPException(404, "Skill no encontrada.")
+
+    inst = skill_service.get_or_create_agent_skill(db, agent_id, skill_id)
+    notes = []
+    if payload.policy_values is not None:
+        clean, notes = skill_service.validate_and_clamp(skill, payload.policy_values)
+        inst.policy_values = clean
+    if payload.enabled is not None:
+        inst.enabled = bool(payload.enabled)
+    db.commit()
+    db.refresh(inst)
+    logger.info("Agent skill updated", agent_id=agent_id, skill=skill.key, enabled=inst.enabled)
+    return {**inst.to_dict(), "notes": notes}

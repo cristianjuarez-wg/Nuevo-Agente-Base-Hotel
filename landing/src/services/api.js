@@ -808,6 +808,16 @@ export async function deleteAgentTraining(id, docId) {
   return data
 }
 
+export async function listAgentSkills(id) {
+  const { data } = await client.get(`/api/agents/${id}/skills`)
+  return data.skills ?? []
+}
+
+export async function updateAgentSkill(id, skillId, payload) {
+  const { data } = await client.put(`/api/agents/${id}/skills/${skillId}`, payload)
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 

@@ -6,6 +6,7 @@ import { FilterChip } from '../../components/FilterChip'
 import EmployeeIdentity from './EmployeeIdentity'
 import EmployeeMetrics from './EmployeeMetrics'
 import EmployeeTraining from './EmployeeTraining'
+import EmployeeSkills from './EmployeeSkills'
 
 // El "Centro del Empleado Digital": una vista POR AGENTE (no por función). El legajo de
 // cada empleado digital. Etapa 1: pestañas Identidad y Métricas; el resto llega luego.
@@ -13,8 +14,8 @@ const SUBNAV = [
   { id: 'identidad', label: 'Identidad', icon: FileText },
   { id: 'metricas', label: 'Métricas', icon: Gauge },
   { id: 'entrenamiento', label: 'Entrenamiento', icon: GraduationCap },
+  { id: 'skills', label: 'Skills', icon: Wrench },
   // Próximas etapas (deshabilitadas por ahora).
-  { id: 'skills', label: 'Skills', icon: Wrench, soon: true },
   { id: 'bitacora', label: 'Bitácora', icon: ScrollText, soon: true },
 ]
 
@@ -110,6 +111,8 @@ export default function EmployeeHubSection() {
           setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))} />
       ) : sub === 'entrenamiento' ? (
         <EmployeeTraining agent={agent} />
+      ) : sub === 'skills' ? (
+        <EmployeeSkills agent={agent} />
       ) : (
         <EmployeeMetrics agent={agent} />
       )}

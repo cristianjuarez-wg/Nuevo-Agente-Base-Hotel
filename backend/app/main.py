@@ -42,11 +42,14 @@ async def lifespan(app: FastAPI):
         # de fábrica (Aura/Asesor/Operaciones) de forma idempotente.
         from app.models import agent as _agent_model  # noqa: F401  (registra la tabla)
         from app.models import training_document as _training_doc_model  # noqa: F401
+        from app.models import skill as _skill_model  # noqa: F401
         from app.models.database import SessionLocal
         from app.services.agent_directory import seed_agents
+        from app.services.skill_service import seed_skills
         _seed_db = SessionLocal()
         try:
             seed_agents(_seed_db)
+            seed_skills(_seed_db)
         finally:
             _seed_db.close()
 
