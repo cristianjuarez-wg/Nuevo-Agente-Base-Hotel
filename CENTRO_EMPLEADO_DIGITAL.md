@@ -303,7 +303,64 @@ Un huésped entra por **post-venta** (consulta su reserva) y en el medio quiere 
 
 ---
 
-## 11. Por qué esto importa estratégicamente
+## 11. Memoria del cliente: el histórico 360° y su uso por contexto
+
+> Dónde se contempla que el agente recuerde y use el historial del cliente (qué comió, preferencias, alergias, fechas) según el contexto que le toque.
+
+### 11.1 El dato ya existe; el uso activo es lo que falta
+
+El **histórico ya está en el modelo:** el `Contact` (visión 360°) consolida reservas, consumo F&B por estadía, preferencias y —clave— **alergias separadas de dietas**, persistidas vía `guardar_preferencia`. El sistema *sabe* que el huésped es alérgico al maní y qué comió cada vez.
+
+Lo que **falta formalizar** es que el agente **use ese histórico de forma activa y distinta según el contexto**. Hoy el dato se guarda; traerlo al frente en el momento justo es comportamiento que no estaba escrito.
+
+### 11.2 Dónde encaja (sin inventar nada nuevo)
+
+- **El histórico vive en la capa Negocio** (§9): es un recurso del negocio —el `Contact` 360°— que el agente **consume**, no posee.
+- **El cómo y el cuándo usarlo es comportamiento del agente** → **skill + política** (§2.5).
+
+### 11.3 Dos naturalezas distintas (no confundir)
+
+| | Salvaguarda **obligatoria** | Oportunidad **opcional** |
+|---|---|---|
+| Ejemplo | Recordar la alergia al maní antes de un pedido | "¿Querés revivir tus vacaciones del último invierno?" |
+| Naturaleza | **Regla dura del contexto** — no negociable | **Criterio** — se usa si tiene sentido |
+| Implementación | **Invariante** del contexto de pedido: chequear alergias del `Contact` y bloquear/avisar ante conflicto, antes de confirmar | **Skill con política** (ej. `reconocer_huesped_recurrente`): desde cuántos meses sin venir se activa, qué tono, si se ofrece siempre o solo si el huésped abre la puerta |
+| Analogía en el modelo | Mismo nivel que "el precio nunca lo define el LLM" | Es la "anticipación" de la visión §4.3/§4.5 |
+
+> La salvaguarda de alergias **no es una skill opcional**: es una regla obligatoria del contexto, porque si se olvida hay riesgo real. Entra como invariante, igual que los techos de políticas sensibles (§2.5).
+
+### 11.4 Un mismo dato, tres usos según el contexto
+
+Esto cierra con la orquestación (§10): el **mismo histórico**, leído por **contextos distintos**, se usa distinto.
+
+| Contexto | Uso del histórico |
+|---|---|
+| Pre-venta | Reconexión emocional ("reviví lo del último invierno") |
+| Post-venta / pedido | Salvaguarda de alergias |
+| Gerencia (asesor) | Estadística agregada ("¿cuántos huéspedes recurrentes tuvimos?") |
+
+Un solo dato (capa Negocio), tres usos según el contexto del agente. Es el modelo funcionando.
+
+### 11.5 Es horizontal: el patrón se reutiliza en cualquier rubro
+
+El **patrón** —histórico 360° del cliente + uso contextual por skills/reglas— es genérico. Lo que cambia por rubro es **qué hay en el histórico**:
+
+| Rubro | Qué recuerda el histórico 360° |
+|---|---|
+| **Hotel** | Estadías, consumo F&B, alergias, preferencias de habitación |
+| **Retail de ropa** | Compras, **talle**, marcas, estilos, devoluciones → "te llegó el talle M de la temporada pasada, ¿seguís en M?" |
+| **Concesionaria** | Vehículos, services, próximos vencimientos |
+| **Gastronomía** | Pedidos habituales, alergias, mesa preferida |
+
+La **estructura** (Contact 360° + skills que lo usan por contexto) es **idéntica**; los **campos** cambian por vertical. Es, otra vez, acelerador horizontal + contenido vertical.
+
+### 11.6 Nota de privacidad
+
+El histórico incluye PII y a veces dato sensible (las alergias son dato de salud). Su uso debe respetar protección de datos (Ley 25.326), con consentimiento y los controles de seguridad ya previstos. La precisión importa especialmente en el uso-salvaguarda: un error de alergia no es un detalle de UX, es un riesgo.
+
+---
+
+## 12. Por qué esto importa estratégicamente
 
 - Es, probablemente, **el componente horizontal más valioso** del producto: el que materializa el diferencial vendido (el empleado digital).
 - Convierte cada skill bien definida en **activo reutilizable** entre clientes y entre rubros.
@@ -390,4 +447,5 @@ Cambios respecto de la versión anterior, a partir de la devolución del equipo:
 - **Anexo A** — nuevo: ejemplo trazado de skill de negociación con proveedor (valida el modelo de tres capas con un caso real).
 - **§9 nueva (Las tres capas: Negocio / Agente / Plataforma)** — separa qué dato vive en qué capa; recursos compartidos por referencia, no duplicación; respuesta a la navegación del backoffice (la sección "del agente" se desarma, no se reemplaza).
 - **§10 nueva (Orquestación)** — ruteo de identidad (determinístico) vs. orquestación de intención (interpretativo). Pre-venta/post-venta = **contextos de un agente huésped, no agentes separados**. El cambio en el medio es interno. Métricas separables por `context_type`.
-- **§11** — la antigua §9 (estratégica) se renumera a §11.
+- **§11 nueva (Memoria del cliente)** — el histórico 360° vive en capa Negocio; su uso es comportamiento del agente. Distinción **salvaguarda obligatoria** (alergias = invariante) vs. **oportunidad opcional** (reconexión = skill+política). Mismo dato, distinto uso por contexto. Patrón horizontal (retail: talle/compras; concesionaria: services; etc.).
+- **§12** — la sección estratégica se renumera (antes §9 → §11 → §12).

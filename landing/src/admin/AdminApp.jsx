@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
-  Users, BarChart3, Briefcase, Bot, UtensilsCrossed, LineChart, MessagesSquare,
+  Users, BarChart3, Briefcase, Bot, UtensilsCrossed, LineChart, MessagesSquare, BadgeCheck,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -19,6 +19,7 @@ import { Loading } from './ui'
 // solo cuando el usuario entra a esas secciones, aliviando el bundle inicial.
 const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
 const AgentSection = lazy(() => import('./views/agente/AgentSection'))
+const EmployeeHubSection = lazy(() => import('./views/centro/EmployeeHubSection'))
 // Bandeja en vivo: hace polling; lazy para no cargarla hasta que se entra a la sección.
 const LiveConversationsView = lazy(() => import('./views/LiveConversationsView'))
 
@@ -36,6 +37,7 @@ const NAV = [
   { id: 'analiticas', label: 'Analíticas', icon: BarChart3, group: 'Comercial' },
   { id: 'habitaciones', label: 'Habitaciones', icon: Hotel, group: 'Configuración' },
   { id: 'equipo', label: 'Equipo', icon: Briefcase, group: 'Configuración' },
+  { id: 'centro', label: 'Centro del Empleado Digital', icon: BadgeCheck, group: 'Configuración' },
   { id: 'agente', label: 'Agente Aura', icon: Bot, group: 'Configuración' },
   { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Configuración' },
 ]
@@ -117,6 +119,7 @@ export default function AdminApp() {
             {tab === 'equipo' && <EquipoView />}
             {tab === 'asesoria' && <AsesoriaView />}
             {tab === 'agente' && <AgentSection />}
+            {tab === 'centro' && <EmployeeHubSection />}
           </Suspense>
         </main>
       </div>

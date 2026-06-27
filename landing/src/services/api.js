@@ -746,6 +746,27 @@ export async function redeemVoucher(code) {
   return data
 }
 
+// ── Centro del Empleado Digital (agentes) ────────────────────────────────────
+export async function listAgents() {
+  const { data } = await client.get('/api/agents')
+  return data.agents ?? []
+}
+
+export async function getAgent(id) {
+  const { data } = await client.get(`/api/agents/${id}`)
+  return data
+}
+
+export async function updateAgent(id, payload) {
+  const { data } = await client.put(`/api/agents/${id}`, payload)
+  return data
+}
+
+export async function getAgentPerformance(id, period = 'mes') {
+  const { data } = await client.get(`/api/agents/${id}/performance`, { params: { period } })
+  return data
+}
+
 // Base del backend, para resolver rutas /media/... a URLs absolutas.
 export const MEDIA_BASE = API_BASE
 

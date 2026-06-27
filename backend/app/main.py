@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin
+from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin, agents
 from app.config import settings
 from app.core.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
@@ -37,6 +37,17 @@ async def lifespan(app: FastAPI):
         # Migraciones livianas (columnas agregadas tras el primer release).
         from app.models.database import run_light_migrations
         run_light_migrations()
+
+        # Centro del Empleado Digital: crear la tabla `agents` y sembrar los 3 agentes
+        # de fábrica (Aura/Asesor/Operaciones) de forma idempotente.
+        from app.models import agent as _agent_model  # noqa: F401  (registra la tabla)
+        from app.models.database import SessionLocal
+        from app.services.agent_directory import seed_agents
+        _seed_db = SessionLocal()
+        try:
+            seed_agents(_seed_db)
+        finally:
+            _seed_db.close()
 
         # Verificar componentes críticos
         vector_store = get_vector_store()
@@ -205,6 +216,7 @@ app.include_router(restaurant.router)
 app.include_router(whatsapp.router)
 app.include_router(conversations.router)
 app.include_router(checkin.router)
+app.include_router(agents.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"
