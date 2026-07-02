@@ -59,6 +59,13 @@ def get_centro_config_endpoint(db: Session = Depends(get_db)):
     return skill_service.get_centro_config(db).to_dict()
 
 
+@router.get("/training-schemas")
+def get_training_schemas():
+    """Formularios de entrenamiento por categoría (única fuente de verdad para el frontend)."""
+    from app.services.training_service import FORM_SCHEMAS, CATEGORY_ORDER
+    return {"order": CATEGORY_ORDER, "schemas": FORM_SCHEMAS}
+
+
 @router.put("/centro-config", dependencies=[Depends(require_admin_key)])
 def update_centro_config(payload: CentroConfigUpdate, db: Session = Depends(get_db)):
     """Prende/apaga la capa de configuración por agente (botón de emergencia).
@@ -265,7 +272,8 @@ def add_training_text(agent_id: int, payload: TrainingTextPayload, db: Session =
 
 @router.delete("/{agent_id}/training/{doc_id}", dependencies=[Depends(require_admin_key)])
 def delete_training_document(agent_id: int, doc_id: int, db: Session = Depends(get_db)):
-    """Elimina un documento de entrenamiento del agente."""
+    """Elimina un documento de entrenamiento del agente. Las plantillas de fábrica NO se
+    borran: se desactivan o se restauran (así siempre se puede volver al punto de partida)."""
     doc = (
         db.query(TrainingDocument)
         .filter(TrainingDocument.id == doc_id, TrainingDocument.agent_id == agent_id)
@@ -273,9 +281,128 @@ def delete_training_document(agent_id: int, doc_id: int, db: Session = Depends(g
     )
     if not doc:
         raise HTTPException(404, "Documento no encontrado.")
+    if doc.is_default:
+        raise HTTPException(400, "Las plantillas de fábrica no se eliminan: desactivala o restaurala.")
     db.delete(doc)
     db.commit()
     return {"deleted": True, "id": doc_id}
+
+
+# ── Entrenamiento ESTRUCTURADO (Fase E1) ─────────────────────────────────────
+
+class TrainingEntryPayload(BaseModel):
+    category: str
+    data: dict
+    title: Optional[str] = None
+
+
+class TrainingUpdatePayload(BaseModel):
+    data: Optional[dict] = None
+    active: Optional[bool] = None
+    title: Optional[str] = None
+
+
+@router.post("/{agent_id}/training/entry", dependencies=[Depends(require_admin_key)])
+def create_training_entry(agent_id: int, payload: TrainingEntryPayload, db: Session = Depends(get_db)):
+    """Crea un entrenamiento estructurado desde el formulario (campos, no texto libre)."""
+    from app.services import training_service
+    agent = _get_agent_or_404(db, agent_id)
+    if payload.category not in training_service.FORM_SCHEMAS:
+        raise HTTPException(400, f"Categoría inválida. Válidas: {', '.join(training_service.CATEGORY_ORDER)}")
+    clean, notes = training_service.validate_training_data(payload.category, payload.data)
+    doc = TrainingDocument(
+        agent_id=agent.id,
+        title=(payload.title or "").strip() or training_service.FORM_SCHEMAS[payload.category]["label"],
+        source="form", category=payload.category, data=clean, active=True,
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return {**doc.to_dict(), "notes": notes}
+
+
+@router.put("/{agent_id}/training/{doc_id}", dependencies=[Depends(require_admin_key)])
+def update_training_entry(agent_id: int, doc_id: int, payload: TrainingUpdatePayload, db: Session = Depends(get_db)):
+    """Edita los campos y/o el estado activo de un entrenamiento (incluidas las de fábrica)."""
+    from app.services import training_service
+    doc = (
+        db.query(TrainingDocument)
+        .filter(TrainingDocument.id == doc_id, TrainingDocument.agent_id == agent_id)
+        .first()
+    )
+    if not doc:
+        raise HTTPException(404, "Documento no encontrado.")
+    notes = []
+    if payload.data is not None:
+        if not doc.category:
+            raise HTTPException(400, "Este documento es de texto libre (legado): no tiene formulario.")
+        clean, notes = training_service.validate_training_data(doc.category, payload.data)
+        doc.data = clean
+    if payload.active is not None:
+        doc.active = bool(payload.active)
+    if payload.title is not None:
+        doc.title = payload.title.strip() or doc.title
+    db.commit()
+    db.refresh(doc)
+    return {**doc.to_dict(), "notes": notes}
+
+
+@router.post("/{agent_id}/training/{doc_id}/restore", dependencies=[Depends(require_admin_key)])
+def restore_training_entry(agent_id: int, doc_id: int, db: Session = Depends(get_db)):
+    """Restaura una plantilla de fábrica a su contenido original (solo is_default)."""
+    from app.services import training_service
+    doc = (
+        db.query(TrainingDocument)
+        .filter(TrainingDocument.id == doc_id, TrainingDocument.agent_id == agent_id)
+        .first()
+    )
+    if not doc:
+        raise HTTPException(404, "Documento no encontrado.")
+    if not doc.is_default or doc.category not in training_service.FACTORY:
+        raise HTTPException(400, "Solo las plantillas de fábrica se pueden restaurar.")
+    factory = training_service.FACTORY[doc.category]
+    doc.data = factory["data"]
+    doc.active = factory["active"]
+    doc.title = training_service.FORM_SCHEMAS[doc.category]["label"]
+    db.commit()
+    db.refresh(doc)
+    return doc.to_dict()
+
+
+@router.post("/{agent_id}/training/extract", dependencies=[Depends(require_admin_key)])
+async def extract_training(
+    agent_id: int,
+    category: str = Form(...),
+    file: UploadFile = File(None),
+    text: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    """Sube un documento (o texto) y la IA propone los CAMPOS del formulario de la
+    categoría, ya validados. El cliente revisa el formulario pre-llenado antes de guardar."""
+    from app.services import training_service
+    from app.routers.knowledge import _extract_doc_text, DOC_ACCEPTED_EXTS
+
+    _get_agent_or_404(db, agent_id)
+    if category not in training_service.FORM_SCHEMAS:
+        raise HTTPException(400, f"Categoría inválida. Válidas: {', '.join(training_service.CATEGORY_ORDER)}")
+
+    doc_text = (text or "").strip()
+    if file is not None:
+        ext = os.path.splitext(file.filename or "")[1].lower()
+        if ext not in DOC_ACCEPTED_EXTS:
+            raise HTTPException(400, "Formatos aceptados: PDF, Markdown (.md) o texto (.txt). O pegá el texto.")
+        content = await file.read()
+        if len(content) > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
+            raise HTTPException(413, f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
+        doc_text = _extract_doc_text(content, file.filename)
+
+    if not doc_text.strip():
+        raise HTTPException(422, "No se pudo obtener texto del documento.")
+
+    data = training_service.extract_training_fields(category, doc_text)
+    if not data:
+        raise HTTPException(422, "No pude extraer directivas de ese documento. Cargá los campos a mano.")
+    return {"category": category, "data": data}
 
 
 # ── Skills + políticas (Etapa 4) ─────────────────────────────────────────────

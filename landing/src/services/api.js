@@ -808,6 +808,38 @@ export async function deleteAgentTraining(id, docId) {
   return data
 }
 
+export async function getTrainingSchemas() {
+  const { data } = await client.get('/api/agents/training-schemas')
+  return data
+}
+
+export async function createTrainingEntry(id, payload) {
+  const { data } = await client.post(`/api/agents/${id}/training/entry`, payload)
+  return data
+}
+
+export async function updateTrainingEntry(id, docId, payload) {
+  const { data } = await client.put(`/api/agents/${id}/training/${docId}`, payload)
+  return data
+}
+
+export async function restoreTrainingEntry(id, docId) {
+  const { data } = await client.post(`/api/agents/${id}/training/${docId}/restore`)
+  return data
+}
+
+export async function extractTraining(id, { category, file, text }) {
+  const form = new FormData()
+  form.append('category', category)
+  if (file) form.append('file', file)
+  if (text) form.append('text', text)
+  const { data } = await client.post(`/api/agents/${id}/training/extract`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000,
+  })
+  return data
+}
+
 export async function listAgentSkills(id) {
   const { data } = await client.get(`/api/agents/${id}/skills`)
   return data.skills ?? []

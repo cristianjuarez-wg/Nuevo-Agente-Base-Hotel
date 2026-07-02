@@ -117,6 +117,12 @@ def run_light_migrations() -> None:
     # Fase A (flujos): tipo de skill — "flow" (flujo principal) | "function" (adosable).
     ensure_column("skills", "kind", "VARCHAR(20)")
     _backfill("skills", "kind", "function")
+    # Fase E (entrenamiento estructurado): categoría + campos + estado por documento.
+    ensure_column("training_documents", "category", "VARCHAR(30)")
+    ensure_column("training_documents", "data", "TEXT")
+    ensure_column("training_documents", "active", "BOOLEAN")
+    ensure_column("training_documents", "is_default", "BOOLEAN")
+    _backfill("training_documents", "active", "1")
     # Backfill: las filas creadas antes de agregar la columna quedan en NULL.
     _backfill("rooms", "status", "active")
     _backfill("staff_members", "area", "general")
