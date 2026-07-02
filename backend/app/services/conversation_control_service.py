@@ -109,10 +109,11 @@ def _is_stale(state: Dict) -> bool:
 def _is_web_offline(session_id: str, conv: Conversation) -> bool:
     """True si es un chat WEB sin actividad reciente (visitante desconectado).
 
-    WhatsApp (session_id 'wa_<phone>') NUNCA está offline: se entrega por Twilio. Web sí,
-    porque la entrega es por WebSocket al navegador abierto. Sin `last_message_at` se considera
-    offline por las dudas (no hay señal de actividad)."""
-    if (session_id or "").startswith("wa_") or (conv.channel == "whatsapp"):
+    WhatsApp ('wa_') e Instagram ('ig_') NUNCA están offline: se entregan por Twilio/Graph API
+    al dispositivo. Web sí, porque la entrega es por WebSocket al navegador abierto. Sin
+    `last_message_at` se considera offline por las dudas (no hay señal de actividad)."""
+    sid = session_id or ""
+    if sid.startswith("wa_") or sid.startswith("ig_") or conv.channel in ("whatsapp", "instagram"):
         return False
     last = conv.last_message_at
     if not last:

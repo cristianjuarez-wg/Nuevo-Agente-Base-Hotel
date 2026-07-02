@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     TWILIO_WHATSAPP_FROM: str = "whatsapp:+14155238886"  # número del sandbox de Twilio
     WHATSAPP_MAX_ROOM_CARDS: int = 3  # cuántas habitaciones (con foto) enviar por WhatsApp
 
+    # Instagram (Meta Messaging API, app en modo desarrollo) — canal opcional para la demo.
+    # Sin credenciales el webhook queda inactivo, igual que Twilio en local. Ver INSTAGRAM_SETUP.md.
+    INSTAGRAM_ACCESS_TOKEN: Optional[str] = None   # token del IG Business conectado a la app Meta
+    INSTAGRAM_ACCOUNT_ID: Optional[str] = None     # IG ID de la cuenta profesional (para /messages)
+    INSTAGRAM_VERIFY_TOKEN: Optional[str] = None   # token de verificación del webhook (hub.challenge)
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000

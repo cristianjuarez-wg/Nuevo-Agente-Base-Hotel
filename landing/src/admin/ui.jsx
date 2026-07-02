@@ -1,4 +1,4 @@
-import { Loader2, Bot, Globe, User, MessageCircle } from 'lucide-react'
+import { Loader2, Bot, Globe, User, MessageCircle, Instagram } from 'lucide-react'
 
 // Formato unificado (única fuente de verdad en lib/format.js).
 export { formatNumber, formatUSD, formatARS, formatDate, formatDateTime } from '../lib/format'
@@ -42,6 +42,7 @@ export function Badge({ children, tone = 'gray' }) {
     amber: 'bg-amber-100 text-amber-700',
     red: 'bg-red-100 text-red-700',
     blue: 'bg-hilton-100 text-hilton-700',
+    pink: 'bg-pink-100 text-pink-700',
   }
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tones[tone]}`}>
@@ -69,6 +70,7 @@ export function WhatsAppDot({ linked, title = 'Tenemos contacto por WhatsApp', c
 const ORIGIN_MAP = {
   aura_whatsapp: { tone: 'green', icon: Bot, label: 'WhatsApp' },
   aura_web: { tone: 'blue', icon: Bot, label: 'ChatWeb' },
+  aura_instagram: { tone: 'pink', icon: Instagram, label: 'Instagram' },
   web: { tone: 'gray', icon: Globe, label: 'Sitio web' },
   manual: { tone: 'amber', icon: User, label: 'Manual' },
 }

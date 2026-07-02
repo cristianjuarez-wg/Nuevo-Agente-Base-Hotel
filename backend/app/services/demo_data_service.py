@@ -419,7 +419,7 @@ def populate(db: Session) -> Dict:
         db.add(Lead(
             session_id=f"demo-lead-{_RNG.randint(1000, 9999)}",
             contact_id=contact.id,
-            channel=_RNG.choice(["web", "whatsapp"]),
+            channel=_RNG.choice(["web", "web", "whatsapp", "whatsapp", "instagram"]),
             generated_by="aura",
             name=contact.first_name, last_name=contact.last_name,
             phone=contact.phone_number, email=contact.email,
@@ -436,7 +436,7 @@ def populate(db: Session) -> Dict:
     for _ci in range(N_CONVERSATIONS):
         contact = _RNG.choice(contacts)
         started = now - timedelta(days=_RNG.randint(1, 390), hours=_RNG.randint(0, 23))
-        channel = _RNG.choice(["web", "whatsapp"])
+        channel = _RNG.choice(["web", "web", "whatsapp", "whatsapp", "instagram"])
         ctx_type = _RNG.choice(["pre_sale", "pre_sale", "post_sale"])
         sess = f"demo-conv-{_ci:05d}"  # índice secuencial → único (evita colisión UNIQUE)
         n_msgs = _RNG.randint(4, 12)
@@ -649,7 +649,7 @@ def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Bookin
         is_in_house = booking is not None and booking in in_house
         fulfillment = _RNG.choice(["room_service", "salon", "retiro"]) if is_in_house else _RNG.choice(["salon", "retiro"])
         payment_mode = "folio" if (is_in_house and _RNG.random() < 0.7) else "link"
-        channel = _RNG.choice(["web", "whatsapp"])
+        channel = _RNG.choice(["web", "web", "whatsapp", "whatsapp", "instagram"])
         status = _RNG.choice(["entregado", "entregado", "confirmado", "en_preparacion", "pendiente"])
         created = (datetime.combine(booking.check_in, datetime.min.time()) + timedelta(days=_RNG.randint(0, max(1, booking.nights)))
                    if booking else now_minus_days(_RNG.randint(0, 60)))
@@ -721,7 +721,7 @@ def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Bookin
             guest_phone=(contact.phone_number if contact else _phone()),
             party_size=_RNG.choice([2, 2, 3, 4, 4, 6]),
             reserved_for=reserved_for, status=status,
-            channel=_RNG.choice(["web", "whatsapp"]),
+            channel=_RNG.choice(["web", "web", "whatsapp", "whatsapp", "instagram"]),
             created_at=min(reserved_for - timedelta(days=_RNG.randint(1, 10)), now),
             is_demo=True,
         )
@@ -749,7 +749,7 @@ def _seed_restaurant(db: Session, contacts: List[Contact], bookings: List[Bookin
             buyer_name=_walkin_name(), buyer_phone=_phone(),
             total_usd=total_usd, total_ars=round(total_usd * rate, 2),
             status=st, redeemed_at=redeemed_at,
-            channel=_RNG.choice(["web", "whatsapp"]),
+            channel=_RNG.choice(["web", "web", "whatsapp", "whatsapp", "instagram"]),
             created_at=created, is_demo=True,
         )
         v.items = [

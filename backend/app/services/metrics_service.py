@@ -339,13 +339,13 @@ class MetricsService:
             rows = q.group_by(Conversation.channel).all()
 
             # Normalizar: las conversaciones sin canal seteado se asumen "web".
-            counts = {"web": 0, "whatsapp": 0}
+            counts = {"web": 0, "whatsapp": 0, "instagram": 0}
             for channel, count in rows:
-                key = channel if channel in ("web", "whatsapp") else "web"
+                key = channel if channel in counts else "web"
                 counts[key] += count
 
-            total = counts["web"] + counts["whatsapp"]
-            labels = {"web": "Web", "whatsapp": "WhatsApp"}
+            total = sum(counts.values())
+            labels = {"web": "Web", "whatsapp": "WhatsApp", "instagram": "Instagram"}
             channels = [
                 {
                     "name": labels[key],
@@ -353,7 +353,7 @@ class MetricsService:
                     "count": counts[key],
                     "percentage": round((counts[key] / total * 100), 1) if total > 0 else 0,
                 }
-                for key in ("web", "whatsapp")
+                for key in ("web", "whatsapp", "instagram")
             ]
 
             logger.info("Conversations by channel (real)", total=total, **counts)
@@ -365,6 +365,7 @@ class MetricsService:
                 "channels": [
                     {"name": "Web", "channel": "web", "count": 0, "percentage": 0},
                     {"name": "WhatsApp", "channel": "whatsapp", "count": 0, "percentage": 0},
+                    {"name": "Instagram", "channel": "instagram", "count": 0, "percentage": 0},
                 ],
                 "total_conversations": 0,
             }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2, Info, BedDouble, Trash2 } from 'lucide-react'
+import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2, Info, BedDouble, Trash2, Instagram as InstagramIcon } from 'lucide-react'
 import {
   listConversations, takeOverConversation, releaseConversation, sendHumanReply, deleteConversation,
 } from '../../services/api'
@@ -140,10 +140,10 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
   }
 
   // Chat web sin actividad reciente: el visitante cerró el navegador, no se le puede
-  // responder (la respuesta humana web se entrega por WebSocket). WhatsApp no tiene este
-  // problema (entrega por Twilio al teléfono).
+  // responder (la respuesta humana web se entrega por WebSocket). WhatsApp e Instagram no
+  // tienen este problema (entrega por Twilio / Graph API al dispositivo).
   const webOffline = conv.channel === 'web' && !conv.is_live
-  const waStale = conv.channel === 'whatsapp' && !conv.is_live  // retomar contacto viejo
+  const waStale = ['whatsapp', 'instagram'].includes(conv.channel) && !conv.is_live  // retomar contacto viejo
 
   const toggleControl = async () => {
     setBusy(true)
@@ -205,7 +205,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
             )}
           </p>
           <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-slatey">
-            <ChannelBadge channel={conv.channel} phone={conv.phone} />
+            <ChannelBadge channel={conv.channel} phone={conv.phone} igUsername={conv.ig_username} />
             {controlled && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-500 text-amber-700">
                 <Hand size={11} /> Bajo control humano
@@ -262,7 +262,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
             </button>
           </div>
           <p className="mt-1.5 px-1 text-[11px] text-slatey">
-            Tu mensaje se le envía al huésped{conv.channel === 'whatsapp' ? ' por WhatsApp' : ''}. Aura no responderá hasta que la liberes.
+            Tu mensaje se le envía al huésped{conv.channel === 'whatsapp' ? ' por WhatsApp' : conv.channel === 'instagram' ? ' por Instagram' : ''}. Aura no responderá hasta que la liberes.
           </p>
         </div>
       )}
@@ -291,19 +291,27 @@ function ConversationRow({ r, active, onClick }) {
         <span className="truncate text-xs text-slatey">
           {r.last_message_role === 'user' ? '' : 'Aura: '}{r.last_message_preview || '—'}
         </span>
-        <ChannelBadge channel={r.channel} phone={r.phone} compact />
+        <ChannelBadge channel={r.channel} phone={r.phone} igUsername={r.ig_username} compact />
       </div>
     </button>
   )
 }
 
-// Indicador de canal: WhatsApp (punto verde) o Web (globo).
-function ChannelBadge({ channel, phone, compact = false }) {
+// Indicador de canal: WhatsApp (punto verde), Instagram (ícono IG + @usuario) o Web (globo).
+function ChannelBadge({ channel, phone, igUsername, compact = false }) {
   if (channel === 'whatsapp') {
     return (
       <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slatey">
         <WhatsAppDot linked title="WhatsApp" />
         {!compact && <>{phone || 'WhatsApp'}</>}
+      </span>
+    )
+  }
+  if (channel === 'instagram') {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slatey">
+        <InstagramIcon size={13} className="text-pink-500" />
+        {!compact && <>{igUsername || 'Instagram'}</>}
       </span>
     )
   }

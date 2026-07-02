@@ -259,9 +259,10 @@ class LeadService:
         lead = db.query(Lead).filter(Lead.session_id == session_id).first()
         
         if not lead:
-            # Canal derivado del session_id: el webhook de WhatsApp usa el prefijo "wa_".
+            # Canal derivado del session_id: WhatsApp usa el prefijo "wa_", Instagram "ig_".
             is_wa = session_id.startswith("wa_")
-            channel = "whatsapp" if is_wa else "web"
+            is_ig = session_id.startswith("ig_")
+            channel = "whatsapp" if is_wa else ("instagram" if is_ig else "web")
             # En WhatsApp el teléfono ES la sesión: lo guardamos en el lead para que Aura sepa
             # que ya lo conoce (y no se lo pida) y para arrancar el contacto con el dato.
             wa_phone = ("+" + session_id[3:]) if is_wa else None

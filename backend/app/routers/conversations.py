@@ -132,7 +132,18 @@ async def list_conversations(
             ld = leads_by_session.get(r.session_id)
             if ld and ld.name:
                 name = (f"{ld.name} {ld.last_name}".strip() if ld.last_name else ld.name)
-        display_name = name or (phone if r.channel == "whatsapp" and phone else "Visitante web")
+        # Identidad de Instagram: el @username vive en extra_metadata (los usuarios de IG no
+        # tienen teléfono). Se muestra como "@usuario" donde WhatsApp muestra el número.
+        ig_username = (r.extra_metadata or {}).get("ig_username") if r.channel == "instagram" else None
+        ig_handle = f"@{ig_username}" if ig_username else None
+        if name:
+            display_name = name
+        elif r.channel == "whatsapp" and phone:
+            display_name = phone
+        elif r.channel == "instagram":
+            display_name = ig_handle or "Usuario de Instagram"
+        else:
+            display_name = "Visitante web"
         prev = previews.get(r.session_id)
         preview_text = (prev["content"][:120] if prev else "")
         is_live = bool(r.last_message_at and r.last_message_at >= live_cutoff)
@@ -142,6 +153,7 @@ async def list_conversations(
             "session_id": r.session_id,
             "contact_id": r.contact_id,
             "phone": phone,
+            "ig_username": ig_handle,
             "name": name,
             "display_name": display_name,
             "guest_status": _guest_status(r.contact_id, c),
@@ -297,6 +309,13 @@ async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depe
         if delivered is False:
             logger.error("Respuesta humana: Twilio rechazó el envío",
                          session_id=session_id, phone=phone)
+    elif (session_id or "").startswith("ig_"):
+        # Instagram: el IGSID es la sesión; se entrega por la Graph API de Meta.
+        from app.services.instagram_service import instagram_service
+        delivered = instagram_service.send_text(session_id[3:], text)
+        if delivered is False:
+            logger.error("Respuesta humana: Meta rechazó el envío",
+                         session_id=session_id)
 
     # Persistir el mensaje del humano (visible en la bandeja y en el transcripto).
     try:

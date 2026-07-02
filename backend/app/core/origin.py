@@ -14,10 +14,11 @@ from typing import Dict, Optional
 
 # key -> etiqueta mostrable. El front mapea la key a icono + color.
 _LABELS = {
-    "aura_whatsapp": "WhatsApp",   # 🤖 Aura por WhatsApp
-    "aura_web": "ChatWeb",         # 🤖 Aura por el chat del sitio
-    "web": "Sitio web",            # 🌐 el huésped reservó solo en el motor del sitio
-    "manual": "Manual",            # 👤 carga del equipo (futuro)
+    "aura_whatsapp": "WhatsApp",    # 🤖 Aura por WhatsApp
+    "aura_web": "ChatWeb",          # 🤖 Aura por el chat del sitio
+    "aura_instagram": "Instagram",  # 🤖 Aura por DM de Instagram
+    "web": "Sitio web",             # 🌐 el huésped reservó solo en el motor del sitio
+    "manual": "Manual",             # 👤 carga del equipo (futuro)
 }
 
 
@@ -68,6 +69,8 @@ def origin_from_channel(channel: Optional[str], generated_by: str = "aura") -> D
         return _make("human", channel or "manual", "manual")
     if channel == "whatsapp":
         return _make("aura", "whatsapp", "aura_whatsapp")
+    if channel == "instagram":
+        return _make("aura", "instagram", "aura_instagram")
     if channel == "web":
         return _make("aura", "web", "aura_web")
     # canal desconocido -> ChatWeb por defecto (un lead siempre pasó por el chat)

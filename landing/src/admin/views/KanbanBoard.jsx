@@ -71,7 +71,7 @@ function LeadCard({ lead, colIndex, onMove, onOpen, dragging, onDragStart, onDra
       )}
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         <TypeBadge type={lead.lead_type} />
-        {lead.channel && <OriginBadge origin={lead.channel === 'whatsapp' ? 'aura_whatsapp' : 'aura_web'} />}
+        {lead.channel && <OriginBadge origin={lead.channel === 'whatsapp' ? 'aura_whatsapp' : lead.channel === 'instagram' ? 'aura_instagram' : 'aura_web'} />}
       </div>
       <div className="mt-2.5">
         <ScoreBar score={lead.interest_score} />
