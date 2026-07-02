@@ -11,11 +11,13 @@ Reglas verificadas:
 from app.services import training_service as ts
 from app.services.training_service import (
     validate_training_data, render_training, seed_training_defaults,
-    FORM_SCHEMAS, FACTORY, CATEGORY_ORDER,
+    get_training_blocks, FORM_SCHEMAS, FACTORY, CATEGORY_ORDER,
 )
 from app.services.agent_directory import seed_agents
+from app.services.skill_service import invalidate_centro_cache
 from app.models.training_document import TrainingDocument
 from app.models.agent import Agent
+from app.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +113,107 @@ def test_seed_no_clobber(db):
 # ---------------------------------------------------------------------------
 # 4. Endpoints: reglas de default, restore y formularios
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 5. Inyección con sustitución (Fase E2): paridad, sustitución y aditivas
+# ---------------------------------------------------------------------------
+
+def _reset_training(db, aura_id):
+    """Deja el entrenamiento del agente en estado de fábrica puro (los tests comparten DB)."""
+    db.query(TrainingDocument).filter(TrainingDocument.agent_id == aura_id).delete()
+    db.commit()
+    seed_training_defaults(db)
+
+
+def test_e2_paridad_estado_fabrica(db):
+    """Con SOLO las plantillas de fábrica (sin ediciones), los bloques son los del código
+    byte a byte y no se inyecta nada aditivo — el prompt queda idéntico al histórico."""
+    seed_agents(db)
+    aura = db.query(Agent).filter(Agent.role == "guest").first()
+    _reset_training(db, aura.id)
+    invalidate_centro_cache()
+
+    blocks = get_training_blocks(db, aura.id)
+    assert blocks["tono_block"] == DEFAULT_TONO_BLOCK
+    assert blocks["politica_block"] == DEFAULT_POLITICA_BLOCK
+    assert blocks["training_block"] == ""
+
+
+def test_e2_sustitucion_tono_del_cliente(db):
+    """El cliente edita SU tono (activo) → el bloque es el SUYO y NO el del código."""
+    seed_agents(db)
+    aura = db.query(Agent).filter(Agent.role == "guest").first()
+    _reset_training(db, aura.id)
+    doc = (
+        db.query(TrainingDocument)
+        .filter(TrainingDocument.agent_id == aura.id, TrainingDocument.category == "tono_marca")
+        .first()
+    )
+    doc.data = {**doc.data, "trato": "usted", "notas": "Formalidad británica."}
+    db.commit()
+    invalidate_centro_cache()
+
+    blocks = get_training_blocks(db, aura.id)
+    assert blocks["tono_block"] != DEFAULT_TONO_BLOCK
+    assert "TONO DE MARCA" in blocks["tono_block"] and "usted" in blocks["tono_block"]
+    assert "QUIÉN SOS" not in blocks["tono_block"]  # un solo tono, sin competencia
+
+
+def test_e2_aditiva_activada_se_inyecta(db):
+    """Activar una aditiva (decisión explícita) la inyecta aunque conserve el contenido
+    sugerido; la objeciones de fábrica SIN editar no se inyecta (ya está en el cerebro)."""
+    seed_agents(db)
+    aura = db.query(Agent).filter(Agent.role == "guest").first()
+    _reset_training(db, aura.id)
+    arg = (
+        db.query(TrainingDocument)
+        .filter(TrainingDocument.agent_id == aura.id, TrainingDocument.category == "argumentario")
+        .first()
+    )
+    arg.active = True
+    db.commit()
+    invalidate_centro_cache()
+
+    blocks = get_training_blocks(db, aura.id)
+    assert "QUÉ DESTACAR" in blocks["training_block"]           # aditiva activada
+    assert "INAMOVIBLES" in blocks["training_block"]            # preámbulo de jerarquía
+    assert "MANEJO DE OBJECIONES" not in blocks["training_block"]  # espejo sin editar, fuera
+
+
+def test_e2_kill_switch_apaga_entrenamiento(db):
+    from app.services.skill_service import get_centro_config
+    seed_agents(db)
+    aura = db.query(Agent).filter(Agent.role == "guest").first()
+    _reset_training(db, aura.id)
+    doc = (
+        db.query(TrainingDocument)
+        .filter(TrainingDocument.agent_id == aura.id, TrainingDocument.category == "tono_marca")
+        .first()
+    )
+    doc.data = {**doc.data, "notas": "editado"}
+    db.commit()
+
+    config = get_centro_config(db)
+    config.use_agent_config = False
+    db.commit()
+    invalidate_centro_cache()
+    blocks = get_training_blocks(db, aura.id)
+    assert blocks["tono_block"] == DEFAULT_TONO_BLOCK   # capa apagada → defaults
+
+    config.use_agent_config = True
+    db.commit()
+    invalidate_centro_cache()
+    assert get_training_blocks(db, aura.id)["tono_block"] != DEFAULT_TONO_BLOCK
+
+
+def test_e2_prompt_ensambla_con_defaults(db):
+    """El prompt armado con defaults contiene el carácter histórico intacto."""
+    from app.services.hotel_sdk_orchestrator import hotel_sdk_orchestrator
+    text = hotel_sdk_orchestrator._build_instructions("", "es")
+    assert "QUIÉN SOS (tu carácter" in text
+    assert "herramienta de cierre" in text          # política default en la regla 8
+    assert "TONO DE MARCA" not in text              # nada del cliente
+
 
 def test_endpoints_default_restore_y_schemas(db, client):
     seed_agents(db)

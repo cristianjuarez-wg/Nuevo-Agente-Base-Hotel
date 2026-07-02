@@ -388,6 +388,88 @@ def extract_training_fields(category: str, text: str) -> Dict:
 # NUNCA pisa (el doc, una vez creado, es del cliente; restaurar es explícito).
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# INYECCIÓN (Fase E2) — bloques para el prompt de pre-venta, con SUSTITUCIÓN.
+#
+# Regla de efectividad (preserva la paridad por defecto):
+#   - Categorías ESPEJO (tono_marca, politica_comercial, objeciones): la plantilla
+#     de fábrica SIN EDITAR no se inyecta — su contenido YA está representado en el
+#     cerebro (inyectarla duplicaría). Se vuelve efectiva cuando el cliente la EDITA
+#     (o crea la suya): ahí su tono/política SUSTITUYE al del código.
+#   - Categorías ADITIVAS (argumentario, calificacion_leads, ejemplos): nacen
+#     desactivadas; ACTIVARLAS es la decisión explícita del cliente → se inyectan
+#     estando activas, aunque conserven el contenido sugerido de fábrica.
+# ---------------------------------------------------------------------------
+_MIRROR_CATEGORIES = ("tono_marca", "politica_comercial", "objeciones")
+_ADDITIVE_CATEGORIES = ("argumentario", "calificacion_leads", "ejemplos")
+_MAX_TRAINING_BLOCK = 3000
+
+_TRAINING_PREAMBLE = (
+    "DIRECTIVAS DE ENTRENAMIENTO DEL HOTEL (refinan tu estilo comercial; tus reglas "
+    "de seguridad y de herramientas son INAMOVIBLES y siempre ganan):"
+)
+
+
+def _is_factory_unedited(doc: TrainingDocument) -> bool:
+    return bool(doc.is_default) and (doc.data or {}) == FACTORY.get(doc.category, {}).get("data")
+
+
+def get_training_blocks(db: Session, agent_id: Optional[int]) -> Dict[str, str]:
+    """Bloques de entrenamiento para el prompt: {tono_block, politica_block, training_block}.
+
+    Fail-open SIEMPRE: kill switch apagado, sin agente, sin docs efectivos o cualquier
+    error → defaults del código (paridad exacta con el comportamiento histórico).
+    """
+    from app.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK
+    result = {
+        "tono_block": DEFAULT_TONO_BLOCK,
+        "politica_block": DEFAULT_POLITICA_BLOCK,
+        "training_block": "",
+    }
+    try:
+        from app.services.skill_service import is_centro_enabled
+        if agent_id is None or not is_centro_enabled(db):
+            return result
+
+        docs = (
+            db.query(TrainingDocument)
+            .filter(
+                TrainingDocument.agent_id == agent_id,
+                TrainingDocument.active == True,  # noqa: E712
+                TrainingDocument.category.isnot(None),
+            )
+            .order_by(TrainingDocument.id.asc())
+            .all()
+        )
+
+        additive_parts: List[str] = []
+        for doc in docs:
+            if doc.category not in FORM_SCHEMAS:
+                continue  # legado sin schema = sin efecto
+            # ESPEJO sin editar = ya está representado en el cerebro (inyectar duplicaría).
+            # En las ADITIVAS, activarla ES la decisión: se inyecta aunque sea la sugerida.
+            if doc.category in _MIRROR_CATEGORIES and _is_factory_unedited(doc):
+                continue
+            rendered = render_training(doc.category, doc.data or {})
+            if not rendered:
+                continue
+            if doc.category == "tono_marca":
+                result["tono_block"] = rendered          # SUSTITUYE al carácter del código
+            elif doc.category == "politica_comercial":
+                result["politica_block"] = rendered      # SUSTITUYE a la política del código
+            else:
+                additive_parts.append(rendered)          # objeciones editadas + aditivas activas
+
+        if additive_parts:
+            block = _TRAINING_PREAMBLE + "\n" + "\n".join(additive_parts)
+            result["training_block"] = block[:_MAX_TRAINING_BLOCK]
+        return result
+    except Exception as e:  # noqa: BLE001 — nunca romper un turno por entrenamiento
+        logger.warning("No se pudieron armar los bloques de entrenamiento", error=str(e))
+        from app.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK as _t, DEFAULT_POLITICA_BLOCK as _p
+        return {"tono_block": _t, "politica_block": _p, "training_block": ""}
+
+
 def seed_training_defaults(db: Session) -> None:
     try:
         from app.models.agent import Agent

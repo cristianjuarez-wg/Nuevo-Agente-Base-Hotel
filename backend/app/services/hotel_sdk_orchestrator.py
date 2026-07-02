@@ -40,7 +40,9 @@ from app.services.lead_service import lead_service
 from app.services.lead_analyzer import lead_analyzer
 from app.services.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
-from app.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
+from app.prompts.tool_agent_prompts import (
+    TOOL_AGENT_SYSTEM, DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK,
+)
 from app.prompts.flow_blocks import flow_block_for
 from app.prompts.generation_prompts import NATURALIDAD_BLOCK
 from app.prompts.context_blocks import (
@@ -478,7 +480,10 @@ class HotelSDKOrchestrator:
             set_tracing_disabled(False)
 
     def _build_instructions(self, lead_block: str, language: str = "es",
-                            flow_block: str = "") -> str:
+                            flow_block: str = "",
+                            tono_block: str = DEFAULT_TONO_BLOCK,
+                            politica_block: str = DEFAULT_POLITICA_BLOCK,
+                            training_block: str = "") -> str:
         now = now_argentina()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
@@ -493,6 +498,9 @@ class HotelSDKOrchestrator:
             fecha_actual=fecha,
             hora_actual=hora,
             flow_block=flow_block,
+            tono_block=tono_block,
+            politica_block=politica_block,
+            training_block=training_block,
             lead_block=lead_block,
             language_block=build_language_block(language),
             naturalidad_block=NATURALIDAD_BLOCK,
@@ -610,7 +618,6 @@ class HotelSDKOrchestrator:
                 #  - OBJETÓ el precio o se está despidiendo ("muy caro", "lo voy a pensar") →
                 #    NO insistir con reservar: captar el contacto para avisarle de PROMOS.
                 #  - Sigue evaluando sin objetar → ofrecé reservar (nudge), como hasta ahora.
-                from app.services.lead_analyzer import lead_analyzer
                 obstacle = (lead_analysis.get("obstacle") or "").lower()
                 is_price_or_exit = obstacle == "precio" or lead_analyzer._is_exit_intent(message)
                 lead_block = (
@@ -676,10 +683,22 @@ class HotelSDKOrchestrator:
 
         # 2. Construir el Agent. Las tools se filtran por las function-skills habilitadas
         #    del agente (mapa vacío en Fase A → lista intacta). El flow_block lo elige la
-        #    VARIANTE del flujo (Fase B): "estandar" → vacío (paridad exacta).
+        #    VARIANTE del flujo (Fase B): "estandar" → vacío (paridad exacta). El
+        #    entrenamiento del cliente (Fase E2) SUSTITUYE tono/política y suma directivas
+        #    aditivas; sin docs efectivos → defaults del código (paridad).
         variant = (flow_criteria or {}).get("variante", "estandar")
+        from app.services import training_service
+        from app.services.agent_directory import agent_for_session
+        try:
+            _agent_row = agent_for_session(db, session_id)
+            blocks = training_service.get_training_blocks(db, _agent_row.id if _agent_row else None)
+        except Exception:  # noqa: BLE001 — fail-open a los defaults
+            blocks = {"tono_block": DEFAULT_TONO_BLOCK, "politica_block": DEFAULT_POLITICA_BLOCK,
+                      "training_block": ""}
         instructions = self._build_instructions(
-            lead_block, language, flow_block=flow_block_for(variant)
+            lead_block, language, flow_block=flow_block_for(variant),
+            tono_block=blocks["tono_block"], politica_block=blocks["politica_block"],
+            training_block=blocks["training_block"],
         )
         agent = Agent[HotelContext](
             name=profile_manager.get_agent_name(),
