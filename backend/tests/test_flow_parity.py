@@ -109,9 +109,10 @@ def test_seed_flujos_paridad_y_no_clobber(db):
     assert flow is not None and flow.kind == "flow"
 
     # Los defaults del flujo de pre-venta son los históricos (paridad).
-    # (variante="estandar" = bloque vacío: también es paridad — Fase B.)
+    # (variante="estandar" = bloque vacío — Fase B; canales=los 3 = atiende en todos — Fase F.)
     assert defaults_from_schema(flow) == {
         "variante": "estandar",
+        "canales": ["whatsapp", "web", "instagram"],
         "min_msgs": 2, "score_caliente": 7, "score_tibio": 6, "msgs_tibio": 4,
     }
 

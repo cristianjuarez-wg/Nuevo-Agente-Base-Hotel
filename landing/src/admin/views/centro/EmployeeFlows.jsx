@@ -209,7 +209,34 @@ function FlowConfigModal({ agent, row, onClose, onSaved, runProtected }) {
                     </span>
                   )}
                 </div>
-                {p.type === 'bool' ? (
+                {p.type === 'multiselect' ? (
+                  <div>
+                    <div className="flex flex-wrap gap-3">
+                      {(p.options || []).map((opt) => {
+                        const selected = (values[p.key] || []).includes(opt)
+                        return (
+                          <label key={opt} className="flex cursor-pointer items-center gap-1.5 text-sm text-slatey">
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => {
+                                const cur = values[p.key] || []
+                                setVal(p.key, selected ? cur.filter((c) => c !== opt) : [...cur, opt])
+                              }}
+                              className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200"
+                            />
+                            {opt === 'web' ? 'Chat web' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                          </label>
+                        )
+                      })}
+                    </div>
+                    {(values[p.key] || []).length === 0 && (
+                      <p className="mt-1.5 text-xs text-amber-700">
+                        ⚠ Sin canales asignados: el agente no atenderá este flujo en ningún canal.
+                      </p>
+                    )}
+                  </div>
+                ) : p.type === 'bool' ? (
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-slatey">
                     <input
                       type="checkbox"

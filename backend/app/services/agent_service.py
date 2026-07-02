@@ -584,6 +584,41 @@ class AgentService:
         """Obtiene o crea instancia de PostSaleService"""
         return PostSaleService(db)
     
+    def _preventa_channel_gate(self, db: Session, session_id: str):
+        """Fase F (Centro): si el canal de esta sesión NO está asignado al flujo de
+        pre-venta, la consulta comercial no se atiende (decisión de producto: el flujo
+        "trabaja" solo en sus canales). Devuelve el dict de respuesta bloqueada o None.
+
+        Fail-open: sin config, kill switch apagado o error → None (se atiende normal).
+        POST-VENTA nunca pasa por acá: un huésped con reserva siempre se atiende.
+        Web recibe un aviso breve (el widget no puede quedar colgado); WhatsApp e
+        Instagram quedan en silencio (los webhooks salteán el envío vacío).
+        """
+        try:
+            from app.services import skill_service
+            flow = skill_service.get_flow_values_for_session(db, session_id, "flujo_preventa")
+            if not flow:
+                return None
+            canales = flow.get("canales")
+            if not isinstance(canales, list):
+                return None
+            sid = session_id or ""
+            channel = ("whatsapp" if sid.startswith("wa_")
+                       else "instagram" if sid.startswith("ig_") else "web")
+            if channel in canales:
+                return None
+            logger.info("Pre-venta: canal no asignado al flujo, no se atiende",
+                        session_id=session_id, channel=channel)
+            base = {"has_context": False, "intent": "channel_blocked",
+                    "context_type": "blocked", "channel_blocked": True,
+                    "session_info": self.get_session_info(session_id)}
+            if channel == "web":
+                return {**base, "response": "Este canal no está atendiendo consultas en este momento. ¡Gracias por escribirnos!"}
+            return {**base, "response": ""}
+        except Exception as e:  # noqa: BLE001 — nunca dejar de atender por el gate
+            logger.warning("Channel gate falló; se atiende normal", error=str(e))
+            return None
+
     async def chat(self, db: Session, message: str, session_id: str, language: str = "es") -> Dict:
         """
         Procesa mensaje del usuario y genera respuesta
@@ -693,6 +728,11 @@ class AgentService:
                 if triage["route"] == ROUTE_CASUAL:
                     logger.info("Triage SDK: casual route", session_id=session_id,
                                message=message[:50])
+                    # Fase F: el casual es parte de la atención de pre-venta — si el canal
+                    # no está asignado al flujo, tampoco se atiende el smalltalk.
+                    _gate = self._preventa_channel_gate(db, session_id)
+                    if _gate:
+                        return _gate
                     # El triage solo rutea; la respuesta casual la genera SIEMPRE este
                     # método (única fuente con reglas de alcance: no recetas/tareas, etc.).
                     # Si reconocemos al huésped (recurrente/alojado), personalizamos el saludo.
@@ -741,6 +781,13 @@ class AgentService:
                     }
 
                 is_postsale = (triage["route"] == ROUTE_POSTVENTA)
+
+                # Fase F: canal no asignado al flujo de pre-venta → no se atiende la
+                # consulta comercial. POST-VENTA pasa siempre (huésped con reserva).
+                if not is_postsale:
+                    _gate = self._preventa_channel_gate(db, session_id)
+                    if _gate:
+                        return _gate
 
             if is_postsale:
                 logger.info("Post-sale context detected, delegating to PostSaleService",

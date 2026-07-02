@@ -116,6 +116,13 @@ _SEED_FLOWS = [
                      "description": "Informa y atiende con calidez, sin vender activamente: no pide datos de contacto por iniciativa propia ni insiste con la reserva. Captura el contacto solo si el huésped lo ofrece o lo pide expresamente."},
                 ],
             },
+            # Canales donde este flujo TRABAJA (Fase F). Canal no asignado → el agente NO
+            # responde consultas de pre-venta ahí (decisión del usuario). Default: todos.
+            {
+                "key": "canales", "label": "Canales donde trabaja este flujo", "type": "multiselect",
+                "default": ["whatsapp", "web", "instagram"],
+                "options": ["whatsapp", "web", "instagram"],
+            },
             {"key": "min_msgs", "label": "Mensajes mínimos antes de pedir contacto", "type": "number", "default": 2},
             {"key": "score_caliente", "label": "Interés mínimo para pedir contacto (lead caliente, 1-10)", "type": "number", "default": 7},
             {"key": "score_tibio", "label": "Interés mínimo en leads tibios (1-10)", "type": "number", "default": 6},
@@ -278,6 +285,15 @@ def validate_and_clamp(skill: Skill, raw_values: Dict) -> Tuple[Dict, List[str]]
             if val not in allowed:
                 notes.append(f"{param.get('label', key)}: opción inválida, se usa la de fábrica.")
                 continue
+        # multiselect: lista subconjunto de las opciones declaradas (strings planos).
+        if ptype == "multiselect":
+            raw_list = raw_values.get(key) if isinstance(raw_values.get(key), list) else []
+            allowed = set(param.get("options") or [])
+            picked = [v for v in raw_list if v in allowed]
+            if len(picked) != len(raw_list):
+                notes.append(f"{param.get('label', key)}: se descartaron opciones inválidas.")
+            clean[key] = list(dict.fromkeys(picked))  # dedupe conservando orden
+            continue
         # Techo duro: recortar si supera el ceiling.
         ceiling = (limits.get(key) or {}).get("ceiling")
         if ceiling is not None and ptype in ("number", "percent") and val > ceiling:

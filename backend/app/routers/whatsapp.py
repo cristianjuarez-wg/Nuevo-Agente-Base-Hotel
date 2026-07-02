@@ -273,6 +273,12 @@ async def _process_and_reply(
 
         # Gerencia puede devolver un gráfico (chart_url) → se envía como media.
         chart_url = result.get("chart_url")
+        # Fase F (Centro): canal no asignado al flujo de pre-venta → silencio deliberado
+        # (decisión de producto). No se envía nada; el webhook ya respondió 200 a Twilio.
+        if result.get("channel_blocked"):
+            logger.info("WhatsApp: pre-venta no asignada a este canal; sin respuesta", phone=phone)
+            return
+
         # Para owner/staff garantizamos que NUNCA se envíe vacío (Twilio rechaza el envío y
         # el usuario queda en silencio): si el agente no produjo texto, mandamos un aviso.
         reply_text = (result.get("response") or "").strip()
