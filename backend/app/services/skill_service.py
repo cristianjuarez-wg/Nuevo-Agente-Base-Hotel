@@ -102,6 +102,20 @@ _SEED_FLOWS = [
             "cierre (despedida u objeción de precio). Pide nombre y teléfono; email opcional."
         ),
         "parameter_schema": [
+            # Variante de ESTILO comercial (Fase B). Las plantillas viven en
+            # prompts/flow_blocks.py; acá solo la elección + descripción legible.
+            {
+                "key": "variante", "label": "Estilo comercial", "type": "select",
+                "default": "estandar",
+                "options": [
+                    {"value": "estandar", "label": "Captación estándar",
+                     "description": "Avanza la venta con calidez: pide las fechas antes que los datos, muestra disponibilidad y captura el contacto cuando hay interés real o en el momento de cierre. Es el comportamiento recomendado."},
+                    {"value": "proactiva", "label": "Captación proactiva",
+                     "description": "Ofrece ver disponibilidad apenas detecta interés de viaje. Busca el cierre con tacto cuando el huésped ya vio opciones, y menciona las promociones vigentes ante una objeción de precio, sin esperar."},
+                    {"value": "sin_presion", "label": "Atención sin presión",
+                     "description": "Informa y atiende con calidez, sin vender activamente: no pide datos de contacto por iniciativa propia ni insiste con la reserva. Captura el contacto solo si el huésped lo ofrece o lo pide expresamente."},
+                ],
+            },
             {"key": "min_msgs", "label": "Mensajes mínimos antes de pedir contacto", "type": "number", "default": 2},
             {"key": "score_caliente", "label": "Interés mínimo para pedir contacto (lead caliente, 1-10)", "type": "number", "default": 7},
             {"key": "score_tibio", "label": "Interés mínimo en leads tibios (1-10)", "type": "number", "default": 6},
@@ -161,28 +175,39 @@ def seed_skills(db: Session) -> None:
     """
     try:
         for spec in _SEED_SKILLS:
-            if db.query(Skill).filter(Skill.key == spec["key"]).first():
-                continue
-            db.add(Skill(
-                key=spec["key"], name=spec["name"], description=spec["description"],
-                kind="function",
-                vertical=spec["vertical"], parameter_schema=spec["parameter_schema"],
-                parameter_limits=spec["parameter_limits"], is_active=True,
-            ))
+            _upsert_skill_template(db, spec, kind="function", vertical=spec["vertical"])
         for spec in _SEED_FLOWS:
-            if db.query(Skill).filter(Skill.key == spec["key"]).first():
-                continue
-            db.add(Skill(
-                key=spec["key"], name=spec["name"], description=spec["description"],
-                kind="flow",
-                vertical="hotel", parameter_schema=spec["parameter_schema"],
-                parameter_limits=spec["parameter_limits"], is_active=True,
-            ))
+            _upsert_skill_template(db, spec, kind="flow", vertical="hotel")
         db.commit()
         _seed_flow_instances(db)
     except Exception as e:  # noqa: BLE001
         logger.warning("No se pudo sembrar las skills", error=str(e))
         db.rollback()
+
+
+def _upsert_skill_template(db: Session, spec: Dict, kind: str, vertical: str) -> None:
+    """Crea o REFRESCA la plantilla de una skill sembrada de fábrica.
+
+    Regla de propiedad: la PLANTILLA (schema, techos, nombre, descripción) es NUESTRA
+    y se actualiza con cada deploy (así los flujos ganan parámetros nuevos, ej.
+    `variante` en Fase B). La INSTANCIA (AgentSkill.policy_values) es DEL CLIENTE y
+    nunca se toca acá: los valores viejos siguen válidos y los parámetros nuevos
+    caen a su default vía el merge de get_flow_values.
+    """
+    skill = db.query(Skill).filter(Skill.key == spec["key"]).first()
+    if skill is None:
+        db.add(Skill(
+            key=spec["key"], name=spec["name"], description=spec["description"],
+            kind=kind, vertical=vertical,
+            parameter_schema=spec["parameter_schema"],
+            parameter_limits=spec["parameter_limits"], is_active=True,
+        ))
+        return
+    skill.name = spec["name"]
+    skill.description = spec["description"]
+    skill.kind = kind
+    skill.parameter_schema = spec["parameter_schema"]
+    skill.parameter_limits = spec["parameter_limits"]
 
 
 def _seed_flow_instances(db: Session) -> None:
@@ -247,6 +272,12 @@ def validate_and_clamp(skill: Skill, raw_values: Dict) -> Tuple[Dict, List[str]]
         val = _coerce(raw_values.get(key), ptype)
         if val is None:
             continue  # valor inválido para el tipo → se descarta (queda el default si lo hubiera)
+        # select: solo opciones declaradas en el schema; inválida → default de fábrica.
+        if ptype == "select":
+            allowed = {o.get("value") for o in (param.get("options") or [])}
+            if val not in allowed:
+                notes.append(f"{param.get('label', key)}: opción inválida, se usa la de fábrica.")
+                continue
         # Techo duro: recortar si supera el ceiling.
         ceiling = (limits.get(key) or {}).get("ceiling")
         if ceiling is not None and ptype in ("number", "percent") and val > ceiling:

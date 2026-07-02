@@ -41,6 +41,7 @@ from app.services.lead_analyzer import lead_analyzer
 from app.services.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
 from app.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
+from app.prompts.flow_blocks import flow_block_for
 from app.prompts.generation_prompts import NATURALIDAD_BLOCK
 from app.prompts.context_blocks import (
     build_lead_context_block,
@@ -536,6 +537,17 @@ class HotelSDKOrchestrator:
         except Exception as e:  # noqa: BLE001
             logger.warning("No se pudo marcar availability_shown", session_id=session_id, error=str(e))
 
+    @staticmethod
+    def _variant_allows_capture(variant: Optional[str], analysis: Dict) -> bool:
+        """¿La variante del flujo permite la captura proactiva de contacto?
+
+        "sin_presion" la suprime, salvo pedido EXPRESO del huésped (contact_readiness).
+        Cualquier otra variante (o ninguna config) → permitida (paridad).
+        """
+        if (variant or "").strip().lower() != "sin_presion":
+            return True
+        return bool(analysis.get("contact_readiness", False))
+
     async def _build_lead_block(
         self, db: Session, message: str, session_id: str, history: List[Dict],
         flow_criteria: Optional[Dict] = None,
@@ -561,6 +573,14 @@ class HotelSDKOrchestrator:
             lead_analysis, should_request_contact = await lead_service.process_message_for_lead(
                 db, message, session_id, history, "", {}, flow_criteria=flow_criteria,
             )
+
+        # Variante "sin_presion" (Fase B): la captura PROACTIVA se suprime para que el
+        # comportamiento cumpla lo que la variante promete. Excepción: si el huésped pidió
+        # expresamente ser contactado, capturar no es presión — es servicio.
+        if should_request_contact and not self._variant_allows_capture(
+            (flow_criteria or {}).get("variante"), lead_analysis
+        ):
+            should_request_contact = False
 
         # Perfil del huésped conocido (recurrente/alojado): personaliza la conversación.
         # Se antepone a cualquier bloque de lead cuando hay historial real.
@@ -655,9 +675,12 @@ class HotelSDKOrchestrator:
         )
 
         # 2. Construir el Agent. Las tools se filtran por las function-skills habilitadas
-        #    del agente (mapa vacío en Fase A → lista intacta). flow_block vacío en paridad
-        #    (las variantes de estilo comercial llegan en Fase B).
-        instructions = self._build_instructions(lead_block, language, flow_block="")
+        #    del agente (mapa vacío en Fase A → lista intacta). El flow_block lo elige la
+        #    VARIANTE del flujo (Fase B): "estandar" → vacío (paridad exacta).
+        variant = (flow_criteria or {}).get("variante", "estandar")
+        instructions = self._build_instructions(
+            lead_block, language, flow_block=flow_block_for(variant)
+        )
         agent = Agent[HotelContext](
             name=profile_manager.get_agent_name(),
             instructions=instructions,
