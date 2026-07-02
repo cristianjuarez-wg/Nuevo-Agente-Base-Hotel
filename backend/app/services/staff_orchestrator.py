@@ -141,9 +141,19 @@ class StaffOrchestrator:
         tickets = ops.list_staff_tickets(db, staff)
         if not tickets:
             return "No tiene tareas pendientes ahora."
+        # Tope configurable desde el flujo de operaciones del Centro (Fase A);
+        # sin config → el default histórico de 8 (paridad).
+        max_tickets = 8
+        try:
+            from app.services import skill_service
+            flow = skill_service.get_flow_values_by_role(db, "staff", "flujo_operaciones")
+            if flow and flow.get("max_tickets"):
+                max_tickets = int(flow["max_tickets"])
+        except Exception:  # noqa: BLE001 — nunca romper el resumen por config
+            pass
         return "\n".join(
             f"- {t.ticket_number} ({ops._room_label(t)}): {(t.description or '')[:50]}"
-            for t in tickets[:8]
+            for t in tickets[:max_tickets]
         )
 
     def _build_instructions(self, db: Session, staff: StaffMember) -> str:

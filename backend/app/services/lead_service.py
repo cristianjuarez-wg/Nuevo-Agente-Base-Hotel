@@ -27,11 +27,12 @@ class LeadService:
     async def process_message_for_lead(
         self,
         db: Session,
-        message: str, 
+        message: str,
         session_id: str,
         conversation_history: List[Dict],
         travel_context: str = "",
-        geo_analysis: Dict = None
+        geo_analysis: Dict = None,
+        flow_criteria: Dict = None,
     ) -> Tuple[Dict, bool]:
         """
         Procesa un mensaje para análisis de lead y determina acciones
@@ -184,7 +185,8 @@ class LeadService:
             # 5. Determinar si debe solicitar contacto (incluye "momento de cierre":
             #    si el usuario se despide tras mostrar interés, captamos el contacto).
             should_request = lead_analyzer.should_request_contact(
-                analysis, len(conversation_history), message, persisted_floor=persisted_floor
+                analysis, len(conversation_history), message, persisted_floor=persisted_floor,
+                criteria=flow_criteria,
             )
             
             # No solicitar si ya tiene contacto completo

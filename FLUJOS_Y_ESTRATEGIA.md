@@ -139,6 +139,13 @@ Al conectar, estos valores actuales quedan como **defaults** → paridad total (
 - Inyección: filtrado de tools por function-skills activas + `{flow_block}` en el prompt + umbrales de `lead_analyzer` leídos de config.
 - Verificación: con defaults, respuestas idénticas (batería de mensajes antes/después); cambiar una perilla en el backoffice cambia el comportamiento. **Sin paridad verificada no se avanza a la Fase B.**
 
+**Tratamientos de la validación pre-vuelo (5 huecos detectados y cerrados antes de construir):**
+1. **Mapeo tools↔skills:** registro explícito `SKILL_TOOL_MAP` con regla dura — *tool no mapeada = siempre activa*. El mapa nace **vacío** (las 16 tools de Aura intactas = paridad por construcción); el mecanismo se prueba con un test unitario. Las funciones nuevas (remís) nacen mapeadas; las viejas se migran una a una con decisión explícita. Skill habilitada sin tool → warning, nunca rompe el turno.
+2. **Enhebrado de config:** `process_message_for_lead(..., flow_criteria=None)` → `should_request_contact(..., criteria=None)`; los umbrales actuales se extraen a un dict `DEFAULTS` y el efectivo es `{**DEFAULTS, **(criteria or {})}`. Paridad testeable en pytest (determinista, sin LLM) en `backend/tests/test_flow_parity.py` — el repo YA tiene pytest + 12 archivos de tests.
+3. **Seed de instancias:** además de las plantillas, se pre-crean las `AgentSkill` **habilitadas** (Aura ← flujo_preventa + flujo_postventa; Operaciones ← flujo_operaciones) con `policy_values` tomados de los `default` del schema. Idempotente y **sin pisar ediciones del cliente** en redeploys.
+4. **Los flujos no son toggles:** la pestaña Skills filtra `kind="function"`; el endpoint rechaza cambiar `enabled` de una skill `kind="flow"` (los flujos principales no se apagan — solo el kill switch global). Sus `policy_values` sí se editan (eso ES configurar el flujo).
+5. **Kill switch:** singleton `CentroConfig` (patrón `AgentBudgetConfig`), expuesto en Límites y seguridad con admin key, cache con invalidación al guardar. **Decisión: nace ENCENDIDO de fábrica** — la paridad la garantizan los defaults; el switch es el botón de emergencia.
+
 ### Fase B — Variantes del flujo de venta
 - 2-3 plantillas de `flow_block` (Captación estándar / agresiva / solo informativo) como variantes elegibles. La variante SOLO reemplaza el bloque de estilo comercial; carácter, seguridad y reglas de tools quedan fijos (cerebro protegido).
 

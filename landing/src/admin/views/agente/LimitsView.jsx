@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Gauge, Save, ShieldCheck, DollarSign, RefreshCw, Loader2 } from 'lucide-react'
+import { Gauge, Save, ShieldCheck, DollarSign, RefreshCw, Loader2, Power } from 'lucide-react'
 import {
   getUsageSummary, getUsageConfig, updateUsageConfig, getAdminConfig,
-  getExchangeRate, updateExchangeRate,
+  getExchangeRate, updateExchangeRate, getCentroConfig, updateCentroConfig,
 } from '../../../services/api'
 import { PageHeader, Loading, Badge, formatARS, formatDateTime } from '../../ui'
 import { useAdminGate } from '../../components/useAdminGate'
+import { toast } from '../../toast'
 
 export default function LimitsView() {
   const [loading, setLoading] = useState(true)
@@ -68,6 +69,9 @@ export default function LimitsView() {
       />
 
       {gateModal}
+
+      {/* Kill switch de la capa de configuración de agentes (Centro) */}
+      <CentroSwitchPanel />
 
       {/* Tipo de cambio USD → ARS */}
       <ExchangeRatePanel />
@@ -303,6 +307,70 @@ function ExchangeRatePanel() {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// Kill switch global de la capa de configuración de agentes (flujos + skills del Centro).
+// Apagado → los empleados digitales corren con su comportamiento de fábrica, al instante.
+// Con valores de fábrica el comportamiento es idéntico: este switch es el botón de emergencia.
+function CentroSwitchPanel() {
+  const { runProtected, gateModal } = useAdminGate()
+  const [enabled, setEnabled] = useState(null)   // null = cargando
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    getCentroConfig()
+      .then((c) => setEnabled(!!c.use_agent_config))
+      .catch(() => setEnabled(true))
+  }, [])
+
+  const toggle = () => {
+    const next = !enabled
+    setSaving(true)
+    runProtected(async () => {
+      const c = await updateCentroConfig({ use_agent_config: next })
+      setEnabled(!!c.use_agent_config)
+      toast.success(next
+        ? 'Configuración de agentes activada.'
+        : 'Configuración de agentes desactivada: los agentes corren con su comportamiento de fábrica.')
+    }).finally(() => setSaving(false))
+  }
+
+  return (
+    <div className="mb-6 rounded-2xl bg-white p-5 shadow-card">
+      {gateModal}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <Power size={18} className="mt-0.5 text-hilton-600" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="font-serif text-lg font-600 text-ink">Configuración de agentes (Centro)</h2>
+              {enabled != null && (
+                <Badge tone={enabled ? 'green' : 'red'}>{enabled ? 'Activa' : 'Desactivada'}</Badge>
+              )}
+            </div>
+            <p className="mt-1 max-w-xl text-sm text-slatey">
+              Interruptor de emergencia: apagado, los empleados digitales ignoran los flujos y
+              skills configurados y vuelven a su comportamiento de fábrica al instante.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={toggle}
+          disabled={enabled == null || saving}
+          role="switch"
+          aria-checked={!!enabled}
+          className={`relative inline-flex h-7 w-13 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
+            enabled ? 'bg-hilton-600' : 'bg-stone-300'
+          }`}
+          style={{ width: '3.25rem' }}
+        >
+          <span className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+            enabled ? 'translate-x-6' : 'translate-x-0.5'
+          }`} />
+        </button>
+      </div>
     </div>
   )
 }

@@ -30,6 +30,9 @@ class Skill(Base):
     key = Column(String(60), nullable=False, unique=True, index=True)   # "coordinar_transfer"
     name = Column(String(120), nullable=False)
     description = Column(Text, nullable=True)
+    # kind: "function" (adosable, con toggle on/off) | "flow" (flujo principal del rol:
+    # NO se apaga — solo se configura; el apagado global es el kill switch del Centro).
+    kind = Column(String(20), nullable=False, default="function")
     vertical = Column(String(40), nullable=False, default="core")        # core | hotel | clinica | ...
     parameter_schema = Column(JSON, nullable=True, default=list)         # qué parámetros existen
     parameter_limits = Column(JSON, nullable=True, default=dict)         # techos duros (no editables)
@@ -43,6 +46,7 @@ class Skill(Base):
             "key": self.key,
             "name": self.name,
             "description": self.description,
+            "kind": self.kind or "function",
             "vertical": self.vertical,
             "parameter_schema": self.parameter_schema or [],
             "parameter_limits": self.parameter_limits or {},

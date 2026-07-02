@@ -813,6 +813,16 @@ export async function listAgentSkills(id) {
   return data.skills ?? []
 }
 
+export async function getCentroConfig() {
+  const { data } = await client.get('/api/agents/centro-config')
+  return data
+}
+
+export async function updateCentroConfig(payload) {
+  const { data } = await client.put('/api/agents/centro-config', payload)
+  return data
+}
+
 export async function updateAgentSkill(id, skillId, payload) {
   const { data } = await client.put(`/api/agents/${id}/skills/${skillId}`, payload)
   return data

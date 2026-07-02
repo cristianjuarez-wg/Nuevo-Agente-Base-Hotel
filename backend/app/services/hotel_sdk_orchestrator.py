@@ -37,6 +37,7 @@ from app.core.logging_config import get_logger
 from app.core.openai_client import get_async_openai
 from app.core.sdk_usage import extract_usage
 from app.services.lead_service import lead_service
+from app.services.lead_analyzer import lead_analyzer
 from app.services.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
 from app.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
@@ -475,7 +476,8 @@ class HotelSDKOrchestrator:
         if not settings.DEBUG:
             set_tracing_disabled(False)
 
-    def _build_instructions(self, lead_block: str, language: str = "es") -> str:
+    def _build_instructions(self, lead_block: str, language: str = "es",
+                            flow_block: str = "") -> str:
         now = now_argentina()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
@@ -489,6 +491,7 @@ class HotelSDKOrchestrator:
             agent_name=profile_manager.get_agent_name(),
             fecha_actual=fecha,
             hora_actual=hora,
+            flow_block=flow_block,
             lead_block=lead_block,
             language_block=build_language_block(language),
             naturalidad_block=NATURALIDAD_BLOCK,
@@ -534,7 +537,8 @@ class HotelSDKOrchestrator:
             logger.warning("No se pudo marcar availability_shown", session_id=session_id, error=str(e))
 
     async def _build_lead_block(
-        self, db: Session, message: str, session_id: str, history: List[Dict]
+        self, db: Session, message: str, session_id: str, history: List[Dict],
+        flow_criteria: Optional[Dict] = None,
     ) -> tuple[str, Dict, bool]:
         """Análisis de lead transversal (igual que Freeway, sin geo)."""
         lead = lead_service._get_or_create_lead(db, session_id)
@@ -542,17 +546,20 @@ class HotelSDKOrchestrator:
         is_whatsapp = session_id.startswith("wa_")
 
         # GATING: el análisis de lead (1+ llamadas LLM) corre antes del agente y lo bloquea.
-        # En el PRIMER turno nunca se pide contacto (should_request_contact exige ≥2 mensajes),
-        # así que lo salteamos para no pagar esa latencia de entrada. Tampoco hace falta si ya
-        # tenemos el lead completo (no hay nada nuevo que captar). En esos casos devolvemos un
-        # análisis neutro y seguimos solo con el perfil del huésped.
-        skip_lead_analysis = len(history) < 2 or has_contact_info
+        # En los primeros turnos nunca se pide contacto (should_request_contact exige el
+        # mínimo de mensajes del flujo), así que lo salteamos para no pagar esa latencia de
+        # entrada. Tampoco hace falta si ya tenemos el lead completo (no hay nada nuevo que
+        # captar). En esos casos devolvemos un análisis neutro y seguimos con el perfil.
+        min_msgs = (flow_criteria or {}).get(
+            "min_msgs", lead_analyzer.CONTACT_CRITERIA_DEFAULTS["min_msgs"]
+        )
+        skip_lead_analysis = len(history) < min_msgs or has_contact_info
         if skip_lead_analysis:
             lead_analysis, should_request_contact = {}, False
         else:
             # Sin análisis geográfico: pasamos dict vacío (el lead_service lo tolera).
             lead_analysis, should_request_contact = await lead_service.process_message_for_lead(
-                db, message, session_id, history, "", {}
+                db, message, session_id, history, "", {}, flow_criteria=flow_criteria,
             )
 
         # Perfil del huésped conocido (recurrente/alojado): personaliza la conversación.
@@ -638,17 +645,23 @@ class HotelSDKOrchestrator:
         """Procesa un turno de pre-venta del hotel con el SDK."""
         start = time.time()
 
+        # 0. Config del flujo del Centro (Fase A). None → defaults hardcodeados (paridad).
+        from app.services import skill_service
+        flow_criteria = skill_service.get_flow_values_for_session(db, session_id, "flujo_preventa")
+
         # 1. Lead analysis transversal → bloque para el prompt
         lead_block, lead_analysis, should_request_contact = await self._build_lead_block(
-            db, message, session_id, history
+            db, message, session_id, history, flow_criteria=flow_criteria
         )
 
-        # 2. Construir el Agent
-        instructions = self._build_instructions(lead_block, language)
+        # 2. Construir el Agent. Las tools se filtran por las function-skills habilitadas
+        #    del agente (mapa vacío en Fase A → lista intacta). flow_block vacío en paridad
+        #    (las variantes de estilo comercial llegan en Fase B).
+        instructions = self._build_instructions(lead_block, language, flow_block="")
         agent = Agent[HotelContext](
             name=profile_manager.get_agent_name(),
             instructions=instructions,
-            tools=_TOOLS,
+            tools=skill_service.filter_tools_for_session(db, session_id, _TOOLS),
             model=self._model,
             model_settings=ModelSettings(temperature=settings.OPENAI_TEMPERATURE),
             input_guardrails=[relevancia_guardrail],

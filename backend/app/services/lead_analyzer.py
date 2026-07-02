@@ -286,8 +286,20 @@ IMPORTANTE:
         text = (message or "").lower()
         return any(sig in text for sig in self._EXIT_SIGNALS)
 
+    # Umbrales de captura de contacto — DEFAULTS de fábrica (Fase A, flujos configurables).
+    # Estos son los valores históricos del comportamiento actual: son el piso fail-open.
+    # El flujo "flujo_preventa" del Centro puede sobreescribirlos vía `criteria`; sin
+    # criteria (None) el comportamiento es EXACTAMENTE el de siempre (paridad).
+    CONTACT_CRITERIA_DEFAULTS = {
+        "min_msgs": 2,        # nunca pedir contacto antes de N mensajes
+        "score_caliente": 7,  # interés mínimo de un lead CALIENTE para pedir contacto
+        "score_tibio": 6,     # interés mínimo de un lead TIBIO
+        "msgs_tibio": 4,      # mensajes mínimos para pedir contacto a un TIBIO
+    }
+
     def should_request_contact(self, analysis: Dict, conversation_length: int,
-                               message: str = "", persisted_floor: Dict = None) -> bool:
+                               message: str = "", persisted_floor: Dict = None,
+                               criteria: Dict = None) -> bool:
         """
         Determina si es el momento apropiado para solicitar datos de contacto
 
@@ -299,12 +311,16 @@ IMPORTANTE:
                 turnos previos. El análisis del turno solo mira los últimos mensajes, así que en
                 una DESPEDIDA ("dejame pensarlo") puede leer FRIO aunque el lead ya haya
                 demostrado interés antes. El piso evita esa degradación efímera.
+            criteria: Umbrales del flujo configurado en el Centro (opcional). None → defaults
+                de fábrica = comportamiento histórico exacto.
 
         Returns:
             bool: True si debe solicitar contacto
         """
-        # No solicitar contacto en el primer mensaje
-        if conversation_length < 2:
+        c = {**self.CONTACT_CRITERIA_DEFAULTS, **(criteria or {})}
+
+        # No solicitar contacto en los primeros mensajes
+        if conversation_length < c["min_msgs"]:
             return False
 
         # Si ya expresó que quiere ser contactado
@@ -313,13 +329,13 @@ IMPORTANTE:
 
         # Lead caliente con interés alto
         if (analysis.get('lead_type') == 'CALIENTE' and
-            analysis.get('interest_score', 0) >= 7):
+            analysis.get('interest_score', 0) >= c["score_caliente"]):
             return True
 
         # Lead tibio que ya tuvo varias interacciones
         if (analysis.get('lead_type') == 'TIBIO' and
-            conversation_length >= 4 and
-            analysis.get('interest_score', 0) >= 6):
+            conversation_length >= c["msgs_tibio"] and
+            analysis.get('interest_score', 0) >= c["score_tibio"]):
             return True
 
         # MOMENTO DE CIERRE: el usuario se despide/posterga/objeta el precio tras una
@@ -338,7 +354,7 @@ IMPORTANTE:
         )
         is_close_moment = llm_close_signal or self._is_exit_intent(message)
 
-        if is_close_moment and conversation_length >= 2:
+        if is_close_moment and conversation_length >= c["min_msgs"]:
             # Umbral bajo a propósito: alguien que preguntó y se va (o objeta el precio) es justo
             # a quien conviene retener. Solo excluimos el caso claramente sin interés (FRÍO con
             # score muy bajo). El interés se evalúa contra el MÁXIMO entre el análisis del turno y

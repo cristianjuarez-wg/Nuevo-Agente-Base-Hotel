@@ -44,6 +44,37 @@ def list_agents(db: Session = Depends(get_db)):
     return {"agents": [a.to_dict() for a in agents]}
 
 
+# ── Kill switch global del Centro (Fase A) ───────────────────────────────────
+# Declarados ANTES de las rutas /{agent_id} para que "centro-config" no matchee
+# como un id de agente.
+
+class CentroConfigUpdate(BaseModel):
+    use_agent_config: bool
+
+
+@router.get("/centro-config")
+def get_centro_config_endpoint(db: Session = Depends(get_db)):
+    """Estado del interruptor global 'usar configuración del Centro'."""
+    from app.services import skill_service
+    return skill_service.get_centro_config(db).to_dict()
+
+
+@router.put("/centro-config", dependencies=[Depends(require_admin_key)])
+def update_centro_config(payload: CentroConfigUpdate, db: Session = Depends(get_db)):
+    """Prende/apaga la capa de configuración por agente (botón de emergencia).
+
+    Apagado → los agentes corren con su comportamiento hardcodeado actual, al instante.
+    """
+    from app.services import skill_service
+    config = skill_service.get_centro_config(db)
+    config.use_agent_config = bool(payload.use_agent_config)
+    db.commit()
+    db.refresh(config)
+    skill_service.invalidate_centro_cache()
+    logger.info("Centro kill switch updated", enabled=config.use_agent_config)
+    return config.to_dict()
+
+
 @router.get("/{agent_id}")
 def get_agent(agent_id: int, db: Session = Depends(get_db)):
     agent = db.query(Agent).filter(Agent.id == agent_id).first()
@@ -272,6 +303,14 @@ def update_agent_skill(agent_id: int, skill_id: int, payload: AgentSkillUpdate, 
     skill = db.query(Skill).filter(Skill.id == skill_id).first()
     if not skill:
         raise HTTPException(404, "Skill no encontrada.")
+
+    # Los FLUJOS principales no se apagan por agente: solo se configuran. El apagado
+    # global es el kill switch del Centro (centro-config). Tratamiento 4 de la Fase A.
+    if payload.enabled is not None and (skill.kind or "function") == "flow":
+        raise HTTPException(
+            400,
+            "Los flujos principales no se apagan; para desactivar la capa usá el interruptor global del Centro.",
+        )
 
     inst = skill_service.get_or_create_agent_skill(db, agent_id, skill_id)
     notes = []

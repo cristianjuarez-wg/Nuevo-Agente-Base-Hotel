@@ -469,7 +469,17 @@ class HotelPostSaleSDKOrchestrator:
         if last_at.tzinfo is None:
             last_at = last_at.replace(tzinfo=timezone.utc)
         gap_min = (datetime.now(timezone.utc) - last_at).total_seconds() / 60.0
-        if gap_min < GREETING_GAP_MINUTES:
+        # Umbral configurable desde el flujo de post-venta del Centro (Fase A);
+        # sin config → el default histórico (paridad).
+        greeting_gap = GREETING_GAP_MINUTES
+        try:
+            from app.services import skill_service
+            flow = skill_service.get_flow_values_for_session(service.db, session_id, "flujo_postventa")
+            if flow and flow.get("gap_minutes"):
+                greeting_gap = float(flow["gap_minutes"])
+        except Exception:  # noqa: BLE001 — nunca romper la señal por config
+            pass
+        if gap_min < greeting_gap:
             return (
                 f"CONTINUACIÓN INMEDIATA (el último mensaje fue hace ~{max(int(gap_min), 0)} min): "
                 "ya venís conversando. NO vuelvas a saludar ni a re-confirmar la reserva; "

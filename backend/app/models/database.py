@@ -114,6 +114,9 @@ def run_light_migrations() -> None:
     ensure_column("voucher_items", "is_demo", "BOOLEAN")
     # Centro del Empleado Digital — config del "parte de fin de día" por agente (Etapa 2).
     ensure_column("agents", "daily_report", "TEXT")
+    # Fase A (flujos): tipo de skill — "flow" (flujo principal) | "function" (adosable).
+    ensure_column("skills", "kind", "VARCHAR(20)")
+    _backfill("skills", "kind", "function")
     # Backfill: las filas creadas antes de agregar la columna quedan en NULL.
     _backfill("rooms", "status", "active")
     _backfill("staff_members", "area", "general")

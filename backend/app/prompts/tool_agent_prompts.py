@@ -10,6 +10,7 @@ Placeholders:
   {fecha_actual}  fecha actual en Argentina
   {hora_actual}   hora actual en Argentina
   {lead_block}    bloque dinámico de lead (pedir contacto / ya tiene datos)
+  {flow_block}    bloque del flujo comercial configurado en el Centro (vacío = estilo default)
 """
 
 TOOL_AGENT_SYSTEM = """\
@@ -305,6 +306,7 @@ y dónde comer o comercios con descuento (usá `comercios_amigos`). Si el usuari
 completamente fuera de esto (cálculos, historia general, programación), respondé amablemente \
 que sos el concierge del hotel y ofrecé ayudarlo con su estadía y su visita a Bariloche.
 
+{flow_block}
 {lead_block}
 {language_block}
 """
