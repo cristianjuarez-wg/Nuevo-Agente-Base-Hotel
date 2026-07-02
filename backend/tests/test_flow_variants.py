@@ -12,6 +12,7 @@ from app.prompts.flow_blocks import FLOW_BLOCKS, flow_block_for
 from app.services.hotel_sdk_orchestrator import HotelSDKOrchestrator
 from app.services.skill_service import (
     seed_skills, get_flow_values, validate_and_clamp, invalidate_centro_cache,
+    list_agent_skills,
 )
 from app.services.agent_directory import seed_agents
 from app.models.skill import Skill, AgentSkill
@@ -123,6 +124,22 @@ def test_instancia_sin_variante_cae_a_estandar(db):
 # ---------------------------------------------------------------------------
 # 4. Select: solo opciones declaradas
 # ---------------------------------------------------------------------------
+
+def test_cada_agente_ve_solo_sus_flujos(db):
+    """Los flujos se listan solo si están ASIGNADOS al agente (instancia existente);
+    las functions sí son catálogo completo. Aura NO debe ver flujo_operaciones."""
+    seed_agents(db)
+    seed_skills(db)
+    aura = db.query(Agent).filter(Agent.role == "guest").first()
+    ops = db.query(Agent).filter(Agent.role == "staff").first()
+    asesor = db.query(Agent).filter(Agent.role == "management").first()
+
+    aura_flows = {r["skill"]["key"] for r in list_agent_skills(db, aura.id, kind="flow")}
+    assert aura_flows == {"flujo_preventa", "flujo_postventa"}
+    ops_flows = {r["skill"]["key"] for r in list_agent_skills(db, ops.id, kind="flow")}
+    assert ops_flows == {"flujo_operaciones"}
+    assert list_agent_skills(db, asesor.id, kind="flow") == []  # sin flujos → empty state
+
 
 def test_select_rechaza_opcion_invalida(db):
     seed_agents(db)

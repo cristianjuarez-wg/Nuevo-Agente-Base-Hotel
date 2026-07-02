@@ -322,6 +322,10 @@ def list_agent_skills(db: Session, agent_id: int, kind: str = "function") -> Lis
     out = []
     for sk in skills:
         inst = instances.get(sk.id)
+        # FLUJOS: solo los ASIGNADOS a este agente (con instancia). Las functions sí
+        # se listan como catálogo completo (cualquier agente puede activarlas).
+        if kind == "flow" and inst is None:
+            continue
         out.append({
             "skill": sk.to_dict(),
             "enabled": bool(inst.enabled) if inst else False,

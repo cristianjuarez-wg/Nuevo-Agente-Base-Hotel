@@ -286,10 +286,16 @@ class AgentSkillUpdate(BaseModel):
 
 
 @router.get("/{agent_id}/skills")
-def list_skills(agent_id: int, db: Session = Depends(get_db)):
-    """Skills disponibles con la config (habilitada + valores) de este agente."""
+def list_skills(agent_id: int, kind: str = "function", db: Session = Depends(get_db)):
+    """Skills de un tipo con la config de este agente.
+
+    kind="function" (default): las adosables de la pestaña Skills.
+    kind="flow": los flujos principales, para la pestaña Flujos (Fase C).
+    """
+    if kind not in ("function", "flow"):
+        raise HTTPException(400, "kind inválido. Usar 'function' o 'flow'.")
     _get_agent_or_404(db, agent_id)
-    return {"skills": skill_service.list_agent_skills(db, agent_id)}
+    return {"skills": skill_service.list_agent_skills(db, agent_id, kind=kind)}
 
 
 @router.put("/{agent_id}/skills/{skill_id}", dependencies=[Depends(require_admin_key)])

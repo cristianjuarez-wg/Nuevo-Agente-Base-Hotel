@@ -813,6 +813,11 @@ export async function listAgentSkills(id) {
   return data.skills ?? []
 }
 
+export async function listAgentFlows(id) {
+  const { data } = await client.get(`/api/agents/${id}/skills`, { params: { kind: 'flow' } })
+  return data.skills ?? []
+}
+
 export async function getCentroConfig() {
   const { data } = await client.get('/api/agents/centro-config')
   return data

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { FileText, Gauge, GraduationCap, Wrench, ScrollText } from 'lucide-react'
+import { FileText, Gauge, Workflow, GraduationCap, Wrench, ScrollText } from 'lucide-react'
 import { listAgents } from '../../../services/api'
 import { PageHeader, Loading } from '../../ui'
 import { FilterChip } from '../../components/FilterChip'
 import EmployeeIdentity from './EmployeeIdentity'
 import EmployeeMetrics from './EmployeeMetrics'
+import EmployeeFlows from './EmployeeFlows'
 import EmployeeTraining from './EmployeeTraining'
 import EmployeeSkills from './EmployeeSkills'
 
@@ -13,6 +14,7 @@ import EmployeeSkills from './EmployeeSkills'
 const SUBNAV = [
   { id: 'identidad', label: 'Identidad', icon: FileText },
   { id: 'metricas', label: 'Métricas', icon: Gauge },
+  { id: 'flujos', label: 'Flujos', icon: Workflow },
   { id: 'entrenamiento', label: 'Entrenamiento', icon: GraduationCap },
   { id: 'skills', label: 'Skills', icon: Wrench },
   // Próximas etapas (deshabilitadas por ahora).
@@ -109,6 +111,8 @@ export default function EmployeeHubSection() {
       ) : sub === 'identidad' ? (
         <EmployeeIdentity agent={agent} onChanged={(updated) =>
           setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))} />
+      ) : sub === 'flujos' ? (
+        <EmployeeFlows agent={agent} />
       ) : sub === 'entrenamiento' ? (
         <EmployeeTraining agent={agent} />
       ) : sub === 'skills' ? (
