@@ -12,6 +12,7 @@ from app.core.logging_config import get_logger
 from app.core.sdk_usage import usage_from_completion
 from app.services import usage_service
 from app.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
+import asyncio
 import time
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -212,6 +213,13 @@ class AgentService:
             self.client = get_async_openai()
             self.conversation_history: Dict[str, List[Dict]] = {}
             self.session_metadata: Dict[str, Dict] = {}
+            # Un lock por session_id para SERIALIZAR los turnos de una misma conversación.
+            # Sin esto, dos mensajes seguidos (típico en WhatsApp, donde cada uno corre en su
+            # propio asyncio.create_task) generan y envían DOS respuestas en paralelo, la
+            # segunda computada con contexto rancio (no vio la respuesta de la primera).
+            # Ese es el bug del mensaje descolgado. El lock hace que el 2º turno espere al 1º
+            # y así vea el intercambio completo. Se crea perezosamente por sesión.
+            self._session_locks: Dict[str, asyncio.Lock] = {}
 
             logger.info("Agent service initialized",
                        model=settings.OPENAI_MODEL,
@@ -219,6 +227,19 @@ class AgentService:
         except Exception as e:
             logger.error("Error initializing agent service", error=str(e))
             raise
+
+    def _get_session_lock(self, session_id: str) -> "asyncio.Lock":
+        """Devuelve (creando si hace falta) el lock de esta sesión.
+
+        La creación del dict-entry es sincrónica (no hay await entre el `in` y el set),
+        así que es segura frente al scheduler cooperativo de asyncio: dos corrutinas de la
+        misma sesión obtienen el MISMO objeto Lock y una espera a la otra.
+        """
+        lock = self._session_locks.get(session_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._session_locks[session_id] = lock
+        return lock
     
     def _session_cutoff(self) -> datetime:
         """Instante (UTC, naive) a partir del cual un mensaje sigue dentro de la ventana
@@ -442,6 +463,44 @@ class AgentService:
             logger.warning("No se pudo armar el guest block casual", error=str(e))
             return ""
 
+    def _build_team_roster_block(self, db) -> str:
+        """Roster del EQUIPO real (staff activo) para el prompt casual.
+
+        Le da a Aura la única fuente de verdad de a quién SÍ puede reconocer por su nombre.
+        Sin esto, ante "¿conocés a Eli?" el modelo inventa un vínculo. Con esto, reconoce a
+        los empleados reales y, para cualquier otro nombre, aplica la regla de no fabricar.
+        Vacío ante cualquier problema (fail-open: el prompt igual trae la regla anti-invento).
+        """
+        try:
+            from app.models.staff import StaffMember
+
+            members = (
+                db.query(StaffMember)
+                .filter(StaffMember.active == True)  # noqa: E712
+                .order_by(StaffMember.name.asc())
+                .all()
+            )
+            if not members:
+                return ""
+            # Área legible → cómo la nombraría Aura. "general"/owner sin área específica.
+            area_label = {
+                "recepcion": "recepción", "housekeeping": "housekeeping",
+                "mantenimiento": "mantenimiento", "general": "el equipo",
+            }
+            lineas = []
+            for m in members:
+                etiqueta = "dueño/a" if m.role == "owner" else area_label.get(m.area or "general", "el equipo")
+                lineas.append(f"- {m.name} ({etiqueta})")
+            roster = "\n".join(lineas)
+            return (
+                "EQUIPO DEL HOTEL (las ÚNICAS personas que podés reconocer por su nombre; "
+                "si te preguntan por alguien de esta lista, sí la conocés y podés nombrar su "
+                "área con naturalidad):\n" + roster
+            )
+        except Exception as e:  # noqa: BLE001 — nunca romper el turno por el roster
+            logger.warning("No se pudo armar el team roster block", error=str(e))
+            return ""
+
     async def _should_capture_lead_in_casual(self, db, message: str, session_id: str, history) -> bool:
         """True si en un turno casual (típicamente despedida) conviene captar el contacto.
 
@@ -478,7 +537,8 @@ class AgentService:
                                         language: str = "es", guest_block: str = "",
                                         capture_lead: bool = False,
                                         availability_shown: bool = False,
-                                        is_whatsapp: bool = False) -> tuple[str, Dict]:
+                                        is_whatsapp: bool = False,
+                                        team_block: str = "") -> tuple[str, Dict]:
         """
         Genera respuesta natural para conversación casual
 
@@ -523,6 +583,7 @@ class AgentService:
             prompt = CASUAL_RESPONSE_SYSTEM.format(
                 agent_name=profile_manager.get_agent_name(),
                 naturalidad_block=NATURALIDAD_BLOCK,
+                team_block=team_block,
                 history_section=history_section,
                 message=message,
                 lead_capture_hint=lead_hint,
@@ -620,6 +681,18 @@ class AgentService:
             return None
 
     async def chat(self, db: Session, message: str, session_id: str, language: str = "es") -> Dict:
+        """Procesa un turno SERIALIZADO por sesión.
+
+        Toma el lock de la sesión antes de procesar: dos mensajes concurrentes de la misma
+        conversación (ej. el huésped manda dos seguidos por WhatsApp) se atienden en orden,
+        y el segundo ve la respuesta del primero en el historial. Sin esto, ambos corrían
+        ciegos entre sí y se enviaban dos respuestas, la segunda con contexto rancio (el
+        bug del mensaje descolgado). El trabajo real está en `_chat_impl`.
+        """
+        async with self._get_session_lock(session_id):
+            return await self._chat_impl(db, message, session_id, language)
+
+    async def _chat_impl(self, db: Session, message: str, session_id: str, language: str = "es") -> Dict:
         """
         Procesa mensaje del usuario y genera respuesta
 
@@ -744,9 +817,13 @@ class AgentService:
                     # ¿Ya se mostró disponibilidad antes? Entonces el cierre va directo al
                     # contacto, sin re-ofrecer disponibilidad ya vista.
                     availability_shown = self._availability_shown_in_session(db, session_id)
+                    # Roster del equipo real: Aura reconoce a un empleado si le preguntan por
+                    # él, pero NO inventa un vínculo con nombres que no están en el equipo.
+                    team_block = self._build_team_roster_block(db)
                     response_text, casual_usage = await self._generate_casual_response(
                         message, history, language, guest_block, capture_lead, availability_shown,
                         is_whatsapp=(session_id or "").startswith("wa_"),
+                        team_block=team_block,
                     )
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})
@@ -933,7 +1010,14 @@ class AgentService:
             
             if session_id in self.session_metadata:
                 del self.session_metadata[session_id]
-            
+
+            # El lock de la sesión ya no hace falta si borramos su hilo. No lo quitamos si
+            # está tomado (un turno en vuelo): en ese caso lo dejamos y se reusará/limpiará
+            # naturalmente. locked() es sincrónico y seguro de consultar acá.
+            _lk = self._session_locks.get(session_id)
+            if _lk is not None and not _lk.locked():
+                self._session_locks.pop(session_id, None)
+
             logger.info("Conversation history cleared",
                        session_id=session_id,
                        messages_cleared=messages_cleared)
