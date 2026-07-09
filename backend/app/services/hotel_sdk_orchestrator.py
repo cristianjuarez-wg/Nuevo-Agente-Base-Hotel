@@ -483,7 +483,8 @@ class HotelSDKOrchestrator:
                             flow_block: str = "",
                             tono_block: str = DEFAULT_TONO_BLOCK,
                             politica_block: str = DEFAULT_POLITICA_BLOCK,
-                            training_block: str = "") -> str:
+                            training_block: str = "",
+                            team_block: str = "") -> str:
         now = now_argentina()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
@@ -505,6 +506,7 @@ class HotelSDKOrchestrator:
             language_block=build_language_block(language),
             naturalidad_block=NATURALIDAD_BLOCK,
             ubicacion_block=HOTEL_LOCATION_BLOCK,
+            team_block=team_block,
         )
 
     def _availability_already_shown(self, db: Session, session_id: str) -> bool:
@@ -695,10 +697,14 @@ class HotelSDKOrchestrator:
         except Exception:  # noqa: BLE001 — fail-open a los defaults
             blocks = {"tono_block": DEFAULT_TONO_BLOCK, "politica_block": DEFAULT_POLITICA_BLOCK,
                       "training_block": ""}
+        # Roster del equipo real (Fase 0.1): acompaña la regla anti-invención de
+        # personas — el agente solo reconoce por nombre a quien figura acá.
+        from app.prompts.base_blocks import build_team_roster_block
         instructions = self._build_instructions(
             lead_block, language, flow_block=flow_block_for(variant),
             tono_block=blocks["tono_block"], politica_block=blocks["politica_block"],
             training_block=blocks["training_block"],
+            team_block=build_team_roster_block(db),
         )
         agent = Agent[HotelContext](
             name=profile_manager.get_agent_name(),

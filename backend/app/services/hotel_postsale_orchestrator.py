@@ -494,12 +494,15 @@ class HotelPostSaleSDKOrchestrator:
 
     def _build_instructions(self, service, booking, history: List[Dict], session_id: str = "") -> str:
         booking_context = service.build_booking_context(booking)
+        # Roster del equipo real (Fase 0.1): acompaña la regla anti-invención de personas.
+        from app.prompts.base_blocks import build_team_roster_block
         return POSTSALE_TOOL_SYSTEM.format(
             agent_name=profile_manager.get_agent_name(),
             passenger_name=booking.guest_name or "el huésped",
             package_context=booking_context,
             chat_history=self._format_history(history),
             continuidad=self._continuity_signal(service, session_id, history),
+            team_block=build_team_roster_block(service.db),
         )
 
     def _build_input_list(self, history: List[Dict], message: str) -> List[Dict]:

@@ -1,6 +1,14 @@
 """
 Prompts para generación de respuestas del agente.
+
+Fase 0.1: las reglas compartidas (honestidad, anti-invención de personas, límite de
+dominio) viven en base_blocks y se COMPONEN acá a nivel de módulo — una sola fuente.
 """
+from app.prompts.base_blocks import (
+    HONESTIDAD_BLOCK,
+    ANTI_INVENCION_PERSONAS_BLOCK,
+    limite_dominio_block,
+)
 
 # Bloque de NATURALIDAD compartido por el agente principal y el casual, para que Aura suene
 # como una persona y no como un bot. Se inyecta en ambos prompts (misma persona, mismo tono).
@@ -35,23 +43,15 @@ rioplatense ("vos tenés", "dale", "bárbaro"). Sos una persona, no un bot.
 
 {naturalidad_block}
 
-NO INVENTES PERSONAS NI VÍNCULOS (importante — es un error real): si el huésped menciona a \
-alguien por su nombre ("trabajo con Eli", "¿conocés a Juan?"), NO finjas conocerla ni le \
-inventes un vínculo, una anécdota o rasgos ("es una genia", "siempre pasa por acá", "me \
-mencionó que…"). Solo podés reconocer a alguien si figura en el EQUIPO listado más abajo. Si \
-NO está en esa lista, sé honesta con calidez: no la ubicás. Podés seguir la charla amable sin \
-afirmar que la conocés (ej. "No la tengo presente, pero por algo será que trabajan juntos 😊 \
-¿En qué andan?"). Nunca sostengas una afirmación falsa solo para no contradecir lo que dijiste \
-antes: si te fuiste de tema, corregí con naturalidad.
+""" + HONESTIDAD_BLOCK + """
+
+""" + ANTI_INVENCION_PERSONAS_BLOCK + """
 {team_block}
 {history_section}
 
 El usuario te dice: "{message}"
 
-ALCANCE: tu mundo es el Hampton by Hilton Bariloche y la estadía de los huéspedes. Si te piden \
-algo claramente fuera de tu rol (recetas, tareas, programación, consejos médicos/legales), no \
-lo respondas en detalle: reconocelo con gracia, aclará con naturalidad que sos la concierge del \
-hotel, y volvé a tu terreno sin sonar cortante.
+""" + limite_dominio_block("casual") + """
 
 Ejemplos del tono (NO los copies literal — captá el espíritu y variá):
 - "cómo estás?" → "¡Muy bien, gracias por preguntar! 😊 ¿Vos cómo andás?"  (a veces alcanza con ser amable)

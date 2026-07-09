@@ -464,42 +464,14 @@ class AgentService:
             return ""
 
     def _build_team_roster_block(self, db) -> str:
-        """Roster del EQUIPO real (staff activo) para el prompt casual.
+        """Roster del EQUIPO real para el prompt casual.
 
-        Le da a Aura la única fuente de verdad de a quién SÍ puede reconocer por su nombre.
-        Sin esto, ante "¿conocés a Eli?" el modelo inventa un vínculo. Con esto, reconoce a
-        los empleados reales y, para cualquier otro nombre, aplica la regla de no fabricar.
-        Vacío ante cualquier problema (fail-open: el prompt igual trae la regla anti-invento).
+        Fase 0.1: la construcción vive en base_blocks (única fuente, compartida con
+        pre-venta y post-venta para la regla anti-invención de personas). Este método
+        queda como delegación para no romper a los llamadores existentes.
         """
-        try:
-            from app.models.staff import StaffMember
-
-            members = (
-                db.query(StaffMember)
-                .filter(StaffMember.active == True)  # noqa: E712
-                .order_by(StaffMember.name.asc())
-                .all()
-            )
-            if not members:
-                return ""
-            # Área legible → cómo la nombraría Aura. "general"/owner sin área específica.
-            area_label = {
-                "recepcion": "recepción", "housekeeping": "housekeeping",
-                "mantenimiento": "mantenimiento", "general": "el equipo",
-            }
-            lineas = []
-            for m in members:
-                etiqueta = "dueño/a" if m.role == "owner" else area_label.get(m.area or "general", "el equipo")
-                lineas.append(f"- {m.name} ({etiqueta})")
-            roster = "\n".join(lineas)
-            return (
-                "EQUIPO DEL HOTEL (las ÚNICAS personas que podés reconocer por su nombre; "
-                "si te preguntan por alguien de esta lista, sí la conocés y podés nombrar su "
-                "área con naturalidad):\n" + roster
-            )
-        except Exception as e:  # noqa: BLE001 — nunca romper el turno por el roster
-            logger.warning("No se pudo armar el team roster block", error=str(e))
-            return ""
+        from app.prompts.base_blocks import build_team_roster_block
+        return build_team_roster_block(db)
 
     async def _should_capture_lead_in_casual(self, db, message: str, session_id: str, history) -> bool:
         """True si en un turno casual (típicamente despedida) conviene captar el contacto.

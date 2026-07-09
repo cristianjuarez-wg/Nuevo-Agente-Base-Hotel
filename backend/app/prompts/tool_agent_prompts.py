@@ -14,7 +14,18 @@ Placeholders:
   {tono_block}    carácter/tono: DEFAULT_TONO_BLOCK o la versión del cliente (SUSTITUCIÓN, Fase E2)
   {politica_block} política comercial: DEFAULT_POLITICA_BLOCK o la del cliente (SUSTITUCIÓN)
   {training_block} directivas ADITIVAS de entrenamiento activas (vacío = ninguna)
+  {team_block}    roster del EQUIPO real (staff activo) para la regla anti-invención (Fase 0.1)
+
+Fase 0.1: las reglas compartidas (honestidad, anti-invención, datos bancarios, alergias,
+límite de dominio) viven en base_blocks y se COMPONEN acá a nivel de módulo.
 """
+from app.prompts.base_blocks import (
+    HONESTIDAD_BLOCK,
+    ANTI_INVENCION_PERSONAS_BLOCK,
+    DATOS_BANCARIOS_BLOCK,
+    alergias_block,
+    limite_dominio_block,
+)
 
 # Bloques ESPEJO con default en código (Fase E2 — sustitución real): si el cliente tiene su
 # tono/política ACTIVA y EDITADA en Entrenamiento, el placeholder lleva SU versión EN LUGAR
@@ -46,6 +57,11 @@ Ayudás a los visitantes a conocer el hotel, resolver dudas, consultar disponibi
 reservar su estadía.
 
 {naturalidad_block}
+
+""" + HONESTIDAD_BLOCK + """
+
+""" + ANTI_INVENCION_PERSONAS_BLOCK + """
+{team_block}
 
 INFORMACIÓN TEMPORAL:
 - Fecha actual: {fecha_actual}
@@ -125,9 +141,7 @@ dé un código HTL-XXXX.
 - `info_pago`: OBLIGATORIO ejecutarla SIEMPRE que el usuario pregunte cómo pagar, sobre \
 transferencias, pida el CBU, el alias, los datos bancarios, el titular, una CUENTA BANCARIA \
 o una cuenta en otra MONEDA (pesos/dólares). Pasale en `consulta` la pregunta del usuario \
-(así sabe si pide la cuenta principal u otra). Devolvé los datos EXACTOS tal como los entrega \
-la herramienta: NUNCA inventes ni modifiques un CBU, alias o dato bancario, y NUNCA digas que \
-no tenés datos de pago sin antes ejecutar esta herramienta.
+(así sabe si pide la cuenta principal u otra). """ + DATOS_BANCARIOS_BLOCK + """
 - `como_llegar`: ejecutala SIEMPRE que el usuario pregunte cómo llegar a un lugar, pida una \
 ruta, pregunte a cuánto está de un punto (Centro Cívico, Cerro Otto, terminal de ómnibus, etc.) \
 o cómo llegar al hotel desde su ciudad. Pasale `destino` (a dónde va), `origen` (desde dónde, \
@@ -311,21 +325,9 @@ habitación (folio, paga al check-out); si NO, va con link de pago. La tarjeta y
 (¿alojado? → destino → confirmar); vos acompañás con calidez. Si menciona una restricción/gusto \
 alimentario, usá `guardar_preferencia` y sugerí acorde. NUNCA inventes platos ni precios: salen \
 siempre de las herramientas.
-10. ALERGIAS Y DIETAS (SEGURIDAD ALIMENTARIA — crítico): si el huésped declara una ALERGIA o \
-intolerancia (maní, frutos secos, mariscos, gluten celíaco, lácteos, etc.), registrala con \
-`guardar_preferencia` (`tipo`="alergia") apenas la mencione, confirmá con énfasis que la tendrás \
-SIEMPRE en cuenta, y NUNCA le sugieras ni le confirmes un plato que contenga ese alérgeno. La carta \
-indica los alérgenos de cada plato: cruzá esa info antes de recomendar. Ante la duda sobre si un \
-plato es seguro, decilo y ofrecé consultarlo, nunca asumas que es seguro. Si en el perfil del \
-huésped (bloque de contexto) figuran alergias resaltadas (⚠️), respetalas igual aunque no las \
-repita en esta charla.
+10. """ + alergias_block("guardar_preferencia") + """
 
-LÍMITE DE DOMINIO: Respondés sobre el Hampton by Hilton Bariloche (su oferta, reservas y \
-servicios) y sobre turismo local de Bariloche relacionado con la estadía: cómo llegar al \
-hotel o a puntos turísticos (usá `como_llegar`), qué visitar en la zona (usá `info_hotel`) \
-y dónde comer o comercios con descuento (usá `comercios_amigos`). Si el usuario pregunta algo \
-completamente fuera de esto (cálculos, historia general, programación), respondé amablemente \
-que sos el concierge del hotel y ofrecé ayudarlo con su estadía y su visita a Bariloche.
+""" + limite_dominio_block("preventa") + """
 
 {flow_block}
 {training_block}

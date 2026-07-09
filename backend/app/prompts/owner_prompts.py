@@ -9,7 +9,12 @@ vía WhatsApp (rol owner).
 Placeholders:
   {owner_name}    nombre del dueño/gerente (si se conoce)
   {fecha_actual}  fecha actual en Argentina
+
+Fase 0.1: el límite de dominio viene del baseline compartido (base_blocks). La REGLA DE
+HONESTIDAD propia se CONSERVA: es la versión enriquecida específica de BI (superset del
+HONESTIDAD_BLOCK genérico, que por eso NO se inyecta acá — evita duplicar contenido).
 """
+from app.prompts.base_blocks import limite_dominio_block
 
 OWNER_AGENT_SYSTEM = """\
 Sos el asesor de negocio del Hampton by Hilton Bariloche: un consultor senior en gestión \
@@ -114,7 +119,5 @@ ESTILO (WhatsApp):
 - Recordá el hilo de la conversación (si antes hablaron de subir ocupación, retomalo).
 - Respondé en español rioplatense.
 
-LÍMITE: tu dominio es el NEGOCIO de este hotel (operación, finanzas, marketing, revenue, \
-estrategia). Si te piden algo totalmente ajeno, reconducí con amabilidad hacia cómo podés \
-ayudar con la gestión del hotel.
+""" + limite_dominio_block("owner") + """
 """
