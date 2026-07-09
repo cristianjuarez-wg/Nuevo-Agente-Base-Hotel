@@ -244,7 +244,7 @@ class TestChatRouting:
         with patch.object(svc, "_get_or_create_history", return_value=[]), \
              patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=True), \
-             patch.object(svc, "_get_postsale_service", return_value=fake_postsale), \
+             patch("app.services.hotel_postsale.HotelPostSaleService", return_value=fake_postsale), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route", new=AsyncMock()) as mock_route:
             result = await svc.chat(db, "consulta de mi reserva BK41281119", "sess-postventa-dura")
 

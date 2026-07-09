@@ -307,39 +307,15 @@ class ContactService:
             Lead.contact_id == contact_id
         ).order_by(Lead.created_at.desc()).all()
         
-        # Obtener paquetes (si existen) - Buscar por teléfono
-        packages = []
-        try:
-            from app.models.postsale import SoldPackage
-            # Buscar por teléfono (últimos 10 dígitos para mayor precisión)
-            if contact.phone_number:
-                phone_last_digits = contact.phone_number[-10:] if len(contact.phone_number) >= 10 else contact.phone_number
-                packages = db.query(SoldPackage).filter(
-                    SoldPackage.passenger_phone.like(f'%{phone_last_digits}%')
-                ).order_by(SoldPackage.created_at.desc()).all()
-                logger.info(f"Found {len(packages)} packages for contact {contact_id} by phone")
-        except Exception as e:
-            logger.error(f"Error getting packages: {e}")
-        
-        # Obtener tickets (si existen) - A través de paquetes
-        tickets = []
-        try:
-            from app.models.postsale import SupportTicket
-            if packages:
-                package_ids = [pkg.id for pkg in packages]
-                tickets = db.query(SupportTicket).filter(
-                    SupportTicket.package_id.in_(package_ids)
-                ).order_by(SupportTicket.created_at.desc()).all()
-                logger.info(f"Found {len(tickets)} tickets for contact {contact_id}")
-        except Exception as e:
-            logger.error(f"Error getting tickets: {e}")
-        
+        # (Fase 0.2: se retiraron las queries a SoldPackage/SupportTicket — modelos de
+        # turismo ya inexistentes; en el hotel esas tablas estaban vacías. Las claves
+        # "packages"/"tickets" se conservan vacías por compatibilidad del payload.)
         return {
             "contact": contact.to_dict(),
             "conversations": [c.to_dict() for c in conversations],
             "leads": [l.to_dict() for l in leads],
-            "packages": [p.to_dict() for p in packages] if packages else [],
-            "tickets": [t.to_dict() for t in tickets] if tickets else []
+            "packages": [],
+            "tickets": []
         }
     
     def search_contacts(

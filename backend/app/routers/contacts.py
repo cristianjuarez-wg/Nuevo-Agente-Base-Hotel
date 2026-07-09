@@ -279,13 +279,7 @@ async def delete_contact(contact_id: int, db: Session = Depends(get_db)):
     deleted_session_ids = [c.session_id for c in conversations if c.session_id]
     for conv in conversations:
         db.delete(conv)
-    try:
-        from app.models.postsale import SoldPackage
-        db.query(SoldPackage).filter(SoldPackage.contact_id == contact_id).update(
-            {SoldPackage.contact_id: None}, synchronize_session=False
-        )
-    except Exception:  # noqa: BLE001 — el modelo puede no estar presente en esta demo
-        pass
+    # (Fase 0.2: se retiró la desvinculación de SoldPackage — modelo de turismo ya inexistente.)
 
     # Restaurante: pedidos, reservas de mesa y vouchers también referencian al contacto.
     # Sin desvincularlos, el DELETE falla por integridad referencial (Postgres) y el

@@ -13,25 +13,29 @@ encararlo cuando corresponda (sin re-investigar).
   `SupportTicket` legacy) + sección "Calidad del agente" en Analíticas; code-split del
   backoffice (bundle inicial 536 KB → 123 KB; AnalyticsView/AgentSection lazy).
 
-## Pendiente — código legacy de turismo
-El proyecto evolucionó de un sistema de turismo a hotel. Quedan modelos/routers/servicios
-de turismo **importados pero desconectados** del flujo del hotel:
-- Modelos: `Provider`, `ProviderContact`, `FlightStatusTracking`, `AirportTerminal`,
-  `SoldPackage`, `SupportTicket`, `Geography`, `LearningOpportunity`.
-- Routers: `providers`, `flight_monitoring`, `kanban`, partes de `postsale` legacy.
-- Orquestadores legacy: `agent_sdk_orchestrator`, `postsale_sdk_orchestrator` (no usados;
-  el hotel usa `hotel_sdk_orchestrator` y `hotel_postsale_orchestrator`).
+## RESUELTO — código legacy de turismo (Fase 0.2, 2026-07-09)
+El proyecto evolucionó de turismo a hotel. Se retiró todo el código legacy de turismo:
+- **Modelos borrados:** `postsale.py` completo (SoldPackage, SupportTicket, TourPackage,
+  y los 10 sub-modelos de paquetes/vuelos/tickets), `provider.py` (Provider/ProviderContact),
+  `flight_tracking.py`, `airport_terminal.py`, `geography.py` (GeographicMapping),
+  `learning_opportunity.py`. `models/__init__.py` quedó solo con `AgentSnapshot`.
+- **Servicios borrados (10):** `postsale_service`, `package_service`, `package_validator`,
+  `postsale_vector_store`, `maps_service`, `terminal_discovery_service`, `provider_service`,
+  `learning_service`, `geographic_mapping_service`, `voucher_service` (el de turismo; el
+  voucher del restaurante vive en `restaurant_service.create_voucher`).
+- **Routers borrados:** `postsale.py`, `learning.py`, `providers.py` (ya desmontados/ausentes
+  de main.py; se quitaron las 2 líneas comentadas decorativas).
+- **Orquestadores fantasma:** `agent_sdk_orchestrator`/`postsale_sdk_orchestrator` ya NO
+  existían — solo se limpiaron referencias colgadas en comentarios.
+- **kanban NO se tocó:** es el pipeline de leads del HOTEL (`Lead.kanban_stage`), no turismo.
+- **Queries muertas retiradas:** `contacts.py` (desvinculación de SoldPackage al borrar
+  contacto) y `contact_service`/`summary_service` (historial de paquetes por teléfono) —
+  las tablas estaban vacías en el hotel. El payload de contacto conserva `packages`/`tickets`
+  vacíos por compatibilidad.
 
-**Por qué no se retira ahora:** la app importa varios de estos en cadena (relationships de
-SQLAlchemy, imports en `main.py`). Retirarlos requiere desenredar las dependencias con
-cuidado y verificar que `Base.metadata.create_all` siga resolviendo las FKs. Es un trabajo
-de limpieza de riesgo medio sin impacto funcional, mejor en una sesión dedicada y no antes
-de una demo.
-
-**Plan cuando se haga:** (1) mapear qué importa cada módulo legacy; (2) quitar sus
-`include_router` de `main.py`; (3) eliminar los modelos sin relationships activas verificando
-`from app.main import app` tras cada paso; (4) borrar servicios huérfanos. Hacer por capas,
-con el import-check como prueba de regresión.
+**Verificación:** `from app.main import app` OK, 135/135 tests verde, startup completo sin
+errores, smoke en vivo de la ruta casual OK. **Tablas NO dropeadas** (DB de producción
+Render): quedan huérfanas hasta la Fase 2 (Alembic), donde se documenta su drop opcional.
 
 ## Pendiente — migraciones formales (Alembic)
 Hoy el esquema evoluciona con `run_light_migrations()` (`ensure_column` idempotente) en

@@ -19,7 +19,6 @@ from datetime import datetime, timezone, timedelta
 import re
 
 # 🆕 Imports para módulo post-venta
-from app.services.postsale_service import PostSaleService
 
 # 🆕 Imports para Visión 360°
 from app.models.conversation import Conversation
@@ -613,10 +612,6 @@ class AgentService:
         
         return True, "Válido"
     
-    def _get_postsale_service(self, db: Session) -> PostSaleService:
-        """Obtiene o crea instancia de PostSaleService"""
-        return PostSaleService(db)
-    
     def _preventa_channel_gate(self, db: Session, session_id: str):
         """Fase F (Centro): si el canal de esta sesión NO está asignado al flujo de
         pre-venta, la consulta comercial no se atiende (decisión de producto: el flujo
@@ -839,7 +834,7 @@ class AgentService:
                         return _gate
 
             if is_postsale:
-                logger.info("Post-sale context detected, delegating to PostSaleService",
+                logger.info("Post-sale context detected, delegating to HotelPostSaleService",
                            session_id=session_id,
                            message_preview=message[:50])
                 

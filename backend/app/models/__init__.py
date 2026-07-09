@@ -1,39 +1,10 @@
-# Models package
-# Importar en orden para resolver dependencias
-from app.models.learning_opportunity import LearningOpportunity
+# Models package.
+# Fase 0.2: se retiraron los modelos de turismo (postsale/paquetes, provider,
+# flight_tracking, airport_terminal, geography, learning_opportunity). El resto de los
+# modelos se autoimporta donde se usa; acá solo queda lo que otros módulos consumían
+# vía `app.models`.
 from app.models.agent_snapshot import AgentSnapshot
-from app.models.provider import Provider
-from app.models.postsale import (
-    TourPackage,
-    SharedFlight,
-    SoldPackage,
-    PackagePassenger,
-    PackageFlight,
-    PackageAccommodation,
-    PackageTransfer,
-    PackageActivity,
-    PackageDocument,
-    PackageItinerary,
-    SupportTicket,
-    TicketInteraction,
-    PostSaleSession
-)
 
 __all__ = [
-    'LearningOpportunity',
     'AgentSnapshot',
-    'Provider',
-    'TourPackage',
-    'SharedFlight',
-    'SoldPackage',
-    'PackagePassenger',
-    'PackageFlight',
-    'PackageAccommodation',
-    'PackageTransfer',
-    'PackageActivity',
-    'PackageDocument',
-    'PackageItinerary',
-    'SupportTicket',
-    'TicketInteraction',
-    'PostSaleSession'
 ]

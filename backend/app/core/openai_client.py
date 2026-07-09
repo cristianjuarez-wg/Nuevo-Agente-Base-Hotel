@@ -13,7 +13,7 @@ Uso:
 
 Ambos clientes usan la misma API key (settings.OPENAI_API_KEY) y los timeouts/reintentos
 nativos del SDK de OpenAI. El SDK de Agents usa este mismo cliente async vía
-set_default_openai_client (ver agent_sdk_orchestrator / triage / postsale).
+set_default_openai_client (ver hotel_sdk_orchestrator / triage / hotel_postsale_orchestrator).
 """
 from openai import AsyncOpenAI, OpenAI
 from app.config import settings

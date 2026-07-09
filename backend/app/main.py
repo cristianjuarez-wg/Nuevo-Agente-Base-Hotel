@@ -205,8 +205,6 @@ app.include_router(admin.router)
 app.include_router(leads.router)
 app.include_router(kanban.router)
 app.include_router(analytics.router)
-# app.include_router(postsale.router)  # turismo legacy (paquetes/SupportTicket); el hotel usa hotel_tickets. Desmontado.
-# app.include_router(learning.router)  # auto-aprendizaje legacy de turismo (Kami); huérfano en el hotel. Desmontado.
 app.include_router(reservations.router)
 app.include_router(hotel_tickets.router)
 app.include_router(usage.router)

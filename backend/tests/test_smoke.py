@@ -52,10 +52,6 @@ def test_no_context_response_does_not_duplicate():
     assert result.get("is_final") is True, "is_final debe ser True para evitar doble procesado"
 
 
-def test_cleanup_inactive_sessions_method_exists():
-    """PostSaleService debe tener el método cleanup_inactive_sessions."""
-    from app.services.postsale_service import PostSaleService
-    assert hasattr(PostSaleService, "cleanup_inactive_sessions")
-    import inspect
-    sig = inspect.signature(PostSaleService.cleanup_inactive_sessions)
-    assert "days" in sig.parameters
+# (El smoke de PostSaleService.cleanup_inactive_sessions se retiró en Fase 0.2:
+#  postsale_service era el servicio de post-venta de TURISMO, reemplazado por
+#  hotel_postsale / hotel_postsale_orchestrator.)

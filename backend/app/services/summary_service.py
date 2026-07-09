@@ -152,21 +152,7 @@ class SummaryService:
                     lines.append(f"  Obstáculo: {lead.obstacle}")
             lines.append("")
         
-        # Paquetes comprados
-        try:
-            from app.models.postsale import SoldPackage
-            packages = db.query(SoldPackage).filter(
-                SoldPackage.contact_id == contact.id
-            ).order_by(SoldPackage.created_at.desc()).limit(2).all()
-            
-            if packages:
-                lines.append("PAQUETES COMPRADOS:")
-                for pkg in packages:
-                    lines.append(f"- {pkg.package_name}: {pkg.destination_country}")
-                    lines.append(f"  Fecha: {pkg.departure_date.strftime('%d/%m/%Y') if pkg.departure_date else 'N/A'}")
-                lines.append("")
-        except Exception as e:
-            logger.warning("No se pudieron agregar paquetes al resumen", error=str(e))
+        # (Fase 0.2: se retiró el bloque de SoldPackage — modelo de turismo ya inexistente.)
 
         return "\n".join(lines)
     

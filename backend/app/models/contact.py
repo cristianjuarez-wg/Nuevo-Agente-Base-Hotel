@@ -64,7 +64,6 @@ class Contact(Base):
     # Relationships (se definirán cuando se importen los otros modelos)
     conversations = relationship("Conversation", back_populates="contact", lazy="dynamic")
     leads = relationship("Lead", back_populates="contact", lazy="dynamic")
-    # sold_packages = relationship("SoldPackage", back_populates="contact", lazy="dynamic")
     
     def to_dict(self) -> Dict:
         """Convierte el contacto a diccionario"""
