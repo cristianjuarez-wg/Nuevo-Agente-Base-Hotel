@@ -19,9 +19,12 @@ function resolveImg(url) {
 export default function RoomCard({ card, onAction, lang = 'es' }) {
   const t = getStrings(lang)
   const nights = card.nights
-  // Acción de reserva en el idioma activo (el backend manda la card en español).
+  // Acción de la tarjeta en el idioma activo (el backend manda la card en español).
+  // Catálogo (previo a fechas): "ver disponibilidad"; disponibilidad real: "reservar".
   const bookAction = card.action
-    ? { ...card.action, label: t.bookRoom, message: t.bookRoomMsg(card.title) }
+    ? (card.catalog
+        ? { ...card.action, label: t.seeAvailability, message: t.seeAvailabilityMsg(card.title) }
+        : { ...card.action, label: t.bookRoom, message: t.bookRoomMsg(card.title) })
     : null
   return (
     <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-card">
@@ -94,6 +97,23 @@ export default function RoomCard({ card, onAction, lang = 'es' }) {
                 <span className="rounded-lg bg-forest-50 px-2 py-1 text-[11px] font-medium text-forest-600 tabular-nums">
                   {t.youSave} {formatUSD(card.savings_usd)}
                 </span>
+              ) : null}
+            </div>
+          </div>
+        ) : card.catalog ? (
+          /* Catálogo (previo a fechas): precio de referencia "desde $X/noche", sin total. */
+          <div className="mt-3 flex items-end justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-slatey">
+                {t.from} · {t.night}
+              </p>
+              <p className="font-display text-lg font-700 leading-none text-ink tabular-nums">
+                {formatUSD(card.price_usd_night)}
+              </p>
+              {card.price_ars_night ? (
+                <p className="text-[11px] tabular-nums text-slatey">
+                  {formatARS(card.price_ars_night)}
+                </p>
               ) : null}
             </div>
           </div>

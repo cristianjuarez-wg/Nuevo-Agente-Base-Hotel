@@ -112,6 +112,22 @@ _DATE_REQUEST_HINTS = (
 _BOOKING_FLOW_TOOLS = ("consultar_disponibilidad", "crear_reserva", "consultar_reserva")
 
 
+# Señales en el MENSAJE DEL USUARIO de que quiere VER las habitaciones (tipos/fotos)
+# ANTES de dar fechas. En pre-venta mostramos el catálogo (foto + tipo + capacidad +
+# precio "desde"), leído de la tabla `rooms` que el cliente configura en Negocio →
+# Habitaciones. Resuelve el hueco de UX donde Aura decía "no puedo mostrar imágenes".
+_ROOM_CATALOG_HINTS = (
+    "tipos de habitación", "tipos de habitacion", "tipos de habitaciones",
+    "qué habitaciones", "que habitaciones", "cuáles habitaciones", "cuales habitaciones",
+    "ver las habitaciones", "ver habitaciones", "mostrame las habitaciones",
+    "mostrame habitaciones", "muéstrame las habitaciones", "muestrame las habitaciones",
+    "fotos de las habitaciones", "fotos de habitaciones", "foto de las habitaciones",
+    "imágenes de las habitaciones", "imagenes de las habitaciones",
+    "cómo son las habitaciones", "como son las habitaciones",
+    "qué tipo de habitación", "que tipo de habitacion",
+)
+
+
 # Señales en el MENSAJE DEL USUARIO de que pide ver la carta / el menú. Fallback
 # determinístico: si el huésped pide la carta y el LLM no llamó `ver_carta`, igual
 # adjuntamos la card interactiva (que nunca quede "te envío la carta" sin carta).
@@ -403,6 +419,58 @@ def _build_room_cards(rooms_offered: list) -> list:
     return cards
 
 
+def _wants_room_catalog(user_message: str) -> bool:
+    """True si el huésped pide VER los tipos/fotos de habitación (sin dar fechas).
+
+    Determinístico: dispara el catálogo de habitaciones en pre-venta para que Aura muestre
+    las fotos en vez de negarlas. Se combina aguas arriba con `dates_given`/disponibilidad:
+    si ya hay fechas o ya se mostró disponibilidad, no es un pedido de catálogo.
+    """
+    low = (user_message or "").lower()
+    return any(h in low for h in _ROOM_CATALOG_HINTS)
+
+
+def _build_room_catalog_cards(db) -> list:
+    """Catálogo de tipos de habitación (foto + tipo + capacidad + camas + vista + precio 'desde').
+
+    Fuente única: la tabla `rooms` que el cliente configura en Negocio → Habitaciones (solo
+    `status == "active"`). Se muestra ANTES de fechas, por eso el precio es "desde $X/noche"
+    (base_price_*), no un total: el total real depende de las noches y sale por disponibilidad.
+    """
+    from app.models.hotel import Room
+    rooms = (
+        db.query(Room)
+        .filter(Room.status == "active")
+        .order_by(Room.base_price_usd.asc())
+        .all()
+    )
+    cards = []
+    for room in rooms:
+        images = room.images or []
+        image = images[0] if images else _ROOM_FALLBACK_IMG
+        cards.append({
+            "type": "room",
+            # Marca la tarjeta como CATÁLOGO (previo a fechas): el front muestra precio
+            # "desde $X/noche" en vez del bloque "Total" (que aún no aplica sin fechas).
+            "catalog": True,
+            "title": room.room_type,
+            "description": room.description,
+            "image": image,
+            # Precio de referencia por noche (no total): el catálogo es previo a las fechas.
+            "price_usd_night": room.base_price_usd,
+            "price_ars_night": room.base_price_ars,
+            "capacity": room.capacity,
+            "bed_config": room.bed_config,
+            "view": room.view,
+            "action": {
+                "kind": "send_message",
+                "label": "Ver disponibilidad y precios",
+                "message": f"Quiero ver disponibilidad de la habitación {room.room_type}",
+            },
+        })
+    return cards
+
+
 def _build_promo_card(offer: dict) -> dict:
     """Arma la tarjeta de oferta con promo (precio lleno tachado + final + ahorro).
 
@@ -622,6 +690,20 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # el RESUMEN de la reserva al cerrar, no un pedido de fechas). Suprime ambos backstops.
         elif _availability_shown_in_session(db, chat_request.session_id):
             pass
+
+        # CATÁLOGO de habitaciones: el huésped quiere VER los tipos/fotos antes de dar fechas.
+        # Mostramos las tarjetas del catálogo (foto + capacidad + precio "desde"), leídas de
+        # Negocio → Habitaciones, en vez de negar imágenes o saltar directo al date picker.
+        # Solo en pre-venta y si no dio fechas (si las dio, lo maneja el flujo de disponibilidad).
+        elif (result.get("context_type", "") not in ("postsale", "casual")
+              and _wants_room_catalog(chat_request.message)
+              and not _dates_already_given(
+                  chat_request.message,
+                  agent_service.conversation_history.get(chat_request.session_id, []),
+              )):
+            catalog = _build_room_catalog_cards(db)
+            if catalog:
+                cards = catalog
 
         # BACKSTOP de fechas vagas: si el huésped mencionó un período (mes/temporada/duración)
         # SIN un día concreto, NO mostramos habitaciones (saldrían de fechas inventadas por el

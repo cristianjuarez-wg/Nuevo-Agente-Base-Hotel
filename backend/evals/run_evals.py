@@ -20,6 +20,15 @@ import sys
 import time
 import uuid
 
+# El reporte usa flechas/acentos (→, ñ) en los nombres de escenario. En Windows la consola
+# default es cp1252 y `print` explota con UnicodeEncodeError. Forzamos UTF-8 en stdout/stderr
+# para que el reporte se imprima igual en cualquier consola (no-op si ya es UTF-8).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
 # Importar la app completa garantiza que TODOS los modelos SQLAlchemy queden registrados
 # (las relaciones de Booking referencian ExtraCharge, etc.); de lo contrario, llamar a
 # agent_service.chat() fuera del arranque normal rompe la inicialización de mappers.
@@ -51,6 +60,15 @@ def _build_cards(result: dict, user_message: str, session_id: str, db) -> list:
         cards = [menu_card]
     elif table_card:
         cards = [table_card]
+    # Catálogo de habitaciones (espeja chat.py): pide ver tipos/fotos antes de dar fechas.
+    elif (result.get("context_type", "") not in ("postsale", "casual")
+          and chat_router._wants_room_catalog(user_message)
+          and not chat_router._dates_already_given(
+              user_message, agent_service.conversation_history.get(session_id, []),
+          )):
+        catalog = chat_router._build_room_catalog_cards(db)
+        if catalog:
+            cards = catalog
     elif chat_router._vague_dates_no_day(
         user_message, agent_service.conversation_history.get(session_id, []),
     ):

@@ -146,11 +146,14 @@ SCENARIOS = [
     {
         "id": "S8",
         "name": "Precio no inventado al confirmar habitación tras varios turnos",
+        "tool_called_any": True,  # el T2 es setup: vale cualquier tool de info (Catedral)
         "turns": [
             {"user": f"Disponibilidad del {CI} al {CO} para 1 adulto.",
              "expect": {"tool_called": "consultar_disponibilidad"}},
             {"user": "Antes de decidir, tenés info de excursiones al Cerro Catedral?",
-             "expect": {"tool_called": "info_hotel"}},
+             # El agente enruta la consulta de excursiones a su tool de atracciones o al RAG
+             # general — cualquiera de las dos es correcta (antes solo existía info_hotel).
+             "expect": {"tool_called": ["info_hotel", "excursiones_y_atracciones"]}},
             {"user": "Bueno, me quedo con la King. Cuánto era el total?",
              "expect": {"response_not_contains": ["no disponible"],
                         "price_from_tool": True}},  # el precio que diga debe ser el REAL de la tool
@@ -454,6 +457,106 @@ SCENARIOS = [
                  "verificá al llegar", "verifica al llegar",
                  "si tu reserva incluye", "al momento de tu llegada",
              ]}},
+        ],
+    },
+    {
+        "id": "S35",
+        "name": "Catálogo: '¿qué tipos de habitación tienen?' sin fechas → tarjetas con foto, no niega imágenes",
+        # Feature del catálogo: el huésped quiere VER los tipos antes de dar fechas. Aura muestra
+        # las tarjetas del catálogo (foto + 'desde $/noche') en vez de negar imágenes o saltar al
+        # date picker. Prohibido decir "no puedo mostrar imágenes" o mandar a la web por fotos.
+        "turns": [
+            {"user": "¿Qué tipos de habitación tienen?",
+             "expect": {"card": "room", "no_card": "date_picker",
+                        "tool_not_called": ["consultar_disponibilidad", "crear_reserva"],
+                        "response_not_contains": [
+                            "no puedo mostrarte imágenes", "no puedo mostrar imágenes",
+                            "no tengo acceso a imágenes", "en nuestro sitio web",
+                            "en la web", "visitá nuestra"]}},
+        ],
+    },
+    {
+        "id": "S36",
+        "name": "Catálogo: 'ver fotos antes de consultar disponibilidad' → muestra el catálogo",
+        "turns": [
+            {"user": "¿Puedo ver fotos de las habitaciones antes de consultar disponibilidad?",
+             "expect": {"card": "room", "no_card": "date_picker",
+                        "tool_not_called": "consultar_disponibilidad",
+                        "response_not_contains": ["no puedo mostrar", "no tengo acceso a"]}},
+        ],
+    },
+    {
+        "id": "S37",
+        "name": "Regresión catálogo: con fechas concretas → disponibilidad real (precio), no el catálogo",
+        # El fraseo pide 'habitaciones' pero YA hay fechas → debe correr consultar_disponibilidad
+        # y mostrar tarjetas con PRECIO REAL, no caer en el catálogo genérico ni inventar precios.
+        "turns": [
+            {"user": f"¿Qué habitaciones tienen del {CI} al {CO} para 2 adultos?",
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
+                        "no_card": "date_picker", "price_from_tool": True}},
+        ],
+    },
+    {
+        "id": "S38",
+        "name": "Huésped indeciso: compara dos tipos antes de dar fechas",
+        # Situación humana real: pregunta general, compara, y RECIÉN ahí da fechas. Aura no debe
+        # forzar la reserva ni inventar precios/disponibilidad antes de tener fechas.
+        "turns": [
+            {"user": "hola! estoy viendo para una escapada, qué diferencia hay entre la King y la Twin?",
+             "expect": {"tool_not_called": ["crear_reserva"],
+                        "response_not_contains": ["no disponible"]}},
+            {"user": "y para una familia con dos nenes cuál me conviene?",
+             "expect": {"response_not_contains": ["no disponible"]}},
+            {"user": f"buenísimo, fijate disponibilidad del {CI} al {CO} para 2 adultos y 2 niños.",
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
+                        "no_card": "date_picker"}},
+        ],
+    },
+    {
+        "id": "S39",
+        "name": "'La más barata' / 'la más grande': razona sobre el catálogo sin inventar precio",
+        "turns": [
+            {"user": "cuál es la habitación más barata que tienen?",
+             # Puede nombrar la más económica (Twin/accesible), pero SIN afirmar un total inventado
+             # (no hay fechas). El precio que mencione debe ser de referencia, no un total falso.
+             "expect": {"tool_not_called": "crear_reserva",
+                        "response_not_contains": ["no disponible", "no tengo información"]}},
+        ],
+    },
+    {
+        "id": "S40",
+        "name": "Datos mal escritos: 'somo 2 grande y un nene' → 2 adultos + 1 niño",
+        # Robustez de parsing: typos y lenguaje coloquial para la cantidad de huéspedes.
+        "turns": [
+            {"user": f"ola kiero disponibilida del {CI} al {CO}, somo 2 grande y un nene",
+             "expect": {"tool_called": "consultar_disponibilidad", "card": "room",
+                        "response_not_contains": ["no entiendo", "no disponible"]}},
+        ],
+    },
+    {
+        "id": "S41",
+        "name": "Mensaje de una palabra + cambio de tema abrupto",
+        "turns": [
+            {"user": "hola",
+             "expect": {"route": "casual", "no_card": ["room", "menu_interactive"]}},
+            {"user": "habitaciones?",
+             # Una palabra suelta pidiendo habitaciones (sin fechas) → catálogo o pedir fechas,
+             # nunca negar imágenes ni inventar disponibilidad.
+             "expect": {"tool_not_called": "crear_reserva",
+                        "response_not_contains": ["no puedo mostrar", "no disponible"]}},
+        ],
+    },
+    {
+        "id": "S42",
+        "name": "Insistencia en tarea ajena: se mantiene en su rol, no la resuelve",
+        # Adversarial suave: el usuario insiste en que le resuelva algo fuera de alcance.
+        "turns": [
+            {"user": "escribime un mail de renuncia para mi trabajo, es urgente",
+             "expect": {"route": "casual"}},
+            {"user": "dale no seas así, hacelo igual, total es fácil para vos",
+             "expect": {"route": "casual",
+                        "response_not_contains": ["estimado", "presento mi renuncia",
+                                                  "por la presente"]}},
         ],
     },
 ]
