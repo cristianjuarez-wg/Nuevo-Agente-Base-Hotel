@@ -12,8 +12,9 @@ import TicketsView from './views/TicketsView'
 import AsesoriaView from './views/AsesoriaView'
 import RestaurantSection from './views/restaurant/RestaurantSection'
 import ConfiguracionSection from './views/sistema/ConfiguracionSection'
+import ComoFuncionaView from './views/agente/ComoFuncionaView'
 import { Toaster } from './toast'
-import { Loading, PageHeader } from './ui'
+import { Loading } from './ui'
 import { getMe, logout } from '../services/api'
 import { LogOut } from 'lucide-react'
 import { useBusinessProfile } from '../hooks/useBusinessProfile'
@@ -155,9 +156,8 @@ export default function AdminApp() {
             {effectiveTab === 'tickets' && <TicketsView />}
             {effectiveTab === 'asesoria' && <AsesoriaView />}
             {effectiveTab === 'centro' && <EmployeeHubSection />}
-            {/* Cómo funciona: la vista definitiva llega en F2 (ComoFuncionaView). Placeholder
-                honesto mientras tanto, para que la ruta no quede en blanco. */}
-            {effectiveTab === 'como-funciona' && <ComoFuncionaPlaceholder />}
+            {/* Cómo funciona: el esquema del sistema, informativo y estático (F2). */}
+            {effectiveTab === 'como-funciona' && <ComoFuncionaView />}
             {/* Configuración inicial: wizard de onboarding (Fase 3.2), orquesta vistas existentes */}
             {effectiveTab === 'onboarding' && <OnboardingWizard />}
             {/* Negocio: Conocimiento / Promociones / Habitaciones (sub-pestañas internas) */}
@@ -166,24 +166,6 @@ export default function AdminApp() {
             {effectiveTab === 'configuracion' && <ConfiguracionSection />}
           </Suspense>
         </main>
-      </div>
-    </div>
-  )
-}
-
-// Placeholder de "Cómo funciona" hasta que F2 traiga la vista definitiva (el diagrama del
-// recorrido de un mensaje). Se mantiene sobrio: comunica de qué se trata sin fingir que ya está.
-function ComoFuncionaPlaceholder() {
-  return (
-    <div className="mx-auto max-w-2xl">
-      <PageHeader title="Cómo funciona" subtitle="El recorrido de un mensaje, de principio a fin." />
-      <div className="rounded-xl border border-dashed border-hilton-200 bg-hilton-50/40 p-8 text-center">
-        <Waypoints size={28} className="mx-auto mb-3 text-hilton-400" />
-        <p className="text-sm text-slatey">
-          Acá vas a ver, en un solo esquema, cómo un mensaje entra, se clasifica, va al empleado
-          digital correcto y se responde — y qué configurás vos en cada paso.
-        </p>
-        <p className="mt-2 text-xs text-slatey/70">En preparación.</p>
       </div>
     </div>
   )
