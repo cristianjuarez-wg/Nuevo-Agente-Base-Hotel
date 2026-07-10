@@ -964,69 +964,7 @@ Responde SOLO con el JSON."""
                 logger.debug("No se pudo calcular antigüedad del lead para el score", error=str(e))
 
         return max(score, 0)
-    
-    async def create_event_lead(
-        self,
-        db: Session,
-        session_id: str,
-        event_info: Dict,
-        contact_info: Dict
-    ):
-        """
-        Crea o actualiza lead con información de evento temporal
-        
-        Args:
-            db: Sesión de base de datos
-            session_id: ID de sesión
-            event_info: Info del evento (name, type, countries, year)
-            contact_info: Info de contacto (name, email, phone)
-            
-        Returns:
-            Lead creado/actualizado
-        """
-        try:
-            # Reutilizar método existente
-            lead = self._get_or_create_lead(db, session_id)
-            
-            # Agregar info de evento (campos nuevos)
-            lead.is_event_lead = True
-            lead.event_name = event_info.get("event_name")
-            lead.event_type = event_info.get("event_type")
-            
-            # Guardar países como JSON string
-            import json
-            if event_info.get("related_countries"):
-                lead.event_countries = json.dumps(event_info["related_countries"])
-            
-            lead.event_year = event_info.get("next_edition")
-            
-            # Actualizar main_interest con evento
-            lead.main_interest = f"{event_info.get('event_name')} {event_info.get('next_edition', '')}"
-            
-            # Usar método existente para agregar contacto
-            lead.add_contact_info(**contact_info)
-            
-            # Marcar como lead caliente (interés específico)
-            lead.lead_type = "CALIENTE"
-            lead.interest_score = 8
-            lead.contact_readiness = True
-            
-            db.commit()
-            
-            logger.info("Event lead created/updated",
-                       session_id=session_id,
-                       lead_id=lead.id,
-                       event_name=lead.event_name,
-                       has_contact=lead.is_complete_lead())
-            
-            return lead
-            
-        except Exception as e:
-            logger.error("Error creating event lead",
-                        session_id=session_id,
-                        error=str(e))
-            db.rollback()
-            raise
+
 
 # Instancia global del servicio de leads
 lead_service = LeadService()

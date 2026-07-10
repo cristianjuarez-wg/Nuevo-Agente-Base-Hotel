@@ -5,7 +5,6 @@ from app.config import settings
 from app.utils.timezone_utils import now_business
 from app.core.rag.rag_service import rag_service
 from app.services.lead_service import lead_service
-from app.services.conversation_state_manager import conversation_state_manager
 from app.core.profile.agent_profile import profile_manager
 from app.core.llm.circuit_breaker import openai_circuit_breaker
 from app.core.observability.logging_config import get_logger
@@ -708,16 +707,8 @@ class AgentService:
 
             # 2. Obtener historial
             history = self._get_or_create_history(session_id, db=db)
-            
-            # 🆕 2.3. CHEQUEAR ESTADO CONVERSACIONAL (captura de datos multi-paso)
-            state = conversation_state_manager.get_state(session_id)
-            if state:
-                logger.info("Active conversation state detected",
-                           session_id=session_id,
-                           step=state.get("step"))
-                return await self._handle_conversation_state(db, message, session_id, state, history)
-            
-            # 🆕 2.35. VALIDACIÓN DE RESOLUCIÓN (Fase 4, "empleado digital"): si hay un ticket
+
+            # 2.35. VALIDACIÓN DE RESOLUCIÓN (Fase 4, "empleado digital"): si hay un ticket
             # operativo PRE-RESUELTO para esta sesión, el huésped está respondiendo si quedó
             # bien. Lo interceptamos acá (determinístico, 0 LLM) para cerrar el loop sin pasar
             # por el orquestador. Si el mensaje no es un sí/no claro, dejamos seguir el flujo.
@@ -1075,127 +1066,6 @@ class AgentService:
         except Exception as e:
             logger.error("Error getting service stats", error=str(e))
             return {"error": str(e)}
-    
-    async def _handle_conversation_state(
-        self,
-        db: Session,
-        message: str,
-        session_id: str,
-        state: Dict,
-        history: List[Dict]
-    ) -> Dict:
-        """
-        Maneja flujos conversacionales multi-paso (captura de datos)
-        """
-        try:
-            step = state.get("step")
-            event_info = state.get("event_info", {})
-            contact_data = state.get("contact_data", {})
-            
-            logger.info("Handling conversation state",
-                       session_id=session_id,
-                       step=step)
-            
-            # Paso 0: Elección de opción (notificación o alternativas)
-            if step == "awaiting_event_choice":
-                message_lower = message.lower().strip()
-                
-                # Opción 1: Notificación
-                if any(word in message_lower for word in ["1", "notif", "avisa", "aviso", "primera"]):
-                    conversation_state_manager.update_state(session_id, {
-                        "step": "awaiting_name",
-                        "event_info": event_info,
-                        "contact_data": contact_data
-                    })
-                    
-                    response_text = "¡Perfecto! Te notificaré cuando tengamos paquetes disponibles.\n\n¿Cuál es tu nombre?"
-                    
-                # Opción 2: Destinos similares
-                elif any(word in message_lower for word in ["2", "destin", "alternativ", "similar", "segunda", "opciones"]):
-                    # Limpiar estado
-                    conversation_state_manager.clear_state(session_id)
-                    
-                    # Usar lógica actual de alternativas por región
-                    countries = event_info.get("related_countries", [])
-                    geo_analysis = {
-                        "countries": countries,
-                        "continent": None,
-                        "suggested_countries": countries
-                    }
-                    
-                    no_context_result = rag_service.format_no_context_response(geo_analysis)
-                    response_text = no_context_result if isinstance(no_context_result, str) else no_context_result.get("response", "")
-                    
-                    logger.info("User chose alternative destinations",
-                               session_id=session_id,
-                               countries=countries[:3])
-                else:
-                    # No entendió, preguntar de nuevo
-                    response_text = "Por favor, elige una opción:\n\n1️⃣ Notificación\n2️⃣ Destinos similares\n\nResponde con **1** o **2**."
-            
-            # Paso 1: Capturar nombre
-            elif step == "awaiting_name":
-                contact_data["name"] = message.strip()
-                conversation_state_manager.update_state(session_id, {
-                    "step": "awaiting_email",
-                    "contact_data": contact_data
-                })
-                
-                response_text = "Perfecto. ¿Cuál es tu email?"
-                
-            # Paso 2: Capturar email
-            elif step == "awaiting_email":
-                contact_data["email"] = message.strip()
-                conversation_state_manager.update_state(session_id, {
-                    "step": "awaiting_phone",
-                    "contact_data": contact_data
-                })
-                
-                response_text = "Excelente. ¿Y tu número de teléfono?"
-                
-            # Paso 3: Capturar teléfono y crear lead
-            elif step == "awaiting_phone":
-                contact_data["phone"] = message.strip()
-                
-                # Crear lead con evento
-                lead = await lead_service.create_event_lead(
-                    db, session_id, event_info, contact_data
-                )
-                
-                # Limpiar estado
-                conversation_state_manager.clear_state(session_id)
-                
-                event_name = event_info.get("event_name", "este evento")
-                response_text = f"¡Perfecto {contact_data['name']}! Te contactaremos cuando tengamos paquetes de {event_name} disponibles.\n\n¿Hay algo más en lo que pueda ayudarte?"
-                
-                logger.info("Event lead created successfully",
-                           session_id=session_id,
-                           lead_id=lead.id,
-                           event_name=event_info.get("event_name"))
-            else:
-                # Estado desconocido, limpiar
-                conversation_state_manager.clear_state(session_id)
-                response_text = "Disculpa, hubo un error. ¿En qué puedo ayudarte?"
-            
-            # Actualizar historial
-            history.append({"role": "user", "content": message})
-            history.append({"role": "assistant", "content": response_text})
-            self._update_session_metadata(session_id)
-            
-            return {
-                "response": response_text,
-                "has_context": False,
-                "capturing_lead": step != "awaiting_phone",
-                "lead_created": step == "awaiting_phone",
-                "session_info": self.get_session_info(session_id)
-            }
-            
-        except Exception as e:
-            logger.error("Error handling conversation state",
-                        session_id=session_id,
-                        error=str(e))
-            conversation_state_manager.clear_state(session_id)
-            raise
 
 
 # Instancia global del servicio del agente

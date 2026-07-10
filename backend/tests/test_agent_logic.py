@@ -206,7 +206,6 @@ class TestPostsaleMetrics:
 # El refactor P4 reescribió la orquestación de chat(); estos tests fijan su
 # contrato sin llamar a OpenAI real. Se mockea en los límites de I/O:
 #   - _get_or_create_history → historial vacío
-#   - conversation_state_manager.get_state → sin estado multi-paso
 #   - la query de PostSaleSession (db es un MagicMock; .first() → None)
 #   - el triage y los orquestadores SDK
 class TestChatRouting:
@@ -245,7 +244,6 @@ class TestChatRouting:
         })
 
         with patch.object(svc, "_get_or_create_history", return_value=[]), \
-             patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=True), \
              patch("app.services.hotel_postsale.HotelPostSaleService", return_value=fake_postsale), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route", new=AsyncMock()) as mock_route:
@@ -264,7 +262,6 @@ class TestChatRouting:
         db = self._db_sin_postsale_activa()
 
         with patch.object(svc, "_get_or_create_history", return_value=[]), \
-             patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=False), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route",
                           new=AsyncMock(return_value={"route": triage_mod.ROUTE_CASUAL, "usage": {}})), \
@@ -298,7 +295,6 @@ class TestChatRouting:
         })
 
         with patch.object(svc, "_get_or_create_history", return_value=[]), \
-             patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=False), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route",
                           new=AsyncMock(return_value={"route": triage_mod.ROUTE_POSTVENTA, "usage": {}})), \
@@ -322,7 +318,6 @@ class TestChatRouting:
         db = self._db_sin_postsale_activa()
 
         with patch.object(svc, "_get_or_create_history", return_value=[]), \
-             patch("app.services.conversation_state_manager.conversation_state_manager.get_state", return_value=None), \
              patch.object(svc, "_contains_booking_code", return_value=False), \
              patch.object(triage_mod.triage_sdk_orchestrator, "route",
                           new=AsyncMock(return_value={"route": triage_mod.ROUTE_PREVENTA, "usage": {}})), \
@@ -334,26 +329,6 @@ class TestChatRouting:
 
         assert "king" in result["response"].lower()
         assert result["tools_used"] == []
-
-    @pytest.mark.asyncio
-    async def test_estado_conversacional_corta_antes_del_ruteo(self):
-        """Si hay captura multi-paso activa, se maneja antes de tocar el triage."""
-        from app.services.agent_service import agent_service
-        from app.services import triage_sdk_orchestrator as triage_mod
-
-        svc = agent_service
-        db = MagicMock()
-
-        with patch.object(svc, "_get_or_create_history", return_value=[]), \
-             patch("app.services.conversation_state_manager.conversation_state_manager.get_state",
-                   return_value={"step": "awaiting_name"}), \
-             patch.object(svc, "_handle_conversation_state",
-                          new=AsyncMock(return_value={"response": "¿Cuál es tu nombre?", "has_context": False})), \
-             patch.object(triage_mod.triage_sdk_orchestrator, "route", new=AsyncMock()) as mock_route:
-            result = await svc.chat(db, "Juan Pérez", "sess-estado-activo")
-
-        assert result["response"] == "¿Cuál es tu nombre?"
-        mock_route.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_entrada_invalida_corta_temprano(self):
