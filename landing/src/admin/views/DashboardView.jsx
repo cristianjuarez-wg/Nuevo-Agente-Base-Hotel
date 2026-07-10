@@ -5,8 +5,10 @@ import {
 import { getDashboardSummary, listBookings, getTicketStats, getRestaurantStats } from '../../services/api'
 import { PageHeader, StatCard, Loading, OriginBadge, formatUSD, formatDate } from '../ui'
 import PeriodSelector from '../components/PeriodSelector'
+import { useBusinessProfile } from '../../hooks/useBusinessProfile'
 
 export default function DashboardView({ go }) {
+  const HOTEL = useBusinessProfile()
   const [period, setPeriod] = useState('mes')
   const [data, setData] = useState(null)
   const [recent, setRecent] = useState([])
@@ -38,7 +40,7 @@ export default function DashboardView({ go }) {
     <div>
       <PageHeader
         title="Dashboard"
-        subtitle={`Resumen del Hampton by Hilton Bariloche${pc.period_label ? ` · ${pc.period_label}` : ''}.`}
+        subtitle={`Resumen de ${HOTEL.name} ${HOTEL.city}${pc.period_label ? ` · ${pc.period_label}` : ''}.`}
         right={<PeriodSelector value={period} onChange={setPeriod} />}
       />
 

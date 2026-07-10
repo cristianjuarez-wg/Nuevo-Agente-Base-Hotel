@@ -1,15 +1,17 @@
 import { Instagram, Phone, Mail, MapPin, LockKeyhole } from 'lucide-react'
-import { HOTEL } from '../data/hotelInfo'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 
 export default function Footer() {
+  const HOTEL = useBusinessProfile()
   return (
     <footer className="bg-ink text-white/75">
       <div className="container-wide px-6 py-16 sm:px-10">
         {/* Cierre editorial */}
         <div className="mb-12 max-w-xl">
-          <p className="eyebrow-light">Hampton by Hilton</p>
+          <p className="eyebrow-light">{HOTEL.name}</p>
           <p className="mt-4 font-display text-3xl font-500 leading-tight text-white sm:text-4xl">
-            Te esperamos en el primer Hilton de la Patagonia.
+            {/* F3: copy de instancia — reemplazar por cliente */}
+            Te esperamos en {HOTEL.tagline}.
           </p>
           <a href="#reservar" className="btn-primary mt-7 bg-white text-hilton-700 hover:bg-white/90">
             Reservar estadía
@@ -18,8 +20,8 @@ export default function Footer() {
 
         <div className="grid grid-cols-1 gap-8 border-t border-white/10 pt-10 sm:grid-cols-3">
           <div>
-            <p className="font-display text-xl font-600 text-white">Hampton by Hilton</p>
-            <p className="mt-1 text-sm text-white/55">Bariloche · Patagonia</p>
+            <p className="font-display text-xl font-600 text-white">{HOTEL.name}</p>
+            <p className="mt-1 text-sm text-white/55">{HOTEL.city}</p>
           </div>
 
           <div className="space-y-3 text-sm">
@@ -39,7 +41,7 @@ export default function Footer() {
 
           <div>
             <a
-              href="https://instagram.com/hamptonbariloche"
+              href={`https://instagram.com/${(HOTEL.instagram || '').replace('@', '')}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-white/10"
@@ -52,7 +54,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 flex flex-col items-center gap-2 border-t border-white/10 pt-6 text-center text-xs text-white/45 sm:flex-row sm:justify-between">
-          <span>© {new Date().getFullYear()} Hampton by Hilton Bariloche · Demo de presentación.</span>
+          <span>© {new Date().getFullYear()} {HOTEL.name} {HOTEL.city} · Demo de presentación.</span>
           <a href="#admin" className="inline-flex items-center gap-1.5 text-white/55 transition hover:text-white">
             <LockKeyhole size={13} strokeWidth={1.6} /> Panel de gestión
           </a>

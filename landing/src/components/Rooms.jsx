@@ -16,7 +16,7 @@ function RoomCard({ room }) {
       <div className="relative aspect-[4/5] overflow-hidden">
         <img
           src={img}
-          alt={`Habitación ${room.room_type} del Hampton by Hilton Bariloche`}
+          alt={`Habitación ${room.room_type}`}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.06]"
         />
@@ -114,7 +114,7 @@ export default function Rooms() {
           </h2>
           <div className="rule mt-6" />
           <p className="mt-6 text-base leading-relaxed text-slatey">
-            Espacios confortables, luz natural y la calidez de la hospitalidad Hampton.
+            Espacios confortables, luz natural y la calidez de nuestra hospitalidad.
             Cada habitación, una invitación a descansar.
           </p>
         </Reveal>

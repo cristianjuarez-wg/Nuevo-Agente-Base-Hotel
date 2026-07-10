@@ -16,6 +16,7 @@ import { Toaster } from './toast'
 import { Loading } from './ui'
 import { getMe, logout } from '../services/api'
 import { LogOut } from 'lucide-react'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 
 // Lazy: AnalyticsView arrastra Recharts (~130 KB) y NegocioSection arrastra KnowledgeView
 // (pesada). Se cargan solo cuando el usuario entra a esas secciones, aliviando el bundle.
@@ -158,6 +159,7 @@ export default function AdminApp() {
 }
 
 function SidebarContent({ tab, go, nav = NAV, me, onLogout, onClose }) {
+  const HOTEL = useBusinessProfile()
   return (
     <>
       <div className="flex items-center justify-between border-b border-hilton-100 px-5 py-4">
@@ -166,7 +168,7 @@ function SidebarContent({ tab, go, nav = NAV, me, onLogout, onClose }) {
             <Hotel size={18} />
           </div>
           <div className="leading-tight">
-            <p className="font-serif text-sm font-700 text-hilton-700">Hampton</p>
+            <p className="font-serif text-sm font-700 text-hilton-700">{HOTEL.name}</p>
             <p className="text-[10px] uppercase tracking-wide text-slatey">Backoffice</p>
           </div>
         </div>

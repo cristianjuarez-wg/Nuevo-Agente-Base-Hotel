@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
-import { HOTEL } from '../data/hotelInfo'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 
 // Imagen hero: vista aérea del lago Nahuel Huapi al atardecer (foto oficial del hotel).
 const HERO_IMG = '/fotos/hero-lago-atardecer.jpg'
@@ -9,6 +9,7 @@ const HERO_IMG = '/fotos/hero-lago-atardecer.jpg'
 const ease = [0.22, 1, 0.36, 1]
 
 export default function Hero() {
+  const HOTEL = useBusinessProfile()
   const ref = useRef(null)
   const reduce = useReducedMotion()
   const { scrollYProgress } = useScroll({
@@ -29,7 +30,7 @@ export default function Hero() {
       <motion.div className="absolute inset-0" style={{ y: imgY }}>
         <img
           src={HERO_IMG}
-          alt="Vista aérea del lago Nahuel Huapi al atardecer desde el Hampton by Hilton Bariloche"
+          alt={`Vista del hotel ${HOTEL.name} ${HOTEL.city}`}
           className="h-[118%] w-full object-cover animate-slow-zoom"
           fetchpriority="high"
         />
@@ -79,8 +80,8 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3, ease }}
           >
-            El primer Hilton de la Patagonia. Confort y hospitalidad en el corazón de
-            Bariloche, a 150 metros del Centro Cívico y frente al Nahuel Huapi.
+            {/* F3: copy de instancia — reemplazar por cliente (geografía específica) */}
+            {HOTEL.tagline}. Confort y hospitalidad en el corazón de {HOTEL.city}.
           </motion.p>
 
           <motion.div

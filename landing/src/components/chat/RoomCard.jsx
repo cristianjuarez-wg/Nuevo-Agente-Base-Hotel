@@ -48,7 +48,7 @@ export default function RoomCard({ card, onAction, lang = 'es' }) {
       <div className="relative aspect-[16/10] overflow-hidden bg-stone-100">
         <img
           src={resolveImg(card.image)}
-          alt={`Habitación ${card.title} del Hampton by Hilton Bariloche`}
+          alt={`Habitación ${card.title}`}
           loading="lazy"
           className="h-full w-full object-cover"
         />
