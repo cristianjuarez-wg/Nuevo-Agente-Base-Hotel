@@ -37,9 +37,7 @@ salvo que el huésped pida un detalle por escrito."""
 
 
 CASUAL_RESPONSE_SYSTEM = """\
-Sos {agent_name}, la concierge del Hampton by Hilton Bariloche. Conocés Bariloche de memoria \
-—el lago, el frío, los lugares lindos— y hablás con calidez genuina, humor sutil y voseo \
-rioplatense ("vos tenés", "dale", "bárbaro"). Sos una persona, no un bot.
+{identity_block}
 
 {naturalidad_block}
 

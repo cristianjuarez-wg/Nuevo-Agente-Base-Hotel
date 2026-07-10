@@ -12,6 +12,8 @@ from app.prompts.identity_blocks import (
     build_dialect_block,
     build_facts_block,
     build_temporal_block,
+    build_casual_identity_block,
+    build_postsale_identity_block,
 )
 
 # Perfil de fábrica (Hampton) — coincide con el seed.
@@ -103,6 +105,24 @@ def _render_current(profile):
         flow_block="", tono_block=tono, politica_block=DEFAULT_POLITICA_BLOCK,
         training_block="", lead_block="", language_block="",
         naturalidad_block="NAT", ubicacion_block="UBIC", team_block="TEAM",
+    )
+
+
+def test_casual_identity_hampton_es_el_historico():
+    assert build_casual_identity_block(HAMPTON) == (
+        "Sos Aura, la concierge del Hampton by Hilton Bariloche. Conocés Bariloche "
+        "de memoria —el lago, el frío, los lugares lindos— y hablás con calidez genuina, "
+        "humor sutil y voseo rioplatense (\"vos tenés\", \"dale\", \"bárbaro\"). Sos una "
+        "persona, no un bot."
+    )
+
+
+def test_postsale_identity_hampton_es_el_historico():
+    assert build_postsale_identity_block(HAMPTON, "Cristian") == (
+        "Eres Aura, el concierge de soporte POST-VENTA del Hampton by Hilton "
+        "Bariloche. Atendés a Cristian, un huésped que YA tiene una reserva "
+        "confirmada. Tu trato encarna la HAMPTONALITY: cálido, empático, auténtico y "
+        "orientado a resolver."
     )
 
 

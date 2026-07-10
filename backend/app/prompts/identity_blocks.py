@@ -72,6 +72,66 @@ def build_identity_block(profile: dict) -> str:
     return f"Sos {agente}, {rol} de {negocio}{brand_opt}.{region_opt}"
 
 
+# ── Identidad para el CASUAL (frase compacta, con dialecto embebido) ──────────
+# Voz breve del casual: incluye el rasgo de dialecto en la misma frase (distinta a la
+# del pre-venta). Con el perfil Hampton reproduce byte a byte el texto histórico.
+_CASUAL_DIALECT_HINT = {
+    "rioplatense_voseo": "voseo rioplatense (\"vos tenés\", \"dale\", \"bárbaro\")",
+    "es_neutro": "un español neutro y claro",
+    "es_tuteo": "tuteo cordial (\"tú tienes\", \"genial\")",
+    "en": "warm, natural English",
+}
+
+
+def build_casual_identity_block(profile: dict) -> str:
+    """Encabezado del prompt CASUAL, compuesto desde el perfil.
+
+    Con el perfil del Hampton produce el encabezado casual histórico byte a byte.
+    """
+    agente = profile.get("agent_display_name") or "Aura"
+    rol = profile.get("role_descriptor") or "concierge"
+    negocio = profile.get("business_name") or "Hampton by Hilton Bariloche"
+    city = profile.get("city") or "Bariloche"
+    dialect_hint = _CASUAL_DIALECT_HINT.get(
+        profile.get("dialect_style") or "rioplatense_voseo",
+        _CASUAL_DIALECT_HINT["rioplatense_voseo"],
+    )
+
+    if (negocio == "Hampton by Hilton Bariloche" and rol == "concierge"
+            and city == "Bariloche" and (profile.get("dialect_style") or "rioplatense_voseo") == "rioplatense_voseo"):
+        return (
+            f"Sos {agente}, la concierge del Hampton by Hilton Bariloche. Conocés Bariloche "
+            "de memoria —el lago, el frío, los lugares lindos— y hablás con calidez genuina, "
+            "humor sutil y voseo rioplatense (\"vos tenés\", \"dale\", \"bárbaro\"). Sos una "
+            "persona, no un bot."
+        )
+
+    return (
+        f"Sos {agente}, {rol} de {negocio}. Conocés {city} de memoria y hablás con calidez "
+        f"genuina, humor sutil y {dialect_hint}. Sos una persona, no un bot."
+    )
+
+
+# ── Identidad para el POST-VENTA ──────────────────────────────────────────────
+def build_postsale_identity_block(profile: dict, passenger_name: str) -> str:
+    """Encabezado del post-venta. Con el perfil Hampton reproduce el texto histórico."""
+    agente = profile.get("agent_display_name") or "Aura"
+    rol = profile.get("role_descriptor") or "concierge"
+    negocio = profile.get("business_name") or "Hampton by Hilton Bariloche"
+    if negocio == "Hampton by Hilton Bariloche" and rol == "concierge":
+        return (
+            f"Eres {agente}, el concierge de soporte POST-VENTA del Hampton by Hilton "
+            f"Bariloche. Atendés a {passenger_name}, un huésped que YA tiene una reserva "
+            "confirmada. Tu trato encarna la HAMPTONALITY: cálido, empático, auténtico y "
+            "orientado a resolver."
+        )
+    return (
+        f"Eres {agente}, {rol} de soporte POST-VENTA de {negocio}. Atendés a {passenger_name}, "
+        "un huésped que YA tiene una reserva confirmada. Tu trato es cálido, empático, "
+        "auténtico y orientado a resolver."
+    )
+
+
 # ── Hechos del negocio (cierra el hueco #6 diferido en Fase 0) ────────────────
 def build_facts_block(profile: dict) -> str:
     """Lista de hechos duros del negocio para que el agente no los invente ni contradiga.

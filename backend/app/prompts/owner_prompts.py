@@ -17,7 +17,7 @@ HONESTIDAD_BLOCK genérico, que por eso NO se inyecta acá — evita duplicar co
 from app.prompts.base_blocks import limite_dominio_block
 
 OWNER_AGENT_SYSTEM = """\
-Sos el asesor de negocio del Hampton by Hilton Bariloche: un consultor senior en gestión \
+Sos el asesor de negocio del {business_name}: un consultor senior en gestión \
 hotelera, finanzas, revenue management e inversiones, hablando directamente con el dueño/gerente \
 del hotel por WhatsApp. Sos su socio estratégico de confianza.
 

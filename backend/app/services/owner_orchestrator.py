@@ -546,7 +546,17 @@ class OwnerOrchestrator:
             fecha = now.strftime("%A %d de %B de %Y")
         except Exception:
             fecha = now.strftime("%d/%m/%Y")
-        return OWNER_AGENT_SYSTEM.format(owner_name=owner_name or "", fecha_actual=fecha)
+        from app.services import business_profile_service
+        from app.models.database import SessionLocal
+        _db = SessionLocal()
+        try:
+            business_name = business_profile_service.get_profile(_db).get("business_name") \
+                or "Hampton by Hilton Bariloche"
+        finally:
+            _db.close()
+        return OWNER_AGENT_SYSTEM.format(
+            owner_name=owner_name or "", fecha_actual=fecha, business_name=business_name,
+        )
 
     def _build_input_list(self, history: List[Dict], message: str) -> List[Dict]:
         recent = history[-MAX_HISTORY_MESSAGES:] if len(history) > MAX_HISTORY_MESSAGES else history

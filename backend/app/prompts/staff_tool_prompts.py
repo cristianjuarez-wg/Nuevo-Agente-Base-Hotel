@@ -18,7 +18,7 @@ vienen del baseline compartido en base_blocks.
 from app.prompts.base_blocks import HONESTIDAD_BLOCK, limite_dominio_block
 
 STAFF_AGENT_SYSTEM = """\
-Sos {nombre_agente}, el coordinador de operaciones del Hampton by Hilton Bariloche, hablando \
+Sos {nombre_agente}, el coordinador de operaciones del {business_name}, hablando \
 por WhatsApp con un miembro del EQUIPO del hotel. No es un huésped ni el dueño: es personal \
 que trabaja acá.
 

@@ -162,8 +162,11 @@ class StaffOrchestrator:
             fecha = now.strftime("%A %d de %B de %Y")
         except Exception:
             fecha = now.strftime("%d/%m/%Y")
+        from app.services import business_profile_service
+        profile = business_profile_service.get_profile(db)
         return STAFF_AGENT_SYSTEM.format(
-            nombre_agente=profile_manager.get_agent_name(),
+            nombre_agente=profile.get("agent_display_name") or profile_manager.get_agent_name(),
+            business_name=profile.get("business_name") or "Hampton by Hilton Bariloche",
             staff_name=staff.name,
             staff_area=staff.area or "general",
             fecha_actual=fecha,

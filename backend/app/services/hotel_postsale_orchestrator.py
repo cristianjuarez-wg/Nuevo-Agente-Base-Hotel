@@ -496,9 +496,13 @@ class HotelPostSaleSDKOrchestrator:
         booking_context = service.build_booking_context(booking)
         # Roster del equipo real (Fase 0.1): acompaña la regla anti-invención de personas.
         from app.prompts.base_blocks import build_team_roster_block
+        # Identidad del negocio (Fase 1): encabezado compuesto desde el perfil.
+        from app.services import business_profile_service
+        from app.prompts.identity_blocks import build_postsale_identity_block
+        profile = business_profile_service.get_profile(service.db)
+        passenger_name = booking.guest_name or "el huésped"
         return POSTSALE_TOOL_SYSTEM.format(
-            agent_name=profile_manager.get_agent_name(),
-            passenger_name=booking.guest_name or "el huésped",
+            identity_block=build_postsale_identity_block(profile, passenger_name),
             package_context=booking_context,
             chat_history=self._format_history(history),
             continuidad=self._continuity_signal(service, session_id, history),

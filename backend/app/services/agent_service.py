@@ -509,7 +509,8 @@ class AgentService:
                                         capture_lead: bool = False,
                                         availability_shown: bool = False,
                                         is_whatsapp: bool = False,
-                                        team_block: str = "") -> tuple[str, Dict]:
+                                        team_block: str = "",
+                                        profile: Optional[dict] = None) -> tuple[str, Dict]:
         """
         Genera respuesta natural para conversación casual
 
@@ -551,8 +552,10 @@ class AgentService:
                     lead_hint = CASUAL_LEAD_CAPTURE_HINT
             else:
                 lead_hint = ""
+            from app.prompts.identity_blocks import build_casual_identity_block
+            prof = profile or {}
             prompt = CASUAL_RESPONSE_SYSTEM.format(
-                agent_name=profile_manager.get_agent_name(),
+                identity_block=build_casual_identity_block(prof),
                 naturalidad_block=NATURALIDAD_BLOCK,
                 team_block=team_block,
                 history_section=history_section,
@@ -787,10 +790,12 @@ class AgentService:
                     # Roster del equipo real: Aura reconoce a un empleado si le preguntan por
                     # él, pero NO inventa un vínculo con nombres que no están en el equipo.
                     team_block = self._build_team_roster_block(db)
+                    from app.services import business_profile_service
+                    profile = business_profile_service.get_profile(db)
                     response_text, casual_usage = await self._generate_casual_response(
                         message, history, language, guest_block, capture_lead, availability_shown,
                         is_whatsapp=(session_id or "").startswith("wa_"),
-                        team_block=team_block,
+                        team_block=team_block, profile=profile,
                     )
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response_text})
