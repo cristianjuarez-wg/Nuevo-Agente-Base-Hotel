@@ -7,7 +7,9 @@ sobre los dicts que devuelve get_availability, así que stubeamos esa función (
 """
 from unittest.mock import patch, MagicMock
 
-from app.services import hotel_tools
+# Fase 2.3: el handler y get_availability viven en el submódulo booking del paquete
+# hotel_tools_pkg (antes en hotel_tools.py monolítico). El patch va sobre booking.
+from app.services.hotel_tools_pkg import booking as hotel_tools
 
 
 def _room(rt, cap, occupancy):
