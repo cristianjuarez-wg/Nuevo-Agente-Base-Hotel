@@ -89,13 +89,17 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
     )
     ctx["rooms_offered"] = cards
 
+    from app.utils.money import format_price_pair
+    from app.services import business_profile_service
+    _prof = business_profile_service.get_profile(ctx.get("db"))
     lines = [
         f"Habitaciones disponibles para {composicion}, "
         f"{cards[0].get('nights')} noche(s) ({check_in} → {check_out}):\n"
     ]
     for r in cards:
+        precio = format_price_pair(r['total_price_usd'], r['total_price_ars'], _prof)
         lines.append(
-            f"• {r['room_type']}: USD {r['total_price_usd']:.0f} / ARS {r['total_price_ars']:,.0f} "
+            f"• {r['room_type']}: {precio} "
             f"en total ({r['units_available']} unidad(es) disponible(s)). "
             f"{r.get('bed_config', '')}. "
             f"Capacidad: {r['capacity']} pax."
@@ -212,6 +216,9 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
             f"(antes USD {full_usd:.0f}, ahorrás USD {ahorro:.0f})\n"
         )
 
+    from app.utils.money import format_price_pair
+    from app.services import business_profile_service
+    _prof = business_profile_service.get_profile(ctx.get("db"))
     return {
         "tool_result": (
             f"¡Reserva confirmada! 🎉\n"
@@ -220,7 +227,7 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
             f"Check-in: {check_in} | Check-out: {check_out} ({nights} noche(s))\n"
             f"Huésped: {guest_name}\n"
             f"{promo_line}"
-            f"Total: USD {total_usd:.0f} / ARS {total_ars:,.0f}\n"
+            f"Total: {format_price_pair(total_usd, total_ars, _prof)}\n"
             f"Estado: Confirmada ✅\n\n"
             f"Guardá el código **{code}**: lo vas a necesitar para cualquier consulta post-estadía."
         ),
@@ -257,6 +264,9 @@ def _handle_consultar_reserva(args: Dict, ctx: Dict) -> Dict:
     # revalida el server igual.
     ctx["booking_code"] = booking["code"]
 
+    from app.utils.money import format_price_pair
+    from app.services import business_profile_service
+    _prof = business_profile_service.get_profile(ctx.get("db"))
     return {
         "tool_result": (
             f"Reserva {booking['code']}:\n"
@@ -265,7 +275,7 @@ def _handle_consultar_reserva(args: Dict, ctx: Dict) -> Dict:
             f"• Check-in: {booking['check_in']} | Check-out: {booking['check_out']} "
             f"({booking['nights']} noche(s))\n"
             f"• Huéspedes: {booking['guests']}\n"
-            f"• Total: USD {booking['total_price_usd']:.0f} / ARS {booking['total_price_ars']:,.0f}\n"
+            f"• Total: {format_price_pair(booking['total_price_usd'], booking['total_price_ars'], _prof)}\n"
             f"• Estado: {booking['status']} | Pago: {booking['payment_status']}"
         ),
         "booking": booking,
@@ -291,11 +301,12 @@ def _handle_info_pago(args: Dict, ctx: Dict) -> Dict:
     )
 
     if not entry:
+        from app.services import business_profile_service
+        from app.services.hotel_tools_pkg.info import _contact_sentence
+        c = business_profile_service.get_contact(db)
         return {
             "tool_result": (
-                "No tengo cargados los datos de pago en este momento. "
-                "Para coordinar el pago podés contactarnos al +54 294-474-6200 "
-                "o en info@hamptonbariloche.com."
+                "No tengo cargados los datos de pago en este momento." + _contact_sentence(c)
             )
         }
 

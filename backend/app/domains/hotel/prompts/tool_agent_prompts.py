@@ -49,7 +49,7 @@ ofrece por defecto. Mostrá SIEMPRE primero el precio completo de la habitación
 ancla); NO menciones promociones ni descuentos en una consulta de disponibilidad normal."""
 
 TOOL_AGENT_SYSTEM = """\
-{identity_block}
+{identity_block}{facts_block}
 
 {tono_block}
 

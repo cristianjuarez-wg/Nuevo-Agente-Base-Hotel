@@ -48,6 +48,10 @@ class BusinessProfile(Base):
     # ── Hechos duros del negocio (reemplaza "no hay spa ni sauna" hardcodeado) ──
     facts = Column(JSON, nullable=False, default=list)
 
+    # ── Contacto (para fallbacks del agente: "contactanos al ..."). Fase 3.5. ──
+    contact_phone = Column(String, nullable=True)              # "+54 294-474-6200"
+    contact_email = Column(String, nullable=True)              # "info@hamptonbariloche.com"
+
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def to_dict(self):
@@ -69,9 +73,25 @@ class BusinessProfile(Base):
             "primary_currency": self.primary_currency,
             "secondary_currency": self.secondary_currency,
             "facts": self.facts or [],
+            "contact_phone": self.contact_phone,
+            "contact_email": self.contact_email,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 
 # Crear la tabla de forma explícita (mismo patrón que CentroConfig / StaffMember).
 Base.metadata.create_all(bind=engine, tables=[BusinessProfile.__table__])
+
+# Columnas aditivas (Fase 3.5): en una DB que ya tenía la tabla, agregarlas si faltan.
+try:
+    from sqlalchemy import text as _text
+    with engine.begin() as _conn:
+        cols = {r[1] for r in _conn.execute(_text("PRAGMA table_info(business_profile)"))} \
+            if engine.dialect.name == "sqlite" else set()
+        if engine.dialect.name == "sqlite":
+            if "contact_phone" not in cols:
+                _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN contact_phone VARCHAR"))
+            if "contact_email" not in cols:
+                _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN contact_email VARCHAR"))
+except Exception:  # noqa: BLE001 — best-effort; en Postgres/prod lo maneja Alembic
+    pass

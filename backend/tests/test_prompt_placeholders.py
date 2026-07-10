@@ -29,7 +29,7 @@ def test_preventa_placeholders_cubiertos():
     from app.domains.hotel.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
     # Claves que hotel_sdk_orchestrator._build_instructions provee.
     provided = {
-        "agent_name", "identity_block", "fecha_actual", "hora_actual", "flow_block",
+        "agent_name", "identity_block", "facts_block", "fecha_actual", "hora_actual", "flow_block",
         "tono_block", "politica_block", "training_block", "lead_block", "language_block",
         "naturalidad_block", "ubicacion_block", "team_block",
     }
