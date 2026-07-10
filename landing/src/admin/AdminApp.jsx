@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
   Users, BarChart3, UtensilsCrossed, LineChart, MessagesSquare, BadgeCheck,
-  Store, SlidersHorizontal,
+  Store, SlidersHorizontal, Sparkles,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -21,6 +21,7 @@ import { LogOut } from 'lucide-react'
 // (pesada). Se cargan solo cuando el usuario entra a esas secciones, aliviando el bundle.
 const AnalyticsView = lazy(() => import('./views/AnalyticsView'))
 const NegocioSection = lazy(() => import('./views/negocio/NegocioSection'))
+const OnboardingWizard = lazy(() => import('./views/negocio/OnboardingWizard'))
 const EmployeeHubSection = lazy(() => import('./views/centro/EmployeeHubSection'))
 // Bandeja en vivo: hace polling; lazy para no cargarla hasta que se entra a la sección.
 const LiveConversationsView = lazy(() => import('./views/LiveConversationsView'))
@@ -37,6 +38,8 @@ const NAV = [
   { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed, group: 'Operación' },
   { id: 'leads', label: 'Leads', icon: UserPlus, group: 'Comercial' },
   { id: 'analiticas', label: 'Analíticas', icon: BarChart3, group: 'Comercial' },
+  // Configuración inicial: wizard que guía el alta de un cliente (Fase 3.2). adminOnly.
+  { id: 'onboarding', label: 'Configuración inicial', icon: Sparkles, group: 'Negocio', adminOnly: true },
   // Negocio: recursos del hotel que el agente CONSUME (Conocimiento/Promos/Habitaciones,
   // con sub-pestañas internas). Doc §9.2.
   { id: 'negocio', label: 'Negocio', icon: Store, group: 'Negocio' },
@@ -141,6 +144,8 @@ export default function AdminApp() {
             {effectiveTab === 'tickets' && <TicketsView />}
             {effectiveTab === 'asesoria' && <AsesoriaView />}
             {effectiveTab === 'centro' && <EmployeeHubSection />}
+            {/* Configuración inicial: wizard de onboarding (Fase 3.2), orquesta vistas existentes */}
+            {effectiveTab === 'onboarding' && <OnboardingWizard />}
             {/* Negocio: Conocimiento / Promociones / Habitaciones (sub-pestañas internas) */}
             {effectiveTab === 'negocio' && <NegocioSection />}
             {/* Sistema: Equipo / Temas / Límites / Consumo / Demo (sub-pestañas internas) */}
