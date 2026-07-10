@@ -4,7 +4,7 @@ Prompts para generación de respuestas del agente.
 Fase 0.1: las reglas compartidas (honestidad, anti-invención de personas, límite de
 dominio) viven en base_blocks y se COMPONEN acá a nivel de módulo — una sola fuente.
 """
-from app.prompts.base_blocks import (
+from app.domains.hotel.prompts.base_blocks import (
     HONESTIDAD_BLOCK,
     ANTI_INVENCION_PERSONAS_BLOCK,
     limite_dominio_block,

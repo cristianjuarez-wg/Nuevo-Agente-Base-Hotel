@@ -81,6 +81,20 @@ para dialectos != voseo). La instrucción de dialecto SÍ llega; el problema son
 que compiten. Impacto: un cliente no-rioplatense verá al agente "vosear" en small talk hasta
 que se haga este fix.
 
+## Pendiente — sub-partición fina del dominio (Fase 2.1, resto)
+La Fase 2.1 logró lo central: separar `core/` (framework) de `domains/hotel/`, con un test
+de arquitectura permanente (`tests/test_architecture.py`) que impide que core/ importe
+dominio. Se movieron: infra a `core/{llm,rag,channels,observability,security,profile}/`,
+prompts a `domains/hotel/prompts/`, y varios módulos de dominio (hotel_location, geography,
+agent_router, knowledge_service) a `domains/hotel/`.
+
+**Pendiente (cosmético, no cruza frontera arquitectónica):** mover el resto del dominio que
+sigue en `app/models/`, `app/services/` y los orquestadores a las subcarpetas de
+`domains/hotel/` (models/, services/booking/, services/restaurant/, orchestrators/, seeds/).
+Esto NO agrega ninguna frontera nueva (el check ya pasa) y toca decenas de imports internos
+con riesgo mecánico; se hace incrementalmente cuando convenga, no bloquea nada. Los models
+tienen create_all a nivel de módulo + FKs entre sí, así que moverlos requiere cuidado extra.
+
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
 - Cobertura de tests en hot-path (orquestadores, reservation_service).

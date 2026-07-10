@@ -7,7 +7,7 @@ Fase 0.1 (antes de parametrizar la identidad), renderizado con los MISMOS valore
 dinámicos (fecha/hora/bloques) que el prompt actual — así solo se compara el efecto de
 la parametrización de identidad, no el reloj.
 """
-from app.prompts.identity_blocks import (
+from app.domains.hotel.prompts.identity_blocks import (
     build_identity_block,
     build_dialect_block,
     build_facts_block,
@@ -94,7 +94,7 @@ def test_identity_generico_otro_cliente():
 
 def _render_current(profile):
     """Renderiza el prompt de pre-venta ACTUAL con valores dinámicos fijos."""
-    from app.prompts.tool_agent_prompts import (
+    from app.domains.hotel.prompts.tool_agent_prompts import (
         TOOL_AGENT_SYSTEM, DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK,
     )
     tono = DEFAULT_TONO_BLOCK.replace("{dialect_block}", build_dialect_block(profile))

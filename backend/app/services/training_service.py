@@ -420,7 +420,7 @@ def get_training_blocks(db: Session, agent_id: Optional[int]) -> Dict[str, str]:
     Fail-open SIEMPRE: kill switch apagado, sin agente, sin docs efectivos o cualquier
     error → defaults del código (paridad exacta con el comportamiento histórico).
     """
-    from app.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK
+    from app.domains.hotel.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK
     result = {
         "tono_block": DEFAULT_TONO_BLOCK,
         "politica_block": DEFAULT_POLITICA_BLOCK,
@@ -466,7 +466,7 @@ def get_training_blocks(db: Session, agent_id: Optional[int]) -> Dict[str, str]:
         return result
     except Exception as e:  # noqa: BLE001 — nunca romper un turno por entrenamiento
         logger.warning("No se pudieron armar los bloques de entrenamiento", error=str(e))
-        from app.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK as _t, DEFAULT_POLITICA_BLOCK as _p
+        from app.domains.hotel.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK as _t, DEFAULT_POLITICA_BLOCK as _p
         return {"tono_block": _t, "politica_block": _p, "training_block": ""}
 
 

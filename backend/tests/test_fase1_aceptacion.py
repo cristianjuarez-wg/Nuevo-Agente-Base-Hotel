@@ -5,7 +5,7 @@ Prueba el objetivo de la fase: con SOLO cambiar el BusinessProfile (sin tocar c√
 la identidad compuesta del agente cambia de forma coherente (nombre, dialecto, ciudad,
 moneda, facts). Determinista, sin LLM: se verifica el texto de los prompts renderizados.
 """
-from app.prompts.identity_blocks import (
+from app.domains.hotel.prompts.identity_blocks import (
     build_identity_block,
     build_casual_identity_block,
     build_dialect_block,

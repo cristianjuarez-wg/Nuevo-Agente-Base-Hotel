@@ -11,7 +11,7 @@ from app.core.llm.circuit_breaker import openai_circuit_breaker
 from app.core.observability.logging_config import get_logger
 from app.core.llm.sdk_usage import usage_from_completion
 from app.services import usage_service
-from app.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
+from app.domains.hotel.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
 import asyncio
 import time
 import uuid
@@ -439,7 +439,7 @@ class AgentService:
         """
         try:
             from app.services.contact_service import contact_service
-            from app.prompts.context_blocks import build_guest_profile_block
+            from app.domains.hotel.prompts.context_blocks import build_guest_profile_block
             from app.models.contact import Contact
 
             contact_id = None
@@ -469,7 +469,7 @@ class AgentService:
         pre-venta y post-venta para la regla anti-invención de personas). Este método
         queda como delegación para no romper a los llamadores existentes.
         """
-        from app.prompts.base_blocks import build_team_roster_block
+        from app.domains.hotel.prompts.base_blocks import build_team_roster_block
         return build_team_roster_block(db)
 
     async def _should_capture_lead_in_casual(self, db, message: str, session_id: str, history) -> bool:
@@ -536,7 +536,7 @@ class AgentService:
                 ])
 
             history_section = f"Historial de la conversación:\n{history_context}" if history_context else ""
-            from app.prompts.generation_prompts import (
+            from app.domains.hotel.prompts.generation_prompts import (
                 CASUAL_LEAD_CAPTURE_HINT, CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY,
                 NATURALIDAD_BLOCK,
             )
@@ -552,7 +552,7 @@ class AgentService:
                     lead_hint = CASUAL_LEAD_CAPTURE_HINT
             else:
                 lead_hint = ""
-            from app.prompts.identity_blocks import build_casual_identity_block
+            from app.domains.hotel.prompts.identity_blocks import build_casual_identity_block
             prof = profile or {}
             prompt = CASUAL_RESPONSE_SYSTEM.format(
                 identity_block=build_casual_identity_block(prof),
@@ -566,7 +566,7 @@ class AgentService:
             # el saludo lo reconozca por su nombre en vez de tratarlo como desconocido.
             if guest_block:
                 prompt = guest_block + "\n" + prompt
-            from app.prompts.context_blocks import build_language_block
+            from app.domains.hotel.prompts.context_blocks import build_language_block
             lang_block = build_language_block(language)
             if lang_block:
                 prompt = prompt + "\n" + lang_block

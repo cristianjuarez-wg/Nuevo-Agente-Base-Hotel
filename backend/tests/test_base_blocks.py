@@ -11,7 +11,7 @@ tenían (contains-tests). Deterministas, sin LLM.
 """
 import hashlib
 
-from app.prompts.base_blocks import (
+from app.domains.hotel.prompts.base_blocks import (
     HONESTIDAD_BLOCK,
     ANTI_INVENCION_PERSONAS_BLOCK,
     DATOS_BANCARIOS_BLOCK,
@@ -19,11 +19,11 @@ from app.prompts.base_blocks import (
     limite_dominio_block,
     build_team_roster_block,
 )
-from app.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
-from app.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
-from app.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
-from app.prompts.owner_prompts import OWNER_AGENT_SYSTEM
-from app.prompts.staff_tool_prompts import STAFF_AGENT_SYSTEM
+from app.domains.hotel.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
+from app.domains.hotel.prompts.tool_agent_prompts import TOOL_AGENT_SYSTEM
+from app.domains.hotel.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
+from app.domains.hotel.prompts.owner_prompts import OWNER_AGENT_SYSTEM
+from app.domains.hotel.prompts.staff_tool_prompts import STAFF_AGENT_SYSTEM
 
 
 def _sha(s: str) -> str:

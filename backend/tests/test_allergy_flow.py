@@ -80,7 +80,7 @@ class TestSplitPrefs:
 # ---------------------------------------------------------------------------
 class TestGuestProfileBlock:
     def _build(self, preferences):
-        from app.prompts.context_blocks import build_guest_profile_block
+        from app.domains.hotel.prompts.context_blocks import build_guest_profile_block
         # Estructura real de contact_service.get_guest_profile(): el nombre va en
         # `contact`, y se necesita al menos un dato (estadía/preferencia) para que el
         # bloque se renderice (si no hay nada útil devuelve "").

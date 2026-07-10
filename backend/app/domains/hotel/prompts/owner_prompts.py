@@ -14,7 +14,7 @@ Fase 0.1: el límite de dominio viene del baseline compartido (base_blocks). La 
 HONESTIDAD propia se CONSERVA: es la versión enriquecida específica de BI (superset del
 HONESTIDAD_BLOCK genérico, que por eso NO se inyecta acá — evita duplicar contenido).
 """
-from app.prompts.base_blocks import limite_dominio_block
+from app.domains.hotel.prompts.base_blocks import limite_dominio_block
 
 OWNER_AGENT_SYSTEM = """\
 Sos el asesor de negocio del {business_name}: un consultor senior en gestión \

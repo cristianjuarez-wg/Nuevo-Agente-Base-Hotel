@@ -8,7 +8,7 @@ Reglas verificadas:
 - El seed REFRESCA la plantilla (gana parámetros nuevos) sin pisar la instancia del cliente.
 - El select solo acepta opciones declaradas; inválida → default de fábrica.
 """
-from app.prompts.flow_blocks import FLOW_BLOCKS, flow_block_for
+from app.domains.hotel.prompts.flow_blocks import FLOW_BLOCKS, flow_block_for
 from app.services.hotel_sdk_orchestrator import HotelSDKOrchestrator
 from app.services.skill_service import (
     seed_skills, get_flow_values, validate_and_clamp, invalidate_centro_cache,

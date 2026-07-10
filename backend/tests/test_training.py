@@ -17,7 +17,7 @@ from app.services.agent_directory import seed_agents
 from app.services.skill_service import invalidate_centro_cache
 from app.models.training_document import TrainingDocument
 from app.models.agent import Agent
-from app.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK
+from app.domains.hotel.prompts.tool_agent_prompts import DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK
 
 
 # ---------------------------------------------------------------------------

@@ -29,7 +29,7 @@ from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
 from app.services import operations_service as ops
 from app.models.staff import StaffMember
-from app.prompts.staff_tool_prompts import STAFF_AGENT_SYSTEM
+from app.domains.hotel.prompts.staff_tool_prompts import STAFF_AGENT_SYSTEM
 
 logger = get_logger(__name__)
 

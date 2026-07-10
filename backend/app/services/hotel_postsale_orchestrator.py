@@ -31,7 +31,7 @@ from app.core.profile.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
-from app.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
+from app.domains.hotel.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
 
 logger = get_logger(__name__)
 
@@ -495,10 +495,10 @@ class HotelPostSaleSDKOrchestrator:
     def _build_instructions(self, service, booking, history: List[Dict], session_id: str = "") -> str:
         booking_context = service.build_booking_context(booking)
         # Roster del equipo real (Fase 0.1): acompaña la regla anti-invención de personas.
-        from app.prompts.base_blocks import build_team_roster_block
+        from app.domains.hotel.prompts.base_blocks import build_team_roster_block
         # Identidad del negocio (Fase 1): encabezado compuesto desde el perfil.
         from app.services import business_profile_service
-        from app.prompts.identity_blocks import build_postsale_identity_block
+        from app.domains.hotel.prompts.identity_blocks import build_postsale_identity_block
         profile = business_profile_service.get_profile(service.db)
         passenger_name = booking.guest_name or "el huésped"
         return POSTSALE_TOOL_SYSTEM.format(

@@ -18,21 +18,23 @@ La base **sirve hoy como scaffold informal**: hay un núcleo de infraestructura 
 determinístico + manejo de errores anti-500). La lógica de turismo está **localizada** (prompts,
 tools, modelos, geografía), no dispersa — así que reemplazarla es un trabajo acotado y claro.
 
-Lo que **no** existe todavía: una separación física `core/` vs `domain/` ni prompts parametrizados
-por perfil. Los prompts y descripciones de tools/handoffs están **hardcodeados en los
-orquestadores**. Para un scaffold formal habría que desacoplar eso (ver §9), pero para usar la
-base como molde **no es necesario**.
+**[Fase 2.1] Actualización:** ya EXISTE la separación física `core/` vs `domains/hotel/`.
+La infra genérica vive en `app/core/{llm,rag,channels,observability,security,profile}/` y un
+test permanente (`tests/test_architecture.py`) garantiza que **core/ no importa dominio**. Los
+prompts se parametrizan por perfil (identity_blocks + BusinessProfile, Fase 1). Pendiente: la
+sub-partición fina del dominio por bounded-context (models/services en subcarpetas de
+`domains/hotel/`) — no aporta frontera nueva, se hace incrementalmente.
 
-Semáforo por capa:
+Semáforo por capa (post Fase 2.1):
 
 | Capa | Estado | Acción al portar |
 |---|---|---|
-| Infra transversal (cliente OpenAI, circuit breaker, retry, logging, DB) | 🟢 genérico | Copiar tal cual |
-| Perfil del agente (`AgentProfileManager` + `template.json`) | 🟢 genérico | Crear JSON del dominio |
-| Orquestación SDK (patrón `run()`, triage, gate) | 🟡 molde | Clonar y adaptar |
+| Infra transversal (`core/llm`, `core/rag`, `core/channels`, `core/observability`, `core/security`) | 🟢 genérico, aislado en core/ | Copiar tal cual |
+| Perfil del agente (`core/profile/agent_profile` + BusinessProfile en DB) | 🟢 genérico + configurable | Editar desde el backoffice |
+| Orquestación SDK (patrón `run()`, triage, gate) | 🟡 molde | Clonar y adaptar (2.2: runtime declarativo) |
 | Tools + dispatcher (`execute_tool`) | 🟡 contrato genérico, handlers de dominio | Reescribir handlers |
-| Prompts / textos | 🔴 turismo | Reescribir |
-| Modelos ORM de negocio + config de dominio | 🔴 turismo | Reescribir |
+| Prompts / textos | 🟡 en `domains/hotel/prompts/`, identidad ya parametrizada | Ajustar textos del vertical |
+| Modelos ORM de negocio | 🟡 en `app/models/` (hotel) | Reescribir por vertical |
 
 Veredicto: **~20% framework genérico reutilizable, ~80% capa de dominio a reescribir.** Es lo
 esperable: esto se construyó como app de turismo, no como librería. El valor de reusar la base es

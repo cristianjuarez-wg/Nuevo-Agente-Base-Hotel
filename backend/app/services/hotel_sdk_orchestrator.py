@@ -40,12 +40,12 @@ from app.services.lead_service import lead_service
 from app.services.lead_analyzer import lead_analyzer
 from app.core.rag.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
-from app.prompts.tool_agent_prompts import (
+from app.domains.hotel.prompts.tool_agent_prompts import (
     TOOL_AGENT_SYSTEM, DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK,
 )
-from app.prompts.flow_blocks import flow_block_for
-from app.prompts.generation_prompts import NATURALIDAD_BLOCK
-from app.prompts.context_blocks import (
+from app.domains.hotel.prompts.flow_blocks import flow_block_for
+from app.domains.hotel.prompts.generation_prompts import NATURALIDAD_BLOCK
+from app.domains.hotel.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
     build_booking_nudge_block,
@@ -494,7 +494,7 @@ class HotelSDKOrchestrator:
         hora = now.strftime("%H:%M")
 
         from app.domains.hotel.hotel_location import HOTEL_LOCATION_BLOCK
-        from app.prompts.identity_blocks import build_identity_block, build_dialect_block
+        from app.domains.hotel.prompts.identity_blocks import build_identity_block, build_dialect_block
 
         prof = profile or {}
         # El {dialect_block} vive DENTRO del tono default; se resuelve acá (format no es
@@ -709,7 +709,7 @@ class HotelSDKOrchestrator:
                       "training_block": ""}
         # Roster del equipo real (Fase 0.1): acompaña la regla anti-invención de
         # personas — el agente solo reconoce por nombre a quien figura acá.
-        from app.prompts.base_blocks import build_team_roster_block
+        from app.domains.hotel.prompts.base_blocks import build_team_roster_block
         # Identidad del negocio (Fase 1): compone el encabezado y el dialecto desde el perfil.
         from app.services import business_profile_service
         profile = business_profile_service.get_profile(db)

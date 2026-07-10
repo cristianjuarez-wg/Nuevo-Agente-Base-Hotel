@@ -27,7 +27,7 @@ from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
 from app.services import business_metrics as bm
 from app.services import chart_service
-from app.prompts.owner_prompts import OWNER_AGENT_SYSTEM
+from app.domains.hotel.prompts.owner_prompts import OWNER_AGENT_SYSTEM
 
 logger = get_logger(__name__)
 
