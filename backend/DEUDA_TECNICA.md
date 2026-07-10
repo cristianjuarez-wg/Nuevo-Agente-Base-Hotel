@@ -148,6 +148,31 @@ más fuentes de cotización es extender `convert` sin tocar llamadores. (b) las 
 `base_price_usd/ars` de `rooms` quedan (se siguen poblando por compat); su DROP va en una
 migración Alembic futura (junto con las tablas huérfanas de turismo).
 
+## Inconsistencia de zona horaria en los timestamps (preexistente, no de P4)
+Conviven TRES convenciones para los `created_at`/`updated_at` de los modelos:
+1. **UTC naive** — `utcnow_naive()` (tras P4): `contact.py`, `conversation.py`,
+   `conversation_message.py`, `lead_message.py`, `action_plan.py`, `metrics_snapshot.py`.
+2. **Hora local Argentina** — `now_business()` (Fase 1.3): `lead.py` (`created_at`, `updated_at`,
+   `last_status_change`).
+3. **Hora local del SERVIDOR** — `datetime.now` (sin tz): la mayoría de los modelos de dominio
+   (`hotel.py` → Booking/RoomUnit/HotelTicket, `restaurant.py`, `promotions.py`, `knowledge.py`,
+   `agent.py`, `skill.py`, `chat_theme.py`, `exchange_rate.py`, `prompt_config_version.py`). En
+   Render el servidor corre en UTC, así que en producción coincide con (1); en dev local NO.
+
+**Riesgo concreto (verificado):** `business_metrics.py:400` compara
+`Booking.created_at (datetime.now) >= lead.created_at (now_business, AR = UTC-3)` para atribuir la
+conversión lead→booking. Con el desfase de zona, un booking creado poco después de un lead puede
+parecer creado ANTES → la conversión no se cuenta. En Render (servidor UTC) el gap es exactamente
+las 3h de AR; en dev depende de la zona del server. No rompe hoy de forma visible pero la métrica
+de conversión puede subcontar.
+
+**Fix (cuando se encare):** unificar TODO a `utcnow_naive()` (UTC) para los timestamps de datos, y
+usar `now_business()`/`iso_business()` SOLO para MOSTRAR al usuario (que es su propósito). Migrar
+`lead.py` (now_business→utcnow_naive en los 3 timestamps) y los `datetime.now` de los modelos de
+dominio. Requiere cuidado: `lead.to_dict()` serializa con `iso_business(..., source="ar")` — al
+pasar a UTC hay que cambiar `source="utc"`. No urgente; se hace junto con una revisión de la capa
+de fechas.
+
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
 - Cobertura de tests en hot-path (orquestadores, reservation_service).
