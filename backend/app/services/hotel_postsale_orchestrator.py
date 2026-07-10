@@ -191,8 +191,11 @@ async def solicitar_servicio(
         )
     except Exception as e:  # noqa: BLE001
         logger.error("solicitar_servicio (post-venta) falló", error=str(e))
+        from app.services import business_profile_service
+        c = business_profile_service.get_contact(ctx.context.service.db)
+        tel = f" al {c['phone']}" if c.get("phone") else ""
         return ("No pude registrar el pedido automáticamente. Pedile disculpas al huésped y "
-                "ofrecele contactar a recepción al +54 294-474-6200.")
+                f"ofrecele contactar a recepción{tel}.")
 
 
 @function_tool
@@ -508,11 +511,14 @@ class HotelPostSaleSDKOrchestrator:
         from app.domains.hotel.prompts.base_blocks import build_team_roster_block
         # Identidad del negocio (Fase 1): encabezado compuesto desde el perfil.
         from app.services import business_profile_service
-        from app.domains.hotel.prompts.identity_blocks import build_postsale_identity_block
+        from app.domains.hotel.prompts.identity_blocks import (
+            build_postsale_identity_block, build_facts_block,
+        )
         profile = business_profile_service.get_profile(service.db)
         passenger_name = booking.guest_name or "el huésped"
         return POSTSALE_TOOL_SYSTEM.format(
             identity_block=build_postsale_identity_block(profile, passenger_name),
+            facts_block=build_facts_block(profile),  # HECHOS del negocio (Fase 3.5 → post-venta)
             passenger_name=passenger_name,  # el prompt lo usa además en la regla de no re-saludar
             package_context=booking_context,
             chat_history=self._format_history(history),

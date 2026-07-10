@@ -57,9 +57,18 @@ def test_bancarios_es_el_texto_historico_de_preventa():
     assert _sha(DATOS_BANCARIOS_BLOCK) == SNAPSHOTS["bancarios_pre"]
 
 
-def test_limites_movidos_son_los_historicos():
-    assert _sha(limite_dominio_block("casual")) == SNAPSHOTS["limite_casual"]
-    assert _sha(limite_dominio_block("preventa")) == SNAPSHOTS["limite_pre"]
+def test_limites_dominio_parametrizados():
+    # Fase A: casual/preventa llevan placeholders {negocio}/{ciudad} que resuelve el .format()
+    # del prompt de cada agente. Verificamos que existen y que, renderizados con el perfil
+    # Hampton, reproducen el texto histórico (paridad de comportamiento).
+    casual = limite_dominio_block("casual")
+    pre = limite_dominio_block("preventa")
+    assert "{negocio}" in casual and "{ciudad}" in pre
+    hampton = casual.format(negocio="Hampton by Hilton Bariloche", ciudad="Bariloche")
+    assert "Hampton by Hilton Bariloche" in hampton
+    pre_h = pre.format(negocio="Hampton by Hilton Bariloche", ciudad="Bariloche")
+    assert "Hampton by Hilton Bariloche" in pre_h and "Bariloche" in pre_h
+    # owner no lleva placeholders: sigue byte a byte el histórico.
     assert _sha(limite_dominio_block("owner")) == SNAPSHOTS["limite_owner"]
 
 

@@ -228,7 +228,8 @@ async def consultar_habitacion(ctx: RunContextWrapper[OwnerContext], tipo: str =
     """Precio ACTUAL y datos de las habitaciones (USD y ARS a la cotización del día,
     capacidad, unidades). Si se indica `tipo` filtra por ese tipo. Úsala para '¿a qué precio
     está la King?', '¿cuánto sale la suite?', '¿qué habitaciones tenemos y a cuánto?'."""
-    from app.services import reservation_service
+    from app.services import reservation_service, business_profile_service
+    from app.utils.money import format_price_pair
     db = ctx.context.db
     rooms = reservation_service.list_rooms(db)
     if tipo:
@@ -236,11 +237,12 @@ async def consultar_habitacion(ctx: RunContextWrapper[OwnerContext], tipo: str =
         rooms = [r for r in rooms if t in (r.get("room_type") or "").lower()]
     if not rooms:
         return f"No encontré habitaciones del tipo '{tipo}'."
+    _prof = business_profile_service.get_profile(db)
     lines = []
     for r in rooms:
+        precio = format_price_pair(r.get("base_price_usd"), r.get("base_price_ars"), _prof)
         lines.append(
-            f"• {r.get('room_type')}: USD {r.get('base_price_usd'):,.0f} / "
-            f"ARS {r.get('base_price_ars'):,.0f} por noche · "
+            f"• {r.get('room_type')}: {precio} por noche · "
             f"capacidad {r.get('capacity')} · {r.get('total_units')} unidad(es)."
         )
     return "Tarifas vigentes (cotización del día):\n" + "\n".join(lines)
@@ -556,12 +558,22 @@ class OwnerOrchestrator:
         from app.models.database import SessionLocal
         _db = SessionLocal()
         try:
-            business_name = business_profile_service.get_profile(_db).get("business_name") \
-                or "Hampton by Hilton Bariloche"
+            _prof = business_profile_service.get_profile(_db)
         finally:
             _db.close()
+        business_name = _prof.get("business_name") or "Hampton by Hilton Bariloche"
+        # Contexto del negocio compuesto desde el perfil (Fase A): ciudad + color local. La
+        # estacionalidad/economía específica del cliente sale de su material de entrenamiento.
+        city = _prof.get("city") or ""
+        region_line = (_prof.get("region_line") or "").strip()
+        ubic = f"Ubicado en {city}." if city else ""
+        color = f" {region_line}." if region_line else ""
+        contexto_negocio = (ubic + color).strip() or \
+            "Contexto del negocio: lo específico (estacionalidad, mercado, moneda) surge de las " \
+            "métricas reales y del material de entrenamiento que cargó el dueño."
         return OWNER_AGENT_SYSTEM.format(
             owner_name=owner_name or "", fecha_actual=fecha, business_name=business_name,
+            contexto_negocio=contexto_negocio,
         )
 
     def _build_input_list(self, history: List[Dict], message: str) -> List[Dict]:

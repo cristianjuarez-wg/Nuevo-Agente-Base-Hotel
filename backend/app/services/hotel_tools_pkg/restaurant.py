@@ -41,7 +41,7 @@ def _handle_ver_carta(args: Dict, ctx: Dict) -> Dict:
 
     return {
         "tool_result": (
-            "Listo, le mostré la carta interactiva de PLAZA - Hampton's Kitchen House en el chat "
+            "Listo, le mostré la carta interactiva del restaurante en el chat "
             "(puede tocar los platos para armar el pedido o abrir la carta completa)."
             + pref_note
         ),

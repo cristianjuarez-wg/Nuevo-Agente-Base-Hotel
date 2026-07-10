@@ -107,6 +107,8 @@ def _render_current(profile):
         flow_block="", tono_block=tono, politica_block=DEFAULT_POLITICA_BLOCK,
         training_block="", lead_block="", language_block="",
         naturalidad_block="NAT", ubicacion_block="UBIC", team_block="TEAM",
+        negocio=profile.get("business_name") or "el hotel",
+        ciudad=profile.get("city") or "la ciudad",
     )
 
 
