@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, instagram, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin, agents, business_profile
+from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, instagram, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin, agents, business_profile, auth
 from app.config import settings
 from app.core.security.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
@@ -64,6 +64,11 @@ async def lifespan(app: FastAPI):
             # Identidad del negocio (Fase 1): siembra id=1 con los valores del Hampton
             # si no existe. Paridad: el agente se comporta igual con estos defaults.
             business_profile_service.ensure_seeded(_seed_db)
+            # Auth del backoffice (Fase 2.5): crea el primer admin desde BOOTSTRAP_ADMIN_*
+            # si la tabla admin_users está vacía. Idempotente.
+            from app.models import admin_user as _admin_user_model  # noqa: F401 (registra la tabla)
+            from app.core.security.auth import ensure_bootstrap_admin
+            ensure_bootstrap_admin(_seed_db)
         finally:
             _seed_db.close()
 
@@ -235,6 +240,7 @@ app.include_router(conversations.router)
 app.include_router(checkin.router)
 app.include_router(agents.router)
 app.include_router(business_profile.router)
+app.include_router(auth.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"

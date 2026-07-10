@@ -14,6 +14,8 @@ import RestaurantSection from './views/restaurant/RestaurantSection'
 import ConfiguracionSection from './views/sistema/ConfiguracionSection'
 import { Toaster } from './toast'
 import { Loading } from './ui'
+import { getMe, logout } from '../services/api'
+import { LogOut } from 'lucide-react'
 
 // Lazy: AnalyticsView arrastra Recharts (~130 KB) y NegocioSection arrastra KnowledgeView
 // (pesada). Se cargan solo cuando el usuario entra a esas secciones, aliviando el bundle.
@@ -41,8 +43,9 @@ const NAV = [
   // Agente: el diferencial del producto, en grupo propio destacado.
   { id: 'centro', label: 'Empleados Digitales', icon: BadgeCheck, group: 'Agente' },
   // Sistema: config global (Equipo/Temas/Límites/Consumo/Demo) + el asesor de gerencia.
-  { id: 'configuracion', label: 'Configuración', icon: SlidersHorizontal, group: 'Sistema' },
-  { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Sistema' },
+  // adminOnly: el operador no ve estas secciones sensibles (config global / consumo). Fase 2.5.
+  { id: 'configuracion', label: 'Configuración', icon: SlidersHorizontal, group: 'Sistema', adminOnly: true },
+  { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Sistema', adminOnly: true },
 ]
 
 // Devuelve el primer segmento tras #admin/ (ej "agente" en "#admin/agente/conocimiento").
@@ -55,6 +58,7 @@ function currentTab() {
 export default function AdminApp() {
   const [tab, setTab] = useState(currentTab())
   const [navOpen, setNavOpen] = useState(false)
+  const [me, setMe] = useState(null)
 
   useEffect(() => {
     const onHash = () => setTab(currentTab())
@@ -62,18 +66,35 @@ export default function AdminApp() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
+  // Identidad del usuario logueado: define qué secciones ve (adminOnly). Fase 2.5.
+  useEffect(() => {
+    getMe().then(setMe).catch(() => setMe(null))
+  }, [])
+
+  const isAdmin = me?.role === 'admin'
+  const nav = NAV.filter((n) => !n.adminOnly || isAdmin)
+
   const go = (id) => {
     window.location.hash = `admin/${id}`
     setTab(id)
     setNavOpen(false)
   }
 
+  const onLogout = () => {
+    logout()
+    window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+  }
+
+  // Guard de render: si el operador fuerza el hash a una vista adminOnly, cae a dashboard.
+  const activeItem = NAV.find((n) => n.id === tab)
+  const effectiveTab = activeItem?.adminOnly && !isAdmin ? 'dashboard' : tab
+
   return (
     <div className="flex min-h-dvh bg-mist text-ink">
       <Toaster />
       {/* Sidebar desktop */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-hilton-100 bg-white lg:flex">
-        <SidebarContent tab={tab} go={go} />
+        <SidebarContent tab={effectiveTab} go={go} nav={nav} me={me} onLogout={onLogout} />
       </aside>
 
       {/* Drawer móvil */}
@@ -81,7 +102,7 @@ export default function AdminApp() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setNavOpen(false)} />
           <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-white shadow-card-lg animate-slide-up">
-            <SidebarContent tab={tab} go={go} onClose={() => setNavOpen(false)} />
+            <SidebarContent tab={effectiveTab} go={go} nav={nav} me={me} onLogout={onLogout} onClose={() => setNavOpen(false)} />
           </aside>
         </div>
       )}
@@ -106,24 +127,24 @@ export default function AdminApp() {
         {/* Conversaciones es una bandeja tipo "inbox": ocupa TODO el alto/ancho sin padding ni
             scroll del main (su propio layout maneja el scroll). El resto de las vistas conserva
             el padding y el scroll vertical habitual. */}
-        <main className={tab === 'conversaciones'
+        <main className={effectiveTab === 'conversaciones'
           ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4'
           : 'flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8'}>
           <Suspense fallback={<Loading />}>
-            {tab === 'dashboard' && <DashboardView go={go} />}
-            {tab === 'analiticas' && <AnalyticsView />}
-            {tab === 'reservas' && <BookingsView />}
-            {tab === 'conversaciones' && <LiveConversationsView />}
-            {tab === 'restaurante' && <RestaurantSection />}
-            {tab === 'pasajeros' && <PassengersView />}
-            {tab === 'leads' && <LeadsView />}
-            {tab === 'tickets' && <TicketsView />}
-            {tab === 'asesoria' && <AsesoriaView />}
-            {tab === 'centro' && <EmployeeHubSection />}
+            {effectiveTab === 'dashboard' && <DashboardView go={go} />}
+            {effectiveTab === 'analiticas' && <AnalyticsView />}
+            {effectiveTab === 'reservas' && <BookingsView />}
+            {effectiveTab === 'conversaciones' && <LiveConversationsView />}
+            {effectiveTab === 'restaurante' && <RestaurantSection />}
+            {effectiveTab === 'pasajeros' && <PassengersView />}
+            {effectiveTab === 'leads' && <LeadsView />}
+            {effectiveTab === 'tickets' && <TicketsView />}
+            {effectiveTab === 'asesoria' && <AsesoriaView />}
+            {effectiveTab === 'centro' && <EmployeeHubSection />}
             {/* Negocio: Conocimiento / Promociones / Habitaciones (sub-pestañas internas) */}
-            {tab === 'negocio' && <NegocioSection />}
+            {effectiveTab === 'negocio' && <NegocioSection />}
             {/* Sistema: Equipo / Temas / Límites / Consumo / Demo (sub-pestañas internas) */}
-            {tab === 'configuracion' && <ConfiguracionSection />}
+            {effectiveTab === 'configuracion' && <ConfiguracionSection />}
           </Suspense>
         </main>
       </div>
@@ -131,7 +152,7 @@ export default function AdminApp() {
   )
 }
 
-function SidebarContent({ tab, go, onClose }) {
+function SidebarContent({ tab, go, nav = NAV, me, onLogout, onClose }) {
   return (
     <>
       <div className="flex items-center justify-between border-b border-hilton-100 px-5 py-4">
@@ -152,11 +173,11 @@ function SidebarContent({ tab, go, onClose }) {
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-3">
-        {NAV.map((n, i) => {
+        {nav.map((n, i) => {
           const Icon = n.icon
           const active = tab === n.id
           // Encabezado de grupo: se muestra cuando arranca un grupo nuevo.
-          const showGroup = i === 0 || NAV[i - 1].group !== n.group
+          const showGroup = i === 0 || nav[i - 1].group !== n.group
           return (
             <div key={n.id}>
               {showGroup && (
@@ -181,6 +202,24 @@ function SidebarContent({ tab, go, onClose }) {
       </nav>
 
       <div className="border-t border-hilton-100 p-3">
+        {me && (
+          <div className="mb-1 flex items-center justify-between gap-2 px-3.5 py-1.5">
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-xs font-medium text-ink">{me.email}</p>
+              <p className="text-[10px] uppercase tracking-wide text-slatey">{me.role}</p>
+            </div>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slatey hover:bg-hilton-50 hover:text-hilton-700"
+              >
+                <LogOut size={16} />
+              </button>
+            )}
+          </div>
+        )}
         <a
           href="#inicio"
           className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slatey hover:bg-mist"
