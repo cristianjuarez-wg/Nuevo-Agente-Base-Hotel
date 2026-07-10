@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, CalendarCheck, UserPlus, LifeBuoy, Menu, X, ExternalLink, Hotel,
   Users, BarChart3, UtensilsCrossed, LineChart, MessagesSquare, BadgeCheck,
-  Store, SlidersHorizontal, Sparkles,
+  Store, SlidersHorizontal, Sparkles, Waypoints,
 } from 'lucide-react'
 import DashboardView from './views/DashboardView'
 import BookingsView from './views/BookingsView'
@@ -13,7 +13,7 @@ import AsesoriaView from './views/AsesoriaView'
 import RestaurantSection from './views/restaurant/RestaurantSection'
 import ConfiguracionSection from './views/sistema/ConfiguracionSection'
 import { Toaster } from './toast'
-import { Loading } from './ui'
+import { Loading, PageHeader } from './ui'
 import { getMe, logout } from '../services/api'
 import { LogOut } from 'lucide-react'
 import { useBusinessProfile } from '../hooks/useBusinessProfile'
@@ -27,29 +27,37 @@ const EmployeeHubSection = lazy(() => import('./views/centro/EmployeeHubSection'
 // Bandeja en vivo: hace polling; lazy para no cargarla hasta que se entra a la sección.
 const LiveConversationsView = lazy(() => import('./views/LiveConversationsView'))
 
-// Sidebar agrupado por USO real del gerente: lo operativo del día arriba, lo comercial en
-// el medio, y la configuración/herramientas abajo. Los `id` NO cambian (hash routing intacto);
-// solo cambian las etiquetas y el orden, y se suman encabezados de grupo.
+// Sidebar en DOS MUNDOS (rediseño F0): "Operar" (el día a día) arriba y "El agente" (configurar
+// y entender el producto) abajo, más "Sistema" para la config global adminOnly. Los `id` NO
+// cambian (hash routing intacto): solo cambian `group`, el orden y las etiquetas visibles.
+// `hidden: true` mantiene la RUTA viva (currentTab la resuelve por NAV.find) pero la saca del
+// sidebar — se usa para `asesoria`, que se accede desde la ficha del Asesor en "Empleados
+// Digitales", no como entrada de menú suelta.
 const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operación' },
-  { id: 'conversaciones', label: 'Conversaciones', icon: MessagesSquare, group: 'Operación' },
-  { id: 'reservas', label: 'Reservas', icon: CalendarCheck, group: 'Operación' },
-  { id: 'pasajeros', label: 'Huéspedes', icon: Users, group: 'Operación' },
-  { id: 'tickets', label: 'Operaciones', icon: LifeBuoy, group: 'Operación' },
-  { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed, group: 'Operación' },
-  { id: 'leads', label: 'Leads', icon: UserPlus, group: 'Comercial' },
-  { id: 'analiticas', label: 'Analíticas', icon: BarChart3, group: 'Comercial' },
+  // ── Operar: el trabajo diario del hotel ──
+  { id: 'dashboard', label: 'Panel', icon: LayoutDashboard, group: 'Operar' },
+  { id: 'conversaciones', label: 'Conversaciones', icon: MessagesSquare, group: 'Operar' },
+  { id: 'reservas', label: 'Reservas', icon: CalendarCheck, group: 'Operar' },
+  { id: 'pasajeros', label: 'Huéspedes', icon: Users, group: 'Operar' },
+  { id: 'tickets', label: 'Operaciones', icon: LifeBuoy, group: 'Operar' },
+  { id: 'restaurante', label: 'Restaurante', icon: UtensilsCrossed, group: 'Operar' },
+  { id: 'leads', label: 'Leads', icon: UserPlus, group: 'Operar' },
+  { id: 'analiticas', label: 'Analíticas', icon: BarChart3, group: 'Operar' },
+  // ── El agente: configurar y ENTENDER el producto ──
+  // "Cómo funciona" va primero: da el modelo mental completo del sistema (F2). NUEVO.
+  { id: 'como-funciona', label: 'Cómo funciona', icon: Waypoints, group: 'El agente' },
+  // Empleados Digitales: el diferencial del producto. Contiene a Aura, Operaciones y el Asesor.
+  { id: 'centro', label: 'Empleados Digitales', icon: BadgeCheck, group: 'El agente' },
+  // Negocio: recursos del hotel que el agente CONSUME (Conocimiento/Promos/Habitaciones).
+  { id: 'negocio', label: 'Negocio', icon: Store, group: 'El agente' },
   // Configuración inicial: wizard que guía el alta de un cliente (Fase 3.2). adminOnly.
-  { id: 'onboarding', label: 'Configuración inicial', icon: Sparkles, group: 'Negocio', adminOnly: true },
-  // Negocio: recursos del hotel que el agente CONSUME (Conocimiento/Promos/Habitaciones,
-  // con sub-pestañas internas). Doc §9.2.
-  { id: 'negocio', label: 'Negocio', icon: Store, group: 'Negocio' },
-  // Agente: el diferencial del producto, en grupo propio destacado.
-  { id: 'centro', label: 'Empleados Digitales', icon: BadgeCheck, group: 'Agente' },
-  // Sistema: config global (Equipo/Temas/Límites/Consumo/Demo) + el asesor de gerencia.
-  // adminOnly: el operador no ve estas secciones sensibles (config global / consumo). Fase 2.5.
+  { id: 'onboarding', label: 'Configuración inicial', icon: Sparkles, group: 'El agente', adminOnly: true },
+  // ── Sistema: config global (Equipo/Temas/Límites/Consumo/Demo). adminOnly. ──
   { id: 'configuracion', label: 'Configuración', icon: SlidersHorizontal, group: 'Sistema', adminOnly: true },
-  { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Sistema', adminOnly: true },
+  // Asesor de gerencia: es uno de los 3 empleados digitales → se accede desde su ficha en
+  // "Empleados Digitales". `hidden` lo saca del menú pero mantiene su ruta (#admin/asesoria)
+  // viva para no romper links guardados ni la resolución de currentTab(). adminOnly.
+  { id: 'asesoria', label: 'Asesor de gerencia', icon: LineChart, group: 'Sistema', adminOnly: true, hidden: true },
 ]
 
 // Devuelve el primer segmento tras #admin/ (ej "agente" en "#admin/agente/conocimiento").
@@ -76,7 +84,9 @@ export default function AdminApp() {
   }, [])
 
   const isAdmin = me?.role === 'admin'
-  const nav = NAV.filter((n) => !n.adminOnly || isAdmin)
+  // El sidebar oculta lo adminOnly a los operadores y lo `hidden` a todos (rutas vivas sin ítem
+  // de menú, ej. `asesoria`). El guard de render (effectiveTab) sigue protegiendo por adminOnly.
+  const nav = NAV.filter((n) => !n.hidden && (!n.adminOnly || isAdmin))
 
   const go = (id) => {
     window.location.hash = `admin/${id}`
@@ -145,6 +155,9 @@ export default function AdminApp() {
             {effectiveTab === 'tickets' && <TicketsView />}
             {effectiveTab === 'asesoria' && <AsesoriaView />}
             {effectiveTab === 'centro' && <EmployeeHubSection />}
+            {/* Cómo funciona: la vista definitiva llega en F2 (ComoFuncionaView). Placeholder
+                honesto mientras tanto, para que la ruta no quede en blanco. */}
+            {effectiveTab === 'como-funciona' && <ComoFuncionaPlaceholder />}
             {/* Configuración inicial: wizard de onboarding (Fase 3.2), orquesta vistas existentes */}
             {effectiveTab === 'onboarding' && <OnboardingWizard />}
             {/* Negocio: Conocimiento / Promociones / Habitaciones (sub-pestañas internas) */}
@@ -153,6 +166,24 @@ export default function AdminApp() {
             {effectiveTab === 'configuracion' && <ConfiguracionSection />}
           </Suspense>
         </main>
+      </div>
+    </div>
+  )
+}
+
+// Placeholder de "Cómo funciona" hasta que F2 traiga la vista definitiva (el diagrama del
+// recorrido de un mensaje). Se mantiene sobrio: comunica de qué se trata sin fingir que ya está.
+function ComoFuncionaPlaceholder() {
+  return (
+    <div className="mx-auto max-w-2xl">
+      <PageHeader title="Cómo funciona" subtitle="El recorrido de un mensaje, de principio a fin." />
+      <div className="rounded-xl border border-dashed border-hilton-200 bg-hilton-50/40 p-8 text-center">
+        <Waypoints size={28} className="mx-auto mb-3 text-hilton-400" />
+        <p className="text-sm text-slatey">
+          Acá vas a ver, en un solo esquema, cómo un mensaje entra, se clasifica, va al empleado
+          digital correcto y se responde — y qué configurás vos en cada paso.
+        </p>
+        <p className="mt-2 text-xs text-slatey/70">En preparación.</p>
       </div>
     </div>
   )

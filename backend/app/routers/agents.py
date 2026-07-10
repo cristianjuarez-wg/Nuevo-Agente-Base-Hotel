@@ -4,6 +4,7 @@ Router del "Centro del Empleado Digital" — agentes como entidad de primera cla
   GET  /api/agents                     → lista de agentes (para el selector del legajo)
   GET  /api/agents/{id}                → identidad de un agente
   PUT  /api/agents/{id}                → editar identidad/estado (protegido X-Admin-Key)
+  GET  /api/agents/{id}/capabilities   → capacidades legibles (grupos) para el legajo
   GET  /api/agents/{id}/performance    → legajo de desempeño + costo, por período
 
 El desempeño se calcula on-demand (agent_performance_service) reusando
@@ -88,6 +89,34 @@ def get_agent(agent_id: int, db: Session = Depends(get_db)):
     if not agent:
         raise HTTPException(404, "Agente no encontrado.")
     return agent.to_dict()
+
+
+@router.get("/{agent_id}/capabilities")
+def get_agent_capabilities(agent_id: int, db: Session = Depends(get_db)):
+    """Capacidades LEGIBLES del agente, agrupadas para el usuario final (rediseño F0.2).
+
+    Lectura, sin auth (mismo patrón que los otros GET de agentes). NO expone tool keys crudas
+    ni docstrings: solo grupos con un resumen en lenguaje humano. El motor y los canales salen
+    del catálogo de specs / de la fila del agente.
+    """
+    from app.domains.hotel.agent_capabilities import capability_groups_for_role
+    from app.domains.hotel.agent_specs import SPECS
+
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if not agent:
+        raise HTTPException(404, "Agente no encontrado.")
+
+    # Motor del rol: si alguna spec del rol corre por el runtime SDK (con herramientas), lo
+    # reportamos como "sdk" (IA con herramientas); si no, "completions" (charla simple).
+    role_specs = [s for s in SPECS.values() if s.display_role == agent.role]
+    engine = "sdk" if any(s.engine == "sdk" and s.tools for s in role_specs) else "completions"
+
+    return {
+        "role": agent.role,
+        "channels": agent.channels or [],
+        "engine": engine,
+        "capability_groups": capability_groups_for_role(agent.role),
+    }
 
 
 @router.put("/{agent_id}", dependencies=[Depends(require_admin_key)])

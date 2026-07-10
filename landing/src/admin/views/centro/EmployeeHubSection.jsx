@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileText, Gauge, Workflow, GraduationCap, Wrench, ScrollText } from 'lucide-react'
+import { FileText, Gauge, Workflow, GraduationCap, Wrench } from 'lucide-react'
 import { listAgents } from '../../../services/api'
 import { PageHeader, Loading } from '../../ui'
 import { FilterChip } from '../../components/FilterChip'
@@ -17,15 +17,13 @@ const SUBNAV = [
   { id: 'flujos', label: 'Flujos', icon: Workflow },
   { id: 'entrenamiento', label: 'Entrenamiento', icon: GraduationCap },
   { id: 'skills', label: 'Skills', icon: Wrench },
-  // Próximas etapas (deshabilitadas por ahora).
-  { id: 'bitacora', label: 'Bitácora', icon: ScrollText, soon: true },
 ]
 
 // Lee el sub-segmento de "#admin/centro/<sub>".
 function currentSub() {
   const h = window.location.hash.replace('#admin/', '').replace('#admin', '')
   const sub = h.split('/')[1]
-  return SUBNAV.find((s) => s.id === sub && !s.soon)?.id || 'identidad'
+  return SUBNAV.find((s) => s.id === sub)?.id || 'identidad'
 }
 
 export default function EmployeeHubSection() {
@@ -87,20 +85,15 @@ export default function EmployeeHubSection() {
           return (
             <button
               key={s.id}
-              onClick={() => !s.soon && go(s.id)}
-              disabled={s.soon}
-              title={s.soon ? 'Próximamente' : undefined}
+              onClick={() => go(s.id)}
               className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition ${
                 active
                   ? 'border-hilton-600 text-hilton-700'
-                  : s.soon
-                  ? 'cursor-not-allowed border-transparent text-slatey/40'
                   : 'border-transparent text-slatey hover:text-ink'
               }`}
             >
               <Icon size={16} className={active ? 'text-hilton-600' : 'text-slatey'} />
               {s.label}
-              {s.soon && <span className="text-[10px] uppercase tracking-wide">pronto</span>}
             </button>
           )
         })}
