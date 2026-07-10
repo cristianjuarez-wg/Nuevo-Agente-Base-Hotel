@@ -67,3 +67,25 @@ def client(db):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def admin_headers(db):
+    """Header `Authorization: Bearer <jwt>` de un AdminUser real (P1).
+
+    Los tests de endpoints de backoffice deben autenticarse EXPLÍCITAMENTE en vez de depender
+    del bypass DEV de `require_admin_key` (que solo aplica con ADMIN_KEY vacía). Así el test es
+    determinista con y sin ADMIN_KEY en el entorno, y prueba el endpoint como se usa en producción.
+    """
+    from app.models.admin_user import AdminUser
+    from app.core.security import auth
+    # Reusar el admin si ya existe (el :memory: con StaticPool se comparte entre tests de una
+    # misma sesión; crear otro con el mismo email chocaría con el UNIQUE de email).
+    u = db.query(AdminUser).filter(AdminUser.email == "test-admin@h.com").first()
+    if u is None:
+        u = AdminUser(email="test-admin@h.com",
+                      password_hash=auth.hash_password("x"), role="admin", active=True)
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+    return {"Authorization": f"Bearer {auth.create_access_token(u)}"}

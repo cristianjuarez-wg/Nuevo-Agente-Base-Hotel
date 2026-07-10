@@ -160,13 +160,14 @@ def test_kill_switch_apaga_la_capa(db):
 # 4. Los flujos no son toggles (tratamiento 4)
 # ---------------------------------------------------------------------------
 
-def test_flujo_no_se_apaga_por_endpoint(db, client):
+def test_flujo_no_se_apaga_por_endpoint(db, client, admin_headers):
     seed_agents(db)
     seed_skills(db)
     aura = db.query(Agent).filter(Agent.role == "guest").first()
     flow = db.query(Skill).filter(Skill.key == "flujo_preventa").first()
 
-    r = client.put(f"/api/agents/{aura.id}/skills/{flow.id}", json={"enabled": False})
+    r = client.put(f"/api/agents/{aura.id}/skills/{flow.id}", json={"enabled": False},
+                   headers=admin_headers)
     assert r.status_code == 400
     assert "no se apagan" in r.json()["detail"]
 
@@ -174,6 +175,7 @@ def test_flujo_no_se_apaga_por_endpoint(db, client):
     r2 = client.put(
         f"/api/agents/{aura.id}/skills/{flow.id}",
         json={"policy_values": {"score_caliente": 99}},  # techo: 9
+        headers=admin_headers,
     )
     assert r2.status_code == 200
     assert r2.json()["policy_values"]["score_caliente"] == 9
