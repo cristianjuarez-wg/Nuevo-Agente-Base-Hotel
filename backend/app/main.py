@@ -52,6 +52,7 @@ async def lifespan(app: FastAPI):
         from app.models import centro_config as _centro_config_model  # noqa: F401
         from app.models import business_profile as _business_profile_model  # noqa: F401
         from app.models import prompt_config_version as _pcv_model  # noqa: F401
+        from app.models import room_price as _room_price_model  # noqa: F401 (Tarea B)
         from app.models.database import SessionLocal
         from app.services.agent_directory import seed_agents
         from app.services.skill_service import seed_skills
@@ -68,6 +69,11 @@ async def lifespan(app: FastAPI):
             # Fase A: rellena los facts del Hampton si su perfil ya existía con facts=[]
             # (los hechos se movieron del texto de los prompts al perfil).
             business_profile_service.ensure_hampton_facts(_seed_db)
+            # Tarea B: crea la tabla room_prices y la puebla desde las columnas legacy
+            # (base_price_usd/ars) si faltan — idempotente.
+            _room_price_model.ensure_table()
+            from app.services import room_price_service
+            room_price_service.backfill_from_legacy(_seed_db)
             # Auth del backoffice (Fase 2.5): crea el primer admin desde BOOTSTRAP_ADMIN_*
             # si la tabla admin_users está vacía. Idempotente.
             from app.models import admin_user as _admin_user_model  # noqa: F401 (registra la tabla)

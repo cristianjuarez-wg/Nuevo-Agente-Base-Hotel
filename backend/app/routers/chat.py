@@ -405,6 +405,9 @@ def _build_room_cards(rooms_offered: list) -> list:
             "price_usd": r.get("total_price_usd"),
             "price_ars": r.get("total_price_ars"),
             "price_usd_night": r.get("base_price_usd"),
+            # Tarea B: precio real en la moneda del perfil (total y por noche).
+            "price_primary": r.get("total_price_primary"),
+            "price_primary_night": r.get("price_primary"),
             "nights": r.get("nights"),
             "capacity": r.get("capacity"),
             "bed_config": r.get("bed_config"),

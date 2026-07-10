@@ -138,10 +138,15 @@ dirección del Hampton. Parametrizar el módulo desde `lat`/`lng`/`city`/`region
 requiere que lea el BusinessProfile (hoy son constantes de módulo) y toca varias tools — mismo
 tipo de trabajo que room_prices. Bajo impacto (solo el link de ruta al hotel).
 
-Conversión de moneda real a cualquier par (no solo USD→ARS): sigue pendiente la tabla
-`room_prices` + generalizar `exchange_rate_service` (diferido de 1.4). Hoy `format_price_pair`
-muestra correctamente la moneda del perfil pero un cliente con moneda ≠ USD/ARS ve solo el valor
-USD guardado (no una conversión a su moneda). Cierra cuando exista room_prices (Tarea B).
+RESUELTO en Tarea B (moneda multimoneda): existe la tabla `room_prices` (precio por moneda) +
+`exchange_rate_service.convert(from, to)`. La disponibilidad, las cards del chat (RoomCard usa
+`formatMoney` + `card.currency`), el owner (tarifas) y el post-venta (total) muestran el precio
+en la moneda del perfil. Verificado con demo2 (Pousada BRL: disponibilidad en BRL real 1680/2600).
+PENDIENTE menor: (a) el par de conversión sigue siendo solo USD↔ARS (dolarapi) — para otro par
+sin fila explícita en room_prices ni cotización, se cae al USD sin convertir (no inventa); sumar
+más fuentes de cotización es extender `convert` sin tocar llamadores. (b) las columnas legacy
+`base_price_usd/ars` de `rooms` quedan (se siguen poblando por compat); su DROP va en una
+migración Alembic futura (junto con las tablas huérfanas de turismo).
 
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.

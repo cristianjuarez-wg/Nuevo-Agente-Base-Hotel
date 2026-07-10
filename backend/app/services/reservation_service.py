@@ -33,6 +33,22 @@ def _ars(usd: float, rate: float) -> float:
     return round((usd or 0) * rate, 2)
 
 
+def _primary_currency(db: Session) -> str:
+    """Moneda primaria del negocio (del perfil). USD por defecto. Tarea B."""
+    try:
+        from app.services import business_profile_service
+        return (business_profile_service.get_profile(db).get("primary_currency") or "USD").upper()
+    except Exception:  # noqa: BLE001
+        return "USD"
+
+
+def _price_in_primary(db: Session, room, primary: str) -> float:
+    """Precio por noche en la moneda primaria del perfil (room_prices → conversión → USD). Tarea B."""
+    from app.services import room_price_service
+    val = room_price_service.price_in(db, room, primary)
+    return round(val, 2) if val is not None else (room.base_price_usd or 0)
+
+
 def _generate_booking_code() -> str:
     """Código corto y legible para una reserva, ej. 'HTL-7F3A'."""
     alphabet = string.ascii_uppercase + string.digits
@@ -137,10 +153,14 @@ def list_rooms(db: Session, include_inactive: bool = False) -> List[Dict]:
         # NULL se trata como activa (filas previas a la columna status).
         query = query.filter(or_(Room.status == "active", Room.status.is_(None)))
     rooms = query.order_by(Room.base_price_usd.asc()).all()
+    # Tarea B: precio por noche en la moneda PRIMARIA del perfil (de room_prices, con fallback).
+    _primary = _primary_currency(db)
     result = []
     for r in rooms:
         info = r.to_dict()
         info["base_price_ars"] = _ars(r.base_price_usd, rate)
+        info["price_primary"] = _price_in_primary(db, r, _primary)
+        info["primary_currency"] = _primary
         result.append(info)
     return result
 
@@ -160,6 +180,7 @@ def get_availability(
     occupancy = guests + max(children, 0)
     nights = _nights_between(check_in, check_out)
     rate = exchange_rate_service.get_current_rate(db)["rate"]
+    _primary = _primary_currency(db)  # Tarea B: moneda del perfil
     results: List[Dict] = []
 
     rooms = (
@@ -175,6 +196,7 @@ def get_availability(
         if units_left <= 0:
             continue
         info = room.to_dict()
+        _night_primary = _price_in_primary(db, room, _primary)  # Tarea B
         info.update(
             {
                 "units_available": units_left,
@@ -182,6 +204,10 @@ def get_availability(
                 "base_price_ars": _ars(room.base_price_usd, rate),
                 "total_price_usd": round(room.base_price_usd * nights, 2),
                 "total_price_ars": _ars(room.base_price_usd * nights, rate),
+                # Precio en la moneda del perfil (Tarea B): por noche y total.
+                "primary_currency": _primary,
+                "price_primary": _night_primary,
+                "total_price_primary": round(_night_primary * nights, 2),
                 # Sobredimensionada para el grupo (al menos 2 plazas de más): se ofrece como
                 # "más espacio si querés", no como primera opción.
                 "oversized": (room.capacity - occupancy) >= 2,

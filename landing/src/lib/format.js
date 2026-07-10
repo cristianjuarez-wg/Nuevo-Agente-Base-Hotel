@@ -29,6 +29,15 @@ export function formatARS(n) {
   return `$ ${formatNumber(n, 0)}`
 }
 
+// Monto con su etiqueta de moneda, según la moneda del negocio (Tarea B). Paralelo al
+// backend (utils/money.format_money): "USD 990", "BRL 2.600", "MXN 3.500". Sin hardcodear
+// USD/ARS: la moneda sale del perfil (card.currency). Fallback a USD si no viene.
+export function formatMoney(n, currency = 'USD') {
+  if (n == null || n === '' || isNaN(Number(n))) return '—'
+  const cur = (currency || 'USD').toUpperCase()
+  return `${cur} ${formatNumber(n, 0)}`
+}
+
 // Zona horaria de toda la app: Argentina (UTC-3). Las fechas siempre se MUESTRAN en
 // esta zona, sin importar dónde corra el navegador. El backend ya manda las fechas con
 // offset explícito (-03:00); este timeZone garantiza el resultado aun si no lo trajera.

@@ -127,6 +127,19 @@ def _apply_rooms(db, rooms: list, primary: str, secondary: str | None) -> None:
     db.commit()
     print(f"[bootstrap] Rooms: {n_new} creadas, {n_upd} actualizadas.")
     _apply_room_units(db)
+    # Tarea B: poblar room_prices con TODAS las monedas del YAML (precio real por moneda).
+    from app.services import room_price_service
+    from app.models import room_price as _rp
+    _rp.ensure_table()
+    for r in rooms:
+        rtype = r.get("room_type")
+        prices = r.get("prices") or {}
+        if not rtype or not prices:
+            continue
+        room = db.query(Room).filter(Room.room_type == rtype).first()
+        if room:
+            room_price_service.set_prices(db, room.id, prices)
+    print("[bootstrap] room_prices poblado desde el YAML.")
 
 
 def _numbers_for(total: int) -> list:
