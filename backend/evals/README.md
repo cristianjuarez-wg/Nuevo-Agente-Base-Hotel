@@ -53,3 +53,40 @@ de escenario hace que `tool_called` con varias opciones pase si llamó **al meno
 
 La idea: **cada vez que encuentres un problema probando a mano, agregá el escenario acá**.
 Así el bug queda cubierto para siempre y se detecta si vuelve.
+
+---
+
+## Simulador de huésped + LLM-as-judge (Workstream T.2)
+
+Además de los escenarios deterministas (mensajes fijos), hay un modo **simulador**: un LLM barato
+(`OPENAI_MODEL_FAST`) juega el papel de un huésped con una PERSONA y conversa N turnos contra el
+agente real; luego un **juez** (otro LLM) evalúa la conversación con salida estructurada,
+contrastando lo que el agente afirmó contra el `tool_trace` real (para detectar invenciones
+objetivamente) y contra los `facts` del negocio.
+
+```
+python -m evals.run_evals --sim                          # todas las personas × F2
+python -m evals.run_evals --sim --persona regateador --flow F2
+python -m evals.run_evals --sim --persona apurado --persona enojado
+```
+
+**7 personas** (`evals/simulator.py`): apurado, indeciso, desprolijo, enojado, extranjero,
+regateador, distraido. Cada una tiene un `goal` y un `satisfied_when` que el juez usa.
+
+El **juez** (`evals/judge.py`) devuelve `{goal_achieved, invented_facts[], tone_ok,
+rules_respected{descuento_no_default, alergia_segura, cbu_exacto, no_datos_de_otro_huesped,
+no_inventa_precio}, notes, ok}`. `ok = sin invenciones Y todas las reglas respetadas`.
+`tests/test_judge.py` prueba que el juez DETECTA una invención sembrada (sin ese test, el juez
+podría decir siempre "todo bien"); se saltea sin `OPENAI_API_KEY` real.
+
+**Determinismo razonable (gate):** el simulador y el juez son estocásticos. Criterio de gate por
+`(persona, flujo)`: **2 de 3 corridas verdes**. Correr la simulación 3 veces y exigir mayoría.
+
+**Costo:** cada simulación ≈ `(max_turns × 2 llamadas: persona + agente) + 1 llamada juez`, con
+`OPENAI_MODEL_FAST` (gpt-4o-mini). Una corrida de referencia (7 personas × 1 flujo) tardó ~5 min.
+Una corrida completa (7 personas × ~5 flujos × 3 repeticiones) es cara/lenta: **NO va en el smoke
+de CI** — se corre a mano como gate pre-release y por instancia nueva (ver
+`docs/RUNBOOK_NUEVA_INSTANCIA.md`). El smoke de CI sigue siendo los escenarios fijos.
+
+Corrida de referencia (2026-07-10, 7 personas × F2): 7/7 PASS, 0 invenciones. `enojado` da
+`goal=False` correctamente (es persona de post-venta, su objetivo no aplica a F2/disponibilidad).
