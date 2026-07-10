@@ -23,19 +23,23 @@ class TestIncludeUnnamed:
         from app.models.database import SessionLocal
         from app.services.lead_service import lead_service
 
+        # session_id propios de este test: el :memory: se comparte entre tests (StaticPool),
+        # así que no asumimos BD limpia — filtramos SOLO los leads que sembramos acá.
+        NAMED, CRUDO = "web-named-1", "wa_5491150000011"
         s = SessionLocal()
         try:
-            _mk_lead(s, "web-named-1", "Juan Pérez", "+5491150000010")
-            _mk_lead(s, "wa_5491150000011", None, "+5491150000011")  # crudo (WhatsApp)
+            _mk_lead(s, NAMED, "Juan Pérez", "+5491150000010")
+            _mk_lead(s, CRUDO, None, "+5491150000011")  # crudo (WhatsApp)
         finally:
             s.close()
 
-        names = [
-            (l.get("contact_info") or {}).get("name")
-            for l in lead_service.get_active_leads(include_unnamed=False)
-        ]
-        assert "Juan Pérez" in names
-        assert None not in names, "por defecto no deben aparecer leads sin nombre"
+        mios = {NAMED, CRUDO}
+        activos = [l for l in lead_service.get_active_leads(include_unnamed=False)
+                   if l.get("session_id") in mios]
+        session_ids = {l.get("session_id") for l in activos}
+        # El lead con nombre aparece; el crudo (sin nombre) queda oculto por defecto.
+        assert NAMED in session_ids, "el lead con nombre debe aparecer"
+        assert CRUDO not in session_ids, "por defecto no deben aparecer leads sin nombre"
 
     def test_include_unnamed_suma_los_crudos(self, db):
         from app.models.database import SessionLocal

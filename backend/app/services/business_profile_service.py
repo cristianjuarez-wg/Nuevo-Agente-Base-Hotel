@@ -33,6 +33,7 @@ _FACTORY_DEFAULTS = {
     "vertical": "hotel",
     "agent_display_name": "Aura",
     "role_descriptor": "concierge",
+    "restaurant_name": "Plaza — Hampton's Kitchen House",
     "timezone": "America/Argentina/Buenos_Aires",
     "locale": "es_AR",
     "language": "es",
@@ -165,6 +166,7 @@ def update_profile(db: Session, data: dict) -> dict:
         db.add(row)
     editable = {
         "business_name", "brand_line", "vertical", "agent_display_name", "role_descriptor",
+        "restaurant_name",
         "timezone", "locale", "language", "dialect_style", "city", "region_line",
         "lat", "lng", "primary_currency", "secondary_currency", "facts",
         "contact_phone", "contact_email",
