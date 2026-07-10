@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Optional
 from app.core.llm.openai_client import get_async_openai
 import logging
+from app.utils.timezone_utils import utcnow_naive
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +89,7 @@ class SummaryService:
             
             # Guardar resumen
             contact.ai_summary = summary
-            contact.last_summary_update = datetime.utcnow()
+            contact.last_summary_update = utcnow_naive()
             db.commit()
             
             logger.info(f"generate_contact_summary: summary generated for contact_id={contact_id}")

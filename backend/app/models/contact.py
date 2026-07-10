@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from typing import Dict, Optional
 from app.models.database import Base
+from app.utils.timezone_utils import utcnow_naive
 
 
 class Contact(Base):
@@ -32,8 +33,8 @@ class Contact(Base):
     full_name = Column(String(200), nullable=True)
     
     # Timestamps
-    first_contact_date = Column(DateTime, default=datetime.utcnow, index=True)
-    last_interaction_date = Column(DateTime, default=datetime.utcnow, index=True)
+    first_contact_date = Column(DateTime, default=utcnow_naive, index=True)
+    last_interaction_date = Column(DateTime, default=utcnow_naive, index=True)
     
     # Métricas agregadas (actualizadas automáticamente)
     total_conversations = Column(Integer, default=0)
@@ -58,8 +59,8 @@ class Contact(Base):
     preferences = Column(Text, nullable=True)
     
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
     
     # Relationships (se definirán cuando se importen los otros modelos)
     conversations = relationship("Conversation", back_populates="contact", lazy="dynamic")
@@ -108,17 +109,17 @@ class Contact(Base):
     def increment_conversations(self):
         """Incrementa contador de conversaciones"""
         self.total_conversations += 1
-        self.last_interaction_date = datetime.utcnow()
+        self.last_interaction_date = utcnow_naive()
     
     def increment_messages(self, count: int = 1):
         """Incrementa contador de mensajes"""
         self.total_messages += count
-        self.last_interaction_date = datetime.utcnow()
+        self.last_interaction_date = utcnow_naive()
     
     def increment_leads(self):
         """Incrementa contador de leads"""
         self.leads_generated += 1
-        self.last_interaction_date = datetime.utcnow()
+        self.last_interaction_date = utcnow_naive()
         
         # Actualizar tipo si es necesario
         if self.contact_type == 'customer':
@@ -129,7 +130,7 @@ class Contact(Base):
     def increment_purchases(self):
         """Incrementa contador de compras"""
         self.purchases_made += 1
-        self.last_interaction_date = datetime.utcnow()
+        self.last_interaction_date = utcnow_naive()
         
         # Actualizar tipo: si compró, es cliente
         self.contact_type = 'customer'
@@ -137,7 +138,7 @@ class Contact(Base):
     def increment_tickets(self):
         """Incrementa contador de tickets"""
         self.tickets_created += 1
-        self.last_interaction_date = datetime.utcnow()
+        self.last_interaction_date = utcnow_naive()
     
     def needs_summary_update(self) -> bool:
         """
@@ -150,7 +151,7 @@ class Contact(Base):
         if not self.ai_summary or not self.last_summary_update:
             return True
         
-        days_since_summary = (datetime.utcnow() - self.last_summary_update).days
+        days_since_summary = (utcnow_naive() - self.last_summary_update).days
         if days_since_summary >= 7 and self.last_interaction_date > self.last_summary_update:
             return True
         

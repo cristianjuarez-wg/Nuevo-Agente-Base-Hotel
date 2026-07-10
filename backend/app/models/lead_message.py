@@ -5,6 +5,7 @@ Basado en TicketInteraction de post-venta
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from app.models.database import Base
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 
 class LeadMessage(Base):
     """Mensajes de conversación entre usuario y agente para leads"""
@@ -21,7 +22,7 @@ class LeadMessage(Base):
     
     # Metadata
     created_by = Column(String(255), nullable=False)  # Nombre del usuario o "Agente IA"
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
     sequence_number = Column(Integer, nullable=False)  # Orden del mensaje en la conversación
     
     def to_dict(self):

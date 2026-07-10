@@ -5,6 +5,7 @@ Registra notificaciones que se enviarían en producción
 from typing import Dict
 from datetime import datetime
 from app.core.observability.logging_config import get_logger
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -30,7 +31,7 @@ class NotificationService:
             "subject": f"Cambio en tu vuelo {changes.get('flight_number', '')}",
             "message": self._build_passenger_message(package, changes),
             "simulated": True,
-            "would_send_at": datetime.utcnow().isoformat()
+            "would_send_at": utcnow_naive().isoformat()
         }
         
         logger.info("Passenger notification simulated", 
@@ -46,7 +47,7 @@ class NotificationService:
                     "provider_name": hotel.provider.provider_name,
                     "message": self._build_hotel_message(package, changes),
                     "simulated": True,
-                    "would_send_at": datetime.utcnow().isoformat()
+                    "would_send_at": utcnow_naive().isoformat()
                 }
                 
                 logger.info("Hotel notification simulated",
@@ -62,7 +63,7 @@ class NotificationService:
                     "provider_name": transfer.provider.provider_name,
                     "message": self._build_transfer_message(package, changes),
                     "simulated": True,
-                    "would_send_at": datetime.utcnow().isoformat()
+                    "would_send_at": utcnow_naive().isoformat()
                 }
                 
                 logger.info("Transfer notification simulated",

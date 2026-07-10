@@ -11,6 +11,7 @@ from app.utils.phone_normalizer import normalize_phone, extract_country_code, ph
 from typing import Optional, Dict, List
 from datetime import datetime
 import logging
+from app.utils.timezone_utils import utcnow_naive
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class ContactService:
 
         if contact:
             # Actualizar última interacción
-            contact.last_interaction_date = datetime.utcnow()
+            contact.last_interaction_date = utcnow_naive()
             
             # Actualizar información si se proporciona y no existe
             if name and not contact.first_name:

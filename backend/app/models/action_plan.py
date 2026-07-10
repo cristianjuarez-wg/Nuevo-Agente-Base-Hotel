@@ -10,6 +10,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, Index
 from datetime import datetime
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 
 class ActionPlan(Base):
@@ -21,8 +22,8 @@ class ActionPlan(Base):
     description = Column(Text, nullable=True)
     metric = Column(String(120), nullable=True)        # qué medir, ej. "ocupación mayo"
     status = Column(String(20), nullable=False, default="active")  # active | done | dropped
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
     last_reviewed_at = Column(DateTime, nullable=True)  # última vez que se retomó/actualizó
 
     def to_dict(self):

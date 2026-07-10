@@ -10,7 +10,7 @@ empezó a poblar con los tokens reales del SDK) y lo convierte a USD con
     debe detenerse sin llamar a OpenAI.
 
 Las marcas `created_at` de los mensajes se guardan en UTC naive
-(datetime.utcnow). Para agrupar por "hoy / mes" en hora de Argentina, calculamos
+(utcnow_naive). Para agrupar por "hoy / mes" en hora de Argentina, calculamos
 los límites del período en Argentina y los convertimos a UTC para el filtro.
 """
 import time
@@ -27,6 +27,7 @@ from app.models.agent_budget import AgentBudgetConfig
 from app.core.llm.token_pricing import cost_usd_from_total
 from app.core.observability.logging_config import get_logger
 from app.utils.timezone_utils import ARGENTINA_TZ
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -52,7 +53,7 @@ def _ar_period_bounds_utc() -> tuple[datetime, datetime, datetime]:
     return (
         _to_utc_naive(day_start_ar),
         _to_utc_naive(month_start_ar),
-        datetime.utcnow(),
+        utcnow_naive(),
     )
 
 

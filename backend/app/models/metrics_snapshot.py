@@ -4,13 +4,14 @@ Modelo para almacenar snapshots de métricas para análisis de tendencias
 from sqlalchemy import Column, Integer, Float, String, DateTime, JSON
 from app.models.database import Base
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 
 class MetricsSnapshot(Base):
     """Snapshot diario de métricas del sistema"""
     __tablename__ = "metrics_snapshots"
     
     id = Column(Integer, primary_key=True, index=True)
-    snapshot_date = Column(DateTime, default=datetime.utcnow, index=True)
+    snapshot_date = Column(DateTime, default=utcnow_naive, index=True)
     period_type = Column(String(20), default="daily")  # daily, hourly, monthly
     
     # Métricas de conversaciones

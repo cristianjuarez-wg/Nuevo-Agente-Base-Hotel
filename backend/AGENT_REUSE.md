@@ -273,3 +273,21 @@ documentado), en orden de impacto:
 
 > Estas mejoras son independientes entre sí y se pueden hacer incrementalmente. Ninguna es
 > necesaria para usar la base como plantilla hoy.
+
+---
+
+## Modelos: por qué viven en `app/models/` (no en `domains/hotel/models/`)
+
+`app/domains/hotel/models/` existe pero está vacío a propósito. Los modelos (Room, Booking,
+StaffMember, Contact, etc.) viven en `app/models/`, con registro centralizado vía
+`ensure_domain_models_registered()` (`app/models/__init__.py`). El orden de registro es
+sensible (staff → restaurant → hotel → contact...) porque hay FKs cross-módulo declaradas por
+string y `hotel.py` hace `create_all` a nivel de módulo; ya hubo una regresión por esto (ver el
+docstring de `ensure_domain_models_registered`).
+
+**Decisión (P4.1):** NO se mueven a `domains/hotel/models/`. El beneficio sería estético
+(coherencia con la estructura core/domains de Fase 2.1); el costo es real y alto (mover 10
+modelos con FKs por string uno por uno, reordenar el registro y el barrido del conftest, arriesgar
+otra regresión de mappers). El registro centralizado funciona y está cubierto por
+`test_architecture.py`. Si algún día se mueven, hacerlo con `git mv` uno por vez, import-check
+tras cada uno, y actualizando el orden de registro en el mismo commit del primer movimiento.
