@@ -503,6 +503,7 @@ class HotelPostSaleSDKOrchestrator:
         passenger_name = booking.guest_name or "el huésped"
         return POSTSALE_TOOL_SYSTEM.format(
             identity_block=build_postsale_identity_block(profile, passenger_name),
+            passenger_name=passenger_name,  # el prompt lo usa además en la regla de no re-saludar
             package_context=booking_context,
             chat_history=self._format_history(history),
             continuidad=self._continuity_signal(service, session_id, history),

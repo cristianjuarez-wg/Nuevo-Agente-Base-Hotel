@@ -34,6 +34,12 @@ async def lifespan(app: FastAPI):
                log_level=settings.LOG_LEVEL)
     
     try:
+        # Registrar los modelos de dominio cuyas relationships se declaran por string
+        # (Booking→ExtraCharge, HotelTicket→StaffMember), para que el mapper las resuelva.
+        # Sin esto, consultar un Booking revienta y el gate de post-venta cae a pre-venta.
+        from app.models import ensure_domain_models_registered
+        ensure_domain_models_registered()
+
         # Migraciones livianas (columnas agregadas tras el primer release).
         from app.models.database import run_light_migrations
         run_light_migrations()
