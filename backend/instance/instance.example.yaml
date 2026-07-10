@@ -1,0 +1,60 @@
+# Plantilla de instancia — define TODO lo que distingue a un cliente (Fase 3.1).
+# Copiar a instance/<cliente>.yaml, completar, y aplicar con:
+#     python -m instance.bootstrap_instance instance/<cliente>.yaml
+# El bootstrap es idempotente: se puede correr N veces sin duplicar datos.
+#
+# Ningún campo de acá vive en código Python: cambiar de cliente = cambiar este YAML.
+
+business:
+  # Identidad (→ BusinessProfile, singleton id=1)
+  name: "Hotel Ejemplo"                 # business_name (obligatorio)
+  brand_line: ""                        # brand_line (ej. "el primer Hilton de la Patagonia"); "" = sin bajada
+  vertical: hotel                       # por ahora siempre "hotel"
+  agent_name: "Sol"                     # agent_display_name (nombre del/la concierge virtual)
+  role_descriptor: "concierge"          # cómo se describe el agente ("concierge", "recepción", ...)
+
+  # Localización
+  timezone: "America/Cancun"            # IANA tz (controla now_business())
+  locale: "es_MX"                       # formato de fecha/número
+  language: es                          # idioma base del agente y del widget (es | en | pt | fr)
+  dialect_style: es_neutro              # rioplatense_voseo | es_neutro | es_tuteo | en
+  city: "Cancún"
+  region_line: ""                       # color local para el prompt (ej. "a orillas del lago"); "" = nada
+  lat: null                             # opcional (para "cómo llegar")
+  lng: null
+
+  # Moneda (los precios de rooms se cargan abajo por moneda)
+  primary_currency: MXN                 # fuente de verdad de precios
+  secondary_currency: USD               # null = monomoneda
+
+  # Hechos duros del negocio (reemplaza cualquier "no hay spa" hardcodeado).
+  # El agente NO debe contradecirlos ni inventar servicios que no estén acá o en el conocimiento.
+  facts:
+    - "Tiene spa y gimnasio abierto 24h"
+    - "El desayuno buffet está incluido en todas las tarifas"
+
+# Catálogo inicial de habitaciones (opcional: se puede dejar vacío y cargar por backoffice).
+# Cada precio se expresa por moneda; el agente muestra la primary y deriva la secondary.
+rooms:
+  - room_type: "Deluxe"
+    description: "Habitación amplia con vista al mar."
+    capacity: 2                         # plazas que ocupan plaza (bebés no cuentan)
+    prices: {MXN: 3500, USD: 200}       # por noche, por moneda
+    total_units: 10
+    bed_config: "1 cama king"
+    view: "Mar"
+    amenities: ["WiFi gratis", "Minibar", "Smart TV", "Caja fuerte"]
+    images: []                          # URLs (se pueden cargar luego por backoffice)
+
+# Admin bootstrap del backoffice (Fase 2.5). Solo se crea si la tabla de admins está vacía.
+# La password NO va en el YAML: se pasa por env var BOOTSTRAP_ADMIN_PASSWORD en el deploy.
+admin:
+  email: "dueno@hotelejemplo.com"
+
+# Variante de flujo de venta (Fase F del centro de empleados). "estandar" por defecto.
+flow_variant: estandar
+
+# Canales (se activan cuando el cliente tiene credenciales; por defecto apagados).
+channels:
+  whatsapp: {enabled: false}
+  instagram: {enabled: false}

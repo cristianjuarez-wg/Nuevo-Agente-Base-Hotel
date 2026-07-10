@@ -1,0 +1,64 @@
+# Instancia REAL: Hampton by Hilton Bariloche — la primera instancia de la plantilla (3.1).
+# Reexpresa los seeds hardcodeados (seed_hotel.py) como configuración. Aplicar con:
+#     python -m instance.bootstrap_instance instance/hampton.yaml
+# Prueba el mecanismo de plantilla contra un cliente real (paridad con el seed actual).
+
+business:
+  name: "Hampton by Hilton Bariloche"
+  brand_line: "el primer Hilton de la Patagonia"
+  vertical: hotel
+  agent_name: "Aura"
+  role_descriptor: "concierge"
+
+  timezone: "America/Argentina/Buenos_Aires"
+  locale: "es_AR"
+  language: es
+  dialect_style: rioplatense_voseo
+  city: "Bariloche"
+  region_line: null
+  lat: null
+  lng: null
+
+  primary_currency: USD
+  secondary_currency: ARS
+
+  facts: []
+
+rooms:
+  - room_type: "King"
+    description: "Amplia cama Hampton bed®, ideal para parejas o viajeros que buscan confort."
+    capacity: 3
+    prices: {USD: 120, ARS: 126000}
+    total_units: 20
+    bed_config: "1 cama king (Hampton bed®)"
+    view: "Lago o ciudad"
+  - room_type: "Twin"
+    description: "Dos camas singles, para no fumadores. Perfecta para amigos o viajeros de negocios."
+    capacity: 3
+    prices: {USD: 110, ARS: 115500}
+    total_units: 18
+    bed_config: "2 camas twin (singles)"
+    view: "Lago o ciudad"
+  - room_type: "Family Plan"
+    description: "Espaciosa para familias, con dos camas queen size Hampton bed®."
+    capacity: 4
+    prices: {USD: 165, ARS: 173250}
+    total_units: 8
+    bed_config: "2 camas queen (Hampton bed®)"
+    view: "Lago o ciudad"
+  - room_type: "Doble Twin Accesible"
+    description: "Habitación adaptada para accesibilidad, con dos camas singles."
+    capacity: 3
+    prices: {USD: 110, ARS: 115500}
+    total_units: 2
+    bed_config: "2 camas twin (accesible)"
+    view: "Ciudad"
+
+admin:
+  email: "admin@hamptonbariloche.com"
+
+flow_variant: estandar
+
+channels:
+  whatsapp: {enabled: true}
+  instagram: {enabled: false}
