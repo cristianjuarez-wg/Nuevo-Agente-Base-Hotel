@@ -246,6 +246,49 @@ def _seed_bookings(db, session_id: str, specs: list) -> None:
     db.commit()
 
 
+# Título marcador de la entry de pagos que siembra el eval (para limpiarla después sin tocar
+# la entry real del hotel). info_pago toma la de pagos más reciente → la del eval gana en su corrida.
+_EVAL_PAYMENTS_TITLE = "[EVAL] Datos de pago de prueba"
+
+
+def _seed_payments(db, spec: dict) -> None:
+    """Siembra una KnowledgeEntry de pagos con datos EXACTOS conocidos, para verificar que el
+    agente los comunica sin alterarlos (F8). No lleva session_id (los datos de pago son globales);
+    se limpia por su título marcador en _cleanup_payments. Idempotente."""
+    from app.models.knowledge import KnowledgeEntry
+    db.query(KnowledgeEntry).filter(KnowledgeEntry.title == _EVAL_PAYMENTS_TITLE).delete(
+        synchronize_session=False)
+    entry = KnowledgeEntry(
+        category="pagos", title=_EVAL_PAYMENTS_TITLE,
+        content=spec.get("content", "Para reservar, transferí la seña y envianos el comprobante."),
+        data={
+            "medios": spec.get("medios", ["Transferencia bancaria"]),
+            "titular": spec.get("titular", "Hotel Eval SA"),
+            "banco": spec.get("banco", "Banco Eval"),
+            "cbu": spec["cbu"], "alias": spec["alias"], "moneda": spec.get("moneda", "ARS"),
+        },
+        status="active",
+    )
+    db.add(entry)
+    db.commit()
+
+
+def _cleanup_payments() -> None:
+    """Borra la entry de pagos marcador que sembró el eval (best-effort)."""
+    db = SessionLocal()
+    try:
+        from app.models.knowledge import KnowledgeEntry
+        n = db.query(KnowledgeEntry).filter(
+            KnowledgeEntry.title == _EVAL_PAYMENTS_TITLE).delete(synchronize_session=False)
+        db.commit()
+        if n:
+            print(f"[limpieza] {n} entry de pagos de eval borrada.")
+    except Exception:  # noqa: BLE001
+        db.rollback()
+    finally:
+        db.close()
+
+
 async def _run_scenario(sc: dict) -> dict:
     db = SessionLocal()
     prefix = sc.get("session_prefix") or "web-eval"
@@ -256,6 +299,8 @@ async def _run_scenario(sc: dict) -> dict:
     try:
         if sc.get("setup_bookings"):
             _seed_bookings(db, session_id, sc["setup_bookings"])
+        if sc.get("setup_payments"):
+            _seed_payments(db, sc["setup_payments"])
         for i, turn in enumerate(sc["turns"], 1):
             msg = turn["user"]
             result = await agent_service.chat(db, msg, session_id, "es")
@@ -356,6 +401,7 @@ async def _main_async(selected):
     # Limpiar lo que crearon los evals (reservas/mesas/tickets/leads) para que la corrida sea
     # repetible y no sature el inventario de la DB real.
     _cleanup([r["session_id"] for r in reports])
+    _cleanup_payments()
     return rc
 
 
