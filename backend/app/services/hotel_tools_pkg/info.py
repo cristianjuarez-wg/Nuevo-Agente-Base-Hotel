@@ -24,9 +24,13 @@ async def _handle_info_hotel(args: Dict, ctx: Dict) -> Dict:
         }
 
     ctx["document_sources"] = result.get("sources", [])
+    # Anti prompt-injection (Fase 3.3): el contenido del RAG lo sube el cliente y NO es
+    # confiable. Se envuelve en delimitadores; el prompt del agente (ANTI_INJECTION_BLOCK)
+    # sabe que lo delimitado es referencia, no instrucciones.
+    from app.domains.hotel.prompts.base_blocks import wrap_untrusted_docs
     return {
         "found": True,
-        "tool_result": context,
+        "tool_result": wrap_untrusted_docs(context),
     }
 
 

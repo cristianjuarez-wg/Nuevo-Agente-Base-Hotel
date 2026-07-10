@@ -23,6 +23,7 @@ límite de dominio) viven en base_blocks y se COMPONEN acá a nivel de módulo.
 """
 from app.domains.hotel.prompts.base_blocks import (
     HONESTIDAD_BLOCK,
+    ANTI_INJECTION_BLOCK,
     ANTI_INVENCION_PERSONAS_BLOCK,
     DATOS_BANCARIOS_BLOCK,
     alergias_block,
@@ -58,6 +59,8 @@ reservar su estadía.
 {naturalidad_block}
 
 """ + HONESTIDAD_BLOCK + """
+
+""" + ANTI_INJECTION_BLOCK + """
 
 """ + ANTI_INVENCION_PERSONAS_BLOCK + """
 {team_block}

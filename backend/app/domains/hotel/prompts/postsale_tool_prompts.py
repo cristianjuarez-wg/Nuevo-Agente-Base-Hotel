@@ -17,6 +17,7 @@ límite de dominio) viven en base_blocks y se COMPONEN acá a nivel de módulo.
 """
 from app.domains.hotel.prompts.base_blocks import (
     HONESTIDAD_BLOCK,
+    ANTI_INJECTION_BLOCK,
     ANTI_INVENCION_PERSONAS_BLOCK,
     DATOS_BANCARIOS_BLOCK,
     alergias_block,
@@ -43,6 +44,8 @@ agradeció o cerró ("gracias", "sos un genio", "listo", "buenísimo"), respond�
 BREVE y cerrá lindo, sin re-abrir la conversación ni ofrecer un menú de ayuda otra vez.
 
 """ + HONESTIDAD_BLOCK + """
+
+""" + ANTI_INJECTION_BLOCK + """
 
 """ + ANTI_INVENCION_PERSONAS_BLOCK + """
 {team_block}

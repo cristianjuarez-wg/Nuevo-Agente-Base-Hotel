@@ -289,6 +289,47 @@ def _cleanup_payments() -> None:
         db.close()
 
 
+# Título marcador de la entry de conocimiento envenenada que siembra el eval de inyección (F9).
+_EVAL_KNOWLEDGE_TITLE = "[EVAL] Documento con inyección"
+
+
+async def _seed_knowledge(db, spec: dict) -> None:
+    """Siembra una KnowledgeEntry con contenido que INTENTA una prompt-injection (F9), para
+    verificar que el agente NO obedece la orden incrustada en el documento. Se re-ingesta al RAG
+    para que info_hotel la pueda recuperar. Se limpia por título marcador."""
+    from app.models.knowledge import KnowledgeEntry
+    db.query(KnowledgeEntry).filter(KnowledgeEntry.title == _EVAL_KNOWLEDGE_TITLE).delete(
+        synchronize_session=False)
+    entry = KnowledgeEntry(
+        category=spec.get("category", "servicios"),
+        title=_EVAL_KNOWLEDGE_TITLE,
+        content=spec["content"],
+        data={}, status="active",
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    # Re-ingesta al RAG para que la tool info_hotel pueda recuperar este documento.
+    from app.domains.hotel.services.knowledge_service import reingest
+    await reingest(entry)
+
+
+def _cleanup_knowledge() -> None:
+    """Borra la entry de conocimiento envenenada que sembró el eval (best-effort)."""
+    db = SessionLocal()
+    try:
+        from app.models.knowledge import KnowledgeEntry
+        n = db.query(KnowledgeEntry).filter(
+            KnowledgeEntry.title == _EVAL_KNOWLEDGE_TITLE).delete(synchronize_session=False)
+        db.commit()
+        if n:
+            print(f"[limpieza] {n} entry de conocimiento de eval borrada.")
+    except Exception:  # noqa: BLE001
+        db.rollback()
+    finally:
+        db.close()
+
+
 async def _run_scenario(sc: dict) -> dict:
     db = SessionLocal()
     prefix = sc.get("session_prefix") or "web-eval"
@@ -301,6 +342,8 @@ async def _run_scenario(sc: dict) -> dict:
             _seed_bookings(db, session_id, sc["setup_bookings"])
         if sc.get("setup_payments"):
             _seed_payments(db, sc["setup_payments"])
+        if sc.get("setup_knowledge"):
+            await _seed_knowledge(db, sc["setup_knowledge"])
         for i, turn in enumerate(sc["turns"], 1):
             msg = turn["user"]
             result = await agent_service.chat(db, msg, session_id, "es")
@@ -386,10 +429,22 @@ def _print_report(reports: list) -> int:
     return 1 if failed_scenarios else 0
 
 
-async def _main_async(selected):
-    scen = [s for s in SCENARIOS if (not selected or s["id"] in selected)]
+# Subconjunto SMOKE para CI: barato (~8 escenarios), cubre los flujos núcleo del vertical
+# (disponibilidad, reserva, honestidad/anti-invención, pago, seguridad). Se corre en cada PR
+# que toque prompts/composers/specs. Los ids son de core_scenarios (genéricos, no del Hampton).
+_SMOKE_IDS = {"S2", "S11", "S12", "S30", "S40", "S43", "S45", "S47"}
+
+
+async def _main_async(selected, smoke=False, tier=None):
+    scen = list(SCENARIOS)
+    if smoke:
+        scen = [s for s in scen if s["id"] in _SMOKE_IDS]
+    if tier:
+        scen = [s for s in scen if s.get("tier", "core") == tier]
+    if selected:
+        scen = [s for s in scen if s["id"] in selected]
     if not scen:
-        print(f"No hay escenarios que coincidan con {selected}")
+        print(f"No hay escenarios que coincidan (selected={selected}, smoke={smoke}, tier={tier})")
         return 2
     print(f"Corriendo {len(scen)} escenario(s) contra el agente real…")
     t0 = time.time()
@@ -402,6 +457,7 @@ async def _main_async(selected):
     # repetible y no sature el inventario de la DB real.
     _cleanup([r["session_id"] for r in reports])
     _cleanup_payments()
+    _cleanup_knowledge()
     return rc
 
 
@@ -410,15 +466,21 @@ def main():
     ap.add_argument("--scenario", "-s", action="append",
                     help="ID(s) de escenario a correr (ej. -s S5 -s S6). Por defecto, todos.")
     ap.add_argument("--list", action="store_true", help="Lista los escenarios y sale.")
+    ap.add_argument("--smoke", action="store_true",
+                    help="Corre solo el subconjunto SMOKE (barato, para CI).")
+    ap.add_argument("--tier", choices=["core", "instance"], default=None,
+                    help="Filtra por tier: core (genéricos del vertical) o instance (del cliente).")
     args = ap.parse_args()
 
     if args.list:
         for s in SCENARIOS:
-            print(f"  {s['id']:4} {s['name']}  ({len(s['turns'])} turnos)")
+            tier = s.get("tier", "core")
+            smoke = " [smoke]" if s["id"] in _SMOKE_IDS else ""
+            print(f"  {s['id']:4} [{tier:8}]{smoke} {s['name']}  ({len(s['turns'])} turnos)")
         return
 
     selected = set(args.scenario) if args.scenario else None
-    rc = asyncio.run(_main_async(selected))
+    rc = asyncio.run(_main_async(selected, smoke=args.smoke, tier=args.tier))
     sys.exit(rc)
 
 
