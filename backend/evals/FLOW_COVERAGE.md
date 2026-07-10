@@ -8,7 +8,7 @@
 > variantes obligatorias. 🟡 si el camino feliz está cubierto pero falta una variante. 🔴 si no
 > hay ningún escenario.
 >
-> **Estado de la corrida:** `evals/scenarios.py` tiene **48 escenarios** (44 `core` + 4 `instance`)
+> **Estado de la corrida:** `evals/scenarios.py` tiene **52 escenarios** (48 `core` + 4 `instance`)
 > con verificación 100% determinística (sin juez ni simulador — eso es T.2). Partición Fase 3.3:
 > `run_evals --tier core|instance` filtra; `run_evals --smoke` corre el subconjunto barato de CI
 > (8 escenarios núcleo). La última corrida verde se anota abajo (gasta OpenAI).
@@ -30,11 +30,17 @@
 | **F7** | Triage y cortocircuitos | casual→casual, precio→pre, código→post | mensaje mixto ("hola! tenés lugar el 15?") | S1, S6, S11, S12, S17, S41, S42 | 🟢 |
 | **F8** | Pago | pedir CBU/alias → exacto desde tool | intentar que "ajuste" el CBU | S43, S44 | 🟢 |
 | **F9** | Seguridad | jailbreak simple; inyección vía documento RAG | pedir datos de otro huésped | S45, S46, S47 (jailbreak + terceros + inyección RAG) | 🟢 |
-| **F10** | Owner (BI) | métrica simple → dato real vs estimación etiquetados | pregunta sin datos → admite no saber | — | 🔴 |
-| **F11** | Staff | cerrar/crear ticket | pedido fuera de dominio → reconduce | — | 🔴 |
+| **F10** | Owner (BI) | métrica simple → dato real vs estimación etiquetados | pregunta sin datos → admite no saber | S48, S49 | 🟢 |
+| **F11** | Staff | cerrar/crear ticket | pedido fuera de dominio → reconduce | S50, S51 | 🟢 |
 | **F12** | Canal WhatsApp | F2 por `wa_` (formato cards limitado) | concurrencia (ya hay test unitario) | S7 | 🟡 |
 
-**Resumen:** 5 🟢 · 5 🟡 · 2 🔴 sobre 12 flujos.
+**Resumen:** 7 🟢 · 5 🟡 · 0 🔴 sobre 12 flujos.
+
+**F10/F11 cubiertos (Tarea C):** owner y staff NO pasan por `agent_service.chat` — el runner los
+despacha a sus orquestadores (`owner_orchestrator.run` / `staff_orchestrator.run`) con un
+`StaffMember` sembrado (campo `agent: "owner"|"staff"` en el escenario + `_seed_staff`/`_cleanup_staff`).
+S48 (owner llama consultar_ocupacion), S49 (no inventa facturación futura), S50 (staff crea ticket),
+S51 (pedido fuera de dominio → reconduce). 4/4 verde contra el agente real.
 
 **F8 y F9 cubiertos (2026-07-10):** S43 (CBU/alias exacto desde `info_pago`), S44 (se niega a
 emitir un CBU alterado), S45 (no obedece jailbreak de descuento), S46 (no divulga datos de otro
@@ -53,13 +59,8 @@ Ordenados por riesgo de negocio (lo que más duele si se rompe sin que nos enter
 - **F8 Pago** → S43 (CBU/alias exacto vía `info_pago`) + S44 (no emite CBU alterado). 🟢
 - **F9 Seguridad** → S45 (jailbreak) + S46 (datos de terceros) + S47 (inyección vía RAG, con la
   defensa anti-injection de la tarea 3.3). 🟢
-
-### 🔴 Prioridad alta — flujos sin ninguna cobertura
-1. **F10 Owner (BI).** El asesor de gerencia (session_prefix `owner_`) debe etiquetar DATO REAL
-   (de tool) vs ESTIMACIÓN, y ante falta de datos admitir no saber (no inventar métricas).
-   Escenario: una métrica que sale de tool + una pregunta sin datos disponibles.
-2. **F11 Staff.** Crear/cerrar un ticket operativo, y un pedido fuera de dominio → reconduce con
-   calidez (cierra el hueco #7 del plan: el staff no tenía límite de dominio antes de Fase 0.1).
+- **F10 Owner** → S48 (métrica de tool) + S49 (no inventa métrica futura). 🟢 (Tarea C)
+- **F11 Staff** → S50 (crea ticket) + S51 (fuera de dominio → reconduce). 🟢 (Tarea C)
 
 ### 🟡 Prioridad media — camino feliz cubierto, falta la variante dura
 5. **F3** — variante "huésped que se niega a dar datos" y el flow "sin_presión" (no captura).
