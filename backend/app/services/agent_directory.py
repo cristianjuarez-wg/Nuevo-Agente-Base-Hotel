@@ -25,15 +25,38 @@ from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# Definición de los agentes "de fábrica" del hotel. role es el atributo de identidad.
-_SEED_AGENTS = [
-    {"name": "Aura", "role": "guest", "channels": ["whatsapp", "web"],
-     "description": "Concierge del huésped: pre-venta, post-venta y restaurante."},
-    {"name": "Asesor", "role": "management", "channels": ["whatsapp"],
-     "description": "Consultor de gerencia: BI conversacional y recomendaciones."},
-    {"name": "Operaciones", "role": "staff", "channels": ["whatsapp"],
-     "description": "Empleado digital de operaciones: tickets e incidencias."},
-]
+# Display de cada rol en el backoffice. Los CANALES se derivan del catálogo de AgentSpec
+# (Fase 2.2): una sola fuente de qué canal atiende cada rol; acá solo queda presentación.
+_ROLE_DISPLAY = {
+    "guest": {"name": "Aura",
+              "description": "Concierge del huésped: pre-venta, post-venta y restaurante."},
+    "management": {"name": "Asesor",
+                   "description": "Consultor de gerencia: BI conversacional y recomendaciones."},
+    "staff": {"name": "Operaciones",
+              "description": "Empleado digital de operaciones: tickets e incidencias."},
+}
+
+
+def _seed_agents_from_specs() -> list:
+    """Agentes de fábrica generados desde las AgentSpec (elimina la duplicación).
+
+    Canales de un rol = unión de los channels de sus specs, en el orden de presentación
+    histórico (whatsapp, web). Paridad byte a byte con el seed anterior:
+    guest→[whatsapp, web], management→[whatsapp], staff→[whatsapp].
+    """
+    from app.domains.hotel.agent_specs import SPECS
+    channels_by_role: dict = {}
+    for spec in SPECS.values():
+        channels_by_role.setdefault(spec.display_role, set()).update(spec.channels)
+    seeds = []
+    for role, display in _ROLE_DISPLAY.items():
+        chans = [c for c in ("whatsapp", "web") if c in channels_by_role.get(role, {"whatsapp"})]
+        seeds.append({"name": display["name"], "role": role,
+                      "channels": chans, "description": display["description"]})
+    return seeds
+
+
+_SEED_AGENTS = _seed_agents_from_specs()
 
 
 def seed_agents(db: Session) -> None:

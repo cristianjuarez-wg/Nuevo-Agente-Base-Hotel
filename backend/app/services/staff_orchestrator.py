@@ -125,6 +125,12 @@ async def mis_tickets(ctx: RunContextWrapper[StaffContext]) -> str:
 
 _TOOLS = [resolver_ticket, reportar_incidencia, mis_tickets]
 
+# Fase 2.2: registro en el ToolRegistry — la spec del agente referencia las tools por key.
+from app.core.agents.tool_registry import register_tool  # noqa: E402
+register_tool("staff.resolver_ticket", resolver_ticket)
+register_tool("staff.reportar_incidencia", reportar_incidencia)
+register_tool("staff.mis_tickets", mis_tickets)
+
 
 # ---------------------------------------------------------------------------
 # ORQUESTADOR
@@ -181,42 +187,33 @@ class StaffOrchestrator:
 
     async def run(self, db: Session, staff: StaffMember, message: str,
                   session_id: str, history: List[Dict]) -> Dict:
+        """Turno del agente de operaciones — Fase 2.2: corre por el runtime declarativo.
+
+        Este orquestador queda como capa FINA de dominio: compone las instrucciones
+        (composer) y adapta el resultado; el loop del SDK vive en core/agents/sdk_runtime
+        con los parámetros de la spec (paridad: turns=5, hist=10, temp=0.4, mismas tools).
+        """
         start = time.time()
-        agent = Agent[StaffContext](
-            name="Coordinador de Operaciones",
-            instructions=self._build_instructions(db, staff),
-            tools=_TOOLS,
-            model=self._model,
-            model_settings=ModelSettings(temperature=0.4),
-        )
+        from app.core.agents.sdk_runtime import run_agent, build_input_list
+        from app.domains.hotel.agent_specs import SPECS
+        spec = SPECS["hotel_staff"]
+
         run_ctx = StaffContext(db, staff, message, session_id=session_id)
-        input_list = self._build_input_list(history, message)
+        out = await run_agent(
+            spec,
+            instructions=self._build_instructions(db, staff),
+            context=run_ctx,
+            input_list=build_input_list(history, message, spec.max_history),
+            fallback_response="Disculpá, tuve un problema procesando eso. ¿Podés repetirlo?",
+        )
+        response_text = out["response"] or (
+            "No te entendí bien. ¿Me lo decís de nuevo? (¿resolviste algo o reportás una incidencia?)"
+        )
 
-        usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
-        try:
-            result = await Runner.run(agent, input=input_list, context=run_ctx, max_turns=MAX_TURNS)
-            usage = extract_usage(result, model=self._model_name)
-            response_text = result.final_output or ""
-            tools_used = [
-                item.raw_item.name
-                for item in getattr(result, "new_items", [])
-                if getattr(item, "type", None) == "tool_call_item"
-                and hasattr(getattr(item, "raw_item", None), "name")
-            ]
-        except Exception as e:  # noqa: BLE001
-            logger.error("Staff orchestrator: Runner failed", session_id=session_id, error=str(e))
-            response_text = ("Disculpá, tuve un problema procesando eso. ¿Podés repetirlo?")
-            tools_used = []
-
-        if not response_text:
-            response_text = "No te entendí bien. ¿Me lo decís de nuevo? (¿resolviste algo o reportás una incidencia?)"
-
-        duration = time.time() - start
         logger.info("Staff orchestrator turn completed",
-                    session_id=session_id, staff=staff.name, tools_used=tools_used,
-                    duration=f"{duration:.2f}s")
-
-        return {"response": response_text, "tools_used": tools_used, "usage": usage}
+                    session_id=session_id, staff=staff.name, tools_used=out["tools_used"],
+                    duration=f"{time.time() - start:.2f}s")
+        return {"response": response_text, "tools_used": out["tools_used"], "usage": out["usage"]}
 
 
 staff_orchestrator = StaffOrchestrator()

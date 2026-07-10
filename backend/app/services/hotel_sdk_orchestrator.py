@@ -436,6 +436,11 @@ _TOOLS = [
     guardar_preferencia,
 ]
 
+# Fase 2.2: registro en el ToolRegistry con key "presale.<nombre>".
+from app.core.agents.tool_registry import register_tool  # noqa: E402
+for _t in _TOOLS:
+    register_tool(f"presale.{_t.name}", _t)
+
 
 # ---------------------------------------------------------------------------
 # GUARDRAIL — input anti-jailbreak (mismo patrón que Freeway)
@@ -462,6 +467,11 @@ async def relevancia_guardrail(
         output_info={"jailbreak_suspected": is_jailbreak},
         tripwire_triggered=is_jailbreak,
     )
+
+
+# Fase 2.2: registro del guardrail — la spec lo referencia por key.
+from app.core.agents.tool_registry import register_guardrail  # noqa: E402
+register_guardrail("presale.relevancia", relevancia_guardrail)
 
 
 # ---------------------------------------------------------------------------
@@ -720,41 +730,33 @@ class HotelSDKOrchestrator:
             team_block=build_team_roster_block(db),
             profile=profile,
         )
-        agent = Agent[HotelContext](
-            name=profile_manager.get_agent_name(),
-            instructions=instructions,
-            tools=skill_service.filter_tools_for_session(db, session_id, _TOOLS),
-            model=self._model,
-            model_settings=ModelSettings(temperature=settings.OPENAI_TEMPERATURE),
-            input_guardrails=[relevancia_guardrail],
-        )
+        # Fase 2.2: el loop del SDK corre por el runtime declarativo (spec hotel_presale:
+        # turns=6, hist=20, temp=settings, 16 tools + guardrail). Las tools se FILTRAN por
+        # sesión (config del Centro) vía tools_override — la spec declara el catálogo.
+        from app.core.agents.sdk_runtime import run_agent, build_input_list
+        from app.domains.hotel.agent_specs import SPECS
+        spec = SPECS["hotel_presale"]
 
         # 3. Contexto del turno
         run_ctx = HotelContext(db, message, history, session_id=session_id)
-        input_list = self._build_input_list(history, message)
+        input_list = build_input_list(history, message, spec.max_history)
 
         # 4. Ejecutar el loop del SDK
         from agents import InputGuardrailTripwireTriggered
 
         usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
         try:
-            result = await Runner.run(
-                agent,
-                input=input_list,
-                context=run_ctx,
-                max_turns=MAX_TURNS,
+            out = await run_agent(
+                spec, instructions=instructions, context=run_ctx, input_list=input_list,
+                display_name=profile_manager.get_agent_name(),
+                tools_override=skill_service.filter_tools_for_session(db, session_id, _TOOLS),
             )
-            usage = extract_usage(result, model=self._model_name)
-            response_text = result.final_output or ""
-            tools_used = [
-                item.raw_item.name
-                for item in getattr(result, "new_items", [])
-                if getattr(item, "type", None) == "tool_call_item"
-                and hasattr(getattr(item, "raw_item", None), "name")
-            ]
+            usage = out["usage"]
+            response_text = out["response"]
+            tools_used = out["tools_used"]
             # Traza detallada (nombre + args + output) para la auditoría del chat.
             from app.core.observability.audit_log import build_tool_trace
-            tool_trace = build_tool_trace(result)
+            tool_trace = build_tool_trace(out["result"])
         except InputGuardrailTripwireTriggered:
             logger.warning("Hotel pre-venta: input guardrail tripwire", session_id=session_id)
             response_text = (

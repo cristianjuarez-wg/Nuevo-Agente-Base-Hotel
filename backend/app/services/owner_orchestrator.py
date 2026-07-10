@@ -526,6 +526,12 @@ _TOOLS = [
     registrar_plan, consultar_planes, actualizar_plan,
 ]
 
+# Fase 2.2: registro en el ToolRegistry con key "owner.<nombre>" — la spec las referencia.
+from app.core.agents.tool_registry import register_tool  # noqa: E402
+OWNER_TOOL_KEYS = tuple(f"owner.{t.name}" for t in _TOOLS)
+for _t in _TOOLS:
+    register_tool(f"owner.{_t.name}", _t)
+
 
 # ---------------------------------------------------------------------------
 # ORQUESTADOR
@@ -566,48 +572,35 @@ class OwnerOrchestrator:
 
     async def run(self, db: Session, message: str, session_id: str,
                   history: List[Dict], owner_name: str = "") -> Dict:
-        """Procesa un turno del consultor de gerencia. Devuelve {response, chart_url?}."""
+        """Turno del consultor de gerencia — Fase 2.2: corre por el runtime declarativo.
+
+        Capa fina de dominio: compone instrucciones, corre por la spec (paridad: turns=6,
+        hist=20, temp=settings, 19 tools de BI) y agrega su extra propio (chart_url).
+        """
         start = time.time()
-        agent = Agent[OwnerContext](
-            name="Asesor de Gerencia",
-            instructions=self._build_instructions(owner_name),
-            tools=_TOOLS,
-            model=self._model,
-            model_settings=ModelSettings(temperature=settings.OPENAI_TEMPERATURE),
-        )
+        from app.core.agents.sdk_runtime import run_agent, build_input_list
+        from app.domains.hotel.agent_specs import SPECS
+        spec = SPECS["hotel_owner"]
+
         run_ctx = OwnerContext(db, message, history, session_id=session_id)
-        input_list = self._build_input_list(history, message)
+        out = await run_agent(
+            spec,
+            instructions=self._build_instructions(owner_name),
+            context=run_ctx,
+            input_list=build_input_list(history, message, spec.max_history),
+            fallback_response=("Disculpá, tuve un problema consultando los datos del negocio. "
+                               "¿Podés intentarlo de nuevo en un momento?"),
+        )
+        response_text = out["response"] or "No pude generar el análisis. ¿Podés reformular la consulta?"
 
-        usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
-        try:
-            result = await Runner.run(agent, input=input_list, context=run_ctx, max_turns=MAX_TURNS)
-            usage = extract_usage(result, model=self._model_name)
-            response_text = result.final_output or ""
-            tools_used = [
-                item.raw_item.name
-                for item in getattr(result, "new_items", [])
-                if getattr(item, "type", None) == "tool_call_item"
-                and hasattr(getattr(item, "raw_item", None), "name")
-            ]
-        except Exception as e:  # noqa: BLE001
-            logger.error("Owner orchestrator: Runner failed", session_id=session_id, error=str(e))
-            response_text = ("Disculpá, tuve un problema consultando los datos del negocio. "
-                             "¿Podés intentarlo de nuevo en un momento?")
-            tools_used = []
-
-        if not response_text:
-            response_text = "No pude generar el análisis. ¿Podés reformular la consulta?"
-
-        duration = time.time() - start
         logger.info("Owner orchestrator turn completed",
-                    session_id=session_id, tools_used=tools_used,
-                    has_chart=bool(run_ctx.chart_url), duration=f"{duration:.2f}s")
-
+                    session_id=session_id, tools_used=out["tools_used"],
+                    has_chart=bool(run_ctx.chart_url), duration=f"{time.time() - start:.2f}s")
         return {
             "response": response_text,
             "chart_url": run_ctx.chart_url,
-            "tools_used": tools_used,
-            "usage": usage,
+            "tools_used": out["tools_used"],
+            "usage": out["usage"],
         }
 
 

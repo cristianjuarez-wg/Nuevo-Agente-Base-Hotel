@@ -394,6 +394,11 @@ _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
           ver_carta, reservar_mesa, armar_pedido_carta,
           consultar_pago, comercios_amigos, promociones_vigentes, excursiones_y_atracciones]
 
+# Fase 2.2: registro en el ToolRegistry con key "postsale.<nombre>".
+from app.core.agents.tool_registry import register_tool  # noqa: E402
+for _t in _TOOLS:
+    register_tool(f"postsale.{_t.name}", _t)
+
 
 # ---------------------------------------------------------------------------
 # GUARDRAIL — input anti-jailbreak
@@ -417,6 +422,11 @@ async def relevancia_guardrail(
         output_info={"jailbreak_suspected": is_jailbreak},
         tripwire_triggered=is_jailbreak,
     )
+
+
+# Fase 2.2: registro del guardrail — la spec lo referencia por key.
+from app.core.agents.tool_registry import register_guardrail  # noqa: E402
+register_guardrail("postsale.relevancia", relevancia_guardrail)
 
 
 # ---------------------------------------------------------------------------
@@ -521,37 +531,32 @@ class HotelPostSaleSDKOrchestrator:
     ) -> Dict:
         start = time.time()
 
-        instructions = self._build_instructions(service, booking, history, session_id)
-        agent = Agent[HotelPostventaContext](
-            name=profile_manager.get_agent_name(),
-            instructions=instructions,
-            tools=_TOOLS,
-            model=self._model,
-            model_settings=ModelSettings(temperature=0.7),
-            input_guardrails=[relevancia_guardrail],
-        )
+        # Fase 2.2: el loop del SDK corre por el runtime declarativo (spec hotel_postsale:
+        # turns=5, hist=8, temp=0.7, 12 tools, guardrail). Este orquestador conserva su
+        # try/except propio: el tripwire tiene respuesta específica y el fallo genérico
+        # alimenta run_failed (que fuerza la ESCALACIÓN determinística del ticket).
+        from app.core.agents.sdk_runtime import run_agent, build_input_list
+        from app.domains.hotel.agent_specs import SPECS
+        spec = SPECS["hotel_postsale"]
 
+        instructions = self._build_instructions(service, booking, history, session_id)
         run_ctx = HotelPostventaContext(service, booking, ticket, message, history)
-        input_list = self._build_input_list(history, message)
+        input_list = build_input_list(history, message, spec.max_history)
 
         from agents import InputGuardrailTripwireTriggered
 
         run_failed = False
         usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
         try:
-            result = await Runner.run(
-                agent, input=input_list, context=run_ctx, max_turns=MAX_TURNS,
+            out = await run_agent(
+                spec, instructions=instructions, context=run_ctx, input_list=input_list,
+                display_name=profile_manager.get_agent_name(),
             )
-            usage = extract_usage(result, model=self._model_name)
-            response_text = result.final_output or ""
-            tools_used = [
-                item.raw_item.name
-                for item in getattr(result, "new_items", [])
-                if getattr(item, "type", None) == "tool_call_item"
-                and hasattr(getattr(item, "raw_item", None), "name")
-            ]
+            usage = out["usage"]
+            response_text = out["response"]
+            tools_used = out["tools_used"]
             from app.core.observability.audit_log import build_tool_trace
-            tool_trace = build_tool_trace(result)
+            tool_trace = build_tool_trace(out["result"])
         except InputGuardrailTripwireTriggered:
             logger.warning("Hotel post-venta: input guardrail tripwire", session_id=session_id)
             response_text = (
