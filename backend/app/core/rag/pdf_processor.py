@@ -1,5 +1,5 @@
 from pypdf import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from app.core.rag.text_splitter import RecursiveCharacterTextSplitter
 from typing import List, Dict, Optional
 from app.config import settings
 from app.core.observability.logging_config import get_logger

@@ -11,7 +11,7 @@ import hashlib
 from datetime import datetime
 from typing import List
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.core.rag.text_splitter import RecursiveCharacterTextSplitter
 from sqlalchemy.orm import Session
 
 from app.config import settings
