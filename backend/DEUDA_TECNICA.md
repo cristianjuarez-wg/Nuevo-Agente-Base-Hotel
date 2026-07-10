@@ -53,6 +53,34 @@ aplicado (`alembic stamp head`) en la base existente sin re-crear tablas; (3) a 
 toda columna nueva va por una revisión Alembic en vez de `ensure_column`; (4) conservar
 `ensure_column` para entornos efímeros/tests. Hacer con backup de la DB de Render.
 
+## Pendiente — barrido fino de marca hardcodeada (Fase 1, residual)
+La Fase 1 parametrizó desde el BusinessProfile lo de mayor impacto: los ENCABEZADOS de
+identidad de los 5 prompts de agente, el timezone, y la moneda mostrada en las cards.
+Quedan menciones de marca hardcodeadas de MENOR impacto, a barrer en la fase de instancia
+(Fase 3) o cuando se onboardee el primer cliente real:
+- **App metadata** (`main.py`: título FastAPI, logs de arranque, `/` root) — cosmético.
+- **Fallbacks de error** (`agent_service.py:595`, `hotel_sdk_orchestrator`, `hotel_postsale_orchestrator`)
+  con "Hampton" — solo se ven ante un error; parametrizar desde el perfil.
+- **Saludos i18n EN/PT/FR** (`chat.py:_GREETINGS`) con la marca embebida.
+- **Límites de dominio casual/pre-venta** (`base_blocks.py`) con "Hampton by Hilton Bariloche"
+  — parametrizables, pero tocan la paridad de los tests de Fase 0; hacer con cuidado.
+- **Nombre del restaurante** ("PLAZA - Hampton's Kitchen House") en tools/prompts — es un
+  DATO del cliente; debería salir del perfil/RAG, no de constantes.
+- **Contexto de negocio del owner** (estacionalidad/economía de Bariloche) — específico del
+  Hampton; se reemplaza vía material de entrenamiento del cliente.
+Ninguno bloquea el objetivo de la fase (identidad/moneda/timezone configurables): son el
+"último 20%" de exhaustividad.
+
+### Hallazgo del test de aceptación (dialecto no 100% efectivo)
+En el test en vivo con un perfil `es_neutro`, el nombre/negocio/moneda cambiaron bien, PERO
+el saludo casual seguía usando voseo ("¿vos cómo andás?"). Causa: el `NATURALIDAD_BLOCK`
+(compartido casual+pre-venta, `generation_prompts.py`) trae EJEMPLOS de tono con voseo
+rioplatense hardcodeado, que el modelo imita por encima de la instrucción `{dialect_block}`.
+Fix pendiente: parametrizar los ejemplos del NATURALIDAD_BLOCK por dialecto (o quitarlos
+para dialectos != voseo). La instrucción de dialecto SÍ llega; el problema son los ejemplos
+que compiten. Impacto: un cliente no-rioplatense verá al agente "vosear" en small talk hasta
+que se haga este fix.
+
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
 - Cobertura de tests en hot-path (orquestadores, reservation_service).
