@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { BookOpen, Tag, Hotel } from 'lucide-react'
+import { Building2, BookOpen, Tag, Hotel } from 'lucide-react'
+import BusinessIdentityView from './BusinessIdentityView'
 import KnowledgeView from '../agente/KnowledgeView'
 import PromotionsView from '../agente/PromotionsView'
 import HabitacionesView from '../HabitacionesView'
@@ -7,6 +8,7 @@ import HabitacionesView from '../HabitacionesView'
 // Capa Negocio (doc §9.2): recursos del hotel que el agente CONSUME (no son del agente).
 // Agrupados con sub-pestañas para no inflar el sidebar.
 const SUBNAV = [
+  { id: 'identidad', label: 'Identidad', icon: Building2 },
   { id: 'conocimiento', label: 'Conocimiento', icon: BookOpen },
   { id: 'promociones', label: 'Promociones', icon: Tag },
   { id: 'habitaciones', label: 'Habitaciones', icon: Hotel },
@@ -15,7 +17,7 @@ const SUBNAV = [
 function currentSub() {
   const h = window.location.hash.replace('#admin/', '').replace('#admin', '')
   const sub = h.split('/')[1]
-  return SUBNAV.find((s) => s.id === sub)?.id || 'conocimiento'
+  return SUBNAV.find((s) => s.id === sub)?.id || 'identidad'
 }
 
 export default function NegocioSection() {
@@ -53,6 +55,7 @@ export default function NegocioSection() {
         })}
       </div>
 
+      {sub === 'identidad' && <BusinessIdentityView />}
       {sub === 'conocimiento' && <KnowledgeView />}
       {sub === 'promociones' && <PromotionsView />}
       {sub === 'habitaciones' && <HabitacionesView />}

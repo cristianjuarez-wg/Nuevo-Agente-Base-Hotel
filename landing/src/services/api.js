@@ -45,6 +45,17 @@ export async function getRooms() {
   return data.rooms ?? data
 }
 
+// ── Identidad del negocio (BusinessProfile, Fase 1) ──────────────────────────
+export async function getBusinessProfile() {
+  const { data } = await client.get('/api/business-profile')
+  return data
+}
+
+export async function updateBusinessProfile(payload) {
+  const { data } = await client.put('/api/business-profile', payload)
+  return data
+}
+
 export async function getAvailability({ checkIn, checkOut, guests }) {
   const { data } = await client.get('/api/reservations/availability', {
     params: { check_in: checkIn, check_out: checkOut, guests },
