@@ -50,6 +50,30 @@ def _rotate_if_needed() -> None:
         pass  # rotación best-effort; nunca interrumpe
 
 
+def read_entries(limit: int = 5000) -> list:
+    """Lee las últimas `limit` líneas del audit JSONL (best-effort, para el dashboard 3.4).
+
+    Devuelve la lista de dicts (más viejo → más nuevo). Vacía si el archivo no existe o falla.
+    """
+    entries = []
+    try:
+        if not os.path.exists(_LOG_FILE):
+            return []
+        with open(_LOG_FILE, encoding="utf-8") as f:
+            lines = f.readlines()[-limit:]
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entries.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    except Exception as e:  # noqa: BLE001
+        logger.warning("audit_log.read_entries failed", error=str(e))
+    return entries
+
+
 def log_turn(entry: Dict[str, Any]) -> None:
     """Agrega una línea JSON al log de auditoría. No lanza nunca."""
     if not is_enabled():

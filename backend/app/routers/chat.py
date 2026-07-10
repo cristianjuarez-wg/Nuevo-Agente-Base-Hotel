@@ -785,11 +785,27 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # revisando las charlas turno a turno. Nunca interrumpe la respuesta.
         try:
             from app.core.observability.audit_log import log_turn
+            # Versión de prompt-config activa (3.4): con qué config se generó la respuesta.
+            def _active_prompt_version():
+                try:
+                    from app.services import prompt_config_version_service as pcv
+                    active = pcv.get_active(db)
+                    return active["id"] if active else None
+                except Exception:  # noqa: BLE001
+                    return None
             log_turn({
                 "session_id": chat_request.session_id,
+                # trace_id por conversación (3.4): el session_id ya identifica el turno de punta
+                # a punta en los logs; se expone explícito para correlacionar.
+                "trace_id": chat_request.session_id,
                 "language": chat_request.language,
                 "user_message": chat_request.message,
                 "route": result.get("context_type") or result.get("intent"),
+                # agent_key (3.4): qué agente generó la respuesta (de la AgentSpec).
+                "agent_key": result.get("agent_key"),
+                # prompt_config_version (3.4): con qué versión de config se generó, para poder
+                # responder "¿qué versión del prompt produjo esta respuesta?".
+                "prompt_config_version": _active_prompt_version(),
                 "response": result.get("response", ""),
                 "tools": result.get("tool_trace", []),
                 "tools_used": result.get("tools_used", []),

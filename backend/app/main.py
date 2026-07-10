@@ -104,6 +104,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Tracing OTLP OPCIONAL (Fase 3.4): no-op si OTEL_EXPORTER_OTLP_ENDPOINT no está seteada.
+try:
+    from app.core.observability.otel_setup import setup_otel
+    setup_otel(app, service_name="hotel-agent")
+except Exception:  # noqa: BLE001 — nunca romper el arranque por la observabilidad
+    pass
+
 # Rate limiter por IP (slowapi). Necesita registrarse en app.state.
 app.state.limiter = limiter
 
@@ -249,6 +256,8 @@ app.include_router(business_profile.router)
 app.include_router(auth.router)
 from app.routers import prompt_config_versions  # noqa: E402
 app.include_router(prompt_config_versions.router)
+from app.routers import observability as _observability  # noqa: E402
+app.include_router(_observability.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"

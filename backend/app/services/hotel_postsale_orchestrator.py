@@ -601,6 +601,7 @@ class HotelPostSaleSDKOrchestrator:
 
         return {
             "response": response_text,
+            "agent_key": spec.key,  # observabilidad (3.4)
             "has_context": True,
             "context_type": "postsale",
             "ticket_created": True,

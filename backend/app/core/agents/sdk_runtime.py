@@ -84,6 +84,7 @@ async def run_agent(
             "tools_used": extract_tools_used(result),
             "usage": usage,
             "result": result,
+            "agent_key": spec.key,  # observabilidad (3.4): qué agente respondió
             "error": False,
         }
     except Exception as e:  # noqa: BLE001 — anti-500 si hay fallback; si no, propaga
@@ -96,6 +97,7 @@ async def run_agent(
             "tools_used": [],
             "usage": usage,
             "result": None,
+            "agent_key": spec.key,  # observabilidad (3.4)
             "error": True,
         }
 

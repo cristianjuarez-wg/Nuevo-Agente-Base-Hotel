@@ -791,6 +791,7 @@ class HotelSDKOrchestrator:
 
         return {
             "response": response_text,
+            "agent_key": spec.key,  # observabilidad (3.4): qué agente generó la respuesta
             "has_context": bool(run_ctx.document_sources),
             "document_sources": run_ctx.document_sources,
             "rooms_offered": run_ctx.rooms_offered,
