@@ -215,7 +215,7 @@ def test_e2_prompt_ensambla_con_defaults(db):
     assert "TONO DE MARCA" not in text              # nada del cliente
 
 
-def test_endpoints_default_restore_y_schemas(db, client):
+def test_endpoints_default_restore_y_schemas(db, client, admin_headers):
     seed_agents(db)
     seed_training_defaults(db)
     aura = db.query(Agent).filter(Agent.role == "guest").first()
@@ -230,28 +230,30 @@ def test_endpoints_default_restore_y_schemas(db, client):
     assert r.status_code == 200 and r.json()["order"] == CATEGORY_ORDER
 
     # Un default NO se borra…
-    r = client.delete(f"/api/agents/{aura.id}/training/{doc.id}")
+    r = client.delete(f"/api/agents/{aura.id}/training/{doc.id}", headers=admin_headers)
     assert r.status_code == 400 and "no se eliminan" in r.json()["detail"]
 
     # …pero se edita (activar la adicional, cambiar campos)…
     r = client.put(f"/api/agents/{aura.id}/training/{doc.id}",
-                   json={"active": True, "data": {"items": [{"tipo_huesped": "Esquiador", "puntos": ["Guardaesquís"]}]}})
+                   json={"active": True, "data": {"items": [{"tipo_huesped": "Esquiador", "puntos": ["Guardaesquís"]}]}},
+                   headers=admin_headers)
     assert r.status_code == 200 and r.json()["active"] is True
     assert r.json()["data"]["items"][0]["tipo_huesped"] == "Esquiador"
 
     # …y se restaura a fábrica (contenido Y estado).
-    r = client.post(f"/api/agents/{aura.id}/training/{doc.id}/restore")
+    r = client.post(f"/api/agents/{aura.id}/training/{doc.id}/restore", headers=admin_headers)
     assert r.status_code == 200
     assert r.json()["active"] is False                      # la adicional vuelve a inactiva
     assert r.json()["data"] == FACTORY["argumentario"]["data"]
 
     # Crear entrada nueva del cliente: categoría inválida → 400; válida → creada y borrable.
     r = client.post(f"/api/agents/{aura.id}/training/entry",
-                    json={"category": "inventada", "data": {}})
+                    json={"category": "inventada", "data": {}}, headers=admin_headers)
     assert r.status_code == 400
     r = client.post(f"/api/agents/{aura.id}/training/entry",
-                    json={"category": "objeciones", "data": {"items": [{"objecion": "no hay estacionamiento", "respuesta": "ofrecé el garaje aliado"}]}})
+                    json={"category": "objeciones", "data": {"items": [{"objecion": "no hay estacionamiento", "respuesta": "ofrecé el garaje aliado"}]}},
+                    headers=admin_headers)
     assert r.status_code == 200 and r.json()["is_default"] is False
     new_id = r.json()["id"]
-    r = client.delete(f"/api/agents/{aura.id}/training/{new_id}")
+    r = client.delete(f"/api/agents/{aura.id}/training/{new_id}", headers=admin_headers)
     assert r.status_code == 200
