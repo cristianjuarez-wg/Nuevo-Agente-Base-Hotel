@@ -529,6 +529,8 @@ class HotelSDKOrchestrator:
             naturalidad_block=NATURALIDAD_BLOCK,
             ubicacion_block=build_location_block(prof),
             team_block=team_block,
+            negocio=prof.get("business_name") or "el hotel",  # límite de dominio (Fase A)
+            ciudad=prof.get("city") or "la ciudad",
         )
 
     def _availability_already_shown(self, db: Session, session_id: str) -> bool:

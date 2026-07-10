@@ -67,6 +67,10 @@ def _handle_como_llegar(args: Dict, ctx: Dict) -> Dict:
     medio = (args.get("medio") or "auto").strip().lower()
     mode = "walking" if medio in ("caminando", "a pie", "walking", "pie") else "driving"
 
+    # Ciudad del negocio (Fase A): el texto visible usa la ciudad del perfil, no "Bariloche".
+    from app.services import business_profile_service
+    _city = (business_profile_service.get_profile(ctx.get("db")).get("city") or "").strip()
+
     destino_es_hotel = destino == "" or any(
         kw in destino.lower() for kw in ("hotel", "hampton", "libertad 290")
     )
@@ -74,8 +78,9 @@ def _handle_como_llegar(args: Dict, ctx: Dict) -> Dict:
     # Caso 1: llegar AL hotel desde una ciudad/origen.
     if destino_es_hotel and origen:
         url = directions_url(origen, HOTEL_ADDRESS, mode)
+        _dir = f" ({_city})" if _city else ""
         lines = [
-            f"Te dejo la ruta desde {origen} hasta el hotel (Libertad 290, Bariloche):",
+            f"Te dejo la ruta desde {origen} hasta el hotel{_dir}:",
             url,
         ]
         if is_far_origin(origen):
@@ -88,11 +93,12 @@ def _handle_como_llegar(args: Dict, ctx: Dict) -> Dict:
 
     # Caso 2: ir DESDE el hotel hacia un destino (o entre dos puntos si hay ambos).
     if destino:
+        _sfx = f" {_city}" if _city else ""
         if origen:
-            url = directions_url(origen, f"{destino} Bariloche", mode)
+            url = directions_url(origen, f"{destino}{_sfx}", mode)
             intro = f"Ruta desde {origen} hasta {destino}:"
         else:
-            url = directions_url(HOTEL_ADDRESS, f"{destino} Bariloche", mode)
+            url = directions_url(HOTEL_ADDRESS, f"{destino}{_sfx}", mode)
             intro = f"Te paso la ruta desde el hotel hasta {destino}:"
         return {
             "tool_result": (

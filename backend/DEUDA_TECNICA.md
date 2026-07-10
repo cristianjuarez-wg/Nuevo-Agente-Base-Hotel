@@ -125,11 +125,23 @@ Hampton de MENOR exposición, a parametrizar desde `contact_phone`/`contact_emai
 esa área:
 - `hotel_postsale_orchestrator.py:195` — "+54 294-474-6200" en un fallback de post-venta.
 - `checkin_express_service.py:40` — `_HOTEL_PHONE` del flujo de check-in por WhatsApp.
-- `postsale_tool_prompts.py:120` — tel/email en el texto del prompt de post-venta.
+RESUELTO en Tarea A (instanciabilidad de agentes): los 6 agentes ya no tienen datos del Hampton
+hardcodeados (facts/ubicación/contacto/moneda salen del BusinessProfile). Los facts del Hampton
+("no spa ni sauna", etc.) se movieron del texto de los prompts al perfil (facts), con migración
+`ensure_hampton_facts`.
+
+PENDIENTE — `app/domains/hotel/hotel_location.py`: aún tiene HOTEL_NAME/HOTEL_ADDRESS/HOTEL_CITY/
+HOTEL_AIRPORT hardcodeados al Hampton ("Libertad 290", "bariloche"). Lo usan `como_llegar` (arma
+las URLs de Google Maps con la dirección) y `near_hotel_search_url`. Para un cliente nuevo, el
+texto visible ya usa `city` del perfil (Fase A), pero las URLs de maps siguen apuntando a la
+dirección del Hampton. Parametrizar el módulo desde `lat`/`lng`/`city`/`region_line` del perfil
+requiere que lea el BusinessProfile (hoy son constantes de módulo) y toca varias tools — mismo
+tipo de trabajo que room_prices. Bajo impacto (solo el link de ruta al hotel).
+
 Conversión de moneda real a cualquier par (no solo USD→ARS): sigue pendiente la tabla
 `room_prices` + generalizar `exchange_rate_service` (diferido de 1.4). Hoy `format_price_pair`
 muestra correctamente la moneda del perfil pero un cliente con moneda ≠ USD/ARS ve solo el valor
-USD guardado (no una conversión a su moneda). Cierra cuando exista room_prices.
+USD guardado (no una conversión a su moneda). Cierra cuando exista room_prices (Tarea B).
 
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.

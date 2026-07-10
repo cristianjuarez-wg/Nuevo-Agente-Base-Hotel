@@ -160,7 +160,7 @@ def _handle_calcular_precio_promo(args: Dict, ctx: Dict) -> Dict:
     if not cercanas and not cualitativas:
         partes.append(
             "No tenemos descuentos adicionales en este momento, pero la tarifa incluye "
-            "todos nuestros servicios y la mejor ubicación de Bariloche."
+            "todos nuestros servicios y nuestra excelente ubicación."
         )
 
     return {

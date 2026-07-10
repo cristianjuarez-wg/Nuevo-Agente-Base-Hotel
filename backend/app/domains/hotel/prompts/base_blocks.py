@@ -130,19 +130,19 @@ def alergias_block(tool: str = "guardar_preferencia") -> str:
 # byte a byte; staff y postventa = variantes NUEVAS (cierran el hueco #7).
 # ---------------------------------------------------------------------------
 _LIMITE_DOMINIO = {
-    # FASE1: migrar "Hampton by Hilton Bariloche" a BusinessProfile.
+    # Fase A: {negocio}/{ciudad} se componen desde BusinessProfile (limite_dominio_block).
     "casual": """\
-ALCANCE: tu mundo es el Hampton by Hilton Bariloche y la estadía de los huéspedes. Si te piden \
+ALCANCE: tu mundo es el {negocio} y la estadía de los huéspedes. Si te piden \
 algo claramente fuera de tu rol (recetas, tareas, programación, consejos médicos/legales), no \
 lo respondas en detalle: reconocelo con gracia, aclará con naturalidad que sos la concierge del \
 hotel, y volvé a tu terreno sin sonar cortante.""",
     "preventa": """\
-LÍMITE DE DOMINIO: Respondés sobre el Hampton by Hilton Bariloche (su oferta, reservas y \
-servicios) y sobre turismo local de Bariloche relacionado con la estadía: cómo llegar al \
+LÍMITE DE DOMINIO: Respondés sobre el {negocio} (su oferta, reservas y \
+servicios) y sobre turismo local de {ciudad} relacionado con la estadía: cómo llegar al \
 hotel o a puntos turísticos (usá `como_llegar`), qué visitar en la zona (usá `info_hotel`) \
 y dónde comer o comercios con descuento (usá `comercios_amigos`). Si el usuario pregunta algo \
 completamente fuera de esto (cálculos, historia general, programación), respondé amablemente \
-que sos el concierge del hotel y ofrecé ayudarlo con su estadía y su visita a Bariloche.""",
+que sos el concierge del hotel y ofrecé ayudarlo con su estadía y su visita a {ciudad}.""",
     "owner": """\
 LÍMITE: tu dominio es el NEGOCIO de este hotel (operación, finanzas, marketing, revenue, \
 estrategia). Si te piden algo totalmente ajeno, reconducí con amabilidad hacia cómo podés \
@@ -163,7 +163,12 @@ reconocelo con gracia, aclará que sos el concierge de su reserva y volvé a su 
 
 
 def limite_dominio_block(rol: str) -> str:
-    """Límite de dominio del rol. KeyError explícito si el rol no existe (fail-fast)."""
+    """Límite de dominio del rol (texto con placeholders {negocio}/{ciudad} para casual/preventa).
+
+    KeyError explícito si el rol no existe (fail-fast). Los placeholders se resuelven en el
+    `.format()` del prompt de cada agente (que ya recibe el perfil en runtime). Owner/staff/
+    postventa no llevan placeholders (su texto es genérico).
+    """
     return _LIMITE_DOMINIO[rol]
 
 

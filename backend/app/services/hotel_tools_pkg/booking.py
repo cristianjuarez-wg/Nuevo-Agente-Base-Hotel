@@ -4,6 +4,10 @@ from typing import Dict, Optional  # noqa: F401
 from app.services.hotel_tools_pkg._shared import *  # noqa: F401,F403
 from app.services.hotel_tools_pkg import _shared
 
+# `logger` se usa en este módulo (disponibilidad/crear_reserva) pero no venía del import *
+# de _shared (no está en su __all__): sin esto, crear_reserva lanzaba NameError en runtime.
+logger = get_logger(__name__)  # noqa: F405
+
 
 def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
     """Consulta habitaciones disponibles en el motor de reserva real."""

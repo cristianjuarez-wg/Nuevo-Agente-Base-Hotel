@@ -72,22 +72,33 @@ _POSTVENTA_MARKER = Agent(
 
 def _build_triage_instructions() -> str:
     agent_name = profile_manager.get_agent_name()
+    # Identidad + ciudad desde el perfil (Fase A): el triage rutea por INTENCIÓN, no por la
+    # geografía del Hampton. La ciudad se usa como color local en las señales de viaje.
+    from app.services import business_profile_service
+    from app.models.database import SessionLocal
+    _db = SessionLocal()
+    try:
+        _prof = business_profile_service.get_profile(_db)
+    finally:
+        _db.close()
+    negocio = _prof.get("business_name") or "el hotel"
+    ciudad = _prof.get("city") or "la ciudad"
     return (
-        f"Sos el sistema de ruteo de {agent_name}, concierge del Hampton by Hilton Bariloche. "
+        f"Sos el sistema de ruteo de {agent_name}, del {negocio}. "
         "Tu única tarea es clasificar el mensaje del usuario en UNA de tres rutas y actuar:\n\n"
         "1) CONOCER EL HOTEL o RESERVAR (pre-venta): habitaciones, servicios, instalaciones, "
         "ubicación, políticas (check-in/out, mascotas, estacionamiento), promociones, precios, "
         "disponibilidad para fechas, e intención de reservar. TAMBIÉN, y MUY IMPORTANTE, cualquier "
         "señal de INTENCIÓN DE VIAJE O ESTADÍA, aunque venga envuelta en charla informal: ganas de "
-        "viajar/venir a Bariloche, querer esquiar o hacer actividades EN EL MARCO de un viaje, "
-        "mencionar fechas aunque sean vagas ('en las vacaciones de invierno', 'en julio', 'el finde "
+        f"viajar/venir a {ciudad} o a la zona, querer hacer actividades EN EL MARCO de un viaje, "
+        "mencionar fechas aunque sean vagas ('en las vacaciones', 'en julio', 'el finde "
         "largo'), decir con quién viaja (familia, pareja, los chicos) o de dónde viene. Todo eso "
         "puede llevar a una reserva → es pre-venta. TAMBIÉN incluye el RESTAURANTE: la carta/menú, "
         "qué hay para comer o tomar, pedir comida, room service, o reservar una mesa. TAMBIÉN "
         "incluye FORMAS DE PAGO y TRANSFERENCIAS: cómo pagar, datos bancarios, CBU, alias, cuentas "
-        "bancarias o cuentas en otra moneda (pesos/dólares). TAMBIÉN consultas informativas sobre "
-        "el hotel o sobre Bariloche relacionadas con la estadía aunque todavía no haya reserva. "
-        "→ Hacé handoff a 'preventa'.\n\n"
+        "bancarias o cuentas en otra moneda. TAMBIÉN consultas informativas sobre "
+        f"el hotel o sobre {ciudad}/la zona relacionadas con la estadía aunque todavía no haya "
+        "reserva. → Hacé handoff a 'preventa'.\n\n"
         "2) HUÉSPED QUE YA TIENE RESERVA (post-venta): SOLO si el usuario da una SEÑAL EXPLÍCITA "
         "de que tiene una reserva propia ya confirmada — un código de reserva HTL-XXXX, o frases "
         "como 'mi reserva', 'mi estadía', 'ya reservé', 'estoy alojado' —, o pide un cambio de "
@@ -97,17 +108,17 @@ def _build_triage_instructions() -> str:
         "todo?'), '¿cómo estás?', agradecimientos, despedidas, y temas que no tienen que ver con "
         "el hotel ni con un viaje: el clima en abstracto, cómo andás, recetas, fórmulas, hablar de "
         "fútbol o deportes como tema suelto, etc. Preguntar por el clima o 'cómo va todo' es CASUAL, "
-        "NUNCA post-venta. OJO con la diferencia: 'me gusta esquiar' como comentario suelto puede ser "
-        "casual, pero 'quiero ir a esquiar' / 'esquiar en mis vacaciones' / 'tengo ganas de viajar a "
-        "Bariloche' es INTENCIÓN DE VIAJE → pre-venta, no casual. Una pregunta sobre el hotel, sus "
-        "servicios, precios o Bariloche NO es casual: es pre-venta. "
+        "NUNCA post-venta. OJO con la diferencia: 'me gusta viajar' como comentario suelto puede ser "
+        "casual, pero 'quiero escaparme unos días' / 'ir en mis vacaciones' / 'tengo ganas de "
+        "conocer la zona' es INTENCIÓN DE VIAJE → pre-venta, no casual. Una pregunta sobre el hotel, "
+        "sus servicios, precios o la zona NO es casual: es pre-venta. "
         "→ NO hagas handoff. Respondé EXACTAMENTE con la palabra 'CASUAL' y nada más. "
         "NO redactes una respuesta para el usuario, NO des información sobre el tema off-topic, "
         "NO resuelvas recetas/tareas/cálculos: otra capa se encarga de redactar la respuesta.\n\n"
         "REGLAS DE DESEMPATE (importantes): un saludo o charla social SIN ninguna señal de viaje "
         "('hola', '¿cómo andás?', 'qué frío', 'aburrido el lunes') es SIEMPRE casual — jamás "
         "pre-venta ni post-venta. Pero si en el mensaje aparece una señal CONCRETA de intención de "
-        "viaje o estadía (ganas de viajar a Bariloche, fechas, esquiar/actividades de un viaje, con "
+        "viaje o estadía (ganas de escaparse/viajar, fechas, actividades de un viaje, con "
         "quién viaja) → pre-venta, aunque venga con tono informal: preferimos poder ofrecerle "
         "disponibilidad y opciones antes que quedarnos solo en la charla. Preguntar por una PROMO, "
         "beneficio o descuento del hotel (qué incluye, o SI APLICA a sus fechas) es pre-venta, "

@@ -31,7 +31,7 @@ def test_preventa_placeholders_cubiertos():
     provided = {
         "agent_name", "identity_block", "facts_block", "fecha_actual", "hora_actual", "flow_block",
         "tono_block", "politica_block", "training_block", "lead_block", "language_block",
-        "naturalidad_block", "ubicacion_block", "team_block",
+        "naturalidad_block", "ubicacion_block", "team_block", "negocio", "ciudad",
     }
     missing = _placeholders(TOOL_AGENT_SYSTEM) - provided
     assert not missing, f"pre-venta: placeholders sin proveer → {missing}"
@@ -40,7 +40,7 @@ def test_preventa_placeholders_cubiertos():
 def test_postventa_placeholders_cubiertos():
     from app.domains.hotel.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
     provided = {
-        "identity_block", "passenger_name", "package_context", "chat_history",
+        "identity_block", "facts_block", "passenger_name", "package_context", "chat_history",
         "continuidad", "team_block",
     }
     missing = _placeholders(POSTSALE_TOOL_SYSTEM) - provided
@@ -49,7 +49,7 @@ def test_postventa_placeholders_cubiertos():
 
 def test_owner_placeholders_cubiertos():
     from app.domains.hotel.prompts.owner_prompts import OWNER_AGENT_SYSTEM
-    provided = {"owner_name", "fecha_actual", "business_name"}
+    provided = {"owner_name", "fecha_actual", "business_name", "contexto_negocio"}
     missing = _placeholders(OWNER_AGENT_SYSTEM) - provided
     assert not missing, f"owner: placeholders sin proveer → {missing}"
 
@@ -67,8 +67,8 @@ def test_staff_placeholders_cubiertos():
 def test_casual_placeholders_cubiertos():
     from app.domains.hotel.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
     provided = {
-        "identity_block", "naturalidad_block", "team_block", "history_section",
-        "message", "lead_capture_hint",
+        "identity_block", "facts_block", "naturalidad_block", "team_block", "history_section",
+        "message", "lead_capture_hint", "negocio", "ciudad",
     }
     missing = _placeholders(CASUAL_RESPONSE_SYSTEM) - provided
     assert not missing, f"casual: placeholders sin proveer → {missing}"

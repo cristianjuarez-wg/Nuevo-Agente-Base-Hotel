@@ -17,6 +17,15 @@ logger = get_logger(__name__)
 
 # Valores de fábrica (Hampton) — el fallback si la DB no está lista. Coinciden con los
 # defaults de las columnas del modelo, así el arranque tiene identidad antes del seed.
+# Hechos duros del Hampton — antes estaban hardcodeados en los prompts ("no spa ni sauna", etc.).
+# Fase A: se movieron al perfil (facts) para que sean parametrizables por cliente. El Hampton los
+# recibe por seed / migración; el agente los respeta vía build_facts_block.
+_HAMPTON_FACTS = (
+    "No tiene spa ni sauna",
+    "Desayuno buffet incluido en todas las tarifas",
+    "El estacionamiento es con cargo (salvo promo Stay & Park)",
+)
+
 _FACTORY_DEFAULTS = {
     "id": 1,
     "business_name": "Hampton by Hilton Bariloche",
@@ -114,7 +123,7 @@ def ensure_seeded(db: Session) -> None:
             region_line=None,
             primary_currency="USD",
             secondary_currency="ARS",
-            facts=[],
+            facts=list(_HAMPTON_FACTS),
             contact_phone="+54 294-474-6200",
             contact_email="info@hamptonbariloche.com",
         )
@@ -124,6 +133,27 @@ def ensure_seeded(db: Session) -> None:
         logger.info("BusinessProfile sembrado con los valores del Hampton (id=1)")
     except Exception as e:  # noqa: BLE001 — el seed nunca debe tumbar el arranque
         logger.warning("No se pudo sembrar el BusinessProfile", error=str(e))
+        db.rollback()
+
+
+def ensure_hampton_facts(db: Session) -> None:
+    """Migración idempotente (Fase A): rellena los facts del Hampton si su perfil ya existía
+    con facts=[]. Necesario porque los hechos ('no spa ni sauna', etc.) se movieron del texto
+    hardcodeado de los prompts a los facts del perfil; sin esto, un Hampton ya seedeado los
+    perdería. Solo aplica si el negocio ES el Hampton y no tiene facts cargados por el cliente.
+    """
+    try:
+        row = db.query(BusinessProfile).filter(BusinessProfile.id == 1).first()
+        if not row:
+            return
+        es_hampton = (row.business_name or "").startswith("Hampton by Hilton")
+        if es_hampton and not (row.facts or []):
+            row.facts = list(_HAMPTON_FACTS)
+            db.commit()
+            invalidate_cache()
+            logger.info("Facts del Hampton rellenados en el perfil existente")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudieron rellenar los facts del Hampton", error=str(e))
         db.rollback()
 
 

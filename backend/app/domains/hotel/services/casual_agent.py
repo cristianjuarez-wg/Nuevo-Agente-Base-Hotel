@@ -142,15 +142,20 @@ async def generate_casual_response(client, message: str, history: List[Dict],
                 lead_hint = CASUAL_LEAD_CAPTURE_HINT
         else:
             lead_hint = ""
-        from app.domains.hotel.prompts.identity_blocks import build_casual_identity_block
+        from app.domains.hotel.prompts.identity_blocks import (
+            build_casual_identity_block, build_facts_block,
+        )
         prof = profile or {}
         prompt = CASUAL_RESPONSE_SYSTEM.format(
             identity_block=build_casual_identity_block(prof),
+            facts_block=build_facts_block(prof),  # HECHOS del negocio (Fase A → casual)
             naturalidad_block=NATURALIDAD_BLOCK,
             team_block=team_block,
             history_section=history_section,
             message=message,
             lead_capture_hint=lead_hint,
+            negocio=prof.get("business_name") or "el hotel",  # límite de dominio (Fase A)
+            ciudad=prof.get("city") or "la ciudad",
         )
         # Si conocemos al huésped (recurrente/alojado), anteponemos su perfil para que
         # el saludo lo reconozca por su nombre en vez de tratarlo como desconocido.

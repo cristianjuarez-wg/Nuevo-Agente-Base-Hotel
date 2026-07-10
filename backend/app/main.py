@@ -65,6 +65,9 @@ async def lifespan(app: FastAPI):
             # Identidad del negocio (Fase 1): siembra id=1 con los valores del Hampton
             # si no existe. Paridad: el agente se comporta igual con estos defaults.
             business_profile_service.ensure_seeded(_seed_db)
+            # Fase A: rellena los facts del Hampton si su perfil ya existía con facts=[]
+            # (los hechos se movieron del texto de los prompts al perfil).
+            business_profile_service.ensure_hampton_facts(_seed_db)
             # Auth del backoffice (Fase 2.5): crea el primer admin desde BOOTSTRAP_ADMIN_*
             # si la tabla admin_users está vacía. Idempotente.
             from app.models import admin_user as _admin_user_model  # noqa: F401 (registra la tabla)
