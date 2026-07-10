@@ -827,6 +827,12 @@ export async function getAgentPerformance(id, period = 'mes') {
   return data
 }
 
+// Capacidades legibles (grupos) del agente — para la zona "Qué puede hacer" de la ficha (F1.2).
+export async function getAgentCapabilities(id) {
+  const { data } = await client.get(`/api/agents/${id}/capabilities`)
+  return data
+}
+
 export async function getAgentDailyReport(id) {
   const { data } = await client.get(`/api/agents/${id}/daily-report`)
   return data
