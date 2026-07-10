@@ -60,6 +60,12 @@ def invalidate_cache() -> None:
     """Descarta el perfil cacheado (llamar tras un PUT que lo modifica)."""
     global _cache
     _cache = None
+    # El timezone del negocio puede haber cambiado → invalidar también su caché.
+    try:
+        from app.utils.timezone_utils import invalidate_tz_cache
+        invalidate_tz_cache()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def ensure_seeded(db: Session) -> None:

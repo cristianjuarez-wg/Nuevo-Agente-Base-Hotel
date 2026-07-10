@@ -9,7 +9,7 @@ from app.services.contact_service import ContactService
 from app.services.summary_service import SummaryService
 from app.config import settings
 from app.core.logging_config import get_logger
-from app.utils.timezone_utils import iso_argentina
+from app.utils.timezone_utils import iso_business
 from pydantic import BaseModel
 from datetime import datetime, timezone
 
@@ -517,7 +517,7 @@ async def regenerate_summary(
         return {
             "success": True,
             "summary": summary,
-            "updated_at": iso_argentina(contact.last_summary_update)
+            "updated_at": iso_business(contact.last_summary_update)
         }
         
     except Exception as e:
@@ -558,7 +558,7 @@ async def get_contact_metrics(
             "tickets_created": contact.tickets_created
         },
         "contact_type": contact.contact_type,
-        "last_interaction": iso_argentina(contact.last_interaction_date)
+        "last_interaction": iso_business(contact.last_interaction_date)
     }
 
 

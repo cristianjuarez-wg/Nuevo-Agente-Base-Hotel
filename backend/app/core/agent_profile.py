@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import locale
 from app.config import settings
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_business
 
 class AgentProfileManager:
     def __init__(self):
@@ -35,7 +35,7 @@ class AgentProfileManager:
                     pass  # Si falla, usar formato por defecto
         
         # Obtener fecha y hora actual de Argentina
-        now = now_argentina()
+        now = now_business()
         try:
             fecha_actual = now.strftime("%A %d de %B de %Y")
             hora_actual = now.strftime("%H:%M")
@@ -47,15 +47,26 @@ class AgentProfileManager:
             fecha_actual = f"{dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}"
             hora_actual = now.strftime("%H:%M")
         
-        # Agregar información temporal (fecha/hora de Argentina, donde está el hotel).
-        # La hora es la del hotel, NO necesariamente la del visitante: no asumas dónde está.
-        context_with_date = f"""INFORMACIÓN TEMPORAL (zona horaria del hotel, Argentina):
-- Fecha actual: {fecha_actual}
-- Hora actual: {hora_actual}
-- Esta es la hora LOCAL DEL HOTEL. El visitante puede estar en otra zona horaria.
-  No asumas que es su hora local ni que está físicamente en Bariloche.
-
-{context}"""
+        # Información temporal en la zona del negocio (Fase 1.3: desde el BusinessProfile,
+        # ya no hardcodeada a Argentina/Bariloche). Best-effort con fallback histórico.
+        try:
+            from app.prompts.identity_blocks import build_temporal_block
+            from app.services import business_profile_service
+            from app.models.database import SessionLocal
+            _db = SessionLocal()
+            try:
+                _prof = business_profile_service.get_profile(_db)
+            finally:
+                _db.close()
+            temporal = build_temporal_block(fecha_actual, hora_actual, _prof)
+        except Exception:
+            temporal = (
+                "INFORMACIÓN TEMPORAL (zona horaria del hotel, Argentina):\n"
+                f"- Fecha actual: {fecha_actual}\n- Hora actual: {hora_actual}\n"
+                "- Esta es la hora LOCAL DEL HOTEL. El visitante puede estar en otra zona horaria.\n"
+                "  No asumas que es su hora local ni que está físicamente en Bariloche."
+            )
+        context_with_date = f"{temporal}\n\n{context}"
         
         template = self.current_profile['system_prompt_template']
         

@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.core.openai_client import get_async_openai
 from app.core.logging_config import get_logger
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_business
 from app.models.hotel import Booking, HotelTicket, TICKET_OPEN_STATES
 
 logger = get_logger(__name__)
@@ -79,7 +79,7 @@ class HotelPostSaleService:
         contact = ContactService()._find_by_phone(norm, self.db)
         if not contact:
             return None
-        today = now_argentina().date()
+        today = now_business().date()
         return (
             self.db.query(Booking)
             .filter(

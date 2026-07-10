@@ -31,7 +31,7 @@ from agents import (
 )
 
 from app.config import settings
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_business
 from app.core.agent_profile import profile_manager
 from app.core.logging_config import get_logger
 from app.core.openai_client import get_async_openai
@@ -486,7 +486,7 @@ class HotelSDKOrchestrator:
                             training_block: str = "",
                             team_block: str = "",
                             profile: Optional[dict] = None) -> str:
-        now = now_argentina()
+        now = now_business()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
         except Exception:

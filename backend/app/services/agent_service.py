@@ -2,7 +2,7 @@ from app.core.openai_client import get_async_openai
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.config import settings
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_business
 from app.services.rag_service import rag_service
 from app.services.lead_service import lead_service
 from app.services.conversation_state_manager import conversation_state_manager
@@ -88,9 +88,9 @@ class AgentService:
         try:
             from app.models.hotel import Booking
             # Booking.created_at se guarda con datetime.now() (hora local del server, como todos
-            # los modelos de hotel.py). Comparamos con la MISMA base (now_argentina), NO utcnow,
+            # los modelos de hotel.py). Comparamos con la MISMA base (now_business), NO utcnow,
             # para que la ventana de 24h sea real en local (UTC-3) y no quede en ~21h.
-            cutoff = now_argentina() - timedelta(hours=self._SESSION_WINDOW_HOURS)
+            cutoff = now_business() - timedelta(hours=self._SESSION_WINDOW_HOURS)
             return db.query(Booking).filter(
                 Booking.session_id == session_id,
                 Booking.status != "cancelled",
@@ -289,7 +289,7 @@ class AgentService:
         if session_id in self.conversation_history:
             meta = self.session_metadata.get(session_id) or {}
             last = meta.get("last_activity")
-            if last is not None and (now_argentina() - last) > timedelta(hours=self._SESSION_WINDOW_HOURS):
+            if last is not None and (now_business() - last) > timedelta(hours=self._SESSION_WINDOW_HOURS):
                 logger.info("Session window expired (RAM), starting fresh",
                             session_id=session_id)
                 self.conversation_history.pop(session_id, None)
@@ -301,9 +301,9 @@ class AgentService:
         rehydrated = self._rehydrate_from_db(session_id, db)
         self.conversation_history[session_id] = rehydrated
         self.session_metadata[session_id] = {
-            "created_at": now_argentina(),
+            "created_at": now_business(),
             "message_count": len(rehydrated),
-            "last_activity": now_argentina(),
+            "last_activity": now_business(),
         }
         if not rehydrated:
             logger.info("New conversation session created", session_id=session_id)
@@ -409,7 +409,7 @@ class AgentService:
     def _update_session_metadata(self, session_id: str):
         """Actualiza metadata de la sesión"""
         if session_id in self.session_metadata:
-            self.session_metadata[session_id]["last_activity"] = now_argentina()
+            self.session_metadata[session_id]["last_activity"] = now_business()
             self.session_metadata[session_id]["message_count"] += 1
     
     def _format_history(self, history: List[Dict]) -> str:

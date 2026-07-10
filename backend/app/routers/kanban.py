@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Dict, List, Optional
 from app.models.database import get_db
 from app.services.kanban_service import kanban_service
-from app.utils.timezone_utils import iso_argentina
+from app.utils.timezone_utils import iso_business
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -312,7 +312,7 @@ async def get_lead_timeline(lead_id: int, db: Session = Depends(get_db)):
                     "type": "conversation_message",
                     "role": msg.role,  # "user" o "assistant"
                     "message": msg.content,
-                    "created_at": iso_argentina(msg.created_at),
+                    "created_at": iso_business(msg.created_at),
                     "sequence_number": msg.sequence_number,
                     "is_user": msg.role == "user",
                     "is_agent": msg.role == "assistant",

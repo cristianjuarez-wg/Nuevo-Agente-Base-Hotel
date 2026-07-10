@@ -18,7 +18,7 @@ from app.models.conversation_message import ConversationMessage
 from app.models.contact import Contact
 from app.models.lead import Lead
 from app.models.hotel import Booking
-from app.utils.timezone_utils import iso_argentina
+from app.utils.timezone_utils import iso_business
 from app.core.logging_config import get_logger
 # Ventana "en vivo" centralizada en el servicio de control (fuente única).
 from app.services.conversation_control_service import LIVE_WINDOW_MINUTES
@@ -158,8 +158,8 @@ async def list_conversations(
             "display_name": display_name,
             "guest_status": _guest_status(r.contact_id, c),
             "channel": r.channel,
-            "started_at": iso_argentina(r.started_at),
-            "last_message_at": iso_argentina(r.last_message_at),
+            "started_at": iso_business(r.started_at),
+            "last_message_at": iso_business(r.last_message_at),
             "message_count": r.message_count,
             "status": r.status,
             "lead_generated": r.lead_generated,

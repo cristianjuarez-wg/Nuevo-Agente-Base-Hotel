@@ -13,7 +13,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, date
 
 from app.models.database import Base, engine
-from app.utils.timezone_utils import iso_argentina
+from app.utils.timezone_utils import iso_business
 
 
 class Room(Base):
@@ -214,7 +214,7 @@ class Booking(Base):
             "payment_status": self.payment_status,
             "source": self.source,
             "origin": self.origin(),
-            "created_at": iso_argentina(self.created_at),
+            "created_at": iso_business(self.created_at),
             "pre_checkin": self.pre_checkin or {},
         }
 
@@ -301,8 +301,8 @@ class HotelTicket(Base):
             "assigned_staff_name": self.assigned_staff.name if self.assigned_staff else None,
             "resolution_note": self.resolution_note,
             "guest_validated": bool(self.guest_validated),
-            "created_at": iso_argentina(self.created_at),
-            "updated_at": iso_argentina(self.updated_at),
+            "created_at": iso_business(self.created_at),
+            "updated_at": iso_business(self.updated_at),
         }
 
 
@@ -337,7 +337,7 @@ class TicketEvent(Base):
             "actor_name": self.actor_name,
             "action": self.action,
             "note": self.note,
-            "created_at": iso_argentina(self.created_at),
+            "created_at": iso_business(self.created_at),
         }
 
 

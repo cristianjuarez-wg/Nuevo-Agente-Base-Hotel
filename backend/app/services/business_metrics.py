@@ -5,7 +5,7 @@ Funciones por rango de fechas que devuelven dicts simples, reutilizando las quer
 helpers que ya existen en el proyecto (reservation_service, modelos hotel/lead/contact).
 Son la "fuente de datos" del consultor: el orquestador del dueño las llama vía owner_tools.
 
-Todas usan hora de Argentina (now_argentina) y aceptan un período en lenguaje natural
+Todas usan hora de Argentina (now_business) y aceptan un período en lenguaje natural
 ("hoy", "semana", "mes", "anio") que se resuelve a un rango (start, end).
 """
 import re
@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.models.hotel import Room, Booking, HotelTicket, TICKET_OPEN_STATES
 from app.models.lead import Lead
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_business
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -63,7 +63,7 @@ def resolve_period(period: str) -> Tuple[date, date, str]:
       - año explícito: "2025" → todo ese año
     Mantiene compatibilidad con los períodos originales. Default: últimos 30 días.
     """
-    today = now_argentina().date()
+    today = now_business().date()
     end = today + timedelta(days=1)  # exclusivo
     p = (period or "").lower().strip()
 
@@ -215,7 +215,7 @@ def get_guests_in_house(db: Session, on: Optional[date] = None) -> Dict:
     Cuenta los bookings no cancelados con check_in <= día < check_out. Esta es la
     respuesta a "¿cuántos pasajeros tenemos alojados?" (personas, no % de habitaciones).
     """
-    day = on or now_argentina().date()
+    day = on or now_business().date()
     bookings = (
         db.query(Booking)
         .filter(
@@ -333,7 +333,7 @@ def get_revenue(
     # Split REALIZADO vs PROYECTADO (on-the-books): partimos el rango por HOY. Realizado = lo
     # que ya ocurrió (estadías hasta hoy); proyectado = reservas confirmadas a futuro dentro del
     # rango. Reusa _prorate acotando el rango efectivo a cada lado de hoy.
-    today = now_argentina().date()
+    today = now_business().date()
     cut = today + timedelta(days=1)  # exclusivo: "hasta hoy" incluye hoy
 
     def _sum_window(w_start: date, w_end: date) -> Dict:

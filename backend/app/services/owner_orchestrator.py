@@ -21,7 +21,7 @@ from agents import (
 )
 
 from app.config import settings
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_business
 from app.core.logging_config import get_logger
 from app.core.openai_client import get_async_openai
 from app.core.sdk_usage import extract_usage
@@ -426,7 +426,7 @@ async def consultar_planes(ctx: RunContextWrapper[OwnerContext]) -> str:
     iniciar un tema estratégico para RETOMAR lo pendiente ("la última vez quedamos en X,
     ¿cómo viene?"). Si no hay planes activos, te lo dice."""
     from app.models.action_plan import ActionPlan
-    from app.utils.timezone_utils import now_argentina
+    from app.utils.timezone_utils import now_business
     db = ctx.context.db
     session = ctx.context.session_id or ""
     plans = (
@@ -437,7 +437,7 @@ async def consultar_planes(ctx: RunContextWrapper[OwnerContext]) -> str:
     )
     if not plans:
         return "No hay planes de acción activos registrados con el CEO."
-    hoy = now_argentina().date()
+    hoy = now_business().date()
     lines = []
     for p in plans:
         dias = (hoy - p.created_at.date()).days if p.created_at else 0
@@ -454,7 +454,7 @@ async def actualizar_plan(
     `estado` = "done" (cumplido), "dropped" (descartado) o vacío (solo registrar avance).
     `nota` = avance o resultado. Úsala cuando haya novedades sobre un plan."""
     from app.models.action_plan import ActionPlan
-    from app.utils.timezone_utils import now_argentina
+    from app.utils.timezone_utils import now_business
     db = ctx.context.db
     plan = db.query(ActionPlan).filter(
         ActionPlan.id == plan_id, ActionPlan.owner_session == (ctx.context.session_id or "")
@@ -464,8 +464,8 @@ async def actualizar_plan(
     if estado in ("done", "dropped"):
         plan.status = estado
     if nota:
-        plan.description = ((plan.description or "") + f"\n[{now_argentina().date()}] {nota.strip()}").strip()
-    plan.last_reviewed_at = now_argentina().replace(tzinfo=None)
+        plan.description = ((plan.description or "") + f"\n[{now_business().date()}] {nota.strip()}").strip()
+    plan.last_reviewed_at = now_business().replace(tzinfo=None)
     db.commit()
     estado_txt = {"done": "cumplido", "dropped": "descartado"}.get(plan.status, "en curso")
     return f"Plan #{plan.id} actualizado ({estado_txt})."
@@ -541,7 +541,7 @@ class OwnerOrchestrator:
         )
 
     def _build_instructions(self, owner_name: str = "") -> str:
-        now = now_argentina()
+        now = now_business()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
         except Exception:

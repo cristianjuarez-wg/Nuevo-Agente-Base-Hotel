@@ -23,7 +23,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.hotel import Booking
 from app.services.conversation_state_manager import conversation_state_manager
-from app.utils.timezone_utils import now_argentina
+from app.utils.timezone_utils import now_business
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -41,7 +41,7 @@ _HOTEL_PHONE = "+54 294-474-6200"
 
 
 def _now() -> str:
-    return now_argentina().isoformat()
+    return now_business().isoformat()
 
 
 def _get_booking_by_session(db: Session, session_id: str) -> Optional[Booking]:

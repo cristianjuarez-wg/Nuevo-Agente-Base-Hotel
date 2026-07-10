@@ -1,44 +1,96 @@
 """
-Utilidades para manejo de zona horaria Argentina
-Todo el sistema usa hora de Buenos Aires (UTC-3)
+Utilidades de zona horaria del NEGOCIO.
+
+Fase 1.3: el timezone deja de estar hardcodeado en Argentina y se lee del
+BusinessProfile (`timezone`). `now_business()`/`iso_business()` son las funciones
+canónicas; `now_argentina()`/`iso_argentina()` quedan como ALIAS delegantes para no
+romper los ~21 call-sites existentes (se migran con sed en un paso aparte).
+
+Fallback robusto: si el perfil no está disponible (arranque, o import temprano), se usa
+la zona de Argentina — el comportamiento histórico, así nada se rompe.
 """
 from datetime import datetime
 import pytz
 
-# Zona horaria de Argentina
+# Zona por defecto (fallback y compatibilidad): Argentina.
 ARGENTINA_TZ = pytz.timezone('America/Argentina/Buenos_Aires')
 
+# Caché del objeto tzinfo del negocio, para no reconstruirlo en cada llamada.
+_business_tz_cache = None
+_business_tz_name = None
+
+
+def _business_tz():
+    """tzinfo del negocio, leído del BusinessProfile (cacheado). Fallback: Argentina.
+
+    Import diferido de business_profile_service para evitar ciclos de import (este
+    módulo es de bajo nivel y lo importa media app).
+    """
+    global _business_tz_cache, _business_tz_name
+    if _business_tz_cache is not None:
+        return _business_tz_cache
+    try:
+        from app.services import business_profile_service
+        from app.models.database import SessionLocal
+        _db = SessionLocal()
+        try:
+            tz_name = business_profile_service.get_profile(_db).get("timezone")
+        finally:
+            _db.close()
+        _business_tz_name = tz_name or "America/Argentina/Buenos_Aires"
+        _business_tz_cache = pytz.timezone(_business_tz_name)
+    except Exception:
+        # DB no lista / perfil ausente → Argentina (comportamiento histórico).
+        _business_tz_cache = ARGENTINA_TZ
+    return _business_tz_cache
+
+
+def invalidate_tz_cache():
+    """Descarta el tz cacheado (llamar si el perfil cambia de timezone)."""
+    global _business_tz_cache, _business_tz_name
+    _business_tz_cache = None
+    _business_tz_name = None
+
+
+def now_business():
+    """Fecha/hora actual en la zona horaria del NEGOCIO (naive, para compat SQLite)."""
+    return datetime.now(_business_tz()).replace(tzinfo=None)
+
+
 def now_argentina():
-    """
-    Retorna la fecha/hora actual de Argentina
-    Reemplaza datetime.utcnow() en todo el sistema
-    """
-    return datetime.now(ARGENTINA_TZ).replace(tzinfo=None)
+    """ALIAS deprecado de now_business() (Fase 1.3). Migrar call-sites y luego borrar."""
+    return now_business()
 
-def iso_argentina(dt, source="utc"):
-    """Serializa un datetime a ISO 8601 en hora Argentina, CON offset explícito (-03:00).
+def iso_business(dt, source="utc"):
+    """Serializa un datetime a ISO 8601 en la zona del NEGOCIO, con offset explícito.
 
-    Pensado para la capa de API: garantiza que el frontend reciba una fecha inequívoca y
-    ya en hora local de Argentina, sin importar en qué zona guardó la base.
+    Pensado para la capa de API: el frontend recibe una fecha inequívoca ya en hora local
+    del negocio, sin importar en qué zona guardó la base.
 
     Args:
         dt: datetime (normalmente naive) o None.
         source: zona en que está guardado `dt`:
-            - "utc" (default): la fecha está en UTC (datetime.utcnow / datetime.now en Render).
-            - "ar": la fecha YA está en hora Argentina (modelos que usan now_argentina:
-              Lead, postsale.*, provider.*). No se le resta nada, solo se le pone el offset.
+            - "utc" (default): la fecha está en UTC (datetime.utcnow en Render).
+            - "ar"/"business": la fecha YA está en hora del negocio (modelos que usan
+              now_business). No se le resta nada, solo se le pone el offset.
 
     Returns:
         String ISO con offset (ej. "2026-06-25T15:09:03-03:00") o None.
     """
     if dt is None:
         return None
+    tz = _business_tz()
     if dt.tzinfo is None:
-        if source == "ar":
-            dt = ARGENTINA_TZ.localize(dt)
+        if source in ("ar", "business"):
+            dt = tz.localize(dt)
         else:  # "utc"
             dt = pytz.utc.localize(dt)
-    return dt.astimezone(ARGENTINA_TZ).isoformat()
+    return dt.astimezone(tz).isoformat()
+
+
+def iso_argentina(dt, source="utc"):
+    """ALIAS deprecado de iso_business() (Fase 1.3)."""
+    return iso_business(dt, source=source)
 
 
 def to_argentina(utc_datetime):
