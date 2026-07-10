@@ -1,7 +1,23 @@
 import { Users, BedDouble, Mountain } from 'lucide-react'
 import { MEDIA_BASE } from '../../services/api'
-import { formatUSD, formatARS } from '../../lib/format'
+import { formatUSD, formatARS, formatMoney } from '../../lib/format'
 import { getStrings } from '../../i18n/chat'
+
+// Moneda del negocio (Tarea B): si es USD/ARS mantiene el display histórico (USD arriba, ARS
+// abajo); para otra moneda (BRL, MXN...) muestra el precio REAL en esa moneda. `usd`/`ars` son
+// los valores histó­ricos; `primary` el precio en la moneda del perfil (de room_prices).
+function isUsdArs(card) {
+  const p = (card.currency?.primary || 'USD').toUpperCase()
+  return p === 'USD' || p === 'ARS'
+}
+function priceMain(card, usd, primary) {
+  if (isUsdArs(card)) return formatUSD(usd)
+  return formatMoney(primary != null ? primary : usd, card.currency?.primary)
+}
+function priceSub(card, ars) {
+  // La línea secundaria (ARS) solo aplica al par USD/ARS; para otra moneda no se muestra.
+  return isUsdArs(card) ? formatARS(ars) : ''
+}
 
 // Resuelve rutas relativas (/fotos/… o /media/…) a URL servible.
 function resolveImg(url) {
@@ -89,9 +105,11 @@ export default function RoomCard({ card, onAction, lang = 'es' }) {
                   {t.before} {formatUSD(card.full_price_usd)}
                 </p>
                 <p className="font-display text-lg font-700 leading-none text-forest-600 tabular-nums">
-                  {formatUSD(card.price_usd)}
+                  {priceMain(card, card.price_usd, card.price_primary)}
                 </p>
-                <p className="text-[11px] tabular-nums text-slatey">{formatARS(card.price_ars)}</p>
+                {priceSub(card, card.price_ars) && (
+                  <p className="text-[11px] tabular-nums text-slatey">{priceSub(card, card.price_ars)}</p>
+                )}
               </div>
               {card.savings_usd ? (
                 <span className="rounded-lg bg-forest-50 px-2 py-1 text-[11px] font-medium text-forest-600 tabular-nums">
@@ -108,11 +126,11 @@ export default function RoomCard({ card, onAction, lang = 'es' }) {
                 {t.from} · {t.night}
               </p>
               <p className="font-display text-lg font-700 leading-none text-ink tabular-nums">
-                {formatUSD(card.price_usd_night)}
+                {priceMain(card, card.price_usd_night, card.price_primary_night)}
               </p>
-              {card.price_ars_night ? (
+              {priceSub(card, card.price_ars_night) ? (
                 <p className="text-[11px] tabular-nums text-slatey">
-                  {formatARS(card.price_ars_night)}
+                  {priceSub(card, card.price_ars_night)}
                 </p>
               ) : null}
             </div>
@@ -124,11 +142,11 @@ export default function RoomCard({ card, onAction, lang = 'es' }) {
                 {t.total} {nights ? `· ${nights} ${nights === 1 ? t.night : t.nights}` : t.stay}
               </p>
               <p className="font-display text-lg font-700 leading-none text-ink tabular-nums">
-                {formatUSD(card.price_usd)}
+                {priceMain(card, card.price_usd, card.price_primary)}
               </p>
               <p className="text-[11px] tabular-nums text-slatey">
-                {formatARS(card.price_ars)}
-                {card.price_usd_night ? ` · ${formatUSD(card.price_usd_night)}/${t.night}` : ''}
+                {priceSub(card, card.price_ars)}
+                {isUsdArs(card) && card.price_usd_night ? ` · ${formatUSD(card.price_usd_night)}/${t.night}` : ''}
               </p>
             </div>
           </div>

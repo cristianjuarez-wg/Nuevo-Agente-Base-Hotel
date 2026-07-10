@@ -119,3 +119,27 @@ def get_current_rate(db: Session) -> Dict:
         "source": "Valor por defecto",
         "updated_at": None,
     }
+
+
+def convert(amount: float, from_ccy: str, to_ccy: str, db: Session) -> Optional[float]:
+    """Convierte `amount` de `from_ccy` a `to_ccy` (Tarea B).
+
+    Hoy la única cotización disponible es USD↔ARS (dolarapi). Para ese par convierte con
+    get_current_rate; para el mismo par (from==to) devuelve el monto; para CUALQUIER OTRO par
+    devuelve None (no inventa una cotización que no existe — el llamador cae a su fallback).
+    Cuando se sumen más fuentes de cotización, se extiende acá sin tocar a los llamadores.
+    """
+    if amount is None:
+        return None
+    f = (from_ccy or "").upper()
+    t = (to_ccy or "").upper()
+    if f == t:
+        return float(amount)
+    rate = get_current_rate(db).get("rate") or 0.0
+    if rate <= 0:
+        return None
+    if f == "USD" and t == "ARS":
+        return round(float(amount) * rate, 2)
+    if f == "ARS" and t == "USD":
+        return round(float(amount) / rate, 2)
+    return None  # par sin cotización disponible

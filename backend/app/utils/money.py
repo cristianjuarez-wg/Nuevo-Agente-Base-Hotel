@@ -37,15 +37,16 @@ def format_money(amount, currency: str = "USD") -> str:
     return f"{cur} {val:.0f}"
 
 
-def format_price_pair(price_usd, price_ars, profile: dict | None = None) -> str:
-    """Formatea el precio para mostrar, según la moneda del perfil (Fase 3.5).
+def format_price_pair(price_usd, price_ars, profile: dict | None = None,
+                      amount_primary=None) -> str:
+    """Formatea el precio para mostrar, según la moneda del perfil.
 
-    El esquema actual guarda price_usd y price_ars. Reglas:
+    Reglas:
     - primary_currency == "USD" (Hampton): muestra "USD X / ARS Y" — texto histórico exacto.
     - primary_currency == "ARS": muestra "ARS Y / USD X".
-    - otra primaria (BRL, MXN...): muestra SOLO la primaria en el valor USD guardado
-      (no hay conversión a esa moneda todavía — no se inventa un "ARS" que no aplica).
-      La conversión real a cualquier par queda para room_prices (deuda de instancia).
+    - otra primaria (BRL, MXN...): muestra el precio REAL en esa moneda si viene `amount_primary`
+      (de room_prices, Tarea B); si no, el valor USD guardado con la etiqueta primaria (fallback).
+      Nunca muestra un "ARS" que no aplica.
     """
     prof = profile or {}
     primary = (prof.get("primary_currency") or "USD").upper()
@@ -55,6 +56,6 @@ def format_price_pair(price_usd, price_ars, profile: dict | None = None) -> str:
         return f"{format_money(price_usd, 'USD')} / {format_money(price_ars, 'ARS')}"
     if primary == "ARS":
         return f"{format_money(price_ars, 'ARS')} / {format_money(price_usd, 'USD')}"
-    # Cliente con otra moneda primaria: mostrar solo la primaria (valor base USD guardado),
-    # sin el ARS que no corresponde. Evita el bug de "BRL... / ARS" detectado en la prueba de fuego.
-    return format_money(price_usd, primary)
+    # Cliente con otra moneda primaria (BRL, MXN...): precio real en su moneda (Tarea B).
+    monto = amount_primary if amount_primary is not None else price_usd
+    return format_money(monto, primary)

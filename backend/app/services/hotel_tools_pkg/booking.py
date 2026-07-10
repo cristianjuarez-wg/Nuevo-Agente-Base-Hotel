@@ -101,7 +101,8 @@ def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
         f"{cards[0].get('nights')} noche(s) ({check_in} → {check_out}):\n"
     ]
     for r in cards:
-        precio = format_price_pair(r['total_price_usd'], r['total_price_ars'], _prof)
+        precio = format_price_pair(r['total_price_usd'], r['total_price_ars'], _prof,
+                                   amount_primary=r.get('total_price_primary'))
         lines.append(
             f"• {r['room_type']}: {precio} "
             f"en total ({r['units_available']} unidad(es) disponible(s)). "

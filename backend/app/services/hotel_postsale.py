@@ -203,6 +203,11 @@ class HotelPostSaleService:
             etapa = "FUTURA (el huésped aún no se hospedó)" if ci > _date.today() else "en curso / pasada"
         except Exception:
             etapa = "—"
+        # Tarea B: el total se muestra en la moneda del perfil (format_price_pair).
+        from app.utils.money import format_price_pair
+        from app.services import business_profile_service
+        _prof = business_profile_service.get_profile(self.db)
+        _total = format_price_pair(d['total_price_usd'], d['total_price_ars'], _prof)
         return "\n".join([
             f"INFORMACIÓN DE LA RESERVA {d['code']}:",
             f"Huésped: {d['guest_name']}",
@@ -210,7 +215,7 @@ class HotelPostSaleService:
             f"Check-in: {d['check_in']} | Check-out: {d['check_out']} ({d['nights']} noche(s))",
             f"Etapa de la estadía: {etapa}",
             f"Huéspedes: {d['guests']}",
-            f"Total: USD {d['total_price_usd']:.0f} / ARS {d['total_price_ars']:,.0f}",
+            f"Total: {_total}",
             f"Estado: {d['status']} | Pago: {d['payment_status']}",
             self._promo_line(booking.promo_name),
         ])
