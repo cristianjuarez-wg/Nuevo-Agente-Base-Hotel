@@ -12,6 +12,7 @@ import Footer from './components/Footer'
 import ChatWidget from './components/ChatWidget'
 import RestaurantOrderPage from './components/restaurant/RestaurantOrderPage'
 import AdminApp from './admin/AdminApp'
+import LoginGate from './admin/LoginGate'
 
 function currentRoute() {
   const h = window.location.hash
@@ -29,7 +30,7 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  if (route === 'admin') return <AdminApp />
+  if (route === 'admin') return <LoginGate><AdminApp /></LoginGate>
   if (route === 'pedido') return <RestaurantOrderPage />
 
   return (

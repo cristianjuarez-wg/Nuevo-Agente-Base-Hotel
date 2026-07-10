@@ -33,11 +33,60 @@ export function clearAdminKey() {
   sessionStorage.removeItem(ADMIN_KEY_STORAGE)
 }
 
+// ── Token de sesión del backoffice (JWT, Fase 2.5) ───────────────────────────
+// El login devuelve un JWT que se guarda en sessionStorage; el interceptor lo adjunta
+// como Authorization: Bearer en cada request. Si el backend responde 401 (token
+// ausente/expirado), se limpia y se emite un evento para que la UI muestre el login.
+const AUTH_TOKEN_STORAGE = 'hampton_auth_token'
+
+export function setAuthToken(token) {
+  if (token) sessionStorage.setItem(AUTH_TOKEN_STORAGE, token)
+}
+export function getAuthToken() {
+  return sessionStorage.getItem(AUTH_TOKEN_STORAGE) || ''
+}
+export function clearAuthToken() {
+  sessionStorage.removeItem(AUTH_TOKEN_STORAGE)
+}
+export function isAuthenticated() {
+  return !!getAuthToken()
+}
+
+export async function login(email, password) {
+  const { data } = await client.post('/api/auth/login', { email, password })
+  setAuthToken(data.access_token)
+  return data.user
+}
+export function logout() {
+  clearAuthToken()
+}
+export async function getMe() {
+  const { data } = await client.get('/api/auth/me')
+  return data
+}
+
 client.interceptors.request.use((config) => {
+  const token = getAuthToken()
+  if (token) config.headers['Authorization'] = `Bearer ${token}`
   const key = getAdminKey()
   if (key) config.headers['X-Admin-Key'] = key
   return config
 })
+
+// En 401 (sesión ausente/expirada) limpiamos el token y avisamos a la UI (evento global)
+// para que muestre el login, salvo que la request sea el propio login.
+client.interceptors.response.use(
+  (resp) => resp,
+  (error) => {
+    const status = error?.response?.status
+    const url = error?.config?.url || ''
+    if (status === 401 && !url.includes('/api/auth/login')) {
+      clearAuthToken()
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+    }
+    return Promise.reject(error)
+  },
+)
 
 // ── Reservas ───────────────────────────────────────────────────────────────
 export async function getRooms() {
