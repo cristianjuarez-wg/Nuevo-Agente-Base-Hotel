@@ -102,7 +102,7 @@ export default function EmployeeHubSection() {
       {!agent ? (
         <p className="py-12 text-center text-sm text-slatey">No hay agentes configurados.</p>
       ) : sub === 'identidad' ? (
-        <EmployeeIdentity agent={agent} onChanged={(updated) =>
+        <EmployeeIdentity agent={agent} go={go} onChanged={(updated) =>
           setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)))} />
       ) : sub === 'flujos' ? (
         <EmployeeFlows agent={agent} />
