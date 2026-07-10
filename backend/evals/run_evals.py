@@ -522,6 +522,64 @@ async def _main_async(selected, smoke=False, tier=None):
     return rc
 
 
+async def _sim_dispatch(session_id: str, message: str, history: list):
+    """Manda UN turno al agente real (guest) y devuelve (response, tool_trace). Reusa
+    agent_service.chat, que encadena el historial por session_id automáticamente."""
+    db = SessionLocal()
+    try:
+        result = await agent_service.chat(db, message, session_id, "es")
+        return result.get("response", ""), result.get("tool_trace", []) or []
+    finally:
+        db.close()
+
+
+async def _run_simulations(personas_filter, flows_filter) -> int:
+    """Corre las simulaciones (persona × flujo), evalúa cada transcript con el juez y reporta.
+    Gate por (persona, flujo): 2 de 3 corridas verdes (estocástico). GASTA OpenAI."""
+    from evals.simulator import PERSONAS, run_simulation
+    from evals.judge import judge_transcript
+    from app.services import business_profile_service
+
+    personas = [PERSONAS[k] for k in (personas_filter or PERSONAS.keys()) if k in PERSONAS]
+    flows = flows_filter or ["F2"]
+    if not personas:
+        print(f"No hay personas que coincidan con {personas_filter}. Disponibles: {list(PERSONAS)}")
+        return 2
+
+    # Facts del negocio activo (el juez los usa para detectar contradicciones).
+    _db = SessionLocal()
+    try:
+        facts = business_profile_service.get_profile(_db).get("facts", []) or []
+    finally:
+        _db.close()
+
+    print(f"Simulando {len(personas)} persona(s) × {len(flows)} flujo(s) contra el agente real…\n")
+    t0 = time.time()
+    session_ids, failed = [], []
+    for persona in personas:
+        for flow in flows:
+            transcript = await run_simulation(persona, flow, _sim_dispatch)
+            session_ids.append(transcript.session_id)
+            verdict = await judge_transcript(
+                transcript.as_text(), transcript.tool_trace, facts,
+                goal=persona.goal, satisfied_when=persona.satisfied_when)
+            status = "PASS" if verdict.ok else "FAIL"
+            print(f"[{persona.key:11} {flow}] {status}  ·  {len(transcript.turns)} turnos  ·  "
+                  f"goal={verdict.goal_achieved}  invenciones={len(verdict.invented_facts)}")
+            if verdict.notes:
+                print(f"    nota: {verdict.notes}")
+            for inv in verdict.invented_facts:
+                print(f"    ⚠ invención: {inv.get('claim','')}")
+            if not verdict.ok:
+                failed.append(f"{persona.key}/{flow}")
+
+    print(f"\nTiempo total: {time.time()-t0:.1f}s")
+    _cleanup(session_ids)  # limpia por session_id (reservas/tickets/leads creados)
+    if failed:
+        print(f"Simulaciones con veredicto FAIL: {', '.join(failed)}")
+    return 1 if failed else 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="Evaluación end-to-end del agente Aura")
     ap.add_argument("--scenario", "-s", action="append",
@@ -531,6 +589,13 @@ def main():
                     help="Corre solo el subconjunto SMOKE (barato, para CI).")
     ap.add_argument("--tier", choices=["core", "instance"], default=None,
                     help="Filtra por tier: core (genéricos del vertical) o instance (del cliente).")
+    # Modo simulador (Workstream T.2) — conversaciones humanas + LLM-as-judge. GASTA OpenAI.
+    ap.add_argument("--sim", action="store_true",
+                    help="Corre simulaciones de huésped (persona LLM + juez) en vez de escenarios fijos.")
+    ap.add_argument("--persona", action="append",
+                    help="Persona(s) del simulador (ej. --persona apurado). Default: todas.")
+    ap.add_argument("--flow", action="append",
+                    help="Flujo(s) objetivo del simulador (ej. --flow F2). Default: F2.")
     args = ap.parse_args()
 
     if args.list:
@@ -539,6 +604,10 @@ def main():
             smoke = " [smoke]" if s["id"] in _SMOKE_IDS else ""
             print(f"  {s['id']:4} [{tier:8}]{smoke} {s['name']}  ({len(s['turns'])} turnos)")
         return
+
+    if args.sim:
+        rc = asyncio.run(_run_simulations(args.persona, args.flow))
+        sys.exit(rc)
 
     selected = set(args.scenario) if args.scenario else None
     rc = asyncio.run(_main_async(selected, smoke=args.smoke, tier=args.tier))
