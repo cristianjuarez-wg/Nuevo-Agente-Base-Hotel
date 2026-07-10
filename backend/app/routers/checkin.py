@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.hotel import Booking
 from app.services import checkin_express_service as checkin
-from app.services.whatsapp_service import whatsapp_service
+from app.core.channels.whatsapp_service import whatsapp_service
 from app.routers.whatsapp import to_whatsapp_text
 from app.core.security.admin_auth import require_admin_key
 from app.core.observability.logging_config import get_logger

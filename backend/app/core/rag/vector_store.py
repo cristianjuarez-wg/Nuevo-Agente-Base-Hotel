@@ -2,7 +2,7 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 from typing import List, Dict, Optional  # noqa: F401
 from app.config import settings
-from app.services.embeddings import get_embedding_service
+from app.core.rag.embeddings import get_embedding_service
 from app.core.observability.logging_config import get_logger
 import os
 import time

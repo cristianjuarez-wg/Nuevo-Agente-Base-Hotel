@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.services.agent_service import agent_service
 from app.services.contact_service import ContactService
-from app.services.whatsapp_service import whatsapp_service
+from app.core.channels.whatsapp_service import whatsapp_service
 from app.utils.phone_normalizer import normalize_phone
 from app.config import settings
 from app.core.observability.logging_config import get_logger

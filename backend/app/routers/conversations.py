@@ -304,14 +304,14 @@ async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depe
     delivered = None
     phone = _phone_from_wa_session(session_id)
     if phone:
-        from app.services.whatsapp_service import whatsapp_service
+        from app.core.channels.whatsapp_service import whatsapp_service
         delivered = whatsapp_service.send_text(phone, text)
         if delivered is False:
             logger.error("Respuesta humana: Twilio rechazó el envío",
                          session_id=session_id, phone=phone)
     elif (session_id or "").startswith("ig_"):
         # Instagram: el IGSID es la sesión; se entrega por la Graph API de Meta.
-        from app.services.instagram_service import instagram_service
+        from app.core.channels.instagram_service import instagram_service
         delivered = instagram_service.send_text(session_id[3:], text)
         if delivered is False:
             logger.error("Respuesta humana: Meta rechazó el envío",
@@ -333,7 +333,7 @@ async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depe
     # WhatsApp, que ya entregó por Twilio). Best-effort: un fallo no rompe la respuesta.
     pushed = 0
     try:
-        from app.services.ws_hub import ws_hub
+        from app.core.channels.ws_hub import ws_hub
         pushed = await ws_hub.broadcast(session_id, {
             "type": "human_message",
             "content": text,
@@ -353,7 +353,7 @@ async def conversation_ws(websocket: WebSocket, session_id: str):
 
     Valida el Origin a mano: el CORSMiddleware NO cubre el handshake WebSocket.
     """
-    from app.services.ws_hub import ws_hub, origin_allowed
+    from app.core.channels.ws_hub import ws_hub, origin_allowed
 
     if not origin_allowed(websocket.headers.get("origin")):
         await websocket.close(code=1008)  # policy violation

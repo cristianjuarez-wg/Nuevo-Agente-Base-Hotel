@@ -146,7 +146,7 @@ class TestSDKRunnerFallback:
 class TestEmbeddingCache:
     @pytest.mark.asyncio
     async def test_segundo_embed_viene_del_cache(self):
-        from app.services.embeddings import EmbeddingService
+        from app.core.rag.embeddings import EmbeddingService
 
         svc = EmbeddingService.__new__(EmbeddingService)  # sin __init__ (evita crear cliente)
         from collections import OrderedDict

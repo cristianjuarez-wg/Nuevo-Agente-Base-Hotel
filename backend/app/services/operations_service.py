@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session, object_session
 from app.core.observability.logging_config import get_logger
 from app.models.hotel import HotelTicket, Booking, TicketEvent
 from app.models.staff import StaffMember
-from app.services.whatsapp_service import whatsapp_service
+from app.core.channels.whatsapp_service import whatsapp_service
 
 logger = get_logger(__name__)
 

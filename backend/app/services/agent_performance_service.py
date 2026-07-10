@@ -213,7 +213,7 @@ def send_daily_report(db: Session, agent: Agent, staff_ids: list) -> Dict:
     (o WhatsApp no está configurado), se registra en `skipped` y se sigue con el resto.
     """
     from app.models.staff import StaffMember
-    from app.services.whatsapp_service import whatsapp_service
+    from app.core.channels.whatsapp_service import whatsapp_service
 
     text = build_daily_report(db, agent)
     body = f"📋 Parte de {agent.name} — {text}"

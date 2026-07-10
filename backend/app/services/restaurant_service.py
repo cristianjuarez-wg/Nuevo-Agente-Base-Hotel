@@ -19,7 +19,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.services.vector_store import get_vector_store
+from app.core.rag.vector_store import get_vector_store
 from app.services import exchange_rate_service
 from app.models.restaurant import (
     MenuItem, RestaurantOrder, OrderItem, ExtraCharge, TableReservation, Voucher, VoucherItem,

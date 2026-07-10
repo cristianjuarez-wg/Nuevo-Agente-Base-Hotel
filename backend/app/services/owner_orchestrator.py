@@ -480,7 +480,7 @@ async def consultar_conocimiento(ctx: RunContextWrapper[OwnerContext], consulta:
     trae material relevante, te lo dice — en ese caso avisale al dueño que no tenés material
     cargado sobre ese tema y recién ahí respondé con tu criterio general (como estimación)."""
     try:
-        from app.services.vector_store import get_management_vector_store
+        from app.core.rag.vector_store import get_management_vector_store
         vs = get_management_vector_store()
         results = await vs.search(consulta, n_results=4, only_active=True)
     except Exception as e:  # noqa: BLE001

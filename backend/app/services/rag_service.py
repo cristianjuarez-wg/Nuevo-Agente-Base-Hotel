@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional
-from app.services.vector_store import get_vector_store
+from app.core.rag.vector_store import get_vector_store
 from app.core.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
 from app.core.llm.retry_config import vector_store_retry

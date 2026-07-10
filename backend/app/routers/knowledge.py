@@ -51,7 +51,7 @@ def _extract_doc_text(content: bytes, filename: str) -> str:
         with open(tmp_path, "wb") as f:
             f.write(content)
         try:
-            from app.services.pdf_processor import pdf_processor
+            from app.core.rag.pdf_processor import pdf_processor
             return pdf_processor.extract_text(tmp_path) or ""
         finally:
             try:
@@ -368,7 +368,7 @@ async def extract_from_document(
     if not doc_text.strip():
         raise HTTPException(422, "No se pudo obtener texto del documento.")
 
-    from app.services.knowledge_extractor import extract_fields
+    from app.core.rag.knowledge_extractor import extract_fields
     fields = extract_fields(category, doc_text)
     if not fields:
         raise HTTPException(422, "No pude extraer datos de ese documento. Revisalo o cargá los campos a mano.")

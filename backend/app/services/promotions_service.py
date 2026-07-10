@@ -15,7 +15,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.services.vector_store import get_vector_store
+from app.core.rag.vector_store import get_vector_store
 from app.core.observability.logging_config import get_logger
 from app.models.promotions import Promotion
 

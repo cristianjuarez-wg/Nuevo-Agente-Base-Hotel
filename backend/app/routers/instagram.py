@@ -20,7 +20,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import PlainTextResponse, Response
 
 from app.services.agent_service import agent_service
-from app.services.instagram_service import instagram_service
+from app.core.channels.instagram_service import instagram_service
 from app.config import settings
 from app.core.observability.logging_config import get_logger
 
