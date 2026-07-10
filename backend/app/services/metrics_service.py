@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, extract
-from app.utils.timezone_utils import now_business
+from app.utils.timezone_utils import utcnow_naive
 from app.models.metrics_snapshot import MetricsSnapshot
 from app.models.conversation import Conversation
 from app.models.lead import Lead
@@ -82,7 +82,7 @@ class MetricsService:
             
             # Crear snapshot
             snapshot = MetricsSnapshot(
-                snapshot_date=now_business(),
+                snapshot_date=utcnow_naive(),
                 period_type="daily",
                 total_conversations=total_conversations,
                 total_messages=int(total_messages),
@@ -114,7 +114,7 @@ class MetricsService:
     def get_trends(self, db: Session, days: int = 30) -> Dict:
         """Calcula tendencias comparando con período anterior"""
         try:
-            now = now_business()
+            now = utcnow_naive()
             
             # Obtener métricas actuales (últimas 24 horas)
             current_start = now - timedelta(days=1)
@@ -161,7 +161,7 @@ class MetricsService:
     def get_timeline_data(self, db: Session, period: str = "hourly") -> Dict:
         """Obtiene datos reales de timeline de conversaciones (excluye post-venta)"""
         try:
-            now = now_business()
+            now = utcnow_naive()
             
             if period == "hourly":
                 # Últimas 24 horas
@@ -242,7 +242,7 @@ class MetricsService:
                 start_time = datetime.combine(start, _time.min)
                 end_time = datetime.combine(end, _time.min)
             else:
-                start_time = now_business() - timedelta(days=days)
+                start_time = utcnow_naive() - timedelta(days=days)
                 end_time = None
 
             # Consulta agrupada por día de semana y hora
@@ -466,7 +466,7 @@ class MetricsService:
                 logger.info("Creating new conversation", session_id=session_id)
                 conversation = Conversation(
                     session_id=session_id,
-                    started_at=now_business()
+                    started_at=utcnow_naive()
                 )
                 db.add(conversation)
                 db.flush()  # Flush para obtener el ID

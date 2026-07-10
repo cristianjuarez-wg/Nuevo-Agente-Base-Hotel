@@ -14,13 +14,14 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 
 class PromptConfigVersion(Base):
     __tablename__ = "prompt_config_versions"
 
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, default=datetime.now, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
     author = Column(String(120), nullable=True)          # email del admin que guardó (si se sabe)
     label = Column(String(200), nullable=True)           # nombre legible ("Tono más formal", ...)
     # Snapshot COMPLETO de lo que afecta el prompt, para poder reconstruir la config exacta:

@@ -16,6 +16,7 @@ Campos de color (todos HEX o cualquier valor CSS válido):
 from datetime import datetime
 from app.models.database import Base, engine
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from app.utils.timezone_utils import utcnow_naive
 
 
 class ChatTheme(Base):
@@ -48,8 +49,8 @@ class ChatTheme(Base):
     # Estado — "active" activo (respeta fechas), "pinned" siempre activo, "inactive" off
     status = Column(String, default="active", nullable=False)
 
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     def to_dict(self):
         return {

@@ -5,6 +5,7 @@ import json
 import os
 from typing import Dict, List, Optional
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -116,14 +117,14 @@ class PatternManager:
             
             # Marcar como aprobado
             pattern_found["status"] = "approved"
-            pattern_found["approved_at"] = datetime.now().isoformat()
+            pattern_found["approved_at"] = utcnow_naive().isoformat()
             
             # Agregar a lista de aprobados
             approved_key = f"approved_{pattern_type}s"
             pending_data[approved_key].append(pattern_found)
             
             # Actualizar metadata
-            pending_data["metadata"]["last_updated"] = datetime.now().isoformat()
+            pending_data["metadata"]["last_updated"] = utcnow_naive().isoformat()
             
             # Guardar patrones pendientes actualizados
             with open(self.pending_patterns_file, 'w', encoding='utf-8') as f:
@@ -173,13 +174,13 @@ class PatternManager:
             
             # Marcar como rechazado
             pattern_found["status"] = "rejected"
-            pattern_found["rejected_at"] = datetime.now().isoformat()
+            pattern_found["rejected_at"] = utcnow_naive().isoformat()
             
             # Agregar a lista de rechazados
             pending_data["rejected_patterns"].append(pattern_found)
             
             # Actualizar metadata
-            pending_data["metadata"]["last_updated"] = datetime.now().isoformat()
+            pending_data["metadata"]["last_updated"] = utcnow_naive().isoformat()
             
             # Guardar patrones pendientes actualizados
             with open(self.pending_patterns_file, 'w', encoding='utf-8') as f:

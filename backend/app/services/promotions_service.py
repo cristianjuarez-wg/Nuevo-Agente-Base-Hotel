@@ -9,6 +9,7 @@ Sigue el mismo patrón que knowledge_service.py:
 """
 import hashlib
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 from typing import List
 
 from app.core.rag.text_splitter import RecursiveCharacterTextSplitter
@@ -88,7 +89,7 @@ async def remove_from_index(promo: Promotion) -> dict:
 
 def get_vigentes(db: Session) -> List[Promotion]:
     """Devuelve las promociones activas y dentro de su rango de fechas (si tienen)."""
-    now = datetime.now()
+    now = datetime.now()  # compara contra valid_from/until (fechas locales que cargó el dueño)
     promos = db.query(Promotion).filter(Promotion.status == "active").all()
     vigentes = []
     for p in promos:

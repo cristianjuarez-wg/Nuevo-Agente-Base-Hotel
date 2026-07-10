@@ -11,6 +11,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from datetime import datetime
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 
 class StaffMember(Base):
@@ -24,7 +25,7 @@ class StaffMember(Base):
     # (el agente clasifica el problema y enruta al área correcta). Editable desde backoffice.
     area = Column(String(20), nullable=False, default="general")  # mantenimiento | recepcion | housekeeping | general
     active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
     is_demo = Column(Boolean, default=False, index=True)

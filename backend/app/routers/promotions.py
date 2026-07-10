@@ -8,6 +8,7 @@ para que el agente las conozca vía RAG y también vía la tool determinística
 """
 from typing import Optional
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -102,7 +103,7 @@ async def update_promotion(
     promo.status = payload.status or promo.status
     promo.valid_from = _parse_date(payload.valid_from)
     promo.valid_until = _parse_date(payload.valid_until)
-    promo.updated_at = datetime.now()
+    promo.updated_at = utcnow_naive()
 
     db.commit()
     db.refresh(promo)
@@ -123,7 +124,7 @@ async def update_status(
         raise HTTPException(404, "Promoción no encontrada.")
 
     promo.status = payload.status
-    promo.updated_at = datetime.now()
+    promo.updated_at = utcnow_naive()
     db.commit()
     db.refresh(promo)
     await promotions_service.reingest(promo)

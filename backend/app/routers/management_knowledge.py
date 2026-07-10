@@ -13,6 +13,7 @@ import os
 import time
 import hashlib
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
 from pydantic import BaseModel
@@ -46,7 +47,7 @@ def _chunks_from_text(title: str, text: str):
     doc_id = hashlib.md5(title.encode()).hexdigest()
     # Reutilizamos el splitter del pdf_processor para mantener consistencia.
     pieces = pdf_processor.text_splitter.split_text(text) if hasattr(pdf_processor, "text_splitter") else [text]
-    now = datetime.now().isoformat()
+    now = utcnow_naive().isoformat()
     return [
         {
             "text": piece,
