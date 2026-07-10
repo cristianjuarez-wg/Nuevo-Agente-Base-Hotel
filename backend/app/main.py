@@ -106,15 +106,20 @@ app = FastAPI(
 # Rate limiter por IP (slowapi). Necesita registrarse en app.state.
 app.state.limiter = limiter
 
-# Middleware CORS — orígenes configurados vía ALLOWED_ORIGINS en .env
+# Middleware CORS — orígenes configurados vía ALLOWED_ORIGINS en .env.
+# En DEBUG (dev local) se permite cualquier puerto de localhost/127.0.0.1 vía regex,
+# porque Vite elige el puerto dinámicamente (5173, 5174, 5176...) y listarlos a mano es
+# frágil. En producción (DEBUG=False) NO se usa el regex: solo la allow-list explícita.
 _cors_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
+_cors_kwargs = dict(
     allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+if settings.DEBUG:
+    _cors_kwargs["allow_origin_regex"] = r"^http://(localhost|127\.0\.0\.1):\d+$"
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 # Exception handlers globales
 @app.exception_handler(RequestValidationError)
