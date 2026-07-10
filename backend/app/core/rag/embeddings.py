@@ -1,8 +1,8 @@
-from langchain_openai import OpenAIEmbeddings
 from typing import List, Optional
 from collections import OrderedDict
 import hashlib
 from app.config import settings
+from app.core.llm.openai_client import get_async_openai
 from app.core.observability.logging_config import get_logger
 import asyncio
 import time
@@ -16,10 +16,11 @@ _EMBED_CACHE_MAX = 512
 class EmbeddingService:
     def __init__(self):
         try:
-            self.embeddings = OpenAIEmbeddings(
-                openai_api_key=settings.OPENAI_API_KEY,
-                model=settings.OPENAI_EMBEDDING_MODEL
-            )
+            # SDK de OpenAI directo (cliente async compartido). Antes se usaba
+            # langchain_openai.OpenAIEmbeddings, que era un wrapper fino sobre
+            # client.embeddings.create con el MISMO modelo → vectores idénticos.
+            self._model = settings.OPENAI_EMBEDDING_MODEL
+            self._client = get_async_openai()
             # Caché LRU simple {hash(text) -> embedding}. OrderedDict para evicción FIFO/LRU.
             self._cache: "OrderedDict[str, List[float]]" = OrderedDict()
             logger.info("Embedding service initialized",
@@ -51,8 +52,9 @@ class EmbeddingService:
             logger.debug("Generating embedding",
                         text_length=len(text))
 
-            # Usar el método asíncrono
-            embedding = await self.embeddings.aembed_query(text)
+            # Embedding vía SDK OpenAI directo (equivalente a aembed_query de langchain).
+            resp = await self._client.embeddings.create(model=self._model, input=[text])
+            embedding = resp.data[0].embedding
 
             duration = time.time() - start_time
 
@@ -93,8 +95,10 @@ class EmbeddingService:
                        total_documents=len(valid_texts),
                        total_characters=sum(len(text) for text in valid_texts))
             
-            # Usar el método asíncrono para múltiples documentos
-            embeddings = await self.embeddings.aembed_documents(valid_texts)
+            # Embeddings por lote vía SDK OpenAI directo (equivalente a aembed_documents).
+            # resp.data respeta el orden del input; ordenamos por index por robustez.
+            resp = await self._client.embeddings.create(model=self._model, input=valid_texts)
+            embeddings = [d.embedding for d in sorted(resp.data, key=lambda d: d.index)]
             
             duration = time.time() - start_time
             

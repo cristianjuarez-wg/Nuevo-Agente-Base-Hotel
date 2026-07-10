@@ -48,17 +48,10 @@ jsonpatch==1.33
 jsonpointer==3.0.0
 jsonschema==4.25.1
 jsonschema-specifications==2025.9.1
+# kubernetes: dependencia DIRECTA obligatoria de chromadb (no se puede quitar sin romperlo).
 kubernetes==34.1.0
-langchain==0.3.22
-langchain-chroma==0.2.6
-langchain-core==0.3.79
-langchain-openai==0.3.35
-langchain-text-splitters==0.3.11
-langgraph==1.0.1
-langgraph-checkpoint==3.0.0
-langgraph-prebuilt==1.0.1
-langgraph-sdk==0.2.9
-langsmith==0.3.45
+# Fase 2.6: podadas langchain/langgraph/langsmith — el proyecto usa el SDK de OpenAI directo
+# (app/core/rag/embeddings.py) y un text splitter propio (app/core/rag/text_splitter.py).
 limits==5.6.0
 Mako==1.3.10
 markdown-it-py==4.0.0
@@ -92,11 +85,11 @@ orjson==3.11.3
 ormsgpack==1.11.0
 overrides==7.7.0
 packaging==23.2
+# posthog: dependencia DIRECTA obligatoria de chromadb (telemetría; sus extras langchain no se instalan).
 posthog==5.4.0
 prometheus_client==0.21.1
 propcache==0.4.1
 protobuf==6.33.0
-pulsar-client==3.8.0
 psycopg2-binary==2.9.10
 pyasn1==0.6.1
 pyasn1_modules==0.4.2

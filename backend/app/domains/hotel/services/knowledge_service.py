@@ -13,7 +13,7 @@ info_hotel → rag_service) la encuentre igual que a los documentos base.
 import hashlib
 from typing import Union
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.core.rag.text_splitter import RecursiveCharacterTextSplitter
 
 from app.config import settings
 from app.core.rag.vector_store import get_vector_store

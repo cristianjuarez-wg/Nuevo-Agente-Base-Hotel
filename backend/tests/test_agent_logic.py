@@ -151,9 +151,12 @@ class TestEmbeddingCache:
         svc = EmbeddingService.__new__(EmbeddingService)  # sin __init__ (evita crear cliente)
         from collections import OrderedDict
         svc._cache = OrderedDict()
-        # Mock del cliente langchain: cuenta cuántas veces se llama
-        svc.embeddings = MagicMock()
-        svc.embeddings.aembed_query = AsyncMock(return_value=[0.1, 0.2, 0.3])
+        svc._model = "text-embedding-3-small"
+        # Mock del SDK de OpenAI directo: client.embeddings.create(...) -> resp.data[0].embedding
+        resp = MagicMock()
+        resp.data = [MagicMock(embedding=[0.1, 0.2, 0.3], index=0)]
+        svc._client = MagicMock()
+        svc._client.embeddings.create = AsyncMock(return_value=resp)
 
         texto = "paquetes a Japón en primavera"
         e1 = await svc.embed_text(texto)
@@ -161,7 +164,7 @@ class TestEmbeddingCache:
 
         assert e1 == e2
         # Solo UNA llamada real a OpenAI: el segundo fue cache hit
-        assert svc.embeddings.aembed_query.await_count == 1
+        assert svc._client.embeddings.create.await_count == 1
         assert len(svc._cache) == 1
 
 
