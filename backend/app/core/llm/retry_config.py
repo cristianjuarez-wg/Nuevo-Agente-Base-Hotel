@@ -6,7 +6,7 @@ from tenacity import (
     before_sleep_log
 )
 from openai import APIError, RateLimitError, APIConnectionError
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from app.config import settings
 import logging
 

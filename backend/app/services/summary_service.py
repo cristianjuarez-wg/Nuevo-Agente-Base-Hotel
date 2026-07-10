@@ -9,7 +9,7 @@ from app.models.conversation_message import ConversationMessage
 from app.models.lead import Lead
 from datetime import datetime
 from typing import Optional
-from app.core.openai_client import get_async_openai
+from app.core.llm.openai_client import get_async_openai
 import logging
 
 logger = logging.getLogger(__name__)

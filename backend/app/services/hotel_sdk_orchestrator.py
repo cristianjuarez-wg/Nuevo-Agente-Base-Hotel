@@ -33,9 +33,9 @@ from agents import (
 from app.config import settings
 from app.utils.timezone_utils import now_business
 from app.core.agent_profile import profile_manager
-from app.core.logging_config import get_logger
-from app.core.openai_client import get_async_openai
-from app.core.sdk_usage import extract_usage
+from app.core.observability.logging_config import get_logger
+from app.core.llm.openai_client import get_async_openai
+from app.core.llm.sdk_usage import extract_usage
 from app.services.lead_service import lead_service
 from app.services.lead_analyzer import lead_analyzer
 from app.services.rag_service import rag_service
@@ -753,7 +753,7 @@ class HotelSDKOrchestrator:
                 and hasattr(getattr(item, "raw_item", None), "name")
             ]
             # Traza detallada (nombre + args + output) para la auditoría del chat.
-            from app.core.audit_log import build_tool_trace
+            from app.core.observability.audit_log import build_tool_trace
             tool_trace = build_tool_trace(result)
         except InputGuardrailTripwireTriggered:
             logger.warning("Hotel pre-venta: input guardrail tripwire", session_id=session_id)

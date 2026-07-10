@@ -18,7 +18,7 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.services.role_service import resolve_role
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 # Import a nivel módulo para que la tabla action_plans se cree al arrancar (create_all
 # vive en el modelo). El asesor la usa para los planes de acción de largo plazo.
 from app.models import action_plan as _action_plan  # noqa: F401

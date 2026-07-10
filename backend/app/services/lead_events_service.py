@@ -13,7 +13,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.lead import Lead, LeadEvent
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -95,7 +95,7 @@ async def generate_ai_summary(db: Session, lead_id: int) -> Optional[LeadEvent]:
     """
     from app.models.conversation_message import ConversationMessage
     from app.services import usage_service
-    from app.core.openai_client import get_async_openai
+    from app.core.llm.openai_client import get_async_openai
     from app.config import settings
 
     lead = db.query(Lead).filter(Lead.id == lead_id).first()

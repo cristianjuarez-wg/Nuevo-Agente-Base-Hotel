@@ -2,7 +2,7 @@ from pypdf import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from typing import List, Dict, Optional
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from app.core.geography import geography_service
 from app.core.intelligent_geography import intelligent_extractor
 from app.services.document_classifier import document_classifier

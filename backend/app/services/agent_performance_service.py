@@ -25,9 +25,9 @@ from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
 from app.services import business_metrics
 from app.services.agent_directory import session_prefixes_for_role
-from app.core.token_pricing import cost_usd_from_total
+from app.core.llm.token_pricing import cost_usd_from_total
 from app.utils.timezone_utils import ARGENTINA_TZ
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

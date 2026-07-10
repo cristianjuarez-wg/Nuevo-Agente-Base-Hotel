@@ -1,9 +1,9 @@
 from typing import List, Dict, Optional
 from app.services.vector_store import get_vector_store
 from app.core.agent_profile import profile_manager
-from app.core.logging_config import get_logger
-from app.core.retry_config import vector_store_retry
-from app.core.circuit_breaker import vector_store_circuit_breaker
+from app.core.observability.logging_config import get_logger
+from app.core.llm.retry_config import vector_store_retry
+from app.core.llm.circuit_breaker import vector_store_circuit_breaker
 from app.config import settings
 import time
 

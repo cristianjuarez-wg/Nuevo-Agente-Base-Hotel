@@ -170,7 +170,7 @@ class TestEmbeddingCache:
 # ---------------------------------------------------------------------------
 class TestCircuitBreakerScope:
     def test_no_incluye_exception_generica(self):
-        from app.core.circuit_breaker import openai_circuit_breaker
+        from app.core.llm.circuit_breaker import openai_circuit_breaker
         from openai import APIError
 
         exc = openai_circuit_breaker.expected_exception

@@ -3,7 +3,7 @@ from typing import List, Optional
 from collections import OrderedDict
 import hashlib
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 import asyncio
 import time
 

@@ -23,8 +23,8 @@ from app.models.training_document import TrainingDocument
 from app.models.skill import Skill, AgentSkill
 from app.services import agent_performance_service, skill_service
 from app.config import settings
-from app.core.admin_auth import require_admin_key
-from app.core.logging_config import get_logger
+from app.core.security.admin_auth import require_admin_key
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/agents", tags=["Agents"])

@@ -33,7 +33,7 @@ from app.models.restaurant import (
 from app.services import exchange_rate_service, promotions_service
 from app.services.contact_service import contact_service
 from app.services.restaurant_menu_seed import menu_for_seed
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

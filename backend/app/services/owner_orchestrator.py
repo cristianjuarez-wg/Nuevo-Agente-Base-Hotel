@@ -22,9 +22,9 @@ from agents import (
 
 from app.config import settings
 from app.utils.timezone_utils import now_business
-from app.core.logging_config import get_logger
-from app.core.openai_client import get_async_openai
-from app.core.sdk_usage import extract_usage
+from app.core.observability.logging_config import get_logger
+from app.core.llm.openai_client import get_async_openai
+from app.core.llm.sdk_usage import extract_usage
 from app.services import business_metrics as bm
 from app.services import chart_service
 from app.prompts.owner_prompts import OWNER_AGENT_SYSTEM

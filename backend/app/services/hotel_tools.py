@@ -28,7 +28,7 @@ from app.config import settings
 from app.core.hotel_location import (
     HOTEL_ADDRESS, HOTEL_AIRPORT, directions_url, near_hotel_search_url, is_far_origin,
 )
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

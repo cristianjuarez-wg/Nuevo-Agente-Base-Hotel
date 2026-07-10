@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.staff import StaffMember
 from app.utils.phone_normalizer import normalize_phone, phones_match
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

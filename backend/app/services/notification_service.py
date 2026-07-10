@@ -4,7 +4,7 @@ Registra notificaciones que se enviarían en producción
 """
 from typing import Dict
 from datetime import datetime
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

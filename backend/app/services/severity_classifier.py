@@ -3,9 +3,9 @@ Clasificador de Severidad de Problemas
 Determina si un problema requiere escalación o puede auto-resolverse
 """
 from typing import Dict
-from app.core.openai_client import get_async_openai
+from app.core.llm.openai_client import get_async_openai
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

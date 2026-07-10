@@ -19,7 +19,7 @@ from app.models.contact import Contact
 from app.models.lead import Lead
 from app.models.hotel import Booking
 from app.utils.timezone_utils import iso_business
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 # Ventana "en vivo" centralizada en el servicio de control (fuente única).
 from app.services.conversation_control_service import LIVE_WINDOW_MINUTES
 

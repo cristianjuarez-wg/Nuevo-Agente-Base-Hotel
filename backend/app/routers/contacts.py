@@ -8,7 +8,7 @@ from app.models.database import get_db
 from app.services.contact_service import ContactService
 from app.services.summary_service import SummaryService
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from app.utils.timezone_utils import iso_business
 from pydantic import BaseModel
 from datetime import datetime, timezone

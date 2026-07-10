@@ -13,7 +13,7 @@ from app.models.schemas import (
 )
 from app.services.pdf_processor import pdf_processor
 from app.services.vector_store import get_vector_store
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from app.config import settings
 import os
 import shutil

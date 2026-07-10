@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 from app.models.database import get_db
 from app.services.kanban_service import kanban_service
 from app.utils.timezone_utils import iso_business
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

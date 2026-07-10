@@ -11,7 +11,7 @@ from app.services.lead_service import lead_service
 from app.services.metrics_service import metrics_service
 from app.services.kanban_service import kanban_service
 from app.services.business_metrics import resolve_period
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from typing import Dict, List
 from datetime import datetime, timedelta
 import re

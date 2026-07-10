@@ -11,8 +11,8 @@ Cada categoría tiene su propio "esquema de extracción" (qué campos pedir).
 import json
 from typing import Dict
 
-from app.core.openai_client import get_sync_openai
-from app.core.logging_config import get_logger
+from app.core.llm.openai_client import get_sync_openai
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

@@ -22,7 +22,7 @@ from app.models.database import get_db
 from app.services.pdf_processor import pdf_processor
 from app.services.vector_store import get_management_vector_store
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/management-knowledge", tags=["ManagementKnowledge"])

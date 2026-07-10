@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.models.training_document import TrainingDocument
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -359,7 +359,7 @@ def extract_training_fields(category: str, text: str) -> Dict:
         return {}
     text = text[:8000]
 
-    from app.core.openai_client import get_sync_openai
+    from app.core.llm.openai_client import get_sync_openai
     client = get_sync_openai()
     try:
         resp = client.chat.completions.create(

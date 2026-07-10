@@ -8,7 +8,7 @@ media_url). Helpers que arman las configs de los gráficos típicos de gerencia.
 import json
 from urllib.parse import quote
 
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

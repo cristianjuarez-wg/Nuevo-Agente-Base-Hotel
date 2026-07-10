@@ -22,7 +22,7 @@ from fastapi.responses import PlainTextResponse, Response
 from app.services.agent_service import agent_service
 from app.services.instagram_service import instagram_service
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/instagram", tags=["Instagram"])

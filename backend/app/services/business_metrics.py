@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.models.hotel import Room, Booking, HotelTicket, TICKET_OPEN_STATES
 from app.models.lead import Lead
 from app.utils.timezone_utils import now_business
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

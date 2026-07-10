@@ -6,7 +6,7 @@ y cada una mantenía su propio pool de conexiones HTTP → renegociación TLS re
 overhead innecesario. Este módulo expone instancias ÚNICAS y reutilizables.
 
 Uso:
-    from app.core.openai_client import get_async_openai, get_sync_openai
+    from app.core.llm.openai_client import get_async_openai, get_sync_openai
 
     client = get_async_openai()   # AsyncOpenAI compartido
     sync   = get_sync_openai()    # OpenAI (sync) compartido

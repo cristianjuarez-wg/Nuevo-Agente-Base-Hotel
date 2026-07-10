@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.services import business_profile_service
-from app.core.admin_auth import require_admin_key
-from app.core.logging_config import get_logger
+from app.core.security.admin_auth import require_admin_key
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api", tags=["BusinessProfile"])

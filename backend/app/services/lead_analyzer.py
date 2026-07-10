@@ -2,10 +2,10 @@
 Analizador inteligente de leads usando GPT
 Evoluciona el sistema actual de leads CALIENTE/TIBIO/FRÍO con análisis contextual
 """
-from app.core.openai_client import get_async_openai
+from app.core.llm.openai_client import get_async_openai
 from typing import Dict, List, Optional, Tuple
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 import json
 import time
 

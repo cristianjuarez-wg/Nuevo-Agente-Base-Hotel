@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.services import reservation_service
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/reservations", tags=["Reservations"])

@@ -8,12 +8,12 @@ from pathlib import Path
 
 from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, instagram, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin, agents, business_profile
 from app.config import settings
-from app.core.rate_limit import limiter
+from app.core.security.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
 from app.models.schemas import HealthResponse, HealthStatus, ServiceHealth
 from app.services.vector_store import get_vector_store
 from app.services.agent_service import agent_service
-from app.core.logging_config import setup_logging, get_logger
+from app.core.observability.logging_config import setup_logging, get_logger
 from app.core.agent_profile import profile_manager
 import time
 from datetime import datetime

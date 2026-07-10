@@ -6,7 +6,7 @@ Reemplaza toda la lógica dura de análisis de documentos
 import json
 import structlog
 from typing import Dict, Optional
-from app.core.openai_client import get_sync_openai
+from app.core.llm.openai_client import get_sync_openai
 from app.config import settings
 
 logger = structlog.get_logger()

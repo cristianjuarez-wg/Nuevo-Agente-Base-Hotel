@@ -19,8 +19,8 @@ from app.models.hotel import Booking
 from app.services import checkin_express_service as checkin
 from app.services.whatsapp_service import whatsapp_service
 from app.routers.whatsapp import to_whatsapp_text
-from app.core.admin_auth import require_admin_key
-from app.core.logging_config import get_logger
+from app.core.security.admin_auth import require_admin_key
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/checkin", tags=["Check-in Express"])

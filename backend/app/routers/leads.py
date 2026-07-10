@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.services.lead_service import lead_service
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from typing import List, Dict, Optional, Literal
 from pydantic import BaseModel
 

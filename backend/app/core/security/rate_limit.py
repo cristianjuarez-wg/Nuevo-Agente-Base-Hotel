@@ -7,7 +7,7 @@ slowapi (sobre `limits`) ya viene en requirements. Este módulo expone un Limite
 bloquea nada), útil para entornos de test/local.
 
 Uso:
-    from app.core.rate_limit import limiter, CHAT_RATE_LIMIT
+    from app.core.security.rate_limit import limiter, CHAT_RATE_LIMIT
 
     @router.post("/message")
     @limiter.limit(CHAT_RATE_LIMIT)

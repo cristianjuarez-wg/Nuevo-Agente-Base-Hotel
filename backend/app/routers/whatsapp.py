@@ -24,7 +24,7 @@ from app.services.contact_service import ContactService
 from app.services.whatsapp_service import whatsapp_service
 from app.utils.phone_normalizer import normalize_phone
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/whatsapp", tags=["WhatsApp"])

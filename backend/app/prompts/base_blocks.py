@@ -25,7 +25,7 @@ tests/test_base_blocks.py contra los snapshots del texto histórico.
 
 # FASE1: los textos con "Hampton"/"Bariloche" se parametrizan desde BusinessProfile.
 """
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

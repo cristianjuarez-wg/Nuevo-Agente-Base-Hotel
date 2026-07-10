@@ -20,7 +20,7 @@ from sqlalchemy import or_
 
 from app.models.hotel import Room, Booking, RoomUnit
 from app.services import exchange_rate_service
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,7 +1,7 @@
 from enum import Enum
 from datetime import datetime, timedelta
 from typing import Callable, Any
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from app.config import settings
 
 logger = get_logger(__name__)

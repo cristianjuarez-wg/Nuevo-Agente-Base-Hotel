@@ -6,11 +6,11 @@ from app.models.database import SessionLocal
 from app.models.lead import Lead
 from app.services.lead_analyzer import lead_analyzer
 from app.services.contact_service import ContactService
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from typing import Dict, List, Optional, Tuple
 import re
 from datetime import datetime, timedelta, timezone
-from app.core.openai_client import get_async_openai
+from app.core.llm.openai_client import get_async_openai
 from app.config import settings
 import json
 

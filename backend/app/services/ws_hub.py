@@ -14,7 +14,7 @@ import asyncio
 from fastapi import WebSocket
 
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

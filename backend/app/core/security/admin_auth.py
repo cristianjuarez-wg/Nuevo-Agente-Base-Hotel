@@ -12,7 +12,7 @@ Diseño:
   con el mismo valor; si falta o no coincide, 403.
 
 Uso:
-    from app.core.admin_auth import require_admin_key
+    from app.core.security.admin_auth import require_admin_key
     @router.post("/algo-critico", dependencies=[Depends(require_admin_key)])
     ...
 """

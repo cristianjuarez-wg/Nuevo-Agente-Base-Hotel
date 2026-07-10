@@ -7,11 +7,11 @@ from app.models.schemas import (
     CircuitBreakerStatus
 )
 from app.core.agent_profile import profile_manager
-from app.core.circuit_breaker import openai_circuit_breaker, vector_store_circuit_breaker
+from app.core.llm.circuit_breaker import openai_circuit_breaker, vector_store_circuit_breaker
 from app.services.agent_service import agent_service
 from app.services.vector_store import get_vector_store
 # from app.services.pattern_manager import pattern_manager  # REMOVED: Pattern approval system eliminated
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from app.config import settings
 import time
 from datetime import datetime

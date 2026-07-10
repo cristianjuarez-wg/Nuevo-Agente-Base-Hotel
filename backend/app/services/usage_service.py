@@ -24,8 +24,8 @@ from sqlalchemy.orm import Session
 from app.models.conversation_message import ConversationMessage
 from app.models.conversation import Conversation
 from app.models.agent_budget import AgentBudgetConfig
-from app.core.token_pricing import cost_usd_from_total
-from app.core.logging_config import get_logger
+from app.core.llm.token_pricing import cost_usd_from_total
+from app.core.observability.logging_config import get_logger
 from app.utils.timezone_utils import ARGENTINA_TZ
 
 logger = get_logger(__name__)

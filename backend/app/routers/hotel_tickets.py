@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.hotel import HotelTicket, TICKET_OPEN_STATES, TICKET_RESOLVED_STATES
 from app.models.staff import StaffMember
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/hotel-tickets", tags=["HotelTickets"])

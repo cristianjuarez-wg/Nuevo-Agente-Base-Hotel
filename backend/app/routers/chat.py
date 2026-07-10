@@ -15,8 +15,8 @@ from app.services.agent_service import agent_service
 from app.services.rag_service import rag_service
 from app.services.metrics_service import metrics_service
 from app.core.agent_profile import profile_manager
-from app.core.logging_config import get_logger
-from app.core.rate_limit import limiter, CHAT_RATE_LIMIT
+from app.core.observability.logging_config import get_logger
+from app.core.security.rate_limit import limiter, CHAT_RATE_LIMIT
 import asyncio
 import time
 from datetime import datetime
@@ -784,7 +784,7 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         # tools+args+resultados → respuesta → cards). Para detectar errores de lógica
         # revisando las charlas turno a turno. Nunca interrumpe la respuesta.
         try:
-            from app.core.audit_log import log_turn
+            from app.core.observability.audit_log import log_turn
             log_turn({
                 "session_id": chat_request.session_id,
                 "language": chat_request.language,

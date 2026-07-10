@@ -21,7 +21,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.agent import Agent
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

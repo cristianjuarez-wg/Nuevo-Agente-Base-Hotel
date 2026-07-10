@@ -9,7 +9,7 @@ from app.utils.timezone_utils import now_business
 from app.models.metrics_snapshot import MetricsSnapshot
 from app.models.conversation import Conversation
 from app.models.lead import Lead
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 from typing import Dict, List, Optional
 from collections import Counter
 

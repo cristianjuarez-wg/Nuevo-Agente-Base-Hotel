@@ -24,9 +24,9 @@ from agents import (
 from app.config import settings
 from app.core.agent_profile import profile_manager
 from app.utils.timezone_utils import now_business
-from app.core.logging_config import get_logger
-from app.core.openai_client import get_async_openai
-from app.core.sdk_usage import extract_usage
+from app.core.observability.logging_config import get_logger
+from app.core.llm.openai_client import get_async_openai
+from app.core.llm.sdk_usage import extract_usage
 from app.services import operations_service as ops
 from app.models.staff import StaffMember
 from app.prompts.staff_tool_prompts import STAFF_AGENT_SYSTEM

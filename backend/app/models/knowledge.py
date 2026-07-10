@@ -23,7 +23,7 @@ from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, Boolean, t
 from datetime import datetime
 
 from app.models.database import Base, engine
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 

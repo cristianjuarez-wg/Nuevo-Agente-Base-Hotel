@@ -3,10 +3,10 @@ Servicio de análisis inteligente de escalación de tickets
 Usa GPT para determinar si un problema requiere intervención humana
 SIN hardcodear casos específicos
 """
-from app.core.openai_client import get_async_openai
+from app.core.llm.openai_client import get_async_openai
 from typing import Dict, Optional
 from app.config import settings
-from app.core.logging_config import get_logger
+from app.core.observability.logging_config import get_logger
 import json
 import time
 

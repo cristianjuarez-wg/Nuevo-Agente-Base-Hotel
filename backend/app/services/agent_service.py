@@ -1,4 +1,4 @@
-from app.core.openai_client import get_async_openai
+from app.core.llm.openai_client import get_async_openai
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.config import settings
@@ -7,9 +7,9 @@ from app.services.rag_service import rag_service
 from app.services.lead_service import lead_service
 from app.services.conversation_state_manager import conversation_state_manager
 from app.core.agent_profile import profile_manager
-from app.core.circuit_breaker import openai_circuit_breaker
-from app.core.logging_config import get_logger
-from app.core.sdk_usage import usage_from_completion
+from app.core.llm.circuit_breaker import openai_circuit_breaker
+from app.core.observability.logging_config import get_logger
+from app.core.llm.sdk_usage import usage_from_completion
 from app.services import usage_service
 from app.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
 import asyncio
