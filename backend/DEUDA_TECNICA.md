@@ -37,15 +37,23 @@ El proyecto evolucionó de turismo a hotel. Se retiró todo el código legacy de
 errores, smoke en vivo de la ruta casual OK. **Tablas NO dropeadas** (DB de producción
 Render): quedan huérfanas hasta la Fase 2 (Alembic), donde se documenta su drop opcional.
 
-## Pendiente — migraciones formales (Alembic)
-Hoy el esquema evoluciona con `run_light_migrations()` (`ensure_column` idempotente) en
-`models/database.py`. Funciona en SQLite y PostgreSQL, es idempotente y corre en el startup
-y en los seeds. **Limitación:** sin versionado ni rollback; agrega columnas pero no maneja
-cambios complejos (renombrar, cambiar tipos, mover datos).
+## Alembic — PREPARADO en código (Fase 2.4), falta el paso de producción
+Setup LISTO: `alembic/` + `alembic.ini` + revisión `0001_baseline` (crea el esquema completo
+desde `Base.metadata`, verificado en SQLite limpia → 36 tablas). `env.py` lee la URL de
+`settings.DATABASE_URL` y registra todos los modelos. Ver **RUNBOOK_ALEMBIC.md**.
 
-**Por qué no se migra ahora:** introducir Alembic sobre una base **con datos en producción
-(Render)** requiere generar un baseline que matchee el esquema actual exacto y validar cada
-migración con backup — es delicado y arriesgado para una demo que ya funciona.
+**Falta (toca producción, se hace a mano con backup):** correr `alembic stamp 0001_baseline`
+sobre la DB de Render para marcar el baseline como aplicado sin recrear tablas. El runbook
+tiene el procedimiento exacto (backup con pg_dump → stamp → verificar). No se automatizó a
+propósito: es el único paso que toca datos reales.
+
+**A futuro:** toda columna/tabla nueva = revisión Alembic (`ensure_column` queda solo para
+tests/dev). Activar `alembic upgrade head` en `start.sh` cuando se valide en staging.
+
+### (histórico) Por qué no se había migrado antes
+Hoy el esquema evoluciona con `run_light_migrations()` (`ensure_column` idempotente).
+Limitación: sin versionado ni rollback. Introducir Alembic sobre la DB de producción requiere
+baseline + backup — delicado, por eso se preparó todo salvo el stamp final.
 
 **Plan cuando se haga:** (1) `alembic init`, configurar `env.py` con el `Base.metadata` y la
 `DATABASE_URL`; (2) `alembic revision --autogenerate` para el baseline y marcarlo como
