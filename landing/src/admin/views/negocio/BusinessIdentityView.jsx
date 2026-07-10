@@ -120,6 +120,7 @@ function EditProfileModal({ profile, onClose, onSave }) {
     brand_line: profile.brand_line || '',
     agent_display_name: profile.agent_display_name || '',
     role_descriptor: profile.role_descriptor || '',
+    restaurant_name: profile.restaurant_name || '',
     city: profile.city || '',
     region_line: profile.region_line || '',
     timezone: profile.timezone || '',
@@ -176,6 +177,10 @@ function EditProfileModal({ profile, onClose, onSave }) {
           <div>
             <label className={labelCls}>Rol del agente</label>
             <input value={f.role_descriptor} onChange={(e) => set('role_descriptor', e.target.value)} className={inputCls} placeholder="concierge, asistente…" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Nombre del restaurante</label>
+            <input value={f.restaurant_name} onChange={(e) => set('restaurant_name', e.target.value)} className={inputCls} placeholder="ej. Plaza — Hampton's Kitchen House" />
           </div>
           <div>
             <label className={labelCls}>Ciudad</label>

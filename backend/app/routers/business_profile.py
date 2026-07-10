@@ -26,6 +26,7 @@ class BusinessProfileUpdate(BaseModel):
     vertical: Optional[str] = None
     agent_display_name: Optional[str] = None
     role_descriptor: Optional[str] = None
+    restaurant_name: Optional[str] = None
     timezone: Optional[str] = None
     locale: Optional[str] = None
     language: Optional[str] = None
@@ -62,6 +63,7 @@ async def get_public_business_profile(db: Session = Depends(get_db)):
         "business_name": p.get("business_name"),
         "brand_line": p.get("brand_line"),
         "agent_display_name": p.get("agent_display_name"),
+        "restaurant_name": p.get("restaurant_name"),
         "city": p.get("city"),
         "region_line": p.get("region_line"),
         "language": p.get("language"),

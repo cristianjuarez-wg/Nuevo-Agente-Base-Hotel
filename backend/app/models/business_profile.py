@@ -29,6 +29,8 @@ class BusinessProfile(Base):
     agent_display_name = Column(String, nullable=False, default="Aura")
     # Descriptor del rol del agente en la identidad ("concierge", "asistente", etc.).
     role_descriptor = Column(String, nullable=False, default="concierge")
+    # Nombre del restaurante del negocio (para no hardcodear "Hampton's Kitchen House"). F3.3.
+    restaurant_name = Column(String, nullable=True, default="Plaza — Hampton's Kitchen House")
 
     # ── Localización ─────────────────────────────────────────────────────────
     timezone = Column(String, nullable=False, default="America/Argentina/Buenos_Aires")
@@ -62,6 +64,7 @@ class BusinessProfile(Base):
             "vertical": self.vertical,
             "agent_display_name": self.agent_display_name,
             "role_descriptor": self.role_descriptor,
+            "restaurant_name": self.restaurant_name,
             "timezone": self.timezone,
             "locale": self.locale,
             "language": self.language,
@@ -93,5 +96,7 @@ try:
                 _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN contact_phone VARCHAR"))
             if "contact_email" not in cols:
                 _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN contact_email VARCHAR"))
+            if "restaurant_name" not in cols:
+                _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN restaurant_name VARCHAR"))
 except Exception:  # noqa: BLE001 — best-effort; en Postgres/prod lo maneja Alembic
     pass

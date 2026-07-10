@@ -30,6 +30,7 @@ export function useBusinessProfile() {
           city: d.city ?? p.city,
           regionLine: d.region_line ?? p.regionLine,
           agentName: d.agent_display_name ?? p.agentName,
+          restaurant_name: d.restaurant_name ?? p.restaurant_name,
           language: d.language ?? p.language,
           primaryCurrency: d.primary_currency ?? p.primaryCurrency,
           secondaryCurrency: d.secondary_currency ?? p.secondaryCurrency,

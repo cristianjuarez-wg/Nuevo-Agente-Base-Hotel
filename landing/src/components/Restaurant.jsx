@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { UtensilsCrossed, Clock, ArrowRight, Leaf, WheatOff } from 'lucide-react'
 import { listMenuPublic } from '../services/api'
 import { formatUSD } from '../lib/format'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 import Reveal, { RevealGroup, RevealItem } from './motion/Reveal'
 
 const HERO = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1600&q=80'
@@ -33,6 +34,11 @@ function Tag({ tag }) {
 export default function Restaurant() {
   const [menu, setMenu] = useState([])
   const [cat, setCat] = useState('tapas')
+  const HOTEL = useBusinessProfile()
+  // Nombre del restaurante desde el perfil del negocio (F3.3). Si trae un "—", lo partimos en
+  // dos líneas (título · subtítulo) como el diseño original; si no, va en una sola línea.
+  const restaurantName = HOTEL.restaurant_name || "Plaza — Hampton's Kitchen House"
+  const [rName1, rName2] = restaurantName.split(/\s*—\s*/, 2)
 
   useEffect(() => {
     listMenuPublic().then(setMenu).catch(() => setMenu([]))
@@ -53,9 +59,11 @@ export default function Restaurant() {
             </div>
             <div>
               <p className="eyebrow mb-3">Gastronomía</p>
-              {/* F3: copy de instancia — reemplazar por cliente (nombre del restaurante + geografía específica) */}
+              {/* Nombre del restaurante desde el perfil del negocio (F3.3). */}
               <h2 className="font-display text-4xl font-600 leading-tight text-ink md:text-5xl">
-                PLAZA<br /><span className="italic text-timber-600">Hampton's Kitchen House</span>
+                {rName2
+                  ? (<>{rName1}<br /><span className="italic text-timber-600">{rName2}</span></>)
+                  : rName1}
               </h2>
               <p className="mt-5 text-slatey">
                 Cocina patagónica de autor con ingredientes frescos de la región: trucha de Alicurá,

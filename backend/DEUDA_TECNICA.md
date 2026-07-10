@@ -190,6 +190,21 @@ comparaciones cruzadas. Se unificó **todo timestamp de datos a `utcnow_naive()`
 > filtran columnas ahora en UTC; el borde de medianoche puede desplazarse hasta 3h. Es semántica de
 > reporte, no un cruce de convenciones; se afina si el cliente reporta discrepancias de borde.
 
+## Flake de aislamiento en la suite (infraestructura de tests, preexistente)
+`tests/test_leads_include_unnamed.py` falla de forma intermitente en la suite completa con
+`sqlite3.OperationalError: no such table: leads` (2 de cada 3 corridas, según el orden de
+colección de pytest). **Causa raíz** (verificada, NO es de producto): hay DOS engines SQLite
+`:memory:` en los tests. El `conftest.py` crea uno con `StaticPool` (una sola conexión
+compartida) para los fixtures `db`/`client`; pero el engine de producción
+(`app/models/database.py`, que es el que usa `SessionLocal` directamente) apunta también a
+`:memory:` **sin StaticPool** (`_engine_kwargs` vacío para SQLite). Sin StaticPool cada conexión
+de ese engine abre un `:memory:` vacío nuevo: el test siembra leads con una `SessionLocal()` y
+`get_active_leads()` abre otra conexión → base vacía → falla. Los tests que usan el fixture
+`client` (engine del conftest con StaticPool) NO sufren esto. **Fix cuando se encare** (fuera del
+alcance del rediseño de backoffice): darle `StaticPool` al engine de prod cuando la URL es
+`:memory:`, o que los tests que usan `app.models.database.SessionLocal` pasen por el engine del
+conftest. Riesgo medio (toca el arranque de la BD); requiere correr toda la suite varias veces.
+
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
 - Cobertura de tests en hot-path (orquestadores, reservation_service).
