@@ -51,6 +51,7 @@ async def lifespan(app: FastAPI):
         from app.models import skill as _skill_model  # noqa: F401
         from app.models import centro_config as _centro_config_model  # noqa: F401
         from app.models import business_profile as _business_profile_model  # noqa: F401
+        from app.models import prompt_config_version as _pcv_model  # noqa: F401
         from app.models.database import SessionLocal
         from app.services.agent_directory import seed_agents
         from app.services.skill_service import seed_skills
@@ -246,6 +247,8 @@ app.include_router(checkin.router)
 app.include_router(agents.router)
 app.include_router(business_profile.router)
 app.include_router(auth.router)
+from app.routers import prompt_config_versions  # noqa: E402
+app.include_router(prompt_config_versions.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"

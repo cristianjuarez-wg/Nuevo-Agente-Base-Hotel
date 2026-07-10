@@ -429,10 +429,22 @@ def _print_report(reports: list) -> int:
     return 1 if failed_scenarios else 0
 
 
-async def _main_async(selected):
-    scen = [s for s in SCENARIOS if (not selected or s["id"] in selected)]
+# Subconjunto SMOKE para CI: barato (~8 escenarios), cubre los flujos núcleo del vertical
+# (disponibilidad, reserva, honestidad/anti-invención, pago, seguridad). Se corre en cada PR
+# que toque prompts/composers/specs. Los ids son de core_scenarios (genéricos, no del Hampton).
+_SMOKE_IDS = {"S2", "S11", "S12", "S30", "S40", "S43", "S45", "S47"}
+
+
+async def _main_async(selected, smoke=False, tier=None):
+    scen = list(SCENARIOS)
+    if smoke:
+        scen = [s for s in scen if s["id"] in _SMOKE_IDS]
+    if tier:
+        scen = [s for s in scen if s.get("tier", "core") == tier]
+    if selected:
+        scen = [s for s in scen if s["id"] in selected]
     if not scen:
-        print(f"No hay escenarios que coincidan con {selected}")
+        print(f"No hay escenarios que coincidan (selected={selected}, smoke={smoke}, tier={tier})")
         return 2
     print(f"Corriendo {len(scen)} escenario(s) contra el agente real…")
     t0 = time.time()
@@ -454,15 +466,21 @@ def main():
     ap.add_argument("--scenario", "-s", action="append",
                     help="ID(s) de escenario a correr (ej. -s S5 -s S6). Por defecto, todos.")
     ap.add_argument("--list", action="store_true", help="Lista los escenarios y sale.")
+    ap.add_argument("--smoke", action="store_true",
+                    help="Corre solo el subconjunto SMOKE (barato, para CI).")
+    ap.add_argument("--tier", choices=["core", "instance"], default=None,
+                    help="Filtra por tier: core (genéricos del vertical) o instance (del cliente).")
     args = ap.parse_args()
 
     if args.list:
         for s in SCENARIOS:
-            print(f"  {s['id']:4} {s['name']}  ({len(s['turns'])} turnos)")
+            tier = s.get("tier", "core")
+            smoke = " [smoke]" if s["id"] in _SMOKE_IDS else ""
+            print(f"  {s['id']:4} [{tier:8}]{smoke} {s['name']}  ({len(s['turns'])} turnos)")
         return
 
     selected = set(args.scenario) if args.scenario else None
-    rc = asyncio.run(_main_async(selected))
+    rc = asyncio.run(_main_async(selected, smoke=args.smoke, tier=args.tier))
     sys.exit(rc)
 
 

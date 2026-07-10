@@ -22,6 +22,14 @@ Tools del hotel: consultar_disponibilidad, crear_reserva, consultar_reserva, inf
   armar_pedido_carta, reservar_mesa, comprar_voucher.
 
 Cada escenario puede declarar `session_prefix` (ej. "wa_549..." para simular WhatsApp).
+
+Partición (Fase 3.3):
+  - `tier`: "core" (default, genérico del vertical hotel: disponibilidad, reserva, honestidad,
+    seguridad, pago) | "instance" (depende de HECHOS del cliente actual, ej. "no hay sauna/spa"
+    del Hampton, promo Stay & Park). Un cliente nuevo revisa/reescribe los `instance`, no los
+    `core`. Filtrable con `run_evals --tier core|instance`.
+  - Subconjunto SMOKE (barato, para CI): definido por _SMOKE_IDS en run_evals; corre con
+    `run_evals --smoke`. Son escenarios core que cubren los flujos núcleo.
 """
 
 from datetime import date, timedelta
@@ -239,6 +247,7 @@ SCENARIOS = [
     },
     {
         "id": "S19",
+        "tier": "instance",  # depende de hechos del Hampton (sauna/spa, promo Stay&Park)
         "name": "Post-venta: servicios sin inventar (no sauna/spa)",
         "tool_called_any": True,  # con que llame UNA tool de info (consultar_info_hotel o info_hotel)
         "turns": [
@@ -253,6 +262,7 @@ SCENARIOS = [
     },
     {
         "id": "S20",
+        "tier": "instance",  # depende de hechos del Hampton (sauna/spa, promo Stay&Park)
         "name": "Post-venta: pedir un servicio inexistente (sauna) — honestidad sin contradicción",
         "tool_called_any": True,  # el T1 es setup: vale consultar disp o reservar directo
         "turns": [
@@ -422,6 +432,7 @@ SCENARIOS = [
     },
     {
         "id": "S33",
+        "tier": "instance",  # depende de hechos del Hampton (sauna/spa, promo Stay&Park)
         "name": "Post-venta: '¿tengo estacionamiento incluido?' CON promo Stay & Park → confirma sin 'verificá al llegar'",
         # Caso Gabriel: el huésped pregunta si su reserva incluye estacionamiento. Si la reserva
         # tiene la promo "Stay & Park", Aura DEBE confirmarlo mirando SU reserva — nunca el
@@ -443,6 +454,7 @@ SCENARIOS = [
     },
     {
         "id": "S34",
+        "tier": "instance",  # depende de hechos del Hampton (sauna/spa, promo Stay&Park)
         "name": "Post-venta: '¿tengo estacionamiento incluido?' SIN promo → dice claro que es con cargo",
         # Espejo de S33: reserva sin promo de parking. Aura NO debe afirmar que está incluido;
         # debe decir que es un servicio con cargo (y puede ofrecer sumarlo), sin el condicional ambiguo.
