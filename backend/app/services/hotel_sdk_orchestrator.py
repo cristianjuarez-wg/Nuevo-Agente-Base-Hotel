@@ -484,7 +484,8 @@ class HotelSDKOrchestrator:
                             tono_block: str = DEFAULT_TONO_BLOCK,
                             politica_block: str = DEFAULT_POLITICA_BLOCK,
                             training_block: str = "",
-                            team_block: str = "") -> str:
+                            team_block: str = "",
+                            profile: Optional[dict] = None) -> str:
         now = now_argentina()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
@@ -493,13 +494,22 @@ class HotelSDKOrchestrator:
         hora = now.strftime("%H:%M")
 
         from app.core.hotel_location import HOTEL_LOCATION_BLOCK
+        from app.prompts.identity_blocks import build_identity_block, build_dialect_block
+
+        prof = profile or {}
+        # El {dialect_block} vive DENTRO del tono default; se resuelve acá (format no es
+        # recursivo). Si el cliente SUSTITUYÓ el tono (training), su texto no trae el
+        # placeholder → format lo ignora sin romper.
+        dialect = build_dialect_block(prof)
+        tono_resuelto = tono_block.replace("{dialect_block}", dialect)
 
         return TOOL_AGENT_SYSTEM.format(
-            agent_name=profile_manager.get_agent_name(),
+            agent_name=prof.get("agent_display_name") or profile_manager.get_agent_name(),
+            identity_block=build_identity_block(prof),
             fecha_actual=fecha,
             hora_actual=hora,
             flow_block=flow_block,
-            tono_block=tono_block,
+            tono_block=tono_resuelto,
             politica_block=politica_block,
             training_block=training_block,
             lead_block=lead_block,
@@ -700,11 +710,15 @@ class HotelSDKOrchestrator:
         # Roster del equipo real (Fase 0.1): acompaña la regla anti-invención de
         # personas — el agente solo reconoce por nombre a quien figura acá.
         from app.prompts.base_blocks import build_team_roster_block
+        # Identidad del negocio (Fase 1): compone el encabezado y el dialecto desde el perfil.
+        from app.services import business_profile_service
+        profile = business_profile_service.get_profile(db)
         instructions = self._build_instructions(
             lead_block, language, flow_block=flow_block_for(variant),
             tono_block=blocks["tono_block"], politica_block=blocks["politica_block"],
             training_block=blocks["training_block"],
             team_block=build_team_roster_block(db),
+            profile=profile,
         )
         agent = Agent[HotelContext](
             name=profile_manager.get_agent_name(),
