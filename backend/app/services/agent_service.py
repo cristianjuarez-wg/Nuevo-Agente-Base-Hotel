@@ -5,13 +5,11 @@ from app.config import settings
 from app.utils.timezone_utils import now_business
 from app.core.rag.rag_service import rag_service
 from app.services.lead_service import lead_service
-from app.services.conversation_state_manager import conversation_state_manager
 from app.core.profile.agent_profile import profile_manager
 from app.core.llm.circuit_breaker import openai_circuit_breaker
 from app.core.observability.logging_config import get_logger
-from app.core.llm.sdk_usage import usage_from_completion
 from app.services import usage_service
-from app.domains.hotel.prompts.generation_prompts import CASUAL_RESPONSE_SYSTEM
+from app.domains.hotel.services import casual_agent
 import asyncio
 import time
 import uuid
@@ -430,79 +428,19 @@ class AgentService:
         
         return "\n".join(formatted)
     
+    # Agente casual: la lógica vive en domains/hotel/services/casual_agent.py (deuda 2.3).
+    # Estos métodos quedan como delegaciones finas para no romper a los llamadores internos.
     def _build_casual_guest_block(self, db, session_id: str) -> str:
-        """Perfil del huésped conocido para personalizar el saludo casual.
-
-        Resuelve el Contact por el teléfono del session_id de WhatsApp o por el Lead
-        de la sesión, y devuelve el bloque de perfil si hay historial (≥1 reserva o
-        preferencias). Vacío si es un huésped nuevo/desconocido. Nunca rompe el turno.
-        """
-        try:
-            from app.services.contact_service import contact_service
-            from app.domains.hotel.prompts.context_blocks import build_guest_profile_block
-            from app.models.contact import Contact
-
-            contact_id = None
-            if session_id.startswith("wa_"):
-                phone = "+" + session_id[3:]
-                c = db.query(Contact).filter(Contact.phone_number == phone).first()
-                contact_id = c.id if c else None
-            if not contact_id:
-                from app.models.lead import Lead
-                lead = db.query(Lead).filter(Lead.session_id == session_id).first()
-                contact_id = lead.contact_id if lead else None
-            if not contact_id:
-                return ""
-
-            profile = contact_service.get_guest_profile(contact_id, db)
-            if not profile or (not profile.get("stays_count") and not profile.get("preferences")):
-                return ""
-            return build_guest_profile_block(profile)
-        except Exception as e:  # noqa: BLE001 — la personalización nunca debe romper el saludo
-            logger.warning("No se pudo armar el guest block casual", error=str(e))
-            return ""
+        return casual_agent.build_casual_guest_block(db, session_id)
 
     def _build_team_roster_block(self, db) -> str:
-        """Roster del EQUIPO real para el prompt casual.
-
-        Fase 0.1: la construcción vive en base_blocks (única fuente, compartida con
-        pre-venta y post-venta para la regla anti-invención de personas). Este método
-        queda como delegación para no romper a los llamadores existentes.
-        """
-        from app.domains.hotel.prompts.base_blocks import build_team_roster_block
-        return build_team_roster_block(db)
+        return casual_agent.build_team_roster_block(db)
 
     async def _should_capture_lead_in_casual(self, db, message: str, session_id: str, history) -> bool:
-        """True si en un turno casual (típicamente despedida) conviene captar el contacto.
-
-        Corre el mismo análisis de lead que pre-venta; devuelve la decisión de captar
-        (incluye el "momento de cierre" por despedida). False si el lead ya tiene contacto
-        o si no aplica. Nunca rompe el turno.
-        """
-        try:
-            from app.services.lead_service import lead_service
-
-            lead = lead_service._get_or_create_lead(db, session_id)
-            if lead.is_complete_lead():
-                return False
-            _, should_request = await lead_service.process_message_for_lead(
-                db, message, session_id, history, "", {}
-            )
-            return should_request
-        except Exception as e:  # noqa: BLE001
-            logger.warning("No se pudo evaluar captación de lead en casual", error=str(e))
-            return False
+        return await casual_agent.should_capture_lead_in_casual(db, message, session_id, history)
 
     def _availability_shown_in_session(self, db, session_id: str) -> bool:
-        """True si en esta sesión la pre-venta ya mostró disponibilidad real (flag en
-        Conversation.extra_metadata). Permite al cierre casual ir directo a captar el
-        contacto en vez de re-ofrecer disponibilidad ya vista. Best-effort."""
-        try:
-            from app.models.conversation import Conversation
-            conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
-            return bool(conv and (conv.extra_metadata or {}).get("availability_shown"))
-        except Exception:  # noqa: BLE001
-            return False
+        return casual_agent.availability_shown_in_session(db, session_id)
 
     async def _generate_casual_response(self, message: str, history: List[Dict],
                                         language: str = "es", guest_block: str = "",
@@ -511,89 +449,11 @@ class AgentService:
                                         is_whatsapp: bool = False,
                                         team_block: str = "",
                                         profile: Optional[dict] = None) -> tuple[str, Dict]:
-        """
-        Genera respuesta natural para conversación casual
+        return await casual_agent.generate_casual_response(
+            self.client, message, history, language, guest_block, capture_lead,
+            availability_shown, is_whatsapp, team_block, profile,
+        )
 
-        Args:
-            message: Mensaje del usuario
-            history: Historial de conversación
-            language: idioma de respuesta (es | en | pt | fr)
-            guest_block: contexto del huésped conocido (perfil 360°) para personalizar
-                el saludo cuando es un huésped recurrente/alojado. Vacío si es nuevo.
-
-        Returns:
-            (respuesta amigable, usage) — usage con los tokens consumidos.
-        """
-        usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": settings.OPENAI_MODEL}
-        try:
-            # Formatear historial
-            history_context = ""
-            if history:
-                recent = history[-4:]
-                history_context = "\n".join([
-                    f"{'Usuario' if msg['role'] == 'user' else 'Asistente'}: {msg['content'][:200]}"
-                    for msg in recent
-                ])
-
-            history_section = f"Historial de la conversación:\n{history_context}" if history_context else ""
-            from app.domains.hotel.prompts.generation_prompts import (
-                CASUAL_LEAD_CAPTURE_HINT, CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY,
-                NATURALIDAD_BLOCK,
-            )
-            # Si hay que captar y ya se mostró disponibilidad, vamos directo al contacto
-            # (sin re-ofrecer disponibilidad ya rechazada). Si no, el cierre estándar.
-            # En WhatsApp usamos siempre el hint AFTER_AVAILABILITY: ya tenemos el teléfono
-            # (viene en el session_id), así que pedimos SOLO el nombre y confirmamos que le
-            # escribimos a este mismo número — sin re-pedir un dato que ya conocemos.
-            if capture_lead:
-                if is_whatsapp or availability_shown:
-                    lead_hint = CASUAL_LEAD_CAPTURE_HINT_AFTER_AVAILABILITY
-                else:
-                    lead_hint = CASUAL_LEAD_CAPTURE_HINT
-            else:
-                lead_hint = ""
-            from app.domains.hotel.prompts.identity_blocks import build_casual_identity_block
-            prof = profile or {}
-            prompt = CASUAL_RESPONSE_SYSTEM.format(
-                identity_block=build_casual_identity_block(prof),
-                naturalidad_block=NATURALIDAD_BLOCK,
-                team_block=team_block,
-                history_section=history_section,
-                message=message,
-                lead_capture_hint=lead_hint,
-            )
-            # Si conocemos al huésped (recurrente/alojado), anteponemos su perfil para que
-            # el saludo lo reconozca por su nombre en vez de tratarlo como desconocido.
-            if guest_block:
-                prompt = guest_block + "\n" + prompt
-            from app.domains.hotel.prompts.context_blocks import build_language_block
-            lang_block = build_language_block(language)
-            if lang_block:
-                prompt = prompt + "\n" + lang_block
-
-            response = await self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.8,  # Más creativo para conversación casual
-                max_tokens=220  # margen para una respuesta cálida sin cortarla a mitad
-            )
-
-            casual_response = response.choices[0].message.content.strip()
-            usage = usage_from_completion(response, model=settings.OPENAI_MODEL)
-
-            logger.info("Casual response generated",
-                       message=message[:50],
-                       response_length=len(casual_response))
-
-            return casual_response, usage
-
-        except Exception as e:
-            logger.error("Error generating casual response",
-                        error=str(e),
-                        message=message[:50])
-            # Fallback genérico
-            return "¡Hola! 😊 ¿En qué puedo ayudarte con tu estadía en el Hampton Bariloche?", usage
-    
     def _validate_input(self, message: str, session_id: str) -> tuple[bool, str]:
         """Valida entrada del usuario"""
         if not message or not message.strip():
@@ -708,16 +568,8 @@ class AgentService:
 
             # 2. Obtener historial
             history = self._get_or_create_history(session_id, db=db)
-            
-            # 🆕 2.3. CHEQUEAR ESTADO CONVERSACIONAL (captura de datos multi-paso)
-            state = conversation_state_manager.get_state(session_id)
-            if state:
-                logger.info("Active conversation state detected",
-                           session_id=session_id,
-                           step=state.get("step"))
-                return await self._handle_conversation_state(db, message, session_id, state, history)
-            
-            # 🆕 2.35. VALIDACIÓN DE RESOLUCIÓN (Fase 4, "empleado digital"): si hay un ticket
+
+            # 2.35. VALIDACIÓN DE RESOLUCIÓN (Fase 4, "empleado digital"): si hay un ticket
             # operativo PRE-RESUELTO para esta sesión, el huésped está respondiendo si quedó
             # bien. Lo interceptamos acá (determinístico, 0 LLM) para cerrar el loop sin pasar
             # por el orquestador. Si el mensaje no es un sí/no claro, dejamos seguir el flujo.
@@ -1075,127 +927,6 @@ class AgentService:
         except Exception as e:
             logger.error("Error getting service stats", error=str(e))
             return {"error": str(e)}
-    
-    async def _handle_conversation_state(
-        self,
-        db: Session,
-        message: str,
-        session_id: str,
-        state: Dict,
-        history: List[Dict]
-    ) -> Dict:
-        """
-        Maneja flujos conversacionales multi-paso (captura de datos)
-        """
-        try:
-            step = state.get("step")
-            event_info = state.get("event_info", {})
-            contact_data = state.get("contact_data", {})
-            
-            logger.info("Handling conversation state",
-                       session_id=session_id,
-                       step=step)
-            
-            # Paso 0: Elección de opción (notificación o alternativas)
-            if step == "awaiting_event_choice":
-                message_lower = message.lower().strip()
-                
-                # Opción 1: Notificación
-                if any(word in message_lower for word in ["1", "notif", "avisa", "aviso", "primera"]):
-                    conversation_state_manager.update_state(session_id, {
-                        "step": "awaiting_name",
-                        "event_info": event_info,
-                        "contact_data": contact_data
-                    })
-                    
-                    response_text = "¡Perfecto! Te notificaré cuando tengamos paquetes disponibles.\n\n¿Cuál es tu nombre?"
-                    
-                # Opción 2: Destinos similares
-                elif any(word in message_lower for word in ["2", "destin", "alternativ", "similar", "segunda", "opciones"]):
-                    # Limpiar estado
-                    conversation_state_manager.clear_state(session_id)
-                    
-                    # Usar lógica actual de alternativas por región
-                    countries = event_info.get("related_countries", [])
-                    geo_analysis = {
-                        "countries": countries,
-                        "continent": None,
-                        "suggested_countries": countries
-                    }
-                    
-                    no_context_result = rag_service.format_no_context_response(geo_analysis)
-                    response_text = no_context_result if isinstance(no_context_result, str) else no_context_result.get("response", "")
-                    
-                    logger.info("User chose alternative destinations",
-                               session_id=session_id,
-                               countries=countries[:3])
-                else:
-                    # No entendió, preguntar de nuevo
-                    response_text = "Por favor, elige una opción:\n\n1️⃣ Notificación\n2️⃣ Destinos similares\n\nResponde con **1** o **2**."
-            
-            # Paso 1: Capturar nombre
-            elif step == "awaiting_name":
-                contact_data["name"] = message.strip()
-                conversation_state_manager.update_state(session_id, {
-                    "step": "awaiting_email",
-                    "contact_data": contact_data
-                })
-                
-                response_text = "Perfecto. ¿Cuál es tu email?"
-                
-            # Paso 2: Capturar email
-            elif step == "awaiting_email":
-                contact_data["email"] = message.strip()
-                conversation_state_manager.update_state(session_id, {
-                    "step": "awaiting_phone",
-                    "contact_data": contact_data
-                })
-                
-                response_text = "Excelente. ¿Y tu número de teléfono?"
-                
-            # Paso 3: Capturar teléfono y crear lead
-            elif step == "awaiting_phone":
-                contact_data["phone"] = message.strip()
-                
-                # Crear lead con evento
-                lead = await lead_service.create_event_lead(
-                    db, session_id, event_info, contact_data
-                )
-                
-                # Limpiar estado
-                conversation_state_manager.clear_state(session_id)
-                
-                event_name = event_info.get("event_name", "este evento")
-                response_text = f"¡Perfecto {contact_data['name']}! Te contactaremos cuando tengamos paquetes de {event_name} disponibles.\n\n¿Hay algo más en lo que pueda ayudarte?"
-                
-                logger.info("Event lead created successfully",
-                           session_id=session_id,
-                           lead_id=lead.id,
-                           event_name=event_info.get("event_name"))
-            else:
-                # Estado desconocido, limpiar
-                conversation_state_manager.clear_state(session_id)
-                response_text = "Disculpa, hubo un error. ¿En qué puedo ayudarte?"
-            
-            # Actualizar historial
-            history.append({"role": "user", "content": message})
-            history.append({"role": "assistant", "content": response_text})
-            self._update_session_metadata(session_id)
-            
-            return {
-                "response": response_text,
-                "has_context": False,
-                "capturing_lead": step != "awaiting_phone",
-                "lead_created": step == "awaiting_phone",
-                "session_info": self.get_session_info(session_id)
-            }
-            
-        except Exception as e:
-            logger.error("Error handling conversation state",
-                        session_id=session_id,
-                        error=str(e))
-            conversation_state_manager.clear_state(session_id)
-            raise
 
 
 # Instancia global del servicio del agente

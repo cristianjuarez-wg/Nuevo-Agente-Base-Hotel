@@ -103,6 +103,21 @@ Esto NO agrega ninguna frontera nueva (el check ya pasa) y toca decenas de impor
 con riesgo mecánico; se hace incrementalmente cuando convenga, no bloquea nada. Los models
 tienen create_all a nivel de módulo + FKs entre sí, así que moverlos requiere cuidado extra.
 
+## agent_service.py y el objetivo "<400 líneas" de Fase 2.3
+El plan (2.3) fijó como meta dejar `agent_service.py` en <400 líneas. Tras cerrar la deuda de
+Fase 2 quedó en **933**, y ESO es lo correcto, no un incumplimiento:
+- Se retiró el código muerto de turismo (`_handle_conversation_state`, captura de leads de
+  eventos, inalcanzable en el hotel): 1202 → 1071.
+- Se extrajo el agente casual a `domains/hotel/services/casual_agent.py`: 1071 → 933.
+- El **store de historial** (rehidratación/persistencia, ~190 líneas) NO se extrajo a propósito:
+  está acoplado a la API pública que consumen 3 módulos externos (`chat.py`, `agent_router`,
+  `conversations`) vía `agent_service.conversation_history` / `_save_message_to_db`. Extraerlo
+  sería alto riesgo por beneficio cosmético; se difiere hasta que haya otra razón para tocar
+  esos call-sites.
+- Lo que queda (`_chat_impl` ~300 líneas + interceptores + validación) es coordinación legítima.
+  El "<400" fue una estimación optimista pre-refactor. Meta real cumplida: agent_service es un
+  coordinador honesto, sin lógica de agente ni código muerto.
+
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
 - Cobertura de tests en hot-path (orquestadores, reservation_service).

@@ -1,0 +1,13 @@
+# Dependencias de DESARROLLO / TEST (Fase 2.6.3).
+# NO se instalan en el runtime de producción (Render usa solo requirements.txt).
+# Uso local:  pip install -r requirements.txt -r requirements-dev.txt
+#
+# Estas herramientas ya se usaban (la suite corre con pytest/pytest-asyncio) pero no estaban
+# declaradas en ningún archivo pineado. Acá quedan explícitas y reproducibles.
+
+-r requirements.txt
+
+pytest==9.0.3
+pytest-asyncio==1.4.0
+# pipdeptree: útil para auditar el árbol de dependencias en la poda (2.6). Descomentar si se usa.
+# pipdeptree==2.23.4
