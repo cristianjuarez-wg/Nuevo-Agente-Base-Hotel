@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, instagram, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin, agents
+from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, instagram, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin, agents, business_profile
 from app.config import settings
 from app.core.rate_limit import limiter
 from slowapi.errors import RateLimitExceeded
@@ -44,15 +44,20 @@ async def lifespan(app: FastAPI):
         from app.models import training_document as _training_doc_model  # noqa: F401
         from app.models import skill as _skill_model  # noqa: F401
         from app.models import centro_config as _centro_config_model  # noqa: F401
+        from app.models import business_profile as _business_profile_model  # noqa: F401
         from app.models.database import SessionLocal
         from app.services.agent_directory import seed_agents
         from app.services.skill_service import seed_skills
         from app.services.training_service import seed_training_defaults
+        from app.services import business_profile_service
         _seed_db = SessionLocal()
         try:
             seed_agents(_seed_db)
             seed_skills(_seed_db)
             seed_training_defaults(_seed_db)
+            # Identidad del negocio (Fase 1): siembra id=1 con los valores del Hampton
+            # si no existe. Paridad: el agente se comporta igual con estos defaults.
+            business_profile_service.ensure_seeded(_seed_db)
         finally:
             _seed_db.close()
 
@@ -223,6 +228,7 @@ app.include_router(instagram.router)
 app.include_router(conversations.router)
 app.include_router(checkin.router)
 app.include_router(agents.router)
+app.include_router(business_profile.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"
