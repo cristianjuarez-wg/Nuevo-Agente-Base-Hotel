@@ -1,10 +1,12 @@
 import { MapPin, Plane, Mountain, Leaf, Phone, Mail, Clock } from 'lucide-react'
-import { HOTEL, HIGHLIGHTS } from '../data/hotelInfo'
+import { HIGHLIGHTS } from '../data/hotelInfo'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 import Reveal, { RevealGroup, RevealItem } from './motion/Reveal'
 
 const ICONS = { MapPin, Plane, Mountain, Leaf }
 
 export default function Location() {
+  const HOTEL = useBusinessProfile()
   const mapsSrc = `https://www.google.com/maps?q=${encodeURIComponent(
     HOTEL.mapsQuery
   )}&output=embed`
@@ -15,9 +17,10 @@ export default function Location() {
         <Reveal className="mx-auto mb-16 max-w-2xl text-center">
           <p className="eyebrow">Ubicación</p>
           <h2 className="mt-4 font-display text-4xl font-500 text-ink sm:text-5xl">
-            En el corazón de Bariloche
+            En el corazón de {HOTEL.city}
           </h2>
           <div className="rule mt-6" />
+          {/* F3: copy de instancia — reemplazar por cliente (geografía específica) */}
           <p className="mt-6 text-base leading-relaxed text-slatey">
             A pasos del Centro Cívico y frente al Nahuel Huapi, el punto de partida ideal
             para descubrir la Patagonia.
@@ -28,7 +31,7 @@ export default function Location() {
           {/* Mapa */}
           <Reveal className="overflow-hidden rounded-2xl shadow-soft" y={32}>
             <iframe
-              title="Ubicación del Hampton by Hilton Bariloche"
+              title={`Ubicación de ${HOTEL.name}`}
               src={mapsSrc}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"

@@ -4,7 +4,7 @@ import Reveal from './motion/Reveal'
 const IMAGES = [
   {
     src: '/fotos/lobby.jpg',
-    alt: 'Lobby del Hampton by Hilton Bariloche con madera, piedra y diseño patagónico',
+    alt: 'Lobby del hotel con madera, piedra y diseño patagónico',
     span: 'sm:col-span-2 sm:row-span-2',
   },
   {

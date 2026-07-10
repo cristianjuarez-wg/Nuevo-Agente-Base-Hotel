@@ -95,6 +95,25 @@ de plantilla de qué documentos crear.
 
 ---
 
+## Paso 5.5 — Copys de marketing de la landing (marcados `F3`)
+
+La identidad (nombre, ciudad, tagline, contacto) de la landing sale del perfil vía el hook
+`useBusinessProfile()` — no hay que tocar código. PERO algunos **párrafos de marketing** con
+color local muy específico del cliente actual quedaron marcados con un comentario
+`{/* F3: copy de instancia */}` en el JSX. Para un cliente nuevo, revisar y reemplazar ese copy
+(es texto de marca, no un dato del perfil). Ubicaciones (`landing/src/`):
+
+- `components/Hero.jsx` — bajada del hero (geografía específica).
+- `components/About.jsx` — relato de marca.
+- `components/Location.jsx` — párrafo de ubicación/cómo llegar.
+- `components/Footer.jsx` — línea de cierre editorial.
+- `components/Restaurant.jsx` — nombre del restaurante + descripción de la cocina.
+
+Buscar todos con: `grep -rn "F3:" landing/src`. También reemplazar los **assets** por cliente
+(fotos en `public/fotos/`, logo, paleta si aplica) — ver F.3 del plan de productización.
+
+---
+
 ## Paso 6 — Verificar antes del go-live
 
 1. **Evals del cliente:** correr la suite (cuando exista el particionado core/instancia de la

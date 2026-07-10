@@ -53,13 +53,14 @@ export default function Restaurant() {
             </div>
             <div>
               <p className="eyebrow mb-3">Gastronomía</p>
+              {/* F3: copy de instancia — reemplazar por cliente (nombre del restaurante + geografía específica) */}
               <h2 className="font-display text-4xl font-600 leading-tight text-ink md:text-5xl">
                 PLAZA<br /><span className="italic text-timber-600">Hampton's Kitchen House</span>
               </h2>
               <p className="mt-5 text-slatey">
                 Cocina patagónica de autor con ingredientes frescos de la región: trucha de Alicurá,
                 ojo de bife, cervezas artesanales de la Patagonia y nuestros postres caseros. Un espacio
-                cálido para disfrutar en familia, con vista y la calidez de la HAMPTONALITY.
+                cálido para disfrutar en familia, con vista y la calidez de nuestra hospitalidad.
               </p>
               <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slatey">
                 <span className="inline-flex items-center gap-1.5"><Clock size={15} className="text-timber-500" /> Desayuno 7–11</span>

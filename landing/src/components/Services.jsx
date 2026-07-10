@@ -2,11 +2,13 @@ import {
   UtensilsCrossed, Coffee, Wine, Wifi, Car, Snowflake, PawPrint, Award,
 } from 'lucide-react'
 import { SERVICES } from '../data/hotelInfo'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 import Reveal, { RevealGroup, RevealItem } from './motion/Reveal'
 
 const ICONS = { UtensilsCrossed, Coffee, Wine, Wifi, Car, Snowflake, PawPrint, Award }
 
 export default function Services() {
+  const HOTEL = useBusinessProfile()
   return (
     <section id="servicios" className="section-pad bg-white">
       <div className="container-wide px-6 sm:px-10">
@@ -17,7 +19,7 @@ export default function Services() {
           </h2>
           <div className="rule mt-6" />
           <p className="mt-6 text-base leading-relaxed text-slatey">
-            Cada detalle del Hampton acompaña tu estadía, desde el desayuno hasta la última
+            Cada detalle de {HOTEL.name} acompaña tu estadía, desde el desayuno hasta la última
             copa frente al lago.
           </p>
         </Reveal>

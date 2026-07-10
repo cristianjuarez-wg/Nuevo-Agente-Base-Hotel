@@ -11,6 +11,7 @@ import MenuOrderCard from './chat/MenuOrderCard'
 import TableReservationCard from './chat/TableReservationCard'
 import ChatEffects from './chat/ChatEffects'
 import { LANGUAGES, getStrings, detectInitialLang, persistLang } from '../i18n/chat'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 
 // Convierte los tokens de un tema en un objeto de estilos CSS inline.
 // Solo sobreescribe los que vienen definidos en el tema.
@@ -124,7 +125,10 @@ export default function ChatWidget() {
   // aparte (se veía el texto cortado + el completo). Con id estable cada burbuja es un nodo fijo.
   const msgSeq = useRef(0)
   const sendingRef = useRef(false)   // candado SÍNCRONO anti doble-envío (busy es estado async)
-  const t = getStrings(lang)
+  // Identidad del negocio para interpolar {businessName}/{city} en los textos del widget (P2).
+  const profile = useBusinessProfile()
+  const i18nVars = { businessName: profile.name, city: profile.city }
+  const t = getStrings(lang, i18nVars)
 
   // Inyecta una respuesta HUMANA (asesor que tomó la conversación), recibida por WebSocket.
   // Deduplica por `key` (contenido) y no agrega si ese contenido ya está visible. Reutiliza el
@@ -158,7 +162,7 @@ export default function ChatWidget() {
         setStarters(useLang === 'es' ? (data.conversation_starters?.slice(0, 4) || []) : [])
       })
       .catch(() =>
-        setMessages([{ id: `m${++msgSeq.current}`, role: 'assistant', content: getStrings(useLang).greetingFallback }])
+        setMessages([{ id: `m${++msgSeq.current}`, role: 'assistant', content: getStrings(useLang, i18nVars).greetingFallback }])
       )
   }, [lang])
 

@@ -20,7 +20,7 @@ const STRINGS = {
     close: 'Cerrar chat',
     language: 'Idioma',
     errorReply: 'Disculpá, tuve un problema para responder. ¿Podés intentarlo de nuevo en un momento?',
-    greetingFallback: '¡Hola! Soy Aura, la concierge virtual del Hampton by Hilton Bariloche. ¿En qué puedo ayudarte?',
+    greetingFallback: '¡Hola! Soy Aura, la concierge virtual del {businessName}. ¿En qué puedo ayudarte?',
     thinking: ['Aura está pensando…', 'Buscando la mejor opción…', 'Un segundito…'],
     // Date picker
     pickDates: 'Elegí tus fechas',
@@ -56,7 +56,7 @@ const STRINGS = {
     before: 'antes',
     // Menu card
     menuTitle: 'Carta del restaurante',
-    menuDesc: 'Cocina patagónica de PLAZA — Hampton’s Kitchen House.',
+    menuDesc: 'La carta de nuestro restaurante.',
     viewMenu: 'Ver carta y pedir',
     // Menu interactiva (card embebida)
     order: 'Pedir',
@@ -103,14 +103,14 @@ const STRINGS = {
     // Modal "¿Qué puede hacer Aura?" (encauza expectativas del visitante)
     helpOpen: '¿Qué puedo consultarte?',
     helpTitle: '¿En qué te puedo ayudar?',
-    helpIntro: 'Soy la concierge del Hampton by Hilton Bariloche. Te acompaño en todo lo que tenga que ver con tu estadía y con Bariloche.',
+    helpIntro: 'Soy la concierge del {businessName}. Te acompaño en todo lo que tenga que ver con tu estadía y con {city}.',
     helpCanTitle: 'Puedo ayudarte con',
     helpCan: [
       'Disponibilidad y reservas de habitaciones',
       'Servicios y políticas del hotel (check-in/out, mascotas, estacionamiento, desayuno)',
       'El restaurante: ver la carta, pedir o reservar una mesa',
       'Formas de pago y datos para transferir',
-      'Cómo llegar al hotel o a un lugar de Bariloche',
+      'Cómo llegar al hotel o a un lugar de {city}',
       'Recomendaciones: excursiones, paseos y dónde comer',
     ],
     helpExamplesTitle: 'Probá preguntándome',
@@ -121,7 +121,7 @@ const STRINGS = {
       'Quiero reservar una mesa para cenar',
     ],
     helpOutTitle: 'Lo que queda fuera',
-    helpOut: 'Soy especialista en el hotel y en Bariloche. Para temas ajenos (trivia general, otros comercios, cuentas personales) no soy la indicada — pero si tiene que ver con tu estadía, contame y te oriento. 😊',
+    helpOut: 'Soy especialista en el hotel y en {city}. Para temas ajenos (trivia general, otros comercios, cuentas personales) no soy la indicada — pero si tiene que ver con tu estadía, contame y te oriento. 😊',
     helpClose: 'Entendido',
   },
   en: {
@@ -135,7 +135,7 @@ const STRINGS = {
     close: 'Close chat',
     language: 'Language',
     errorReply: 'Sorry, I had trouble responding. Could you try again in a moment?',
-    greetingFallback: "Hi! I'm Aura, the virtual concierge at Hampton by Hilton Bariloche. How can I help you?",
+    greetingFallback: "Hi! I'm Aura, the virtual concierge at {businessName}. How can I help you?",
     thinking: ['Aura is thinking…', 'Finding the best option…', 'Just a second…'],
     pickDates: 'Choose your dates',
     checkIn: 'Check-in',
@@ -167,7 +167,7 @@ const STRINGS = {
     youSave: 'You save',
     before: 'before',
     menuTitle: 'Restaurant menu',
-    menuDesc: 'Patagonian cuisine at PLAZA — Hampton’s Kitchen House.',
+    menuDesc: 'Our restaurant menu.',
     viewMenu: 'View menu & order',
     order: 'Order',
     viewFullMenu: 'view full menu →',
@@ -210,14 +210,14 @@ const STRINGS = {
     voucherIssuedMsg: (code) => `I bought my voucher ${code}.`,
     helpOpen: 'What can I help you with?',
     helpTitle: 'How can I help you?',
-    helpIntro: "I'm the concierge at Hampton by Hilton Bariloche. I'm here for anything about your stay and about Bariloche.",
+    helpIntro: "I'm the concierge at {businessName}. I'm here for anything about your stay and about {city}.",
     helpCanTitle: 'I can help you with',
     helpCan: [
       'Room availability and bookings',
       'Hotel services and policies (check-in/out, pets, parking, breakfast)',
       'The restaurant: see the menu, order, or book a table',
       'Payment methods and bank transfer details',
-      'How to get to the hotel or a place in Bariloche',
+      'How to get to the hotel or a place in {city}',
       'Recommendations: tours, sightseeing and where to eat',
     ],
     helpExamplesTitle: 'Try asking me',
@@ -228,7 +228,7 @@ const STRINGS = {
       'I want to book a table for dinner',
     ],
     helpOutTitle: "What's outside my scope",
-    helpOut: "I specialize in the hotel and Bariloche. For unrelated topics (general trivia, other businesses, personal accounts) I'm not the right one — but if it's about your stay, just ask and I'll guide you. 😊",
+    helpOut: "I specialize in the hotel and {city}. For unrelated topics (general trivia, other businesses, personal accounts) I'm not the right one — but if it's about your stay, just ask and I'll guide you. 😊",
     helpClose: 'Got it',
   },
   pt: {
@@ -242,7 +242,7 @@ const STRINGS = {
     close: 'Fechar chat',
     language: 'Idioma',
     errorReply: 'Desculpe, tive um problema para responder. Pode tentar de novo em um instante?',
-    greetingFallback: 'Olá! Sou a Aura, a concierge virtual do Hampton by Hilton Bariloche. Como posso ajudar?',
+    greetingFallback: 'Olá! Sou a Aura, a concierge virtual do {businessName}. Como posso ajudar?',
     thinking: ['A Aura está pensando…', 'Buscando a melhor opção…', 'Um segundinho…'],
     pickDates: 'Escolha suas datas',
     checkIn: 'Check-in',
@@ -274,7 +274,7 @@ const STRINGS = {
     youSave: 'Você economiza',
     before: 'antes',
     menuTitle: 'Cardápio do restaurante',
-    menuDesc: 'Cozinha patagônica do PLAZA — Hampton’s Kitchen House.',
+    menuDesc: 'O cardápio do nosso restaurante.',
     viewMenu: 'Ver cardápio e pedir',
     order: 'Pedir',
     viewFullMenu: 'ver cardápio completo →',
@@ -317,14 +317,14 @@ const STRINGS = {
     voucherIssuedMsg: (code) => `Comprei meu voucher ${code}.`,
     helpOpen: 'Com o que posso ajudar?',
     helpTitle: 'Como posso te ajudar?',
-    helpIntro: 'Sou a concierge do Hampton by Hilton Bariloche. Estou aqui para tudo o que envolve a sua estadia e Bariloche.',
+    helpIntro: 'Sou a concierge do {businessName}. Estou aqui para tudo o que envolve a sua estadia e {city}.',
     helpCanTitle: 'Posso te ajudar com',
     helpCan: [
       'Disponibilidade e reservas de quartos',
       'Serviços e políticas do hotel (check-in/out, animais, estacionamento, café da manhã)',
       'O restaurante: ver o cardápio, pedir ou reservar uma mesa',
       'Formas de pagamento e dados para transferência',
-      'Como chegar ao hotel ou a um lugar de Bariloche',
+      'Como chegar ao hotel ou a um lugar de {city}',
       'Recomendações: passeios, excursões e onde comer',
     ],
     helpExamplesTitle: 'Experimente perguntar',
@@ -335,7 +335,7 @@ const STRINGS = {
       'Quero reservar uma mesa para o jantar',
     ],
     helpOutTitle: 'O que está fora do meu alcance',
-    helpOut: 'Sou especialista no hotel e em Bariloche. Para temas alheios (curiosidades gerais, outros comércios, contas pessoais) não sou a indicada — mas se for sobre a sua estadia, me conte que eu te oriento. 😊',
+    helpOut: 'Sou especialista no hotel e em {city}. Para temas alheios (curiosidades gerais, outros comércios, contas pessoais) não sou a indicada — mas se for sobre a sua estadia, me conte que eu te oriento. 😊',
     helpClose: 'Entendi',
   },
   fr: {
@@ -349,7 +349,7 @@ const STRINGS = {
     close: 'Fermer le chat',
     language: 'Langue',
     errorReply: "Désolé, j'ai eu un problème pour répondre. Pouvez-vous réessayer dans un instant ?",
-    greetingFallback: "Bonjour ! Je suis Aura, la concierge virtuelle du Hampton by Hilton Bariloche. Comment puis-je vous aider ?",
+    greetingFallback: "Bonjour ! Je suis Aura, la concierge virtuelle du {businessName}. Comment puis-je vous aider ?",
     thinking: ['Aura réfléchit…', 'Je cherche la meilleure option…', 'Un instant…'],
     pickDates: 'Choisissez vos dates',
     checkIn: 'Arrivée',
@@ -381,7 +381,7 @@ const STRINGS = {
     youSave: 'Vous économisez',
     before: 'avant',
     menuTitle: 'Carte du restaurant',
-    menuDesc: 'Cuisine patagonienne du PLAZA — Hampton’s Kitchen House.',
+    menuDesc: 'La carte de notre restaurant.',
     viewMenu: 'Voir la carte et commander',
     order: 'Commander',
     viewFullMenu: 'voir la carte complète →',
@@ -424,14 +424,14 @@ const STRINGS = {
     voucherIssuedMsg: (code) => `J’ai acheté mon bon ${code}.`,
     helpOpen: 'Que puis-je faire pour vous ?',
     helpTitle: 'Comment puis-je vous aider ?',
-    helpIntro: 'Je suis la concierge du Hampton by Hilton Bariloche. Je suis là pour tout ce qui concerne votre séjour et Bariloche.',
+    helpIntro: 'Je suis la concierge du {businessName}. Je suis là pour tout ce qui concerne votre séjour et {city}.',
     helpCanTitle: 'Je peux vous aider avec',
     helpCan: [
       'Disponibilités et réservations de chambres',
       "Services et politiques de l'hôtel (check-in/out, animaux, parking, petit-déjeuner)",
       'Le restaurant : voir la carte, commander ou réserver une table',
       'Moyens de paiement et coordonnées pour virement',
-      "Comment venir à l'hôtel ou à un endroit de Bariloche",
+      "Comment venir à l'hôtel ou à un endroit de {city}",
       'Recommandations : excursions, balades et où manger',
     ],
     helpExamplesTitle: 'Essayez de me demander',
@@ -442,13 +442,29 @@ const STRINGS = {
       'Je veux réserver une table pour le dîner',
     ],
     helpOutTitle: 'Ce qui sort de mon champ',
-    helpOut: "Je suis spécialiste de l'hôtel et de Bariloche. Pour des sujets sans rapport (culture générale, autres commerces, comptes personnels) je ne suis pas la bonne personne — mais si cela concerne votre séjour, dites-moi et je vous oriente. 😊",
+    helpOut: "Je suis spécialiste de l'hôtel et de {city}. Pour des sujets sans rapport (culture générale, autres commerces, comptes personnels) je ne suis pas la bonne personne — mais si cela concerne votre séjour, dites-moi et je vous oriente. 😊",
     helpClose: 'Compris',
   },
 }
 
-export function getStrings(lang) {
-  return STRINGS[lang] || STRINGS.es
+// Interpola placeholders {businessName}/{city} en los strings del diccionario con los datos
+// del negocio (P2). Solo toca strings; las funciones-valor (bookRoomMsg, etc.) quedan intactas.
+// Sin `vars`, devuelve el diccionario tal cual (los placeholders quedan visibles solo si nadie
+// los rellena — por eso ChatWidget siempre pasa el perfil).
+function _interpolate(dict, vars) {
+  if (!vars) return dict
+  const out = {}
+  for (const [k, v] of Object.entries(dict)) {
+    out[k] = typeof v === 'string'
+      ? v.replace(/\{businessName\}/g, vars.businessName || '')
+         .replace(/\{city\}/g, vars.city || '')
+      : v
+  }
+  return out
+}
+
+export function getStrings(lang, vars) {
+  return _interpolate(STRINGS[lang] || STRINGS.es, vars)
 }
 
 // Idioma inicial: localStorage > navegador (si en/pt/fr) > es.

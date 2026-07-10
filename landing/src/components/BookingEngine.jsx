@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { getAvailability, createBooking } from '../services/api'
 import { formatUSD, formatARS, formatDate } from '../lib/format'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 
 function todayISO() {
   return format(new Date(), 'yyyy-MM-dd')
@@ -270,6 +271,7 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
 
 // ── Paso 4: confirmación ──────────────────────────────────────────────────────
 function Confirmation({ booking, onReset }) {
+  const HOTEL = useBusinessProfile()
   return (
     <div className="mx-auto max-w-lg animate-fade-in text-center">
       <div className="rounded-2xl bg-white p-8 shadow-soft">
@@ -278,7 +280,7 @@ function Confirmation({ booking, onReset }) {
         </div>
         <h3 className="font-display text-2xl font-700 text-ink">¡Reserva confirmada!</h3>
         <p className="mt-2 text-sm text-slatey">
-          Te esperamos en el Hampton by Hilton Bariloche, {booking.guest_name}.
+          Te esperamos en {HOTEL.name}, {booking.guest_name}.
         </p>
 
         <div className="my-6 rounded-xl border border-dashed border-hilton-200 bg-hilton-50 py-4">

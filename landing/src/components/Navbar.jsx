@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Menu, X, LockKeyhole } from 'lucide-react'
+import { useBusinessProfile } from '../hooks/useBusinessProfile'
 
 const LINKS = [
   { href: '#habitaciones', label: 'Habitaciones' },
@@ -11,6 +12,7 @@ const LINKS = [
 ]
 
 export default function Navbar() {
+  const HOTEL = useBusinessProfile()
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -43,14 +45,14 @@ export default function Navbar() {
               solid ? 'text-hilton-700' : 'text-white'
             }`}
           >
-            Hampton
+            {HOTEL.name}
           </span>
           <span
             className={`mt-0.5 text-[10px] font-medium uppercase tracking-eyebrow transition-colors ${
               solid ? 'text-timber-500' : 'text-white/75'
             }`}
           >
-            by Hilton · Bariloche
+            {HOTEL.regionLine}
           </span>
         </a>
 
