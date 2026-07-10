@@ -143,7 +143,29 @@ def build_facts_block(profile: dict) -> str:
     if not facts:
         return ""
     lineas = "\n".join(f"- {f}" for f in facts)
-    return "HECHOS DEL NEGOCIO (no inventar ni contradecir):\n" + lineas
+    return "\nHECHOS DEL NEGOCIO (no inventar ni contradecir):\n" + lineas
+
+
+def build_location_block(profile: dict) -> str:
+    """Bloque de ubicación del hotel.
+
+    Para el Hampton (city=Bariloche) devuelve el bloque histórico con la dirección/distancias
+    EXACTAS (paridad byte a byte). Para otro cliente, la dirección/distancias son un DATO que
+    debe vivir en su base de conocimiento (RAG), no acá: se devuelve una guía que remite a
+    info_hotel y prohíbe inventar la ubicación. Cierra el bug de "Bariloche hardcodeada" que
+    salía para cualquier instancia (detectado en la prueba de fuego 3.5)."""
+    city = (profile.get("city") or "").strip()
+    if city == "Bariloche" or not city:
+        # Perfil Hampton (o sin city): texto histórico exacto.
+        from app.domains.hotel.hotel_location import HOTEL_LOCATION_BLOCK
+        return HOTEL_LOCATION_BLOCK
+    negocio = profile.get("business_name") or "el hotel"
+    return (
+        f"UBICACIÓN — NUNCA la inventes: la dirección exacta y las distancias de {negocio} "
+        f"(en {city}) salen SIEMPRE de la tool info_hotel / la base de conocimiento. Si te "
+        f"preguntan cómo llegar o dónde está, consultá info_hotel; no afirmes una dirección, "
+        f"barrio o distancia que no venga de ahí."
+    )
 
 
 # ── Bloque temporal (fecha/hora en el timezone del perfil) ────────────────────

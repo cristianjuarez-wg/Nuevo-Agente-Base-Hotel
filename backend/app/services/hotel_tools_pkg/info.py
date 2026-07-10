@@ -5,6 +5,23 @@ from app.services.hotel_tools_pkg._shared import *  # noqa: F401,F403
 from app.services.hotel_tools_pkg import _shared
 
 
+def _contact_sentence(contact: dict) -> str:
+    """Frase de contacto para fallbacks, u '' si el cliente no cargó tel/email (3.5).
+
+    Evita mostrar el contacto de otro hotel: si el perfil no tiene datos, se omite la línea.
+    """
+    phone = (contact or {}).get("phone", "")
+    email = (contact or {}).get("email", "")
+    partes = []
+    if phone:
+        partes.append(f"al {phone}")
+    if email:
+        partes.append(f"en {email}")
+    if not partes:
+        return ""
+    return " Para más detalles podés contactarnos " + " o ".join(partes) + "."
+
+
 async def _handle_info_hotel(args: Dict, ctx: Dict) -> Dict:
     """RAG sobre documentos del hotel (habitaciones, servicios, ubicación, promos)."""
     query = (args.get("query") or "").strip() or ctx.get("message", "")
@@ -15,11 +32,13 @@ async def _handle_info_hotel(args: Dict, ctx: Dict) -> Dict:
     context = result.get("context", "NO_CONTEXT_FOUND")
 
     if context == "NO_CONTEXT_FOUND":
+        from app.services import business_profile_service
+        c = business_profile_service.get_contact(ctx.get("db"))
+        contacto = _contact_sentence(c)
         return {
             "found": False,
             "tool_result": (
-                "No encontré información específica sobre eso en nuestra base de datos. "
-                "Para más detalles podés contactarnos al +54 294-474-6200 o en info@hamptonbariloche.com."
+                "No encontré información específica sobre eso en nuestra base de datos." + contacto
             ),
         }
 

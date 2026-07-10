@@ -56,6 +56,27 @@ def get_profile(db: Session) -> dict:
     return _cache
 
 
+def get_contact(db: Session) -> dict:
+    """Tel/email de contacto del negocio para los fallbacks del agente ("contactanos al ...").
+
+    Devuelve {"phone": ..., "email": ...} desde el perfil. Fase 3.5.
+
+    Fallback SOLO para el Hampton (business_name histórico): así se preserva el comportamiento
+    histórico sin filtrarle a OTRO cliente el teléfono/email del Hampton (bug de la prueba de
+    fuego: una instancia nueva mostraba el contacto del Hampton). Un cliente que no cargó su
+    contacto obtiene strings vacíos y el agente omite la línea de contacto.
+    """
+    prof = get_profile(db)
+    phone = prof.get("contact_phone")
+    email = prof.get("contact_email")
+    es_hampton = (prof.get("business_name") or "").startswith("Hampton by Hilton")
+    if not phone and es_hampton:
+        phone = "+54 294-474-6200"
+    if not email and es_hampton:
+        email = "info@hamptonbariloche.com"
+    return {"phone": phone or "", "email": email or ""}
+
+
 def invalidate_cache() -> None:
     """Descarta el perfil cacheado (llamar tras un PUT que lo modifica)."""
     global _cache
@@ -94,6 +115,8 @@ def ensure_seeded(db: Session) -> None:
             primary_currency="USD",
             secondary_currency="ARS",
             facts=[],
+            contact_phone="+54 294-474-6200",
+            contact_email="info@hamptonbariloche.com",
         )
         db.add(row)
         db.commit()
@@ -114,6 +137,7 @@ def update_profile(db: Session, data: dict) -> dict:
         "business_name", "brand_line", "vertical", "agent_display_name", "role_descriptor",
         "timezone", "locale", "language", "dialect_style", "city", "region_line",
         "lat", "lng", "primary_currency", "secondary_currency", "facts",
+        "contact_phone", "contact_email",
     }
     for key, value in (data or {}).items():
         if key in editable:

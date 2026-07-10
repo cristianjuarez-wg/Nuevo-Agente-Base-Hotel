@@ -503,8 +503,9 @@ class HotelSDKOrchestrator:
             fecha = now.strftime("%d/%m/%Y")
         hora = now.strftime("%H:%M")
 
-        from app.domains.hotel.hotel_location import HOTEL_LOCATION_BLOCK
-        from app.domains.hotel.prompts.identity_blocks import build_identity_block, build_dialect_block
+        from app.domains.hotel.prompts.identity_blocks import (
+            build_identity_block, build_dialect_block, build_facts_block, build_location_block,
+        )
 
         prof = profile or {}
         # El {dialect_block} vive DENTRO del tono default; se resuelve acá (format no es
@@ -516,6 +517,7 @@ class HotelSDKOrchestrator:
         return TOOL_AGENT_SYSTEM.format(
             agent_name=prof.get("agent_display_name") or profile_manager.get_agent_name(),
             identity_block=build_identity_block(prof),
+            facts_block=build_facts_block(prof),
             fecha_actual=fecha,
             hora_actual=hora,
             flow_block=flow_block,
@@ -525,7 +527,7 @@ class HotelSDKOrchestrator:
             lead_block=lead_block,
             language_block=build_language_block(language),
             naturalidad_block=NATURALIDAD_BLOCK,
-            ubicacion_block=HOTEL_LOCATION_BLOCK,
+            ubicacion_block=build_location_block(prof),
             team_block=team_block,
         )
 

@@ -47,6 +47,8 @@ _PROFILE_MAP = {
     "primary_currency": "primary_currency",
     "secondary_currency": "secondary_currency",
     "facts": "facts",
+    "contact_phone": "contact_phone",
+    "contact_email": "contact_email",
 }
 
 
@@ -124,6 +126,35 @@ def _apply_rooms(db, rooms: list, primary: str, secondary: str | None) -> None:
             n_new += 1
     db.commit()
     print(f"[bootstrap] Rooms: {n_new} creadas, {n_upd} actualizadas.")
+    _apply_room_units(db)
+
+
+def _numbers_for(total: int) -> list:
+    """Genera N números de habitación (mismo criterio que seed_room_units): 101, 102... por piso."""
+    nums = []
+    for i in range(total):
+        floor = 1 + (i // 20)
+        idx = (i % 20) + 1
+        nums.append(f"{floor}{idx:02d}")
+    return nums
+
+
+def _apply_room_units(db) -> None:
+    """Crea las unidades físicas (RoomUnit) de cada Room desde su total_units. La disponibilidad
+    las necesita: sin unidades, el agente responde 'no hay disponibilidad'. Idempotente: si un
+    tipo ya tiene unidades, no las duplica. Reproduce lo que hacía seed_room_units.py."""
+    from app.models.hotel import Room, RoomUnit
+    created = 0
+    for room in db.query(Room).all():
+        existing = db.query(RoomUnit).filter(RoomUnit.room_id == room.id).count()
+        if existing > 0:
+            continue
+        for number in _numbers_for(room.total_units or 0):
+            db.add(RoomUnit(room_id=room.id, number=number, floor=int(number[0]), status="available"))
+            created += 1
+    db.commit()
+    if created:
+        print(f"[bootstrap] RoomUnits: {created} unidades creadas.")
 
 
 def _apply_admin(db, admin: dict) -> None:

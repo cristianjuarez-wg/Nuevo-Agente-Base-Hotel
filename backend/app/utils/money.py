@@ -35,3 +35,26 @@ def format_money(amount, currency: str = "USD") -> str:
         # Separador de miles con coma, formato histórico exacto del proyecto ("ARS 1,250,000").
         return f"{cur} {val:,.0f}"
     return f"{cur} {val:.0f}"
+
+
+def format_price_pair(price_usd, price_ars, profile: dict | None = None) -> str:
+    """Formatea el precio para mostrar, según la moneda del perfil (Fase 3.5).
+
+    El esquema actual guarda price_usd y price_ars. Reglas:
+    - primary_currency == "USD" (Hampton): muestra "USD X / ARS Y" — texto histórico exacto.
+    - primary_currency == "ARS": muestra "ARS Y / USD X".
+    - otra primaria (BRL, MXN...): muestra SOLO la primaria en el valor USD guardado
+      (no hay conversión a esa moneda todavía — no se inventa un "ARS" que no aplica).
+      La conversión real a cualquier par queda para room_prices (deuda de instancia).
+    """
+    prof = profile or {}
+    primary = (prof.get("primary_currency") or "USD").upper()
+    secondary = (prof.get("secondary_currency") or "").upper()
+
+    if primary == "USD" and secondary == "ARS":
+        return f"{format_money(price_usd, 'USD')} / {format_money(price_ars, 'ARS')}"
+    if primary == "ARS":
+        return f"{format_money(price_ars, 'ARS')} / {format_money(price_usd, 'USD')}"
+    # Cliente con otra moneda primaria: mostrar solo la primaria (valor base USD guardado),
+    # sin el ARS que no corresponde. Evita el bug de "BRL... / ARS" detectado en la prueba de fuego.
+    return format_money(price_usd, primary)

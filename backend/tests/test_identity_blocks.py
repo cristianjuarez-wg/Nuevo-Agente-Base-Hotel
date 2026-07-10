@@ -58,7 +58,8 @@ def test_facts_vacio_por_defecto():
 def test_facts_con_datos():
     prof = dict(HAMPTON, facts=["No tiene spa ni sauna", "Desayuno incluido"])
     out = build_facts_block(prof)
-    assert out.startswith("HECHOS DEL NEGOCIO")
+    # Empieza con un \n para componerse sin línea extra cuando facts está vacío (3.5).
+    assert out.lstrip().startswith("HECHOS DEL NEGOCIO")
     assert "- No tiene spa ni sauna" in out
     assert "- Desayuno incluido" in out
 
@@ -101,6 +102,7 @@ def _render_current(profile):
     return TOOL_AGENT_SYSTEM.format(
         agent_name=profile["agent_display_name"],
         identity_block=build_identity_block(profile),
+        facts_block=build_facts_block(profile),
         fecha_actual="FECHA_FIJA", hora_actual="HORA_FIJA",
         flow_block="", tono_block=tono, politica_block=DEFAULT_POLITICA_BLOCK,
         training_block="", lead_block="", language_block="",

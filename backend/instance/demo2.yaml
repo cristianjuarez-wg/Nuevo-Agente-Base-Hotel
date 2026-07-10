@@ -1,0 +1,56 @@
+# Instancia FICTICIA para la prueba de fuego (Fase 3.5). Deliberadamente distinta del Hampton:
+# otro idioma, otra moneda, otro dialecto, otros hechos (SÍ tiene spa). Sirve para verificar que
+# el mecanismo de plantilla crea un cliente nuevo SIN tocar código.
+
+business:
+  name: "Pousada Mar Azul"
+  brand_line: "seu refúgio à beira-mar"
+  vertical: hotel
+  agent_name: "Bia"
+  role_descriptor: "recepcionista"
+
+  timezone: "America/Sao_Paulo"
+  locale: "pt_BR"
+  language: pt
+  dialect_style: es_neutro       # el agente base soporta pt vía language; el estilo no aplica voseo
+  city: "Florianópolis"
+  region_line: "a poucos passos da praia"
+  lat: null
+  lng: null
+
+  primary_currency: BRL
+  secondary_currency: USD
+
+  facts:
+    - "Tem spa e sauna abertos das 8h às 22h"
+    - "Café da manhã incluído em todas as tarifas"
+    - "Não tem estacionamento próprio"
+
+  # Contacto (para los fallbacks del agente cuando no encuentra el dato en el conocimiento).
+  contact_phone: "+55 48 3333-4444"
+  contact_email: "reservas@pousadamarazul.com"
+
+rooms:
+  - room_type: "Vista Mar"
+    description: "Quarto com varanda e vista para o mar."
+    capacity: 2
+    prices: {BRL: 650, USD: 130}
+    total_units: 12
+    bed_config: "1 cama de casal"
+    view: "Mar"
+  - room_type: "Standard"
+    description: "Quarto confortável, vista para o jardim."
+    capacity: 2
+    prices: {BRL: 420, USD: 85}
+    total_units: 20
+    bed_config: "2 camas de solteiro"
+    view: "Jardim"
+
+admin:
+  email: "admin@pousadamarazul.com"
+
+flow_variant: estandar
+
+channels:
+  whatsapp: {enabled: false}
+  instagram: {enabled: false}

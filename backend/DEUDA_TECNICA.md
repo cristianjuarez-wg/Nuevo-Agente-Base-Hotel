@@ -118,6 +118,19 @@ Fase 2 quedó en **933**, y ESO es lo correcto, no un incumplimiento:
   El "<400" fue una estimación optimista pre-refactor. Meta real cumplida: agent_service es un
   coordinador honesto, sin lógica de agente ni código muerto.
 
+## Residuos de instancia (post prueba de fuego 3.5, bajo impacto)
+La prueba de fuego arregló los bugs de instancia que el huésped ve más (facts, ubicación, moneda,
+contacto en los fallbacks de info_hotel/info_pago, RoomUnits). Quedan hardcodes de contacto del
+Hampton de MENOR exposición, a parametrizar desde `contact_phone`/`contact_email` cuando se toque
+esa área:
+- `hotel_postsale_orchestrator.py:195` — "+54 294-474-6200" en un fallback de post-venta.
+- `checkin_express_service.py:40` — `_HOTEL_PHONE` del flujo de check-in por WhatsApp.
+- `postsale_tool_prompts.py:120` — tel/email en el texto del prompt de post-venta.
+Conversión de moneda real a cualquier par (no solo USD→ARS): sigue pendiente la tabla
+`room_prices` + generalizar `exchange_rate_service` (diferido de 1.4). Hoy `format_price_pair`
+muestra correctamente la moneda del perfil pero un cliente con moneda ≠ USD/ARS ve solo el valor
+USD guardado (no una conversión a su moneda). Cierra cuando exista room_prices.
+
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
 - Cobertura de tests en hot-path (orquestadores, reservation_service).

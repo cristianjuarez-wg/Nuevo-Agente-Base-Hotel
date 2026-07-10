@@ -118,3 +118,30 @@ de plantilla de qué documentos crear.
 Al terminar, anotar cuánto tardó el procedimiento y **qué paso requirió tocar código**. Cada
 uno de esos es un bug de la fase de empaquetado — arreglarlo cierra el objetivo de 3.5 (crear la
 instancia N+1 sin tocar código).
+
+### Prueba de fuego ejecutada (2026-07-10) — instancia ficticia "Pousada Mar Azul"
+
+Cliente deliberadamente distinto del Hampton: portugués, BRL, Florianópolis, SÍ tiene spa.
+Bootstrap desde DB vacía: **3 segundos**. Al conversar, se detectaron y arreglaron **5 bugs de
+instancia** (código que aún asumía el Hampton):
+
+1. **Facts no llegaban al prompt** — `build_facts_block` existía pero nunca se cableaba; el
+   agente contradecía los hechos del cliente ("não temos spa" cuando el perfil decía que sí).
+   Arreglado: `{facts_block}` en el prompt de pre/post-venta (con paridad Hampton).
+2. **Ubicación "Bariloche" hardcodeada** — bloque de ubicación fijo del Hampton para cualquier
+   cliente. Arreglado: `build_location_block(profile)` remite a `info_hotel` para no-Hampton.
+3. **Precio siempre en ARS** — mostraba "USD/ARS" ignorando la moneda del perfil. Arreglado:
+   `format_price_pair` muestra la moneda del perfil (BRL para la Pousada); ARS solo si aplica.
+4. **Contacto del Hampton filtrado** — el fallback mostraba el tel/email del Hampton a otro
+   cliente. Arreglado: `contact_phone`/`contact_email` en el perfil; el fallback al Hampton solo
+   aplica si el negocio ES el Hampton; si no, se omite la línea.
+5. **Bootstrap no creaba RoomUnits** — sin unidades físicas, la disponibilidad respondía "no hay
+   lugar". Arreglado: `_apply_room_units` genera las unidades desde `total_units` (reproduce
+   `seed_room_units`).
+
+Todos verificados en vivo tras el fix (spa OK, BRL OK, contacto de la Pousada OK, disponibilidad
+OK). El mecanismo cumple el objetivo: **crear un cliente = editar el YAML**, sin tocar código.
+
+**Aprendizaje de proceso:** cada instancia necesita su propio Chroma (`CHROMA_PERSIST_DIRECTORY`)
+y su propia DB. Compartir el Chroma del Hampton hace que el agente responda con documentos del
+Hampton vía RAG — por eso el runbook (Paso 2) exige disco/DB por instancia.
