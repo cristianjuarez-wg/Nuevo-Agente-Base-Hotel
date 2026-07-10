@@ -76,7 +76,18 @@ class Settings(BaseSettings):
     # Si está vacía (None/""), esas acciones NO se bloquean (dev/local sin fricción). En
     # producción (Render) se setea con un valor real y el front pide la clave (header X-Admin-Key).
     ADMIN_KEY: Optional[str] = None
-    
+
+    # ── Auth del backoffice (Fase 2.5) ────────────────────────────────────────
+    # Secreto para firmar los JWT de sesión. En producción SE DEBE setear un valor real
+    # (largo y aleatorio). En dev cae a un default con una advertencia en el log.
+    JWT_SECRET: str = "dev-insecure-change-me"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 720  # 12 h — sesión de trabajo del backoffice
+    # Bootstrap del primer admin (solo se usa si la tabla admin_users está vacía).
+    BOOTSTRAP_ADMIN_EMAIL: Optional[str] = None
+    BOOTSTRAP_ADMIN_PASSWORD: Optional[str] = None
+
+
     # Retry & Circuit Breaker
     OPENAI_MAX_RETRIES: int = 3
     CIRCUIT_BREAKER_THRESHOLD: int = 5

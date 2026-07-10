@@ -18,8 +18,11 @@ _FORBIDDEN = re.compile(
     r"^\s*(?:from|import)\s+app\.(domains|services|prompts|routers)\b",
     re.MULTILINE,
 )
-# Módulos de app.models tolerados en core (infra/contratos genéricos).
-_MODELS_OK = ("app.models.database", "app.models.schemas", "app.models.conversation")
+# Módulos de app.models tolerados en core (infra/contratos genéricos, no dominio hotel):
+# database (engine/session), schemas (contratos API), conversation* (historial genérico),
+# admin_user (auth del backoffice — infra de core/security, Fase 2.5).
+_MODELS_OK = ("app.models.database", "app.models.schemas", "app.models.conversation",
+              "app.models.admin_user")
 _MODELS_IMPORT = re.compile(r"^\s*(?:from|import)\s+(app\.models\.[a-zA-Z_]+)", re.MULTILINE)
 
 

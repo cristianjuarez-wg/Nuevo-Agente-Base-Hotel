@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 # Usar BD en memoria para tests (nunca toca documents.db)
+os.environ.setdefault("DEBUG", "true")  # entorno de test → admin_auth permite sin token (Fase 2.5)
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-key")
 os.environ.setdefault("FLIGHTAPI_API_KEY", "test-flight-key")
 os.environ.setdefault("SQLITE_DATABASE_URL", "sqlite:///:memory:")
