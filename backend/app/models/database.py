@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from app.config import settings
+from app.utils.timezone_utils import utcnow_naive
 
 Base = declarative_base()
 
@@ -13,7 +14,7 @@ class Document(Base):
     doc_id = Column(String, unique=True, nullable=False, index=True)
     filename = Column(String, nullable=False)
     status = Column(String, default="active")  # active/inactive
-    uploaded_at = Column(DateTime, default=datetime.now)
+    uploaded_at = Column(DateTime, default=utcnow_naive)
     chunks_count = Column(Integer)
     file_size = Column(Integer, nullable=True)
 

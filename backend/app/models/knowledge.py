@@ -24,6 +24,7 @@ from datetime import datetime
 
 from app.models.database import Base, engine
 from app.core.observability.logging_config import get_logger
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -87,8 +88,8 @@ class KnowledgeEntry(Base):
     data = Column(JSON, nullable=True, default=dict)
     status = Column(String, nullable=False, default="active", index=True)  # active / inactive
 
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     @property
     def doc_source(self) -> str:
@@ -169,8 +170,8 @@ class Place(Base):
     discount = Column(String, nullable=True)      # texto libre, ej "15% en efectivo"
     is_partner = Column(Boolean, nullable=False, default=False, index=True)  # comercio amigo / con acuerdo
 
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     @property
     def doc_source(self) -> str:

@@ -21,6 +21,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON
 from datetime import datetime
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 
 class Skill(Base):
@@ -37,7 +38,7 @@ class Skill(Base):
     parameter_schema = Column(JSON, nullable=True, default=list)         # qué parámetros existen
     parameter_limits = Column(JSON, nullable=True, default=dict)         # techos duros (no editables)
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
     is_demo = Column(Boolean, default=False, index=True)
 
     def to_dict(self):
@@ -62,7 +63,7 @@ class AgentSkill(Base):
     skill_id = Column(Integer, nullable=False, index=True)
     policy_values = Column(JSON, nullable=True, default=dict)   # valores del agente (recortados al techo)
     enabled = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
     is_demo = Column(Boolean, default=False, index=True)
 
     def to_dict(self):

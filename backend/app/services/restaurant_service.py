@@ -13,6 +13,8 @@ import secrets
 import string
 import hashlib
 from datetime import datetime, date, timedelta
+
+from app.utils.timezone_utils import utcnow_naive
 from typing import List, Dict, Optional
 
 from app.core.rag.text_splitter import RecursiveCharacterTextSplitter
@@ -357,7 +359,7 @@ def set_order_status(db: Session, order_code: str, status: str) -> Optional[Dict
     if not o:
         return None
     o.status = status
-    o.updated_at = datetime.now()
+    o.updated_at = utcnow_naive()
     db.commit()
     db.refresh(o)
     return o.to_dict()
@@ -644,7 +646,7 @@ def redeem_voucher(db: Session, code: str) -> Dict:
     if v.status == "cancelado":
         return {"error": "Ese voucher está cancelado.", "voucher": v.to_dict()}
     v.status = "canjeado"
-    v.redeemed_at = datetime.now()
+    v.redeemed_at = utcnow_naive()
     db.commit()
     db.refresh(v)
     logger.info("Voucher redeemed", code=v.code)

@@ -21,6 +21,7 @@ import time
 import hashlib
 from typing import List
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/documents", tags=["Documents"])
@@ -135,7 +136,7 @@ async def upload_document(
             # Actualizar
             existing_doc.status = "active"
             existing_doc.chunks_count = len(chunks)
-            existing_doc.uploaded_at = datetime.now()
+            existing_doc.uploaded_at = utcnow_naive()
             existing_doc.file_size = file_size
         else:
             # Crear nuevo

@@ -12,6 +12,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, Float, String, DateTime
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 # Fallback final si el modo es auto, la API falla y nunca hubo cache.
 DEFAULT_RATE = 1050.0
@@ -27,7 +28,7 @@ class ExchangeRateConfig(Base):
     cached_rate = Column(Float, nullable=True)              # última cotización automática exitosa
     cached_at = Column(DateTime, nullable=True)            # cuándo se cacheó
     source = Column(String, nullable=True)                # etiqueta de la fuente
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     def to_dict(self):
         return {

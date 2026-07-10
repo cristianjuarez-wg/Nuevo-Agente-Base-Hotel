@@ -14,6 +14,7 @@ from datetime import datetime, date
 
 from app.models.database import Base, engine
 from app.utils.timezone_utils import iso_business
+from app.utils.timezone_utils import utcnow_naive
 
 
 class Room(Base):
@@ -127,7 +128,7 @@ class Booking(Base):
     # Hoy no se setean (todo es Aura); el origen se deriva de source+session_id.
     generated_by = Column(String(20), nullable=True)   # default conceptual: "aura"
     created_by = Column(String(120), nullable=True)    # autor humano (futuro)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
 
     # Check-in express (Guest Experience Layer): el huésped adelanta su check-in por WhatsApp.
     # JSON con: status (pending|in_progress|completed), estimated_arrival ("18:30"),
@@ -268,8 +269,8 @@ class HotelTicket(Base):
     resolved_by_staff_id = Column(Integer, ForeignKey("staff_members.id"), nullable=True)
     guest_validated = Column(Integer, nullable=False, default=0)  # 0/1: el huésped confirmó la resolución
 
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
     is_demo = Column(Boolean, default=False, index=True)
@@ -324,7 +325,7 @@ class TicketEvent(Base):
     actor_name = Column(String(120), nullable=True)   # nombre legible (ej. "Aura", "Carlos", "Huésped")
     action = Column(String(40), nullable=False)        # created | assigned | pre_resolved | resolved | reopened | validated
     note = Column(String, nullable=True)               # detalle ("→ Mantenimiento", "reparé el aire")
-    created_at = Column(DateTime, default=datetime.now, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
     is_demo = Column(Boolean, default=False, index=True)

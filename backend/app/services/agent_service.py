@@ -86,10 +86,9 @@ class AgentService:
             return False
         try:
             from app.models.hotel import Booking
-            # Booking.created_at se guarda con datetime.now() (hora local del server, como todos
-            # los modelos de hotel.py). Comparamos con la MISMA base (now_business), NO utcnow,
-            # para que la ventana de 24h sea real en local (UTC-3) y no quede en ~21h.
-            cutoff = now_business() - timedelta(hours=self._SESSION_WINDOW_HOURS)
+            # Booking.created_at ahora se guarda en UTC (utcnow_naive, unificación de zona).
+            # Comparamos con la MISMA base (utcnow_naive) para que la ventana de 24h sea exacta.
+            cutoff = utcnow_naive() - timedelta(hours=self._SESSION_WINDOW_HOURS)
             return db.query(Booking).filter(
                 Booking.session_id == session_id,
                 Booking.status != "cancelled",
@@ -288,6 +287,9 @@ class AgentService:
         if session_id in self.conversation_history:
             meta = self.session_metadata.get(session_id) or {}
             last = meta.get("last_activity")
+            # session_metadata vive SOLO en RAM y se compara contra sí mismo (last_activity, más
+            # abajo) → usar now_business() acá es coherente; no cruza timestamps de la BD (que van
+            # en UTC). El cutoff contra la BD es _session_cutoff() y ese sí usa utcnow_naive().
             if last is not None and (now_business() - last) > timedelta(hours=self._SESSION_WINDOW_HOURS):
                 logger.info("Session window expired (RAM), starting fresh",
                             session_id=session_id)

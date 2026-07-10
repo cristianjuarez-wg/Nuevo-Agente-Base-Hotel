@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from app.models.database import Base
 from typing import Dict, Optional
-from app.utils.timezone_utils import now_business, iso_business
+from app.utils.timezone_utils import now_business, iso_business, utcnow_naive
 
 class Lead(Base):
     __tablename__ = "leads"
@@ -42,8 +42,8 @@ class Lead(Base):
     travel_context = Column(Text, nullable=True)  # Contexto completo de la conversación
     
     # Metadatos
-    created_at = Column(DateTime, default=now_business)
-    updated_at = Column(DateTime, default=now_business, onupdate=now_business)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
     status = Column(String(20), default="active")  # active, contacted, converted, inactive
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
@@ -52,7 +52,7 @@ class Lead(Base):
     # Kanban fields
     kanban_stage = Column(String(20), default="new")  # new, contacted, won, lost
     notes = Column(Text, nullable=True)  # Notas del vendedor
-    last_status_change = Column(DateTime, default=now_business)  # Última vez que cambió de estado
+    last_status_change = Column(DateTime, default=utcnow_naive)  # Última vez que cambió de estado
     
     # Análisis adicional
     suggested_response_tone = Column(String(50), nullable=True)
@@ -100,8 +100,8 @@ class Lead(Base):
                 "travel_context": self.travel_context
             },
             "metadata": {
-                "created_at": iso_business(self.created_at, source="ar"),
-                "updated_at": iso_business(self.updated_at, source="ar"),
+                "created_at": iso_business(self.created_at, source="utc"),
+                "updated_at": iso_business(self.updated_at, source="utc"),
                 "status": self.status,
                 "channel": self.channel,
                 "origin": self.origin(),
@@ -112,7 +112,7 @@ class Lead(Base):
             "kanban": {
                 "stage": self.kanban_stage,
                 "notes": self.notes,
-                "last_status_change": iso_business(self.last_status_change, source="ar")
+                "last_status_change": iso_business(self.last_status_change, source="utc")
             },
             "event_info": {
                 "is_event_lead": self.is_event_lead,
@@ -176,7 +176,7 @@ class Lead(Base):
         self.suggested_response_tone = analysis.get('suggested_response_tone')
         self.next_action = analysis.get('next_action')
         self.reasoning = analysis.get('reasoning')
-        self.updated_at = now_business()
+        self.updated_at = utcnow_naive()
     
     def add_contact_info(self, name: str = None, last_name: str = None, phone: str = None, email: str = None):
         """Agrega información de contacto al lead"""
@@ -191,7 +191,7 @@ class Lead(Base):
         # Si el lead ya tiene datos completos, ya no es necesario solicitarlos
         if self.is_complete_lead():
             self.contact_readiness = False
-        self.updated_at = now_business()
+        self.updated_at = utcnow_naive()
     
     def is_complete_lead(self) -> bool:
         """Verifica si el lead tiene información de contacto completa"""
@@ -239,8 +239,8 @@ class Lead(Base):
             raise ValueError(f"Invalid stage: {new_stage}. Must be one of {valid_stages}")
         
         self.kanban_stage = new_stage
-        self.last_status_change = now_business()
-        self.updated_at = now_business()
+        self.last_status_change = utcnow_naive()
+        self.updated_at = utcnow_naive()
     
     def add_note(self, note: str):
         """Agrega una nota al lead"""
@@ -248,7 +248,7 @@ class Lead(Base):
             self.notes += f"\n\n---\n{now_business().strftime('%Y-%m-%d %H:%M')}: {note}"
         else:
             self.notes = f"{now_business().strftime('%Y-%m-%d %H:%M')}: {note}"
-        self.updated_at = now_business()
+        self.updated_at = utcnow_naive()
     
     def get_display_name(self) -> str:
         """Obtiene el nombre para mostrar"""
@@ -264,7 +264,7 @@ class Lead(Base):
         if not self.created_at:
             return "Desconocido"
         
-        delta = now_business() - self.created_at
+        delta = utcnow_naive() - self.created_at
         
         if delta.days > 0:
             return f"Hace {delta.days} día{'s' if delta.days > 1 else ''}"
@@ -295,7 +295,7 @@ class LeadEvent(Base):
     action = Column(String(50), nullable=False)        # availability_shown | booking_confirmed | contact_requested | reengaged | seguimiento | resumen
     summary = Column(String(255), nullable=True)       # one-liner mostrable ("Ofreció disponibilidad")
     note = Column(Text, nullable=True)                 # texto libre (seguimiento humano / resumen IA)
-    created_at = Column(DateTime, default=now_business, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
 
     lead = relationship("Lead", back_populates="events")
 

@@ -18,6 +18,7 @@ from sqlalchemy.orm import relationship
 
 from app.models.database import Base, engine
 from app.utils.timezone_utils import iso_business
+from app.utils.timezone_utils import utcnow_naive
 
 
 class MenuItem(Base):
@@ -37,8 +38,8 @@ class MenuItem(Base):
     available = Column(Boolean, nullable=False, default=True)   # hay stock hoy
     status = Column(String, nullable=False, default="active")   # "active" | "inactive"
     only_dinner = Column(Boolean, nullable=False, default=False)  # ej. ojo de bife solo cena
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
     is_demo = Column(Boolean, default=False, index=True)
 
     @property
@@ -97,8 +98,8 @@ class RestaurantOrder(Base):
     guest_name = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.now, index=True)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
     is_demo = Column(Boolean, default=False, index=True)
 
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
@@ -162,7 +163,7 @@ class ExtraCharge(Base):
     description = Column(String, nullable=False)
     amount_usd = Column(Float, nullable=False, default=0)
     status = Column(String, nullable=False, default="pendiente")  # "pendiente" | "saldado"
-    created_at = Column(DateTime, default=datetime.now, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
     is_demo = Column(Boolean, default=False, index=True)
 
     def to_dict(self, rate: float = None):
@@ -205,7 +206,7 @@ class TableReservation(Base):
     notes = Column(Text, nullable=True)
     channel = Column(String, nullable=False, default="web")           # web | whatsapp
 
-    created_at = Column(DateTime, default=datetime.now, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
     is_demo = Column(Boolean, default=False, index=True)
 
     def to_dict(self):
@@ -252,7 +253,7 @@ class Voucher(Base):
     notes = Column(Text, nullable=True)
     channel = Column(String, nullable=False, default="web")
 
-    created_at = Column(DateTime, default=datetime.now, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
     is_demo = Column(Boolean, default=False, index=True)
 
     items = relationship("VoucherItem", back_populates="voucher", cascade="all, delete-orphan")

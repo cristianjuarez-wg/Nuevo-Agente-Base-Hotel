@@ -13,6 +13,7 @@ from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Boolean
 from datetime import datetime
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 
 class Promotion(Base):
@@ -39,8 +40,8 @@ class Promotion(Base):
     valid_from = Column(DateTime, nullable=True)             # Null = sin límite de inicio
     valid_until = Column(DateTime, nullable=True)            # Null = sin fecha de vencimiento
 
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
+    updated_at = Column(DateTime, default=utcnow_naive, onupdate=utcnow_naive)
 
     @property
     def doc_source(self) -> str:

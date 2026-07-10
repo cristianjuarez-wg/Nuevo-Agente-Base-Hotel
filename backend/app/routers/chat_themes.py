@@ -19,6 +19,7 @@ El rango puede cruzar el año nuevo (ej: dic-10 → ene-10):
 """
 from typing import Optional
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -85,7 +86,7 @@ def _in_range(theme: ChatTheme, today: datetime) -> bool:
 
 
 def get_active_theme(db: Session) -> Optional[ChatTheme]:
-    today = datetime.now()
+    today = datetime.now()  # hora de pared local: el rango del tema es (mes, día), no UTC
 
     # Prioridad 1: pinned (ignoramos fechas — el cliente lo activó manualmente)
     pinned = db.query(ChatTheme).filter(ChatTheme.status == "pinned").first()
@@ -122,7 +123,7 @@ def _deactivate_others(db: Session, keep_id) -> None:
     for other in query.all():
         if other.status != "inactive":
             other.status = "inactive"
-            other.updated_at = datetime.now()
+            other.updated_at = utcnow_naive()
 
 
 @router.get("/api/chat-themes/")
@@ -154,7 +155,7 @@ def update_theme(theme_id: int, payload: ThemePayload, db: Session = Depends(get
     # Si quedó activo o fijado, desactiva al resto.
     if t.status in ("active", "pinned"):
         _deactivate_others(db, keep_id=theme_id)
-    t.updated_at = datetime.now()
+    t.updated_at = utcnow_naive()
     db.commit()
     db.refresh(t)
     logger.info("ChatTheme updated", id=t.id)
@@ -175,7 +176,7 @@ def update_status(theme_id: int, payload: StatusUpdate, db: Session = Depends(ge
         _deactivate_others(db, keep_id=theme_id)
 
     t.status = payload.status
-    t.updated_at = datetime.now()
+    t.updated_at = utcnow_naive()
     db.commit()
     db.refresh(t)
     return t.to_dict()

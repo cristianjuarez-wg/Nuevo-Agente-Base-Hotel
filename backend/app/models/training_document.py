@@ -15,6 +15,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON
 from datetime import datetime
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 
 class TrainingDocument(Base):
@@ -33,7 +34,7 @@ class TrainingDocument(Base):
     data = Column(JSON, nullable=True, default=dict)           # campos del formulario
     active = Column(Boolean, nullable=False, default=True)     # si influye (cuando haya inyección)
     is_default = Column(Boolean, nullable=False, default=False)  # plantilla de fábrica (no se borra)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
     is_demo = Column(Boolean, default=False, index=True)

@@ -9,6 +9,8 @@ Fuente automática: dólar oficial venta de dolarapi.com (gratis, sin API key).
 """
 import time
 from datetime import datetime
+
+from app.utils.timezone_utils import utcnow_naive
 from typing import Optional, Dict
 
 import requests
@@ -91,7 +93,7 @@ def get_current_rate(db: Session) -> Dict:
         _cache["rate"] = fresh
         _cache["ts"] = now
         config.cached_rate = fresh
-        config.cached_at = datetime.now()
+        config.cached_at = utcnow_naive()  # timestamp de auditoría → UTC
         config.source = "Oficial (dolarapi)"
         db.commit()
         return {

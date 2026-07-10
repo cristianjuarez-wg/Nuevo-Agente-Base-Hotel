@@ -17,6 +17,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, JSON
 from datetime import datetime
 
 from app.models.database import Base, engine
+from app.utils.timezone_utils import utcnow_naive
 
 
 class Agent(Base):
@@ -36,7 +37,7 @@ class Agent(Base):
     #   {"enabled": bool, "recipient_staff_ids": [int, ...]}
     # Default: desactivado y sin destinatarios (el parte se muestra, NO se envía).
     daily_report = Column(JSON, nullable=True, default=dict)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utcnow_naive)
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.
     is_demo = Column(Boolean, default=False, index=True)

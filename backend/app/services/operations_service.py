@@ -21,6 +21,8 @@ Estados de status usados acá: "asignado", "pre_resuelto", "resuelto" (ver Hotel
 from datetime import datetime, timedelta
 from typing import Optional
 
+from app.utils.timezone_utils import utcnow_naive
+
 from sqlalchemy.orm import Session, object_session
 
 from app.core.observability.logging_config import get_logger
@@ -135,7 +137,8 @@ def _pick_staff(db: Session, area: str) -> Optional[StaffMember]:
     # (el staff ya lo marcó resuelto y el huésped nunca validó) NO es trabajo pendiente:
     # no debe contar como carga para siempre y sesgar el round-robin. Lo excluimos pasado
     # el umbral de validación (_PRE_RESUELTO_STALE_DAYS).
-    stale_cutoff = datetime.now() - timedelta(days=_PRE_RESUELTO_STALE_DAYS)
+    # updated_at del ticket se persiste en UTC (utcnow_naive) → comparamos con la misma base.
+    stale_cutoff = utcnow_naive() - timedelta(days=_PRE_RESUELTO_STALE_DAYS)
 
     def _load(s: StaffMember) -> int:
         asignados = (

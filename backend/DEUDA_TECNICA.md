@@ -148,30 +148,47 @@ más fuentes de cotización es extender `convert` sin tocar llamadores. (b) las 
 `base_price_usd/ars` de `rooms` quedan (se siguen poblando por compat); su DROP va en una
 migración Alembic futura (junto con las tablas huérfanas de turismo).
 
-## Inconsistencia de zona horaria en los timestamps (preexistente, no de P4)
-Conviven TRES convenciones para los `created_at`/`updated_at` de los modelos:
-1. **UTC naive** — `utcnow_naive()` (tras P4): `contact.py`, `conversation.py`,
-   `conversation_message.py`, `lead_message.py`, `action_plan.py`, `metrics_snapshot.py`.
-2. **Hora local Argentina** — `now_business()` (Fase 1.3): `lead.py` (`created_at`, `updated_at`,
-   `last_status_change`).
-3. **Hora local del SERVIDOR** — `datetime.now` (sin tz): la mayoría de los modelos de dominio
-   (`hotel.py` → Booking/RoomUnit/HotelTicket, `restaurant.py`, `promotions.py`, `knowledge.py`,
-   `agent.py`, `skill.py`, `chat_theme.py`, `exchange_rate.py`, `prompt_config_version.py`). En
-   Render el servidor corre en UTC, así que en producción coincide con (1); en dev local NO.
+## Inconsistencia de zona horaria en los timestamps — ✅ RESUELTA (unificación a UTC)
+**Estado: cerrada.** Antes convivían TRES convenciones para los timestamps de datos
+(`utcnow_naive()` UTC, `now_business()` hora AR, y `datetime.now` hora del server), lo que rompía
+comparaciones cruzadas. Se unificó **todo timestamp de datos a `utcnow_naive()` (UTC naive)**.
 
-**Riesgo concreto (verificado):** `business_metrics.py:400` compara
-`Booking.created_at (datetime.now) >= lead.created_at (now_business, AR = UTC-3)` para atribuir la
-conversión lead→booking. Con el desfase de zona, un booking creado poco después de un lead puede
-parecer creado ANTES → la conversión no se cuenta. En Render (servidor UTC) el gap es exactamente
-las 3h de AR; en dev depende de la zona del server. No rompe hoy de forma visible pero la métrica
-de conversión puede subcontar.
+**Qué se migró:**
+- `lead.py`: `created_at`/`updated_at`/`last_status_change` y demás timestamps `now_business()`→
+  `utcnow_naive()`. La serialización pasó de `iso_business(..., source="ar")` a `source="utc"`.
+- Modelos de dominio: `hotel.py` (Booking/RoomUnit/HotelTicket), `restaurant.py`, `promotions.py`,
+  `knowledge.py`, `agent.py`, `staff.py`, `skill.py`, `chat_theme.py`, `exchange_rate.py`,
+  `training_document.py`, `prompt_config_version.py`, `database.py`: `datetime.now`→`utcnow_naive`
+  (defaults `default=`/`onupdate=` y llamadas).
+- Servicios/routers con asignaciones o comparaciones sobre esas columnas: `metrics_service.py`,
+  `agent_service.py` (ventana de sesión de 24h), `operations_service.py:138` (`stale_cutoff` vs
+  `HotelTicket.updated_at`), `restaurant_service.py` (`updated_at`/`redeemed_at`),
+  `exchange_rate_service.py` (`cached_at`), `chat_themes.py`/`documents.py`/`promotions.py`/
+  `management_knowledge.py`/`pattern_manager.py` (timestamps de auditoría).
 
-**Fix (cuando se encare):** unificar TODO a `utcnow_naive()` (UTC) para los timestamps de datos, y
-usar `now_business()`/`iso_business()` SOLO para MOSTRAR al usuario (que es su propósito). Migrar
-`lead.py` (now_business→utcnow_naive en los 3 timestamps) y los `datetime.now` de los modelos de
-dominio. Requiere cuidado: `lead.to_dict()` serializa con `iso_business(..., source="ar")` — al
-pasar a UTC hay que cambiar `source="utc"`. No urgente; se hace junto con una revisión de la capa
-de fechas.
+**Bugs latentes que la migración además arregló:**
+- `business_metrics.py:400` (atribución conversión lead→booking): antes comparaba Booking
+  (`datetime.now` server) vs Lead (`now_business` AR = UTC-3) → un booking posterior podía parecer
+  anterior y no contarse. Ahora ambos en UTC. Cubierto por `tests/test_timezone_conversion.py`.
+- `LeadEvent:311`: guardaba en AR pero serializaba como UTC (source por defecto). Coherente tras
+  migrar `created_at` a UTC.
+- `operations_service.py:138`: `stale_cutoff` (server-local) vs `HotelTicket.updated_at` (ya UTC
+  tras migrar `hotel.py`) — desfase del mismo tipo, ahora ambos en UTC.
+
+**Residual deliberado (NO se migra — son hora de pared LOCAL por diseño, no timestamps de auditoría):**
+- `restaurant_service.py:442,519`: `reserved_for` es la hora que el huésped pidió (`strptime` de
+  fecha+hora sin zona); se compara contra `datetime.now()` local. Pasarlo a UTC correría la reserva 3h.
+- `promotions_service.py:92`: `now` se compara contra `valid_from`/`valid_until`, fechas locales
+  que carga el dueño (`YYYY-MM-DD`).
+- `chat_themes.py:89`: `today` se usa como `(mes, día)` para el rango estacional del tema.
+- `now_business()`/`iso_business()` siguen usándose SOLO para MOSTRAR al usuario (notas de lead con
+  `.strftime`, rangos de reporte `.date()`, fecha/hora en el prompt del orquestador). Ese es su
+  propósito y es correcto.
+
+> Refinamiento futuro (menor, no bloquea): los rangos de reporte en `business_metrics.py`
+> (`now_business().date()` en líneas 66/218/336) definen el "día del negocio" en hora local pero
+> filtran columnas ahora en UTC; el borde de medianoche puede desplazarse hasta 3h. Es semántica de
+> reporte, no un cruce de convenciones; se afina si el cliente reporta discrepancias de borde.
 
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
