@@ -147,6 +147,12 @@ def build_team_roster_block(db) -> str:
     Le da al agente la única fuente de verdad de a quién SÍ puede reconocer por su
     nombre. Vacío ante cualquier problema (fail-open: el prompt igual trae la regla
     anti-invención, que ante la ausencia de lista manda a no reconocer a nadie).
+
+    Fase 1.5 (CONTRATO DE ONBOARDING): el roster ya sale de la tabla `StaffMember` (DB),
+    NO de nombres hardcodeados — por eso es multi-cliente sin tocar código. Consecuencia
+    para el onboarding de un cliente nuevo: si NO carga su equipo en el backoffice
+    (Negocio → Equipo), este bloque queda vacío y el agente no reconocerá a NADIE por su
+    nombre (comportamiento seguro, no un bug). Documentar este paso en el runbook (3.1/3.2).
     """
     try:
         from app.models.staff import StaffMember

@@ -744,6 +744,23 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
             if fallback:
                 cards = [fallback]
 
+        # Fase 1.4: anexar a cada card las etiquetas de moneda del negocio (desde el
+        # perfil), para que el frontend muestre la moneda correcta sin hardcodear "USD/ARS".
+        # Aditivo: los campos price_usd/price_ars existentes se conservan (compat).
+        if cards:
+            try:
+                from app.services import business_profile_service
+                _prof = business_profile_service.get_profile(db)
+                _cur = {
+                    "primary": _prof.get("primary_currency") or "USD",
+                    "secondary": _prof.get("secondary_currency"),
+                }
+                for _c in cards:
+                    if _c.get("type") == "room":
+                        _c.setdefault("currency", _cur)
+            except Exception as e:  # noqa: BLE001 — nunca romper la respuesta por esto
+                logger.warning("No se pudo anexar moneda a las cards", error=str(e))
+
         processing_time = time.time() - start_time
 
         response = ChatResponse(
