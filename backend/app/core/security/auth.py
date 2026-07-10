@@ -21,6 +21,7 @@ from app.config import settings
 from app.models.database import get_db
 from app.models.admin_user import AdminUser
 from app.core.observability.logging_config import get_logger
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -39,7 +40,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
 def create_access_token(user: AdminUser) -> str:
-    now = datetime.utcnow()
+    now = utcnow_naive()
     payload = {
         "sub": str(user.id),
         "email": user.email,

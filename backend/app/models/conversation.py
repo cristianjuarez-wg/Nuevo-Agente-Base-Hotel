@@ -5,6 +5,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, Text, JSON, For
 from sqlalchemy.orm import relationship
 from app.models.database import Base
 from datetime import datetime
+from app.utils.timezone_utils import utcnow_naive
 
 class Conversation(Base):
     """Registro de conversaciones para análisis temporal"""
@@ -26,8 +27,8 @@ class Conversation(Base):
     channel = Column(String(20), nullable=True)
     
     # Timestamps
-    started_at = Column(DateTime, default=datetime.utcnow, index=True)
-    last_message_at = Column(DateTime, default=datetime.utcnow, index=True)
+    started_at = Column(DateTime, default=utcnow_naive, index=True)
+    last_message_at = Column(DateTime, default=utcnow_naive, index=True)
     ended_at = Column(DateTime, nullable=True)
     
     # Métricas
@@ -64,7 +65,7 @@ class Conversation(Base):
             self.user_message_count += 1
         else:
             self.agent_message_count += 1
-        self.last_message_at = datetime.utcnow()
+        self.last_message_at = utcnow_naive()
     
     def calculate_duration(self):
         """Calcula duración total de la conversación"""

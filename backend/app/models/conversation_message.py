@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Dict, Optional
 from app.models.database import Base
 from app.utils.timezone_utils import iso_business
+from app.utils.timezone_utils import utcnow_naive
 
 
 class ConversationMessage(Base):
@@ -31,7 +32,7 @@ class ConversationMessage(Base):
     
     # Orden y timestamp
     sequence_number = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utcnow_naive, index=True)
     
     # Contexto
     context_type = Column(String(20), nullable=False)  # "pre_sale" | "post_sale"

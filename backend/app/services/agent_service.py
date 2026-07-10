@@ -21,6 +21,7 @@ import re
 # 🆕 Imports para Visión 360°
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -241,7 +242,7 @@ class AgentService:
     def _session_cutoff(self) -> datetime:
         """Instante (UTC, naive) a partir del cual un mensaje sigue dentro de la ventana
         de sesión. Más viejo que esto = no entra al contexto activo del agente."""
-        return datetime.utcnow() - timedelta(hours=self._SESSION_WINDOW_HOURS)
+        return utcnow_naive() - timedelta(hours=self._SESSION_WINDOW_HOURS)
 
     def _rehydrate_from_db(self, session_id: str, db: Session) -> List[Dict]:
         """Reconstruye el contexto desde la BD: los ÚLTIMOS mensajes dentro de la ventana

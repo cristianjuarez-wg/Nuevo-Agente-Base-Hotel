@@ -22,6 +22,7 @@ from app.utils.timezone_utils import iso_business
 from app.core.observability.logging_config import get_logger
 # Ventana "en vivo" centralizada en el servicio de control (fuente única).
 from app.services.conversation_control_service import LIVE_WINDOW_MINUTES
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -79,7 +80,7 @@ async def list_conversations(
             if m.session_id not in previews:  # el primero por sesión es el más reciente
                 previews[m.session_id] = {"role": m.role, "content": m.content or ""}
 
-    live_cutoff = datetime.utcnow() - timedelta(minutes=LIVE_WINDOW_MINUTES)
+    live_cutoff = utcnow_naive() - timedelta(minutes=LIVE_WINDOW_MINUTES)
 
     def _phone_from_session(sid: str) -> Optional[str]:
         return ("+" + sid[3:]) if (sid or "").startswith("wa_") else None

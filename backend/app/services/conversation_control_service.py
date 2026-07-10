@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.models.conversation import Conversation
 from app.core.observability.logging_config import get_logger
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -47,7 +48,7 @@ _control_cache: Dict[str, bool] = {}
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return utcnow_naive().isoformat()
 
 
 def _get_conv(db: Session, session_id: str) -> Optional[Conversation]:
@@ -103,7 +104,7 @@ def _is_stale(state: Dict) -> bool:
         last = datetime.fromisoformat(ts)
     except (ValueError, TypeError):
         return False
-    return datetime.utcnow() - last > timedelta(minutes=AUTO_RELEASE_MINUTES)
+    return utcnow_naive() - last > timedelta(minutes=AUTO_RELEASE_MINUTES)
 
 
 def _is_web_offline(session_id: str, conv: Conversation) -> bool:
@@ -118,7 +119,7 @@ def _is_web_offline(session_id: str, conv: Conversation) -> bool:
     last = conv.last_message_at
     if not last:
         return True
-    return (datetime.utcnow() - last) > timedelta(minutes=LIVE_WINDOW_MINUTES)
+    return (utcnow_naive() - last) > timedelta(minutes=LIVE_WINDOW_MINUTES)
 
 
 def take_over(db: Session, session_id: str, staff_id: Optional[int] = None,

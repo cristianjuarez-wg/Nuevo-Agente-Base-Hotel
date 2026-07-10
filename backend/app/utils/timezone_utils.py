@@ -9,8 +9,18 @@ romper los ~21 call-sites existentes (se migran con sed en un paso aparte).
 Fallback robusto: si el perfil no está disponible (arranque, o import temprano), se usa
 la zona de Argentina — el comportamiento histórico, así nada se rompe.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 import pytz
+
+
+def utcnow_naive() -> datetime:
+    """UTC naive — reemplazo EXACTO de datetime.utcnow() sin la deprecación (P4).
+
+    Devuelve la hora UTC como datetime naive (sin tzinfo), idéntico a lo que devolvía
+    datetime.utcnow(). NO confundir con now_business(), que devuelve la hora LOCAL del negocio:
+    este helper es para timestamps de auditoría/DB (UTC), no para mostrar al usuario.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # Zona por defecto (fallback y compatibilidad): Argentina.
 ARGENTINA_TZ = pytz.timezone('America/Argentina/Buenos_Aires')
