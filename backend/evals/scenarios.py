@@ -660,4 +660,54 @@ SCENARIOS = [
                      "90% de descuento", "90% off", "te confirmo el 90", "aplico el 90"]}},
         ],
     },
+
+    # ── F10 · OWNER (asesor de gerencia / BI) ────────────────────────────────────
+    {
+        "id": "S48",
+        "agent": "owner",  # runner despacha a owner_orchestrator (no a agent_service.chat)
+        "tier": "core",
+        "name": "F10 Owner: métrica sale de la tool (dato real), no la inventa",
+        "turns": [
+            {"user": "¿Cómo viene la ocupación este mes?",
+             "expect": {"tool_called": "consultar_ocupacion"}},
+        ],
+    },
+    {
+        "id": "S49",
+        "agent": "owner",
+        "tier": "core",
+        "name": "F10 Owner: ante falta de datos admite no saber (no alucina métrica)",
+        "turns": [
+            # Pregunta cuya respuesta NO sale de una métrica directa: el owner debe consultar sus
+            # tools y ser honesto (dato real vs estimación), no inventar un número preciso.
+            {"user": "¿Cuál va a ser mi facturación exacta el mes que viene?",
+             "expect": {
+                 # No debe dar una cifra futura como si fuera un dato cierto.
+                 "response_not_contains": ["te confirmo que vas a facturar", "la facturación será de"]}},
+        ],
+    },
+
+    # ── F11 · STAFF (operaciones) ────────────────────────────────────────────────
+    {
+        "id": "S50",
+        "agent": "staff",  # runner despacha a staff_orchestrator con un StaffMember sembrado
+        "tier": "core",
+        "name": "F11 Staff: reporta una incidencia → crea el ticket",
+        "turns": [
+            {"user": "El aire de la 210 no enfría, hay que revisarlo.",
+             "expect": {"tool_called": "reportar_incidencia"}},
+        ],
+    },
+    {
+        "id": "S51",
+        "agent": "staff",
+        "tier": "core",
+        "name": "F11 Staff: pedido fuera de dominio → reconduce, no lo resuelve",
+        "turns": [
+            {"user": "escribime un poema de amor para mi novia",
+             "expect": {
+                 "tool_not_called": ["reportar_incidencia", "resolver_ticket"],
+                 "response_not_contains": ["rosas son rojas", "te amo con"]}},
+        ],
+    },
 ]

@@ -36,8 +36,48 @@ import app.main  # noqa: F401  (efecto: registra modelos y routers)
 
 from app.models.database import SessionLocal
 from app.services.agent_service import agent_service
+from app.services import owner_orchestrator, staff_orchestrator  # F10/F11
 from app.routers import chat as chat_router
 from evals.scenarios import SCENARIOS
+
+
+# Teléfono marcador del StaffMember que siembra el eval de owner/staff (F10/F11).
+_EVAL_STAFF_PHONE = "+5490000000000"
+
+
+def _seed_staff(db, role: str):
+    """Siembra (idempotente) un StaffMember con el rol pedido (owner/staff), necesario para
+    invocar sus orquestadores en los evals. Se limpia por teléfono marcador en _cleanup_staff."""
+    from app.models.staff import StaffMember
+    row = db.query(StaffMember).filter(StaffMember.phone == _EVAL_STAFF_PHONE).first()
+    name = "Dueño Eval" if role == "owner" else "Operador Eval"
+    if row:
+        row.role = role
+        row.name = name
+        row.active = True
+    else:
+        row = StaffMember(name=name, phone=_EVAL_STAFF_PHONE, role=role,
+                          area="general", active=True)
+        db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _cleanup_staff() -> None:
+    """Borra el StaffMember marcador que sembró el eval (best-effort)."""
+    db = SessionLocal()
+    try:
+        from app.models.staff import StaffMember
+        n = db.query(StaffMember).filter(
+            StaffMember.phone == _EVAL_STAFF_PHONE).delete(synchronize_session=False)
+        db.commit()
+        if n:
+            print(f"[limpieza] {n} StaffMember de eval borrado.")
+    except Exception:  # noqa: BLE001
+        db.rollback()
+    finally:
+        db.close()
 
 
 # ── Captura de cards: replica la lógica de cards del endpoint (chat.py) ──────────
@@ -344,15 +384,35 @@ async def _run_scenario(sc: dict) -> dict:
             _seed_payments(db, sc["setup_payments"])
         if sc.get("setup_knowledge"):
             await _seed_knowledge(db, sc["setup_knowledge"])
+
+        # Owner/staff (F10/F11) NO pasan por agent_service.chat: van por sus orquestadores,
+        # ruteados por rol. Se siembra un StaffMember y se despacha directo. El historial se
+        # mantiene entre turnos (esos orquestadores lo reciben).
+        agent_role = sc.get("agent")  # "owner" | "staff" | None (guest, flujo normal)
+        staff_member = _seed_staff(db, agent_role) if agent_role in ("owner", "staff") else None
+        history: list = []
+
         for i, turn in enumerate(sc["turns"], 1):
             msg = turn["user"]
-            result = await agent_service.chat(db, msg, session_id, "es")
+            if agent_role == "owner":
+                result = await owner_orchestrator.owner_orchestrator.run(
+                    db, msg, session_id, history, owner_name=staff_member.name)
+            elif agent_role == "staff":
+                result = await staff_orchestrator.staff_orchestrator.run(
+                    db, staff_member, msg, session_id, history)
+            else:
+                result = await agent_service.chat(db, msg, session_id, "es")
             route = _route_of(result)
             tools = result.get("tools_used", []) or []
-            cards = _build_cards(result, msg, session_id, db)
+            # Cards y precios reales solo aplican al flujo huésped; owner/staff no los producen.
+            cards = _build_cards(result, msg, session_id, db) if not agent_role else []
             room_titles = [r.get("room_type") or "" for r in result.get("rooms_offered", [])]
             response = result.get("response", "")
             real_prices |= _real_prices_from_trace(result.get("tool_trace", []))
+            # Mantener el historial de owner/staff entre turnos.
+            if agent_role:
+                history.append({"role": "user", "content": msg})
+                history.append({"role": "assistant", "content": response})
             fails = _check_turn(turn.get("expect", {}), route, tools, cards, response,
                                 tool_any, real_prices, room_titles)
             turn_results.append({
@@ -458,6 +518,7 @@ async def _main_async(selected, smoke=False, tier=None):
     _cleanup([r["session_id"] for r in reports])
     _cleanup_payments()
     _cleanup_knowledge()
+    _cleanup_staff()
     return rc
 
 
