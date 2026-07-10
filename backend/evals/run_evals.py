@@ -289,6 +289,47 @@ def _cleanup_payments() -> None:
         db.close()
 
 
+# Título marcador de la entry de conocimiento envenenada que siembra el eval de inyección (F9).
+_EVAL_KNOWLEDGE_TITLE = "[EVAL] Documento con inyección"
+
+
+async def _seed_knowledge(db, spec: dict) -> None:
+    """Siembra una KnowledgeEntry con contenido que INTENTA una prompt-injection (F9), para
+    verificar que el agente NO obedece la orden incrustada en el documento. Se re-ingesta al RAG
+    para que info_hotel la pueda recuperar. Se limpia por título marcador."""
+    from app.models.knowledge import KnowledgeEntry
+    db.query(KnowledgeEntry).filter(KnowledgeEntry.title == _EVAL_KNOWLEDGE_TITLE).delete(
+        synchronize_session=False)
+    entry = KnowledgeEntry(
+        category=spec.get("category", "servicios"),
+        title=_EVAL_KNOWLEDGE_TITLE,
+        content=spec["content"],
+        data={}, status="active",
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    # Re-ingesta al RAG para que la tool info_hotel pueda recuperar este documento.
+    from app.domains.hotel.services.knowledge_service import reingest
+    await reingest(entry)
+
+
+def _cleanup_knowledge() -> None:
+    """Borra la entry de conocimiento envenenada que sembró el eval (best-effort)."""
+    db = SessionLocal()
+    try:
+        from app.models.knowledge import KnowledgeEntry
+        n = db.query(KnowledgeEntry).filter(
+            KnowledgeEntry.title == _EVAL_KNOWLEDGE_TITLE).delete(synchronize_session=False)
+        db.commit()
+        if n:
+            print(f"[limpieza] {n} entry de conocimiento de eval borrada.")
+    except Exception:  # noqa: BLE001
+        db.rollback()
+    finally:
+        db.close()
+
+
 async def _run_scenario(sc: dict) -> dict:
     db = SessionLocal()
     prefix = sc.get("session_prefix") or "web-eval"
@@ -301,6 +342,8 @@ async def _run_scenario(sc: dict) -> dict:
             _seed_bookings(db, session_id, sc["setup_bookings"])
         if sc.get("setup_payments"):
             _seed_payments(db, sc["setup_payments"])
+        if sc.get("setup_knowledge"):
+            await _seed_knowledge(db, sc["setup_knowledge"])
         for i, turn in enumerate(sc["turns"], 1):
             msg = turn["user"]
             result = await agent_service.chat(db, msg, session_id, "es")
@@ -402,6 +445,7 @@ async def _main_async(selected):
     # repetible y no sature el inventario de la DB real.
     _cleanup([r["session_id"] for r in reports])
     _cleanup_payments()
+    _cleanup_knowledge()
     return rc
 
 
