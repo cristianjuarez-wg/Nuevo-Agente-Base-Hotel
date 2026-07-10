@@ -251,7 +251,7 @@ async def _process_and_reply(
             return
 
         # Despachar al agente correcto según el rol (punto único de ruteo).
-        from app.services.agent_router import route_whatsapp
+        from app.domains.hotel.services.agent_router import route_whatsapp
         try:
             result = await asyncio.wait_for(
                 route_whatsapp(db, phone, body),

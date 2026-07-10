@@ -33,7 +33,7 @@ def test_spanish_searches():
     ]
     
     try:
-        from app.services.rag_service import RAGService
+        from app.core.rag.rag_service import RAGService
         
         rag_service = RAGService()
         

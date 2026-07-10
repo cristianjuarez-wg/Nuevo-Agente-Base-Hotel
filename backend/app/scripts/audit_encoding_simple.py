@@ -208,7 +208,7 @@ def audit_search_functionality():
     # Importar servicio RAG corregido
     try:
         sys.path.append(str(Path(__file__).parent.parent))
-        from app.services.rag_service import RAGService
+        from app.core.rag.rag_service import RAGService
     except ImportError:
         print("[INFO] RAGService no disponible todavia")
         return []

@@ -32,13 +32,13 @@ from agents import (
 
 from app.config import settings
 from app.utils.timezone_utils import now_business
-from app.core.agent_profile import profile_manager
+from app.core.profile.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
 from app.services.lead_service import lead_service
 from app.services.lead_analyzer import lead_analyzer
-from app.services.rag_service import rag_service
+from app.core.rag.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
 from app.prompts.tool_agent_prompts import (
     TOOL_AGENT_SYSTEM, DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK,
@@ -493,7 +493,7 @@ class HotelSDKOrchestrator:
             fecha = now.strftime("%d/%m/%Y")
         hora = now.strftime("%H:%M")
 
-        from app.core.hotel_location import HOTEL_LOCATION_BLOCK
+        from app.domains.hotel.hotel_location import HOTEL_LOCATION_BLOCK
         from app.prompts.identity_blocks import build_identity_block, build_dialect_block
 
         prof = profile or {}

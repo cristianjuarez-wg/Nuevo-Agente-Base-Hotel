@@ -3,10 +3,10 @@ from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.utils.timezone_utils import now_business
-from app.services.rag_service import rag_service
+from app.core.rag.rag_service import rag_service
 from app.services.lead_service import lead_service
 from app.services.conversation_state_manager import conversation_state_manager
-from app.core.agent_profile import profile_manager
+from app.core.profile.agent_profile import profile_manager
 from app.core.llm.circuit_breaker import openai_circuit_breaker
 from app.core.observability.logging_config import get_logger
 from app.core.llm.sdk_usage import usage_from_completion

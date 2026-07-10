@@ -21,7 +21,7 @@ from app.models.database import get_db
 from app.models.knowledge import (
     KnowledgeEntry, Place, KNOWLEDGE_CATEGORIES, PLACE_CATEGORIES,
 )
-from app.services import knowledge_service
+from app.domains.hotel.services import knowledge_service
 from app.config import settings
 from app.core.observability.logging_config import get_logger
 

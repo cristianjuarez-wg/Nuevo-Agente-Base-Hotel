@@ -186,7 +186,7 @@ async def reset_advisor_memory(db: Session = Depends(get_db)):
 
     # Limpiar memoria en RAM (historiales y último gráfico por sesión owner).
     try:
-        from app.services import agent_router
+        from app.domains.hotel.services import agent_router
         for d in (agent_router._role_histories, agent_router._last_owner_chart):
             for k in [k for k in d if k.startswith("owner_")]:
                 d.pop(k, None)

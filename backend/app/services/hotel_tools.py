@@ -16,7 +16,7 @@ from typing import Dict, Optional
 
 from sqlalchemy.orm import Session
 
-from app.services.rag_service import rag_service
+from app.core.rag.rag_service import rag_service
 from app.services.reservation_service import get_availability, create_booking, get_booking
 from app.models.knowledge import KnowledgeEntry, Place, _payment_accounts
 from app.models.hotel import Room, Booking
@@ -25,7 +25,7 @@ from app.models.contact import Contact
 from app.services import promotions_service, exchange_rate_service, restaurant_service
 from app.services.contact_service import contact_service
 from app.config import settings
-from app.core.hotel_location import (
+from app.domains.hotel.hotel_location import (
     HOTEL_ADDRESS, HOTEL_AIRPORT, directions_url, near_hotel_search_url, is_far_origin,
 )
 from app.core.observability.logging_config import get_logger

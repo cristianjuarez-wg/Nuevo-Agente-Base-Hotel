@@ -42,7 +42,7 @@ def test_chat_rejects_short_session_id(client):
 
 def test_no_context_response_does_not_duplicate():
     """Verifica que format_no_context_response devuelve is_final=True (sin doble procesado)."""
-    from app.services.rag_service import rag_service
+    from app.core.rag.rag_service import rag_service
 
     # Pasar geo_analysis como dict, igual que lo llama el código real
     geo_analysis = {"continent": "América", "countries": ["Cuba"], "cities": []}

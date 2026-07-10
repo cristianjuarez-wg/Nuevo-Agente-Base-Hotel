@@ -32,7 +32,7 @@ from agents import (
 )
 
 from app.config import settings
-from app.core.agent_profile import profile_manager
+from app.core.profile.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage

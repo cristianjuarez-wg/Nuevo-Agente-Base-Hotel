@@ -3,10 +3,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from typing import List, Dict, Optional
 from app.config import settings
 from app.core.observability.logging_config import get_logger
-from app.core.geography import geography_service
-from app.core.intelligent_geography import intelligent_extractor
 from app.core.rag.document_classifier import document_classifier
-from app.services.llm_metadata_extractor import llm_extractor  # 🆕 Extractor LLM
+from app.core.rag.llm_metadata_extractor import llm_extractor  # 🆕 Extractor LLM
 import hashlib
 import os
 from datetime import datetime
@@ -25,58 +23,9 @@ class PDFProcessor:
                    chunk_size=settings.CHUNK_SIZE, 
                    chunk_overlap=settings.CHUNK_OVERLAP)
     
-    def extract_countries_from_text(self, text: str, filename: str = "", 
-                                    document_type: str = "package") -> List[str]:
-        """
-        Extrae países usando el extractor inteligente multi-nivel.
-        Detecta: países explícitos, regiones especiales, ciudades, landmarks, itinerarios.
-        Filtra países que son solo puntos de partida o escalas (análisis inteligente).
-        
-        Args:
-            text: Texto completo del documento
-            filename: Nombre del archivo
-            document_type: Tipo de documento (package, policy, etc.)
-        """
-        try:
-            # 1. Usar extractor inteligente
-            geo_data = intelligent_extractor.extract_all_geographic_entities(text, filename)
-            
-            countries = geo_data['countries']
-            
-            if not countries:
-                return []
-            
-            # 2. Filtrar países usando análisis inteligente de relevancia
-            # (solo para paquetes con múltiples países)
-            filtered_countries = intelligent_extractor.filter_destination_countries(
-                text, 
-                countries, 
-                document_type
-            )
-            
-            # Log de detección
-            if filtered_countries != countries:
-                logger.info("Countries filtered (intelligent analysis)",
-                           original_countries=countries,
-                           filtered_countries=filtered_countries,
-                           cities=geo_data.get('cities', []),
-                           landmarks=geo_data.get('landmarks', []),
-                           special_regions=geo_data.get('special_regions', []))
-            else:
-                logger.info("Countries detected (intelligent extraction)",
-                           countries=filtered_countries,
-                           cities=geo_data.get('cities', []),
-                           landmarks=geo_data.get('landmarks', []),
-                           special_regions=geo_data.get('special_regions', []),
-                           confidence=geo_data.get('confidence', {}))
-            
-            return filtered_countries
-            
-        except Exception as e:
-            logger.error("Error extracting countries from text",
-                        error=str(e))
-            return []
-    
+    # (Fase 2.1: se retiró extract_countries_from_text — enriquecimiento geográfico de
+    # turismo, código muerto, que hacía que core/rag/ importara dominio legacy.)
+
     def extract_text(self, pdf_path: str) -> str:
         """Extrae texto del PDF"""
         try:

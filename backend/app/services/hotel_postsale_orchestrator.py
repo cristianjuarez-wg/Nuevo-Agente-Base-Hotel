@@ -27,7 +27,7 @@ from agents import (
 )
 
 from app.config import settings
-from app.core.agent_profile import profile_manager
+from app.core.profile.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
@@ -126,7 +126,7 @@ async def consultar_info_hotel(
     condición antes de ofrecer pasar a un asesor. NO inventes: respondé solo con lo que
     devuelva esta herramienta."""
     try:
-        from app.services.rag_service import rag_service
+        from app.core.rag.rag_service import rag_service
         context_text = await rag_service.retrieve_context(query)
         if not context_text or context_text.strip() == "NO_CONTEXT_FOUND":
             return ("No encontré ese detalle en la información del hotel. Para ese caso "

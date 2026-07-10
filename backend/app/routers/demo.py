@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db, engine
 from app.services import demo_data_service
-from app.core.reset_tables import reset_all
+from app.domains.hotel.reset_tables import reset_all
 from app.core.security.admin_auth import require_admin_key
 from app.core.observability.logging_config import get_logger
 

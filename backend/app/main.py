@@ -14,7 +14,7 @@ from app.models.schemas import HealthResponse, HealthStatus, ServiceHealth
 from app.core.rag.vector_store import get_vector_store
 from app.services.agent_service import agent_service
 from app.core.observability.logging_config import setup_logging, get_logger
-from app.core.agent_profile import profile_manager
+from app.core.profile.agent_profile import profile_manager
 import time
 from datetime import datetime
 

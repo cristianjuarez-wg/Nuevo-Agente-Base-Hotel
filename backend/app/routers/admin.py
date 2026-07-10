@@ -6,7 +6,7 @@ from app.models.schemas import (
     SystemMetrics,
     CircuitBreakerStatus
 )
-from app.core.agent_profile import profile_manager
+from app.core.profile.agent_profile import profile_manager
 from app.core.llm.circuit_breaker import openai_circuit_breaker, vector_store_circuit_breaker
 from app.services.agent_service import agent_service
 from app.core.rag.vector_store import get_vector_store

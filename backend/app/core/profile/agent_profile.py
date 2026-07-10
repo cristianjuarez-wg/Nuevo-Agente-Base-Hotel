@@ -47,25 +47,17 @@ class AgentProfileManager:
             fecha_actual = f"{dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}"
             hora_actual = now.strftime("%H:%M")
         
-        # Información temporal en la zona del negocio (Fase 1.3: desde el BusinessProfile,
-        # ya no hardcodeada a Argentina/Bariloche). Best-effort con fallback histórico.
-        try:
-            from app.prompts.identity_blocks import build_temporal_block
-            from app.services import business_profile_service
-            from app.models.database import SessionLocal
-            _db = SessionLocal()
-            try:
-                _prof = business_profile_service.get_profile(_db)
-            finally:
-                _db.close()
-            temporal = build_temporal_block(fecha_actual, hora_actual, _prof)
-        except Exception:
-            temporal = (
-                "INFORMACIÓN TEMPORAL (zona horaria del hotel, Argentina):\n"
-                f"- Fecha actual: {fecha_actual}\n- Hora actual: {hora_actual}\n"
-                "- Esta es la hora LOCAL DEL HOTEL. El visitante puede estar en otra zona horaria.\n"
-                "  No asumas que es su hora local ni que está físicamente en Bariloche."
-            )
+        # Bloque temporal. NOTA (Fase 2.1): este método (get_system_prompt) es código
+        # heredado sin uso en el runtime actual (los agentes componen su prompt en sus
+        # orquestadores). Para que core/ no dependa del dominio, acá se usa un bloque
+        # temporal GENÉRICO. La versión parametrizada por BusinessProfile vive en
+        # domains/hotel/prompts/identity_blocks.build_temporal_block, que sí conocen los
+        # orquestadores del hotel.
+        temporal = (
+            "INFORMACIÓN TEMPORAL (zona horaria del negocio):\n"
+            f"- Fecha actual: {fecha_actual}\n- Hora actual: {hora_actual}\n"
+            "- Esta es la hora LOCAL DEL NEGOCIO. El visitante puede estar en otra zona horaria."
+        )
         context_with_date = f"{temporal}\n\n{context}"
         
         template = self.current_profile['system_prompt_template']
