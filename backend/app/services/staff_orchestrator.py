@@ -159,8 +159,26 @@ class StaffOrchestrator:
             pass
         return "\n".join(
             f"- {t.ticket_number} ({ops._room_label(t)}): {(t.description or '')[:50]}"
+            f"{self._ticket_allergy_note(db, t)}"
             for t in tickets[:max_tickets]
         )
+
+    def _ticket_allergy_note(self, db: Session, ticket) -> str:
+        """Nivel STAFF (mínimo): si el huésped del ticket tiene alergias declaradas, avisarlas.
+
+        Es un dato de SEGURIDAD (no comercial): operaciones no recibe perfil 360 ni datos de
+        venta, pero sí debe conocer alergias. Nunca rompe el resumen."""
+        try:
+            booking = getattr(ticket, "booking", None)
+            contact_id = getattr(booking, "contact_id", None) if booking else None
+            if not contact_id:
+                return ""
+            from app.services.contact_service import contact_service
+            prefs = (contact_service.get_guest_profile(contact_id, db) or {}).get("preferences") or {}
+            allergies = prefs.get("allergies") or []
+            return f"  ⚠️ Alergias: {', '.join(allergies)}." if allergies else ""
+        except Exception:  # noqa: BLE001 — la anotación nunca debe romper el resumen
+            return ""
 
     def _build_instructions(self, db: Session, staff: StaffMember) -> str:
         now = now_business()

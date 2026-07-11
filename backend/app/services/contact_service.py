@@ -476,6 +476,12 @@ class ContactService:
             (b for b in bookings if b.check_in and b.status != "cancelled" and b.check_in > today),
             key=lambda b: b.check_in, default=None,
         )
+        # ¿Ya se hospedó REALMENTE alguna vez? (check_out en el pasado). Distinto de stays_count,
+        # que cuenta también reservas FUTURAS: un huésped con una única reserva por venir NO se
+        # hospedó todavía. Se usa para no afirmar "ya se hospedó antes" cuando no corresponde.
+        has_past_stay = any(
+            b.check_out and b.status != "cancelled" and b.check_out < today for b in bookings
+        )
         # Habitación preferida: room_type más frecuente.
         room_counts: Dict[str, int] = {}
         for b in bookings:
@@ -525,6 +531,7 @@ class ContactService:
             "upcoming_stay": upcoming.to_dict() if upcoming else None,
             "stays_count": len(bookings),
             "is_recurring": len(bookings) > 1,
+            "has_past_stay": has_past_stay,
             "first_stay": stays[-1]["check_in"] if stays else None,
             "last_stay": stays[0]["check_in"] if stays else None,
             "preferred_room": preferred_room,

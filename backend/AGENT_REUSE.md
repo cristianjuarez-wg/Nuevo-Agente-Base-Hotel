@@ -291,3 +291,29 @@ modelos con FKs por string uno por uno, reordenar el registro y el barrido del c
 otra regresión de mappers). El registro centralizado funciona y está cubierto por
 `test_architecture.py`. Si algún día se mueven, hacerlo con `git mv` uno por vez, import-check
 tras cada uno, y actualizando el orden de registro en el mismo commit del primer movimiento.
+
+---
+
+## Contrato de privacidad: qué datos del huésped ve cada rol (Fase 1 — Capa 2)
+
+Los datos del huésped (Capa 2: estadías, preferencias, recurrencia, gasto, `ai_summary`) se
+inyectan en el prompt del agente a través de un ÚNICO helper con niveles de acceso por rol:
+`guest_context_service.build_guest_context(agent_role, contact_id, db)`. Es el único lugar donde
+se decide qué ve cada rol — la política de privacidad está centralizada, no dispersa.
+
+| Rol (`display_role`) | Empleado | Qué ve del huésped EN EL PROMPT |
+|---|---|---|
+| `guest` | Aura (pre-venta, post-venta, casual) | Perfil 360 completo: estadías, recurrencia, habitación preferida, preferencias, consumo, alergias, y el `ai_summary` si existe. |
+| `management` | Asesor | **Nada individual.** `build_guest_context("management", ...)` devuelve `""` siempre. Gerencia trabaja con agregados. |
+| `staff` | Operaciones | **Mínimo:** nombre + habitación del ticket, y alergias (seguridad). Nada comercial (sin gasto, consumo, recurrencia ni preferencias de venta). |
+
+**Precisión de la garantía (importante, no vender de más):** el nivel `management` garantiza que
+el PROMPT del owner **no inyecta datos individuales de forma pasiva**. NO garantiza que gerencia
+no pueda consultar un huésped a propósito: la tool `buscar_huesped` (`owner_orchestrator.py`)
+devuelve nombre/reserva/fechas de una reserva puntual cuando el dueño la invoca. Eso es una
+acción deliberada del dueño (buscar una reserva para operar), no una fuga. El test de privacidad
+valida el prompt, no prohíbe la tool.
+
+**`ai_summary` (Fase 1):** el agente solo LEE el resumen que ya generó el backoffice; no se
+regenera en runtime (evita latencia/costo por turno). La regeneración automática es un posible
+sub-hito futuro.

@@ -59,10 +59,12 @@ def build_guest_profile_block(profile: dict) -> str:
             f"check-out {up.get('check_out','')}). AÚN NO se hospedó. Si habla de 'el primer día "
             f"de mi estadía' o 'cuando llegue', se refiere al check-in {up.get('check_in','')}."
         )
-    if profile.get("is_recurring"):
+    # "Recurrente" / "ya se hospedó" solo si REALMENTE hubo una estadía pasada (check_out < hoy).
+    # stays_count incluye reservas FUTURAS: un huésped con una única reserva por venir no volvió.
+    if profile.get("is_recurring") and profile.get("has_past_stay"):
         lines.append(f"- Es un huésped RECURRENTE: {profile.get('stays_count')} estadías. "
                      f"Última: {profile.get('last_stay')}.")
-    elif profile.get("stays_count"):
+    elif profile.get("has_past_stay"):
         lines.append(f"- Ya se hospedó antes (última estadía: {profile.get('last_stay')}).")
     if profile.get("preferred_room"):
         lines.append(f"- Habitación que suele elegir: {profile['preferred_room']}.")
@@ -104,6 +106,11 @@ def build_guest_profile_block(profile: dict) -> str:
     if prefs.get("notes"):
         lines.append(f"- Notas del hotel: {prefs['notes']}")
 
+    # Resumen IA del huésped (lo genera el backoffice). Solo se lee; si no existe, no se agrega.
+    ai_summary = (contact.get("ai_summary") or "").strip()
+    if ai_summary:
+        lines.append(f"- Resumen del huésped (histórico): {ai_summary}")
+
     if not lines:
         return ""  # sin datos útiles: no inyectamos nada
 
@@ -129,6 +136,52 @@ CÓMO USARLO:
    ("la última vez disfrutaste el ojo de bife, ¿querés repetir?") — sin recitar la lista.
 ✅ Tono cálido, de hospitalidad premium, natural — NO leas los datos como una lista.
 🚫 NO suenes invasivo ni recites todo lo que sabés de golpe; usalo cuando venga al caso.{allergy_rule}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+
+
+def build_staff_guest_block(profile: dict) -> str:
+    """Bloque MÍNIMO del huésped para operaciones (staff): nombre + habitación del ticket.
+
+    Nada comercial: sin gasto, sin consumo, sin recurrencia, sin preferencias de venta. Solo lo
+    imprescindible para que operaciones sepa de quién y de qué habitación es el ticket. Alergias
+    SÍ se incluyen (seguridad, no venta). Vacío si no hay datos útiles.
+    """
+    contact = profile.get("contact") or {}
+    name = contact.get("first_name") or contact.get("full_name")
+
+    room = None
+    active = profile.get("active_stay") or {}
+    upcoming = profile.get("upcoming_stay") or {}
+    if active.get("room_type"):
+        room = active.get("room_type")
+    elif upcoming.get("room_type"):
+        room = upcoming.get("room_type")
+    elif profile.get("preferred_room"):
+        room = profile.get("preferred_room")
+
+    lines = []
+    if name:
+        lines.append(f"- Huésped: {name}.")
+    if room:
+        lines.append(f"- Habitación: {room}.")
+
+    # Alergias: seguridad alimentaria/operativa, NO dato comercial → se conservan.
+    prefs = profile.get("preferences") or {}
+    allergies = prefs.get("allergies") or []
+    if allergies:
+        lines.append(f"- ⚠️ Alergias/intolerancias (respetar SIEMPRE): {', '.join(allergies)}.")
+
+    if not lines:
+        return ""
+
+    detail = "\n".join(lines)
+    return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛎️ HUÉSPED DEL TICKET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{detail}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 """
