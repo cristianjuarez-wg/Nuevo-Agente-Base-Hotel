@@ -40,8 +40,8 @@ def test_preventa_placeholders_cubiertos():
 def test_postventa_placeholders_cubiertos():
     from app.domains.hotel.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
     provided = {
-        "identity_block", "facts_block", "passenger_name", "package_context", "chat_history",
-        "continuidad", "team_block",
+        "identity_block", "facts_block", "passenger_name", "guest_context", "package_context",
+        "chat_history", "continuidad", "team_block",
     }
     missing = _placeholders(POSTSALE_TOOL_SYSTEM) - provided
     assert not missing, f"post-venta: placeholders sin proveer → {missing}"

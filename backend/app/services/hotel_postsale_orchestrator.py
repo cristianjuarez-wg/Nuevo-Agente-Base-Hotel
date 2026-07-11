@@ -516,10 +516,15 @@ class HotelPostSaleSDKOrchestrator:
         )
         profile = business_profile_service.get_profile(service.db)
         passenger_name = booking.guest_name or "el huésped"
+        # Perfil 360 del huésped (Capa 2, Fase 1): antes el post-venta NO lo recibía. Nivel guest.
+        from app.services import guest_context_service
+        guest_context = guest_context_service.build_guest_context(
+            "guest", getattr(booking, "contact_id", None), service.db)
         return POSTSALE_TOOL_SYSTEM.format(
             identity_block=build_postsale_identity_block(profile, passenger_name),
             facts_block=build_facts_block(profile),  # HECHOS del negocio (Fase 3.5 → post-venta)
             passenger_name=passenger_name,  # el prompt lo usa además en la regla de no re-saludar
+            guest_context=guest_context,
             package_context=booking_context,
             chat_history=self._format_history(history),
             continuidad=self._continuity_signal(service, session_id, history),

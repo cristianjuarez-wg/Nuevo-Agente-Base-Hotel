@@ -51,7 +51,6 @@ from app.domains.hotel.prompts.context_blocks import (
     build_booking_nudge_block,
     build_price_objection_capture_block,
     build_whatsapp_contact_block,
-    build_guest_profile_block,
     build_language_block,
 )
 
@@ -659,31 +658,14 @@ class HotelSDKOrchestrator:
         return (guest_block + lead_block), lead_analysis, should_request_contact
 
     def _build_guest_block(self, db: Session, session_id: str, lead) -> str:
-        """Si el contacto tiene historial (reserva/preferencias), arma el bloque de perfil.
+        """Bloque de perfil del huésped para pre-venta (nivel guest = 360 completo).
 
-        Resuelve el Contact por lead.contact_id o, en WhatsApp, por el teléfono del
-        session_id. Cae con gracia (string vacío) si no hay perfil útil.
+        Delega en guest_context_service (helper único con niveles por rol, Fase 1). El bloque
+        es idéntico al anterior para un huésped sin ai_summary; con ai_summary suma una línea.
         """
-        try:
-            from app.services.contact_service import contact_service
-            from app.models.contact import Contact
-
-            contact_id = getattr(lead, "contact_id", None)
-            if not contact_id and session_id.startswith("wa_"):
-                phone = "+" + session_id[3:]
-                c = db.query(Contact).filter(Contact.phone_number == phone).first()
-                contact_id = c.id if c else None
-            if not contact_id:
-                return ""
-
-            profile = contact_service.get_guest_profile(contact_id, db)
-            # Solo personalizamos si hay algo que contar (estadías o preferencias).
-            if not profile or (not profile.get("stays_count") and not profile.get("preferences")):
-                return ""
-            return build_guest_profile_block(profile)
-        except Exception as e:  # noqa: BLE001 — nunca romper el turno por personalización
-            logger.warning("No se pudo armar el guest profile block", error=str(e))
-            return ""
+        from app.services import guest_context_service
+        contact_id = guest_context_service.resolve_contact_id(session_id, lead, db)
+        return guest_context_service.build_guest_context("guest", contact_id, db)
 
     def _build_input_list(self, history: List[Dict], message: str) -> List[Dict]:
         recent = history[-MAX_HISTORY_MESSAGES:] if len(history) > MAX_HISTORY_MESSAGES else history

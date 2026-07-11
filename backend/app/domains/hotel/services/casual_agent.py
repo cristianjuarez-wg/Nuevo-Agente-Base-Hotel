@@ -15,36 +15,14 @@ logger = get_logger(__name__)
 
 
 def build_casual_guest_block(db, session_id: str) -> str:
-    """Perfil del huésped conocido para personalizar el saludo casual.
+    """Perfil del huésped conocido para personalizar el saludo casual (nivel guest = 360).
 
-    Resuelve el Contact por el teléfono del session_id de WhatsApp o por el Lead
-    de la sesión, y devuelve el bloque de perfil si hay historial (≥1 reserva o
-    preferencias). Vacío si es un huésped nuevo/desconocido. Nunca rompe el turno.
+    Delega en guest_context_service (helper único con niveles por rol, Fase 1). Bloque idéntico
+    al anterior para un huésped sin ai_summary; con ai_summary suma una línea. Nunca rompe el turno.
     """
-    try:
-        from app.services.contact_service import contact_service
-        from app.domains.hotel.prompts.context_blocks import build_guest_profile_block
-        from app.models.contact import Contact
-
-        contact_id = None
-        if session_id.startswith("wa_"):
-            phone = "+" + session_id[3:]
-            c = db.query(Contact).filter(Contact.phone_number == phone).first()
-            contact_id = c.id if c else None
-        if not contact_id:
-            from app.models.lead import Lead
-            lead = db.query(Lead).filter(Lead.session_id == session_id).first()
-            contact_id = lead.contact_id if lead else None
-        if not contact_id:
-            return ""
-
-        profile = contact_service.get_guest_profile(contact_id, db)
-        if not profile or (not profile.get("stays_count") and not profile.get("preferences")):
-            return ""
-        return build_guest_profile_block(profile)
-    except Exception as e:  # noqa: BLE001 — la personalización nunca debe romper el saludo
-        logger.warning("No se pudo armar el guest block casual", error=str(e))
-        return ""
+    from app.services import guest_context_service
+    contact_id = guest_context_service.resolve_contact_id(session_id, None, db)
+    return guest_context_service.build_guest_context("guest", contact_id, db)
 
 
 def build_team_roster_block(db) -> str:
