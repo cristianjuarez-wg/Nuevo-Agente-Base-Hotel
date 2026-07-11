@@ -150,6 +150,13 @@ async def list_conversations(
         is_live = bool(r.last_message_at and r.last_message_at >= live_cutoff)
         tk = (r.extra_metadata or {}).get("takeover")
         takeover = {"active": True, "staff_name": tk.get("staff_name", "")} if (tk and tk.get("active")) else None
+        # Marca puesta por el agente (Fase 4): la conversación necesita atención humana.
+        nh = (r.extra_metadata or {}).get("needs_human")
+        needs_human = (
+            {"active": True, "motivo": nh.get("motivo", ""), "summary": nh.get("summary", ""),
+             "since": nh.get("since")}
+            if (nh and nh.get("active")) else None
+        )
         items.append({
             "session_id": r.session_id,
             "contact_id": r.contact_id,
@@ -168,6 +175,7 @@ async def list_conversations(
             "last_message_role": prev["role"] if prev else None,
             "is_live": is_live,
             "takeover": takeover,
+            "needs_human": needs_human,
         })
     return {"conversations": items, "total": total, "limit": limit, "offset": offset}
 
