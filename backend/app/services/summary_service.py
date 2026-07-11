@@ -205,3 +205,47 @@ class SummaryService:
                 continue
         
         logger.info(f"batch_generate_summaries: completed")
+
+
+# ── Resumen puntual de una SESIÓN (Fase 4 — handoff a humano) ────────────────────
+def summarize_session(session_id: str, db: Session, max_messages: int = 12) -> str:
+    """Resumen corto (2-3 líneas) de la conversación en curso, para que un humano que TOMA la
+    charla sepa de qué se trata sin leer todo. Se genera UNA vez al derivar (no por turno).
+
+    Sync (las tools del agente corren sync). Usa OPENAI_MODEL_FAST. Fail-open: si algo falla,
+    devuelve "" (el humano igual tiene la transcripción). Distinto del ai_summary del CONTACTO:
+    esto resume ESTA conversación.
+    """
+    try:
+        rows = (
+            db.query(ConversationMessage)
+            .filter(ConversationMessage.session_id == session_id)
+            .order_by(ConversationMessage.created_at.desc())
+            .limit(max_messages)
+            .all()
+        )
+        if not rows:
+            return ""
+        rows = list(reversed(rows))  # cronológico
+        convo = "\n".join(
+            f"{'Huésped' if m.role == 'user' else 'Aura'}: {(m.content or '')[:400]}" for m in rows
+        )
+        from app.core.llm.openai_client import get_sync_openai
+        client = get_sync_openai()
+        resp = client.chat.completions.create(
+            model=settings.OPENAI_MODEL_FAST,
+            messages=[
+                {"role": "system", "content":
+                    "Resumís, en 2-3 líneas y en español, una conversación entre un huésped de hotel "
+                    "y el asistente Aura, para que una PERSONA del equipo la retome. Contá QUÉ necesita "
+                    "el huésped, qué se intentó y por qué se deriva. Directo, sin saludos."},
+                {"role": "user", "content": f"Conversación:\n{convo}"},
+            ],
+            max_tokens=140,
+            temperature=0.3,
+            timeout=20,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except Exception as e:  # noqa: BLE001 — el resumen nunca debe romper la derivación
+        logger.warning(f"summarize_session falló para {session_id}: {e}")
+        return ""

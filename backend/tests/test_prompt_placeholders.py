@@ -31,7 +31,7 @@ def test_preventa_placeholders_cubiertos():
     provided = {
         "agent_name", "identity_block", "facts_block", "fecha_actual", "hora_actual", "flow_block",
         "tono_block", "politica_block", "training_block", "lead_block", "language_block",
-        "naturalidad_block", "ubicacion_block", "team_block", "negocio", "ciudad",
+        "naturalidad_block", "handoff_block", "ubicacion_block", "team_block", "negocio", "ciudad",
     }
     missing = _placeholders(TOOL_AGENT_SYSTEM) - provided
     assert not missing, f"pre-venta: placeholders sin proveer → {missing}"
@@ -41,7 +41,7 @@ def test_postventa_placeholders_cubiertos():
     from app.domains.hotel.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
     provided = {
         "identity_block", "facts_block", "passenger_name", "guest_context", "naturalidad_block",
-        "package_context", "chat_history", "continuidad", "team_block",
+        "handoff_block", "package_context", "chat_history", "continuidad", "team_block",
     }
     missing = _placeholders(POSTSALE_TOOL_SYSTEM) - provided
     assert not missing, f"post-venta: placeholders sin proveer → {missing}"

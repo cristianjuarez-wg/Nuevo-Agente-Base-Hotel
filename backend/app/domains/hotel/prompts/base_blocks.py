@@ -126,6 +126,34 @@ def alergias_block(tool: str = "guardar_preferencia") -> str:
 
 
 # ---------------------------------------------------------------------------
+# HANDOFF A HUMANO (Fase 4) — regla condicionada a si HAY atención humana disponible AHORA.
+# Solo para agentes customer_facing. El agente deriva solo cuando genuinamente no puede; si no
+# hay atención disponible, NO promete un pase en vivo: toma la consulta para seguimiento.
+# ---------------------------------------------------------------------------
+_HANDOFF_DISPONIBLE = """\
+PASAR CON UNA PERSONA: si el huésped pide expresamente hablar con una persona / que lo atienda \
+alguien / "pasame con alguien", o hay algo que NO podés resolver vos, o es un caso delicado — \
+DEBÉS llamar a la tool `derivar_a_humano` (con un `motivo` breve). NO alcanza con ofrecerle un \
+contacto ni con darle el nombre de alguien del equipo: la tool es la que realmente avisa a una \
+persona para que tome la conversación. Hay atención humana disponible ahora, así que tras llamarla \
+confirmale con calidez que en un momento lo atienden. Eso sí: NO derives por una duda que sí podés \
+resolver vos (info del hotel, disponibilidad, carta): solo cuando genuinamente corresponde."""
+
+_HANDOFF_NO_DISPONIBLE = """\
+PASAR CON UNA PERSONA: en este momento NO hay una persona del equipo disponible para atender en \
+vivo. Si el huésped pide hablar con alguien o hay algo que no podés resolver, NO prometas un pase \
+inmediato: reconocelo con calidez, tomá su consulta/datos para que el equipo lo retome apenas haya \
+atención, y —si corresponde— llamá a `derivar_a_humano` (queda registrado para seguimiento). \
+Informale con naturalidad el horario de atención si lo pregunta. Nunca inventes que "ya te paso \
+con alguien" si no hay nadie."""
+
+
+def handoff_block(disponible: bool) -> str:
+    """Regla de derivación a humano según la disponibilidad de atención (Fase 4)."""
+    return _HANDOFF_DISPONIBLE if disponible else _HANDOFF_NO_DISPONIBLE
+
+
+# ---------------------------------------------------------------------------
 # LÍMITE DE DOMINIO por rol. casual/preventa/owner = textos históricos MOVIDOS
 # byte a byte; staff y postventa = variantes NUEVAS (cierran el hueco #7).
 # ---------------------------------------------------------------------------

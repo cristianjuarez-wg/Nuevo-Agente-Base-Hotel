@@ -45,6 +45,7 @@ from app.domains.hotel.prompts.tool_agent_prompts import (
 )
 from app.domains.hotel.prompts.flow_blocks import flow_block_for
 from app.domains.hotel.prompts.generation_prompts import NATURALIDAD_BLOCK
+from app.domains.hotel.prompts.base_blocks import handoff_block as _handoff_block
 from app.domains.hotel.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
@@ -429,11 +430,23 @@ async def guardar_preferencia(
     return result.get("tool_result", "")
 
 
+@function_tool
+async def derivar_a_humano(ctx: RunContextWrapper[HotelContext], motivo: str = "") -> str:
+    """Deriva la conversación a una PERSONA del equipo del hotel. Úsala SOLO cuando el huésped
+    pide expresamente hablar con alguien, o cuando hay algo que genuinamente NO podés resolver vos
+    (no como escape fácil ante cualquier duda). El sistema decide, según haya atención humana
+    disponible, si lo pasa en vivo o lo deja registrado para seguimiento — vos solo llamás la tool
+    con un `motivo` breve y confirmás con calidez lo que devuelva."""
+    tool_ctx = ctx.context.as_tool_ctx()
+    result = await execute_tool("derivar_a_humano", {"motivo": motivo}, tool_ctx)
+    return result.get("tool_result", "")
+
+
 _TOOLS = [
     info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,
     como_llegar, comercios_amigos, excursiones_y_atracciones, promos_vigentes, calcular_precio_promo,
     ver_carta, armar_pedido_carta, registrar_pedido, reservar_mesa, comprar_voucher,
-    guardar_preferencia,
+    guardar_preferencia, derivar_a_humano,
 ]
 
 # Fase 2.2: registro en el ToolRegistry con key "presale.<nombre>".
@@ -496,7 +509,8 @@ class HotelSDKOrchestrator:
                             training_block: str = "",
                             team_block: str = "",
                             profile: Optional[dict] = None,
-                            customer_facing: bool = True) -> str:
+                            customer_facing: bool = True,
+                            handoff_disponible: bool = False) -> str:
         now = now_business()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
@@ -528,6 +542,7 @@ class HotelSDKOrchestrator:
             lead_block=lead_block,
             language_block=build_language_block(language),
             naturalidad_block=NATURALIDAD_BLOCK if customer_facing else "",
+            handoff_block=_handoff_block(handoff_disponible) if customer_facing else "",
             ubicacion_block=build_location_block(prof),
             team_block=team_block,
             negocio=prof.get("business_name") or "el hotel",  # límite de dominio (Fase A)
@@ -717,6 +732,8 @@ class HotelSDKOrchestrator:
         from app.core.agents.sdk_runtime import run_agent, build_input_list
         from app.domains.hotel.agent_specs import SPECS
         spec = SPECS["hotel_presale"]
+        from app.services import human_attention_service
+        handoff_disponible = human_attention_service.is_human_available(db)
         instructions = self._build_instructions(
             lead_block, language, flow_block=flow_block_for(variant),
             tono_block=blocks["tono_block"], politica_block=blocks["politica_block"],
@@ -724,6 +741,7 @@ class HotelSDKOrchestrator:
             team_block=build_team_roster_block(db),
             profile=profile,
             customer_facing=spec.customer_facing,
+            handoff_disponible=handoff_disponible,
         )
 
         # 3. Contexto del turno

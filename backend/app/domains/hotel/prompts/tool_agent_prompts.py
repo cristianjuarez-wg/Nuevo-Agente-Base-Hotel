@@ -330,6 +330,7 @@ habitación (folio, paga al check-out); si NO, va con link de pago. La tarjeta y
 alimentario, usá `guardar_preferencia` y sugerí acorde. NUNCA inventes platos ni precios: salen \
 siempre de las herramientas.
 10. """ + alergias_block("guardar_preferencia") + """
+11. {handoff_block}
 
 """ + limite_dominio_block("preventa") + """
 

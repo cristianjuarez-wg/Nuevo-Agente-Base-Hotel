@@ -401,10 +401,23 @@ async def excursiones_y_atracciones(ctx: RunContextWrapper[HotelPostventaContext
     return result.get("tool_result", "")
 
 
+@function_tool
+async def derivar_a_humano(ctx: RunContextWrapper[HotelPostventaContext], motivo: str = "") -> str:
+    """Deriva la conversación a una PERSONA del equipo del hotel. Úsala SOLO cuando el huésped
+    pide expresamente hablar con alguien, o cuando hay algo que genuinamente NO podés resolver ni
+    con `solicitar_servicio` ni escalando (no como escape fácil). El sistema decide, según haya
+    atención humana disponible, si lo pasa en vivo o lo deja para seguimiento — vos solo llamás la
+    tool con un `motivo` breve y confirmás con calidez lo que devuelva."""
+    from app.services.hotel_tools import execute_tool
+    result = await execute_tool("derivar_a_humano", {"motivo": motivo}, ctx.context.restaurant_tool_ctx())
+    return result.get("tool_result", "")
+
+
 _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
           ver_fotos_habitacion, registrar_preferencia,
           ver_carta, reservar_mesa, armar_pedido_carta,
-          consultar_pago, comercios_amigos, promociones_vigentes, excursiones_y_atracciones]
+          consultar_pago, comercios_amigos, promociones_vigentes, excursiones_y_atracciones,
+          derivar_a_humano]
 
 # Fase 2.2: registro en el ToolRegistry con key "postsale.<nombre>".
 from app.core.agents.tool_registry import register_tool  # noqa: E402
@@ -531,14 +544,19 @@ class HotelPostSaleSDKOrchestrator:
             "guest", getattr(booking, "contact_id", None), service.db)
         # Naturalidad opt-in por customer_facing (Fase 3): post-venta es customer_facing → lo recibe.
         from app.domains.hotel.prompts.generation_prompts import NATURALIDAD_BLOCK
+        from app.domains.hotel.prompts.base_blocks import handoff_block
         from app.domains.hotel.agent_specs import SPECS
-        _naturalidad = NATURALIDAD_BLOCK if SPECS["hotel_postsale"].customer_facing else ""
+        from app.services import human_attention_service
+        _cf = SPECS["hotel_postsale"].customer_facing
+        _naturalidad = NATURALIDAD_BLOCK if _cf else ""
+        _handoff = handoff_block(human_attention_service.is_human_available(service.db)) if _cf else ""
         return POSTSALE_TOOL_SYSTEM.format(
             identity_block=build_postsale_identity_block(profile, passenger_name),
             facts_block=build_facts_block(profile),  # HECHOS del negocio (Fase 3.5 → post-venta)
             passenger_name=passenger_name,  # el prompt lo usa además en la regla de no re-saludar
             guest_context=guest_context,
             naturalidad_block=_naturalidad,
+            handoff_block=_handoff,
             package_context=booking_context,
             chat_history=self._format_history(history),
             continuidad=self._continuity_signal(service, session_id, history),

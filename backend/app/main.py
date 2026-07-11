@@ -267,6 +267,8 @@ from app.routers import prompt_config_versions  # noqa: E402
 app.include_router(prompt_config_versions.router)
 from app.routers import observability as _observability  # noqa: E402
 app.include_router(_observability.router)
+from app.routers import human_attention  # noqa: E402
+app.include_router(human_attention.router)
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"

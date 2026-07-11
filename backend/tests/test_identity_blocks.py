@@ -106,7 +106,7 @@ def _render_current(profile):
         fecha_actual="FECHA_FIJA", hora_actual="HORA_FIJA",
         flow_block="", tono_block=tono, politica_block=DEFAULT_POLITICA_BLOCK,
         training_block="", lead_block="", language_block="",
-        naturalidad_block="NAT", ubicacion_block="UBIC", team_block="TEAM",
+        naturalidad_block="NAT", handoff_block="HANDOFF", ubicacion_block="UBIC", team_block="TEAM",
         negocio=profile.get("business_name") or "el hotel",
         ciudad=profile.get("city") or "la ciudad",
     )
