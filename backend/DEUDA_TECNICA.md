@@ -205,6 +205,19 @@ alcance del rediseño de backoffice): darle `StaticPool` al engine de prod cuand
 `:memory:`, o que los tests que usan `app.models.database.SessionLocal` pasen por el engine del
 conftest. Riesgo medio (toca el arranque de la BD); requiere correr toda la suite varias veces.
 
+## 360 del cliente — asimetrías backoffice ↔ agente (de la auditoría Fase 1.5)
+Tras conectar el 360 al agente (tickets previos, detalle de estadías, family/servicios/notas),
+quedan dos asimetrías del lado del BACKOFFICE (no del agente), no urgentes:
+- **El operador NO ve el `ai_summary`**: se genera y se guarda (`summary_service`), el AGENTE lo
+  usa en su prompt, pero el `DetailDrawer` del admin no lo renderiza. Sería un panel útil para el
+  operador (resumen del huésped en una línea). Además, el `ai_summary` hoy resume conversaciones+
+  leads con vocabulario de turismo (`_format_contact_context`), no el 360 hotelero (estadías/
+  consumo/tickets) — conviene reorientarlo cuando se toque.
+- **`get_contact_360` (`GET /api/contacts/{id}`)** devuelve `packages` y `tickets` HARDCODEADOS
+  vacíos (`contact_service.py:318-319`, vestigio de turismo). El drawer real usa
+  `/{id}/profile` (get_guest_profile), así que este endpoint quedó como código muerto/engañoso:
+  limpiarlo o hacerlo devolver los tickets reales.
+
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
 - Cobertura de tests en hot-path (orquestadores, reservation_service).

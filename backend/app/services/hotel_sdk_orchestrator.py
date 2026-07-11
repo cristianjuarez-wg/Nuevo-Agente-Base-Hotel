@@ -412,13 +412,14 @@ async def comprar_voucher(ctx: RunContextWrapper[HotelContext]) -> str:
 async def guardar_preferencia(
     ctx: RunContextWrapper[HotelContext], preferencias: str, tipo: str = ""
 ) -> str:
-    """Guarda una preferencia dietética o ALERGIA del huésped en su perfil, para tenerla
-    siempre en cuenta. Úsala apenas el cliente mencione una restricción, gusto o alergia
-    EN CUALQUIER momento de la charla (no solo al pedir comida): ej. "soy vegetariano",
-    "soy celíaco", "soy alérgico al maní", "no como carne".
-    `preferencias` = lista separada por comas (ej. "vegetariano, sin tacc").
-    `tipo` = "alergia" si es una alergia/intolerancia (seguridad alimentaria), o "dieta"
-    si es una preferencia dietética. Si no estás seguro, dejalo vacío y se clasifica solo."""
+    """Guarda un dato del huésped en su perfil, para tenerlo siempre en cuenta. Úsala apenas el
+    cliente mencione algo que valga recordar EN CUALQUIER momento de la charla: una restricción o
+    alergia ("soy celíaco", "alérgico al maní"), con quién viaja ("vengo con mi hijo Tomás"), un
+    servicio que suele usar ("siempre uso el spa") o una observación para el hotel.
+    `preferencias` = lista separada por comas (ej. "vegetariano, sin tacc" o "Tomás").
+    `tipo` = "alergia" (seguridad alimentaria) · "dieta" (vegano/vegetariano/sin TACC) ·
+    "acompañante" (con quién viaja) · "servicio" (servicio que suele usar) · "nota" (observación
+    libre). Si es comida y no estás seguro, dejalo vacío y se clasifica entre alergia y dieta."""
     tool_ctx = ctx.context.as_tool_ctx()
     prefs = [p.strip() for p in (preferencias or "").split(",") if p.strip()]
     args = {"preferencias": prefs}

@@ -314,10 +314,12 @@ _ALERGIA_KEYWORDS = ("alergi", "alérgic", "alergic", "intoleran", "anafilax")
 
 
 def _clasificar_preferencia(texto: str, tipo_hint: Optional[str] = None) -> str:
-    """Devuelve 'allergies' o 'dietary' según el texto (o un hint explícito del agente).
+    """Devuelve la CATEGORÍA de preferencia según el texto o un hint explícito del agente.
 
-    Una alergia es un tema de SEGURIDAD alimentaria y va separada de las dietas
-    (vegano, vegetariano, sin TACC). El hint del agente ('alergia'|'dieta') gana.
+    Categorías: 'allergies' (seguridad alimentaria), 'dietary' (vegano/vegetariano/sin TACC),
+    'family' (acompañantes), 'services_used' (servicios que usa), 'notes' (texto libre del hotel).
+    El hint del agente gana; si no hay hint, se cae a alergia/dieta por keywords (comportamiento
+    histórico), nunca a las categorías nuevas (que requieren hint explícito).
     """
     if tipo_hint:
         h = tipo_hint.strip().lower()
@@ -325,6 +327,12 @@ def _clasificar_preferencia(texto: str, tipo_hint: Optional[str] = None) -> str:
             return "allergies"
         if h in ("dieta", "dietary", "preferencia", "preferencia_dietetica"):
             return "dietary"
+        if h in ("acompanante", "acompañante", "familia", "family", "viaja_con"):
+            return "family"
+        if h in ("servicio", "servicios", "service", "services_used"):
+            return "services_used"
+        if h in ("nota", "notes", "observacion", "observación"):
+            return "notes"
     t = (texto or "").lower()
     if any(k in t for k in _ALERGIA_KEYWORDS):
         return "allergies"
@@ -332,31 +340,51 @@ def _clasificar_preferencia(texto: str, tipo_hint: Optional[str] = None) -> str:
 
 
 def persist_preferences(db, contact, nuevas: list, tipo_hint: Optional[str] = None):
-    """Persiste preferencias/alergias en el perfil del Contact. Reusable por pre y post-venta.
+    """Persiste preferencias del huésped en el perfil del Contact. Reusable por pre y post-venta.
 
-    Clasifica cada item en `allergies` (seguridad alimentaria) o `dietary`, los suma a los ya
-    guardados y los persiste. Devuelve (nuevas_alergias, nuevas_dietas) que efectivamente se
-    agregaron, para el mensaje de confirmación.
+    Clasifica cada item por CATEGORÍA (alergia/dieta/acompañante/servicio/nota) y lo suma a lo ya
+    guardado. Devuelve un dict {categoria: [items nuevos]} con lo que efectivamente se agregó, para
+    el mensaje de confirmación. `allergies`/`dietary`/`services_used` son listas de strings;
+    `family` es lista de {name}; `notes` es texto libre (se van concatenando).
     """
     try:
         profile = contact_service.get_guest_profile(contact.id, db)
         prefs = (profile or {}).get("preferences") or {}
     except Exception:
         prefs = {}
-    diet = set(prefs.get("dietary") or [])
-    allergies = set(prefs.get("allergies") or [])
-    nuevas_alergias, nuevas_dietas = [], []
+
+    listas = {  # categorías tipo lista-de-strings (dedup por set ordenado)
+        "allergies": set(prefs.get("allergies") or []),
+        "dietary": set(prefs.get("dietary") or []),
+        "services_used": set(prefs.get("services_used") or []),
+    }
+    family = list(prefs.get("family") or [])           # [{name}]
+    family_names = {m.get("name", "").lower() for m in family if m.get("name")}
+    notes = (prefs.get("notes") or "").strip()
+
+    agregados: dict = {}
     for p in nuevas:
-        if _clasificar_preferencia(p, tipo_hint) == "allergies":
-            allergies.add(p)
-            nuevas_alergias.append(p)
-        else:
-            diet.add(p)
-            nuevas_dietas.append(p)
-    prefs["dietary"] = sorted(diet)
-    prefs["allergies"] = sorted(allergies)
+        cat = _clasificar_preferencia(p, tipo_hint)
+        if cat in listas:
+            if p not in listas[cat]:
+                listas[cat].add(p)
+                agregados.setdefault(cat, []).append(p)
+        elif cat == "family":
+            if p.lower() not in family_names:
+                family.append({"name": p})
+                family_names.add(p.lower())
+                agregados.setdefault("family", []).append(p)
+        elif cat == "notes":
+            notes = (notes + " · " + p).strip(" ·") if notes else p
+            agregados.setdefault("notes", []).append(p)
+
+    prefs["allergies"] = sorted(listas["allergies"])
+    prefs["dietary"] = sorted(listas["dietary"])
+    prefs["services_used"] = sorted(listas["services_used"])
+    prefs["family"] = family
+    prefs["notes"] = notes
     contact_service.set_preferences(contact.id, prefs, db)
-    return nuevas_alergias, nuevas_dietas
+    return agregados
 
 
 # Exporta TODO (incl. helpers privados) para el import * de los submódulos (Fase 2.3).

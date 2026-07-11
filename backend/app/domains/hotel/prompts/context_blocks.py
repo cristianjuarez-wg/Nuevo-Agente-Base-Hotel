@@ -66,6 +66,17 @@ def build_guest_profile_block(profile: dict) -> str:
                      f"Última: {profile.get('last_stay')}.")
     elif profile.get("has_past_stay"):
         lines.append(f"- Ya se hospedó antes (última estadía: {profile.get('last_stay')}).")
+    # Detalle de las últimas estadías PASADAS (fechas + habitación), para reconocer con precisión.
+    if profile.get("has_past_stay"):
+        import datetime as _dt
+        _hoy = _dt.date.today().isoformat()
+        pasadas = [s for s in (profile.get("stays") or [])
+                   if (s.get("check_out") or "") and s.get("check_out") < _hoy]
+        # stays viene ordenado por check_in desc (la más reciente primero). Mostramos hasta 3.
+        detalles = [f"{s.get('check_in','')}→{s.get('check_out','')} ({s.get('room_type','')})"
+                    for s in pasadas[:3]]
+        if detalles:
+            lines.append("- Estadías previas: " + " · ".join(detalles) + ".")
     if profile.get("preferred_room"):
         lines.append(f"- Habitación que suele elegir: {profile['preferred_room']}.")
 
@@ -97,6 +108,20 @@ def build_guest_profile_block(profile: dict) -> str:
         actual_txt = ", ".join(f"{c['qty']}x {c['name']}" for c in consumo_actual)
         lines.append(f"- En esta estadía ya consumió: {actual_txt}.")
 
+    # Tickets/incidencias PREVIAS del huésped — para reconocer un tema recurrente en vez de
+    # tratarlo como nuevo. Resumido (últimos 3), con la resolución si ya se cerró. No recitar.
+    tickets = profile.get("tickets") or []
+    if tickets:
+        _RESUELTOS = ("resolved", "resuelto")
+        items = []
+        for t in tickets[:3]:  # get_guest_profile los trae ordenados por created_at desc
+            asunto = (t.get("subject") or t.get("category") or "consulta").strip()
+            estado = "resuelto" if (t.get("status") or "") in _RESUELTOS else "en curso"
+            nota = (t.get("resolution_note") or "").strip()
+            extra = f" — se resolvió: {nota[:80]}" if (estado == "resuelto" and nota) else ""
+            items.append(f'"{asunto}" ({estado}){extra}')
+        lines.append("- Ya nos escribió antes por: " + " / ".join(items) + ".")
+
     if prefs.get("services_used"):
         lines.append(f"- Servicios que suele usar: {', '.join(prefs['services_used'])}.")
     if prefs.get("family"):
@@ -120,6 +145,13 @@ def build_guest_profile_block(profile: dict) -> str:
         allergy_rule = (
             "\n⚠️ SEGURIDAD ALIMENTARIA: tiene alergias declaradas. JAMÁS le sugieras ni "
             "confirmes un plato que contenga esos alérgenos; ante la duda, consultá antes de recomendar."
+        )
+
+    tickets_rule = ""
+    if tickets:
+        tickets_rule = (
+            "\n✅ Si vuelve sobre algo que YA nos había reportado, reconocelo ('vi que ya nos "
+            "habías escrito por…') en vez de tratarlo como nuevo. NO recites sus tickets."
         )
 
     # Los ejemplos de "cómo saludar" dependen de si REALMENTE ya se hospedó. Un huésped con solo
@@ -149,7 +181,7 @@ CÓMO USARLO:
 ✅ Si ya pidió comida antes, podés referenciarlo con calidez cuando venga al caso
    ("la última vez disfrutaste el ojo de bife, ¿querés repetir?") — sin recitar la lista.
 ✅ Tono cálido, de hospitalidad premium, natural — NO leas los datos como una lista.
-🚫 NO suenes invasivo ni recites todo lo que sabés de golpe; usalo cuando venga al caso.{allergy_rule}
+🚫 NO suenes invasivo ni recites todo lo que sabés de golpe; usalo cuando venga al caso.{tickets_rule}{allergy_rule}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 """
