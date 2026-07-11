@@ -116,3 +116,54 @@ def test_huesped_pasado_si_reconoce_regreso(db):
     block = guest_context_service.build_guest_context("guest", c.id, db)
     assert "ya lo conocés" in block or "de siempre" in block
     assert "PRIMERA estadía" not in block
+
+
+# ── Fase 1.5: tickets previos + detalle de estadías en el bloque del agente ──
+
+def _seed_ticket(db, contact_id, *, subject, status, resolution=None):
+    from app.models.hotel import Booking, HotelTicket
+    b = db.query(Booking).filter(Booking.contact_id == contact_id).first()
+    t = HotelTicket(ticket_number=f"HT-{subject[:4]}", session_id="seed",
+                    booking_id=b.id, subject=subject, category="complaint",
+                    status=status, description=subject, resolution_note=resolution)
+    db.add(t); db.commit()
+    return t
+
+
+def test_tickets_previos_en_el_bloque(db):
+    """El agente ahora ve los tickets previos del huésped (antes NO)."""
+    c = _seed_guest(db, phone="+5491880000009", name="Pia Tickets", past=True)
+    _seed_ticket(db, c.id, subject="el aire no enfría", status="resolved",
+                 resolution="se cambió el equipo")
+    block = guest_context_service.build_guest_context("guest", c.id, db)
+    assert "Ya nos escribió antes por" in block
+    assert "el aire no enfría" in block
+    assert "resuelto" in block
+    assert "se cambió el equipo" in block  # la resolución acompaña al ticket cerrado
+    # Y la regla de tono para no tratar el tema como nuevo.
+    assert "ya nos habías escrito" in block
+
+
+def test_sin_tickets_no_hay_seccion(db):
+    """Paridad: un huésped sin tickets no recibe la sección (ni la regla)."""
+    c = _seed_guest(db, phone="+5491880000010", name="Sin Tickets", past=True)
+    block = guest_context_service.build_guest_context("guest", c.id, db)
+    assert "Ya nos escribió antes por" not in block
+    assert "ya nos habías escrito" not in block
+
+
+def test_detalle_de_estadias_con_fechas(db):
+    """Recurrente con estadía pasada: el bloque lista las estadías con sus fechas."""
+    c = _seed_guest(db, phone="+5491880000011", name="Raul Fechas", past=True)
+    block = guest_context_service.build_guest_context("guest", c.id, db)
+    assert "Estadías previas:" in block
+    assert "(King)" in block  # room_type de la estadía
+
+
+def test_staff_no_recibe_tickets_ni_estadias(db):
+    """Privacidad (regresión Fase 1): staff sigue mínimo — sin tickets, sin detalle de estadías."""
+    c = _seed_guest(db, phone="+5491880000012", name="Tino Staff", past=True)
+    _seed_ticket(db, c.id, subject="reclamo X", status="resolved")
+    block = guest_context_service.build_guest_context("staff", c.id, db)
+    assert "Ya nos escribió antes por" not in block
+    assert "Estadías previas" not in block

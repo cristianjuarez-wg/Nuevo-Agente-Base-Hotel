@@ -6,11 +6,15 @@ from app.services.hotel_tools_pkg import _shared
 
 
 def _handle_guardar_preferencia(args: Dict, ctx: Dict) -> Dict:
-    """Guarda una preferencia/alergia del huésped en su perfil (para tener siempre en cuenta).
+    """Guarda una preferencia del huésped en su perfil (para tenerla siempre en cuenta).
 
-    Distingue ALERGIAS (seguridad alimentaria, categoría `allergies`) de las preferencias
-    dietéticas (vegano, vegetariano, sin TACC → `dietary`). El agente puede mandar un
-    `tipo` ('alergia'|'dieta'); si no, se clasifica por el texto.
+    Categorías (por el `tipo` que manda el agente):
+      - 'alergia'  → seguridad alimentaria (allergies)
+      - 'dieta'    → vegano/vegetariano/sin TACC (dietary)
+      - 'acompañante'/'familia' → con quién viaja (family)
+      - 'servicio' → servicio que suele usar, ej. spa, ski storage (services_used)
+      - 'nota'     → observación libre para el hotel (notes)
+    Sin `tipo`, se clasifica por el texto entre alergia y dieta (comportamiento histórico).
     """
     db: Optional[Session] = ctx.get("db")
     if db is None:
@@ -25,30 +29,29 @@ def _handle_guardar_preferencia(args: Dict, ctx: Dict) -> Dict:
         nuevas = [nuevas]
     nuevas = [str(p).strip().lower() for p in nuevas if str(p).strip()]
     if not nuevas:
-        return {"tool_result": "¿Qué preferencia o alergia querés que guarde? (ej: vegetariano, sin TACC, alergia al maní)"}
+        return {"tool_result": "¿Qué querés que guarde? (ej: vegetariano, alergia al maní, viaja con su hijo, suele usar el spa)"}
 
     tipo_hint = args.get("tipo")
+    agregados = persist_preferences(db, contact, nuevas, tipo_hint)
 
-    try:
-        profile = contact_service.get_guest_profile(contact.id, db)
-        prefs = (profile or {}).get("preferences") or {}
-    except Exception:
-        prefs = {}
-
-    nuevas_alergias, nuevas_dietas = persist_preferences(db, contact, nuevas, tipo_hint)
-
-    # Mensaje de confirmación diferenciado: la alergia se confirma con énfasis.
+    # Mensaje de confirmación por categoría; la alergia se confirma con énfasis de seguridad.
     partes = []
-    if nuevas_alergias:
+    if agregados.get("allergies"):
         partes.append(
-            f"⚠️ Anoté tu alergia/intolerancia ({', '.join(nuevas_alergias)}). "
+            f"⚠️ Anoté tu alergia/intolerancia ({', '.join(agregados['allergies'])}). "
             "La voy a tener SIEMPRE en cuenta: no te voy a sugerir nada que la contenga."
         )
-    if nuevas_dietas:
+    if agregados.get("dietary"):
         partes.append(
-            f"Guardé tus preferencias ({', '.join(nuevas_dietas)}) en tu perfil. "
+            f"Guardé tus preferencias ({', '.join(agregados['dietary'])}) en tu perfil. "
             "Las voy a usar para sugerirte opciones acordes. 🌿"
         )
+    if agregados.get("family"):
+        partes.append(f"Anoté que viajás con {', '.join(agregados['family'])}. 😊")
+    if agregados.get("services_used"):
+        partes.append(f"Guardé que solés usar: {', '.join(agregados['services_used'])}.")
+    if agregados.get("notes"):
+        partes.append("Anoté tu observación en el perfil.")
     return {
         "tool_result": " ".join(partes) or "Listo, lo guardé en tu perfil.",
         "saved": True,

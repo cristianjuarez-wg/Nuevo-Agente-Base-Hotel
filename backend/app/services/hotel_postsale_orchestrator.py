@@ -238,14 +238,16 @@ async def registrar_preferencia(
     preferencias: List[str],
     tipo: str = "",
 ) -> str:
-    """Guarda en el perfil del huésped una ALERGIA/intolerancia o preferencia dietética que
-    menciona DESPUÉS de reservar (ej. "soy alérgico al maní", "soy celíaco", "soy vegetariano").
-    Úsala apenas la mencione: NO te limites a decir "lo tendré en cuenta". Las ALERGIAS son
+    """Guarda en el perfil del huésped algo que menciona DESPUÉS de reservar: una ALERGIA/
+    intolerancia o dieta ("soy alérgico al maní", "soy celíaco"), con quién viaja ("vengo con mi
+    hijo"), un servicio que suele usar ("siempre uso el spa") o una observación para el hotel.
+    Úsala apenas lo mencione: NO te limites a decir "lo tendré en cuenta". Las ALERGIAS son
     seguridad alimentaria: quedan en su perfil y se avisa al equipo del hotel.
 
     Args:
-        preferencias: lista de lo que dijo (ej. ["maní"] o ["vegetariano"]).
-        tipo: "alergia" si es alergia/intolerancia, "dieta" si es preferencia dietética.
+        preferencias: lista de lo que dijo (ej. ["maní"], ["vegetariano"], ["Tomás"], ["spa"]).
+        tipo: "alergia" · "dieta" · "acompañante" (con quién viaja) · "servicio" (servicio que
+              usa) · "nota" (observación libre). Vacío = se clasifica entre alergia y dieta.
     """
     context = ctx.context
     booking = context.booking
@@ -267,12 +269,13 @@ async def registrar_preferencia(
 
     try:
         from app.services.hotel_tools import persist_preferences
-        nuevas_alergias, nuevas_dietas = persist_preferences(db, contact, nuevas, tipo or None)
+        agregados = persist_preferences(db, contact, nuevas, tipo or None)
     except Exception as e:  # noqa: BLE001
         logger.error("registrar_preferencia (post-venta) falló", error=str(e))
         return ("No pude guardarlo automáticamente. Avisá al equipo del hotel para que lo "
                 "registre, por las dudas.")
 
+    nuevas_alergias = agregados.get("allergies") or []
     # Las alergias, además, se avisan al staff (seguridad alimentaria).
     if nuevas_alergias:
         try:
@@ -291,8 +294,14 @@ async def registrar_preferencia(
         partes.append(f"⚠️ Registré tu alergia/intolerancia ({', '.join(nuevas_alergias)}) en tu "
                       "perfil y avisé al equipo del hotel para que la tengan en cuenta en el "
                       "restaurante y el desayuno.")
-    if nuevas_dietas:
-        partes.append(f"Guardé tus preferencias ({', '.join(nuevas_dietas)}) en tu perfil.")
+    if agregados.get("dietary"):
+        partes.append(f"Guardé tus preferencias ({', '.join(agregados['dietary'])}) en tu perfil.")
+    if agregados.get("family"):
+        partes.append(f"Anoté que viajás con {', '.join(agregados['family'])}.")
+    if agregados.get("services_used"):
+        partes.append(f"Guardé que solés usar: {', '.join(agregados['services_used'])}.")
+    if agregados.get("notes"):
+        partes.append("Anoté tu observación en el perfil.")
     return (" ".join(partes) or "Listo, lo guardé en tu perfil.") + \
         " Confirmáselo al huésped con calidez y tranquilidad."
 
