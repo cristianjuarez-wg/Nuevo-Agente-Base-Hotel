@@ -512,6 +512,18 @@ export async function updateExchangeRate(payload) {
   return data
 }
 
+// Atención humana (handoff): config de horario/guardia + disponibilidad actual (Fase 4).
+export async function getHumanAttention() {
+  const { data } = await client.get('/api/human-attention')
+  return data   // { config: {enabled, on_call, schedule}, available_now }
+}
+
+export async function updateHumanAttention(payload) {
+  // payload: { enabled?, on_call?, schedule? }
+  const { data } = await client.put('/api/human-attention', payload)
+  return data
+}
+
 // Config del agente (read-only): modelo, RAG, seguridad/rate-limit.
 export async function getAdminConfig() {
   const { data } = await client.get('/api/admin/config')

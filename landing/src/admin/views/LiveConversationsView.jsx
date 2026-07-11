@@ -124,6 +124,7 @@ export default function LiveConversationsView() {
 // tomada, el campo para responder como humano (reemplazando a Aura).
 function ConversationPanel({ conv, onOpenProfile, onDelete }) {
   const controlled = !!conv.takeover?.active
+  const needsHuman = !controlled && !!conv.needs_human?.active  // el agente pidió una persona
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -211,6 +212,11 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
                 <Hand size={11} /> Bajo control humano
               </span>
             )}
+            {needsHuman && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-500 text-emerald-700">
+                <Hand size={11} /> Requiere atención
+              </span>
+            )}
             {waStale && !controlled && (
               <span className="text-xs text-slatey/80">· Reanudando contacto · última actividad {timeAgo(conv.last_message_at)}</span>
             )}
@@ -240,6 +246,15 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
           </button>
         </div>
       </div>
+
+      {needsHuman && (conv.needs_human?.summary || conv.needs_human?.motivo) && (
+        <div className="border-b border-emerald-100 bg-emerald-50/60 px-4 py-2.5">
+          <p className="text-xs font-600 uppercase tracking-wide text-emerald-700">Aura pidió una persona</p>
+          <p className="mt-0.5 text-sm text-ink">
+            {conv.needs_human.summary || conv.needs_human.motivo}
+          </p>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         <ChatTranscript sessionId={conv.session_id} pollMs={POLL_MS} />
@@ -283,6 +298,11 @@ function ConversationRow({ r, active, onClick }) {
           <span className="truncate font-medium text-ink">
             {r.display_name || r.name || r.phone || 'Visitante web'}
           </span>
+          {r.needs_human?.active && !r.takeover?.active && (
+            <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-600 text-emerald-700">
+              atención
+            </span>
+          )}
           <GuestStatusBadge status={r.guest_status} />
         </span>
         <span className="shrink-0 text-[11px] tabular-nums text-slatey">{formatDateTime(r.last_message_at)}</span>

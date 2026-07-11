@@ -14,6 +14,7 @@ import RestaurantSection from './views/restaurant/RestaurantSection'
 import ConfiguracionSection from './views/sistema/ConfiguracionSection'
 import ComoFuncionaView from './views/agente/ComoFuncionaView'
 import { Toaster } from './toast'
+import HandoffAlert from './components/HandoffAlert'
 import { Loading } from './ui'
 import { getMe, logout } from '../services/api'
 import { LogOut } from 'lucide-react'
@@ -107,6 +108,7 @@ export default function AdminApp() {
   return (
     <div className="flex min-h-dvh bg-mist text-ink">
       <Toaster />
+      <HandoffAlert />
       {/* Sidebar desktop */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-hilton-100 bg-white lg:flex">
         <SidebarContent tab={effectiveTab} go={go} nav={nav} me={me} onLogout={onLogout} />

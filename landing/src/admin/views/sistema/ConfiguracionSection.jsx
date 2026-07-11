@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Briefcase, Palette, ShieldCheck, Gauge, Database } from 'lucide-react'
+import { Briefcase, Palette, ShieldCheck, Gauge, Database, Headphones } from 'lucide-react'
 import EquipoView from '../EquipoView'
 import ThemesView from '../agente/ThemesView'
 import LimitsView from '../agente/LimitsView'
 import UsageView from '../UsageView'
 import DemoView from '../agente/DemoView'
+import AtencionHumanaView from './AtencionHumanaView'
 
 // Capa Plataforma/Sistema (doc §9.2): config global del sistema, agrupada con sub-pestañas.
 const SUBNAV = [
   { id: 'equipo', label: 'Equipo', icon: Briefcase },
+  { id: 'atencion', label: 'Atención humana', icon: Headphones },
   { id: 'temas', label: 'Temas del chat', icon: Palette },
   { id: 'limites', label: 'Límites y seguridad', icon: ShieldCheck },
   { id: 'consumo', label: 'Consumo IA', icon: Gauge },
@@ -57,6 +59,7 @@ export default function ConfiguracionSection() {
       </div>
 
       {sub === 'equipo' && <EquipoView />}
+      {sub === 'atencion' && <AtencionHumanaView />}
       {sub === 'temas' && <ThemesView />}
       {sub === 'limites' && <LimitsView />}
       {sub === 'consumo' && <UsageView />}
