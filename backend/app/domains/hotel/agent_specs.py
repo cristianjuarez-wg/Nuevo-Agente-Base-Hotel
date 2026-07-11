@@ -69,6 +69,7 @@ SPECS = {
         input_guardrails=("postsale.relevancia",),
         channels=("web", "whatsapp"),
         name_from_profile=True,
+        customer_facing=True,
     ),
     "hotel_presale": AgentSpec(
         key="hotel_presale",
@@ -91,6 +92,7 @@ SPECS = {
         input_guardrails=("presale.relevancia",),
         channels=("web", "whatsapp"),
         name_from_profile=True,
+        customer_facing=True,
     ),
     # ── Fuera del runtime SDK (catálogo completo) ────────────────────────────
     "casual": AgentSpec(
@@ -104,6 +106,7 @@ SPECS = {
         prompt_composer="casual",
         channels=("web", "whatsapp"),
         name_from_profile=True,
+        customer_facing=True,
     ),
     "triage": AgentSpec(
         key="triage",

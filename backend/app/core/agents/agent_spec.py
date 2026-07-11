@@ -31,6 +31,10 @@ class AgentSpec:
     channels: Tuple[str, ...] = ("web",)
     # True → el display_name sale del BusinessProfile/perfil (agentes "Aura"); False → fijo.
     name_from_profile: bool = False
+    # True → agente de ATENCIÓN al huésped: recibe el bloque de naturalidad (tono humano) y, más
+    # adelante, la regla de handoff a humano. Desacoplado de display_role a propósito: triage es
+    # "guest" pero es un clasificador (no customer_facing); un owner/staff futuro podría serlo.
+    customer_facing: bool = False
 
 
 def resolve_temperature(spec: AgentSpec, settings) -> float:

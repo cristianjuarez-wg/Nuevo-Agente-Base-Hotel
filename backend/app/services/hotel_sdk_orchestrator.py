@@ -494,7 +494,8 @@ class HotelSDKOrchestrator:
                             politica_block: str = DEFAULT_POLITICA_BLOCK,
                             training_block: str = "",
                             team_block: str = "",
-                            profile: Optional[dict] = None) -> str:
+                            profile: Optional[dict] = None,
+                            customer_facing: bool = True) -> str:
         now = now_business()
         try:
             fecha = now.strftime("%A %d de %B de %Y")
@@ -525,7 +526,7 @@ class HotelSDKOrchestrator:
             training_block=training_block,
             lead_block=lead_block,
             language_block=build_language_block(language),
-            naturalidad_block=NATURALIDAD_BLOCK,
+            naturalidad_block=NATURALIDAD_BLOCK if customer_facing else "",
             ubicacion_block=build_location_block(prof),
             team_block=team_block,
             negocio=prof.get("business_name") or "el hotel",  # límite de dominio (Fase A)
@@ -709,19 +710,20 @@ class HotelSDKOrchestrator:
         # Identidad del negocio (Fase 1): compone el encabezado y el dialecto desde el perfil.
         from app.services import business_profile_service
         profile = business_profile_service.get_profile(db)
-        instructions = self._build_instructions(
-            lead_block, language, flow_block=flow_block_for(variant),
-            tono_block=blocks["tono_block"], politica_block=blocks["politica_block"],
-            training_block=blocks["training_block"],
-            team_block=build_team_roster_block(db),
-            profile=profile,
-        )
         # Fase 2.2: el loop del SDK corre por el runtime declarativo (spec hotel_presale:
         # turns=6, hist=20, temp=settings, 16 tools + guardrail). Las tools se FILTRAN por
         # sesión (config del Centro) vía tools_override — la spec declara el catálogo.
         from app.core.agents.sdk_runtime import run_agent, build_input_list
         from app.domains.hotel.agent_specs import SPECS
         spec = SPECS["hotel_presale"]
+        instructions = self._build_instructions(
+            lead_block, language, flow_block=flow_block_for(variant),
+            tono_block=blocks["tono_block"], politica_block=blocks["politica_block"],
+            training_block=blocks["training_block"],
+            team_block=build_team_roster_block(db),
+            profile=profile,
+            customer_facing=spec.customer_facing,
+        )
 
         # 3. Contexto del turno
         run_ctx = HotelContext(db, message, history, session_id=session_id)

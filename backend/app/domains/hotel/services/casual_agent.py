@@ -124,10 +124,13 @@ async def generate_casual_response(client, message: str, history: List[Dict],
             build_casual_identity_block, build_facts_block,
         )
         prof = profile or {}
+        # Naturalidad opt-in por customer_facing (Fase 3): casual es customer_facing → lo recibe.
+        from app.domains.hotel.agent_specs import SPECS
+        _casual_cf = SPECS["casual"].customer_facing
         prompt = CASUAL_RESPONSE_SYSTEM.format(
             identity_block=build_casual_identity_block(prof),
             facts_block=build_facts_block(prof),  # HECHOS del negocio (Fase A → casual)
-            naturalidad_block=NATURALIDAD_BLOCK,
+            naturalidad_block=NATURALIDAD_BLOCK if _casual_cf else "",
             team_block=team_block,
             history_section=history_section,
             message=message,

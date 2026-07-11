@@ -556,6 +556,9 @@ async def _run_simulations(personas_filter, flows_filter) -> int:
     print(f"Simulando {len(personas)} persona(s) × {len(flows)} flujo(s) contra el agente real…\n")
     t0 = time.time()
     session_ids, failed = [], []
+    nat_conv_ok = 0            # conversaciones con las 5 señales de naturalidad en verde
+    nat_signal_fails: dict = {}  # conteo de fallos por señal (para el reporte)
+    nat_total = 0
     for persona in personas:
         for flow in flows:
             transcript = await run_simulation(persona, flow, _sim_dispatch)
@@ -564,16 +567,33 @@ async def _run_simulations(personas_filter, flows_filter) -> int:
                 transcript.as_text(), transcript.tool_trace, facts,
                 goal=persona.goal, satisfied_when=persona.satisfied_when)
             status = "PASS" if verdict.ok else "FAIL"
-            print(f"[{persona.key:11} {flow}] {status}  ·  {len(transcript.turns)} turnos  ·  "
+            nat_flag = "nat✓" if verdict.naturalidad_ok() else "nat✗"
+            print(f"[{persona.key:11} {flow}] {status} {nat_flag}  ·  {len(transcript.turns)} turnos  ·  "
                   f"goal={verdict.goal_achieved}  invenciones={len(verdict.invented_facts)}")
             if verdict.notes:
                 print(f"    nota: {verdict.notes}")
             for inv in verdict.invented_facts:
                 print(f"    ⚠ invención: {inv.get('claim','')}")
+            # Naturalidad: MÉTRICA reportada, no bloqueante (no afecta `failed`).
+            nat_total += 1
+            if verdict.naturalidad_ok():
+                nat_conv_ok += 1
+            for sig, ok_ in verdict.naturalidad.items():
+                if not ok_:
+                    nat_signal_fails[sig] = nat_signal_fails.get(sig, 0) + 1
             if not verdict.ok:
                 failed.append(f"{persona.key}/{flow}")
 
     print(f"\nTiempo total: {time.time()-t0:.1f}s")
+    # Reporte de NATURALIDAD (Fase 3): objetivo ≥80% de conversaciones con las 5 señales en verde.
+    if nat_total:
+        pct = 100 * nat_conv_ok / nat_total
+        gate = "✓" if pct >= 80 else "✗ (objetivo ≥80%)"
+        print(f"\nNaturalidad: {nat_conv_ok}/{nat_total} conversaciones con las 5 señales OK "
+              f"({pct:.0f}%) {gate}")
+        if nat_signal_fails:
+            print("  Fallos por señal: " + ", ".join(
+                f"{k}={v}" for k, v in sorted(nat_signal_fails.items(), key=lambda kv: -kv[1])))
     _cleanup(session_ids)  # limpia por session_id (reservas/tickets/leads creados)
     if failed:
         print(f"Simulaciones con veredicto FAIL: {', '.join(failed)}")

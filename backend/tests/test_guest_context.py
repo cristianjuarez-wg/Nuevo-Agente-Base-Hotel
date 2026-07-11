@@ -96,3 +96,23 @@ def test_render_directo_sin_summary_no_menciona_summary(db):
     profile = contact_service.get_guest_profile(c.id, db)
     block = build_guest_profile_block(profile)
     assert "Resumen del huésped" not in block
+
+
+def test_reserva_futura_no_sugiere_regreso(db):
+    """Fase 3 (bug de tono destapado en vivo): un huésped con SOLO reserva futura NO debe recibir
+    ejemplos de 'tenerte de vuelta' / 'de siempre' — aún no se hospedó."""
+    c = _seed_guest(db, phone="+5491880000007", name="Nora Futura", past=False)  # única reserva futura
+    block = guest_context_service.build_guest_context("guest", c.id, db)
+    assert "RESERVA FUTURA" in block or "reserva futura" in block.lower()
+    # Los ejemplos de "cómo saludar" NO deben fingir un regreso.
+    assert "tenerte de vuelta" not in block
+    assert "reservo la King de siempre" not in block  # el ejemplo AFIRMATIVO de recurrencia
+    assert "PRIMERA estadía" in block  # el ejemplo correcto para quien aún no llegó
+
+
+def test_huesped_pasado_si_reconoce_regreso(db):
+    """Contrapartida: quien YA se hospedó sí puede recibir el ejemplo de reconocer que lo conocés."""
+    c = _seed_guest(db, phone="+5491880000008", name="Omar Pasado", past=True)  # estadía pasada
+    block = guest_context_service.build_guest_context("guest", c.id, db)
+    assert "ya lo conocés" in block or "de siempre" in block
+    assert "PRIMERA estadía" not in block

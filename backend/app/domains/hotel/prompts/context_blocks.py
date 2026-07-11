@@ -121,6 +121,21 @@ def build_guest_profile_block(profile: dict) -> str:
             "\n⚠️ SEGURIDAD ALIMENTARIA: tiene alergias declaradas. JAMÁS le sugieras ni "
             "confirmes un plato que contenga esos alérgenos; ante la duda, consultá antes de recomendar."
         )
+
+    # Los ejemplos de "cómo saludar" dependen de si REALMENTE ya se hospedó. Un huésped con solo
+    # una reserva futura NO "vuelve": hablarle de "de vuelta" / "de siempre" es un error de tono.
+    room = profile.get("preferred_room") or "misma habitación"
+    if profile.get("has_past_stay"):
+        saludo_ej = ('✅ Saludalo por su nombre y reconocé que ya lo conocés (con calidez, sin '
+                     'repetir siempre la misma fórmula).')
+        reserva_ej = (f'✅ Si va a reservar, ofrecé proactivamente lo que ya sabés que prefiere '
+                      f'(ej: "¿Te reservo la {room} de siempre?").')
+    else:
+        # Aún NO se hospedó (reserva futura / primera vez): reconocelo sin fingir un regreso.
+        saludo_ej = ('✅ Saludalo por su nombre. Es su PRIMERA estadía / aún no llegó: NO digas '
+                     '"de vuelta", "de nuevo" ni "de siempre" — mostrá entusiasmo por recibirlo.')
+        reserva_ej = (f'✅ Ya sabés que le interesa la {room}: podés mencionarlo con naturalidad, '
+                      f'sin dar por hecho que "es la de siempre".')
     return f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🛎️ PERFIL DEL HUÉSPED — {name}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -129,9 +144,8 @@ Conocés a este huésped. Usá esta información para personalizar la conversaci
 {detail}
 
 CÓMO USARLO:
-✅ Saludalo por su nombre y reconocé que lo conocés ("¡Qué bueno tenerte de vuelta!").
-✅ Si va a reservar, ofrecé proactivamente lo que ya sabés que prefiere
-   (ej: "¿Te reservo la {profile.get('preferred_room') or 'misma habitación'} de siempre?").
+{saludo_ej}
+{reserva_ej}
 ✅ Si ya pidió comida antes, podés referenciarlo con calidez cuando venga al caso
    ("la última vez disfrutaste el ojo de bife, ¿querés repetir?") — sin recitar la lista.
 ✅ Tono cálido, de hospitalidad premium, natural — NO leas los datos como una lista.

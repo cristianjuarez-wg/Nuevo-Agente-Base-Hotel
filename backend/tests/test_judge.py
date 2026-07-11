@@ -59,3 +59,31 @@ def test_juez_aprueba_conversacion_limpia():
     v = _run(judge_transcript(transcript, tool_trace, facts,
                               goal="saber el precio", satisfied_when="le dieron un precio"))
     assert len(v.invented_facts) == 0, f"marcó invención donde no la hay: {v.invented_facts}"
+
+
+# ── Naturalidad (Fase 3): tests deterministas del Verdict, SIN LLM (corren siempre) ──
+
+def test_verdict_naturalidad_ok_helper():
+    """naturalidad_ok(): True si todas las señales presentes están en verde; vacío = True."""
+    from evals.judge import Verdict
+    assert Verdict(naturalidad={}).naturalidad_ok() is True
+    assert Verdict(naturalidad={"sin_muletillas_bot": True, "vario_cierres": True}).naturalidad_ok() is True
+    assert Verdict(naturalidad={"sin_muletillas_bot": True, "vario_cierres": False}).naturalidad_ok() is False
+
+
+def test_naturalidad_no_afecta_el_veredicto_ok():
+    """La naturalidad es MÉTRICA reportada: mal tono NO tumba `ok` (que mira invenciones + reglas)."""
+    from evals.judge import Verdict
+    # ok se computa en judge_transcript; acá emulamos su regla para blindar el contrato:
+    v = Verdict(invented_facts=[], rules_respected={"no_inventa_precio": True},
+                naturalidad={"vario_cierres": False, "sin_muletillas_bot": False})
+    reglas_ok = all(bool(x) for x in v.rules_respected.values())
+    ok = (len(v.invented_facts) == 0) and reglas_ok
+    assert ok is True, "el estilo (naturalidad) no debe afectar la correctitud (ok)"
+    assert v.naturalidad_ok() is False, "pero la métrica de naturalidad sí refleja el mal tono"
+
+
+def test_verdict_to_dict_incluye_naturalidad():
+    from evals.judge import Verdict
+    d = Verdict(naturalidad={"sin_muletillas_bot": True}).to_dict()
+    assert "naturalidad" in d and d["naturalidad"] == {"sin_muletillas_bot": True}
