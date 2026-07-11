@@ -28,6 +28,10 @@ from app.utils.timezone_utils import utcnow_naive
 logger = get_logger(__name__)
 
 _TAKEOVER_KEY = "takeover"
+# Marca puesta por el AGENTE (tool derivar_a_humano) para avisar que la charla necesita una
+# persona (Fase 4). Distinta del takeover (que lo hace el humano). El backoffice la resalta y
+# muestra el resumen; al TOMAR el control (takeover), se limpia.
+_NEEDS_HUMAN_KEY = "needs_human"
 
 # Minutos sin actividad humana tras los cuales Aura retoma automáticamente la conversación.
 AUTO_RELEASE_MINUTES = 10
@@ -74,6 +78,53 @@ def get_state(db: Session, session_id: str) -> Optional[Dict]:
         return None
     state = (conv.extra_metadata or {}).get(_TAKEOVER_KEY)
     return state if (state and state.get("active")) else None
+
+
+def flag_needs_human(db: Session, session_id: str, motivo: str = "", summary: str = "") -> bool:
+    """Marca que la conversación necesita atención humana (Fase 4, lo pone el AGENTE).
+
+    Guarda motivo + resumen de la charla + timestamp en extra_metadata["needs_human"]. El
+    backoffice la resalta y avisa (toast). Devuelve True si se marcó. No pausa a Aura (eso lo hace
+    el takeover del humano). Best-effort: no rompe el turno."""
+    try:
+        conv = _get_conv(db, session_id)
+        if not conv:
+            return False
+        meta = dict(conv.extra_metadata or {})
+        meta[_NEEDS_HUMAN_KEY] = {
+            "active": True, "motivo": motivo, "summary": summary,
+            "since": utcnow_naive().isoformat(),
+        }
+        conv.extra_metadata = meta
+        db.commit()
+        logger.info("Conversación marcada needs_human", session_id=session_id, motivo=motivo)
+        return True
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo marcar needs_human", session_id=session_id, error=str(e))
+        return False
+
+
+def get_needs_human(db: Session, session_id: str) -> Optional[Dict]:
+    """Bloque needs_human de la conversación (o None si no está marcada)."""
+    conv = _get_conv(db, session_id)
+    if not conv:
+        return None
+    state = (conv.extra_metadata or {}).get(_NEEDS_HUMAN_KEY)
+    return state if (state and state.get("active")) else None
+
+
+def clear_needs_human(db: Session, session_id: str) -> None:
+    """Limpia la marca needs_human (ej. cuando un humano toma el control)."""
+    try:
+        conv = _get_conv(db, session_id)
+        if not conv:
+            return
+        meta = dict(conv.extra_metadata or {})
+        if meta.pop(_NEEDS_HUMAN_KEY, None) is not None:
+            conv.extra_metadata = meta
+            db.commit()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("No se pudo limpiar needs_human", session_id=session_id, error=str(e))
 
 
 def is_human_controlled(db: Session, session_id: str) -> bool:
@@ -134,13 +185,19 @@ def take_over(db: Session, session_id: str, staff_id: Optional[int] = None,
     if _is_web_offline(session_id, conv):
         raise WebChatOffline(session_id)
     now = _now_iso()
-    _write_takeover(db, conv, {
+    # Al tomar el control, escribimos el takeover y limpiamos la marca needs_human (ya la atendió
+    # una persona) en la MISMA operación, para no dejar la conversación resaltada de más.
+    meta = dict(conv.extra_metadata or {})
+    meta[_TAKEOVER_KEY] = {
         "active": True,
         "staff_id": staff_id,
         "staff_name": staff_name or "",
         "started_at": now,
         "last_human_activity_at": now,
-    })
+    }
+    meta.pop(_NEEDS_HUMAN_KEY, None)
+    conv.extra_metadata = meta
+    db.commit()
     _control_cache[session_id] = True
     logger.info("Conversación tomada por humano", session_id=session_id, staff_id=staff_id)
     return True

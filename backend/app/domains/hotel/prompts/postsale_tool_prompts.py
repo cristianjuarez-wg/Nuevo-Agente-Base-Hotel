@@ -151,6 +151,8 @@ variando la forma (ver CÓMO HABLÁS arriba) — sin repetir siempre la misma mu
 
 """ + limite_dominio_block("postventa") + """
 
+{handoff_block}
+
 {guest_context}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTEXTO DE LA RESERVA:

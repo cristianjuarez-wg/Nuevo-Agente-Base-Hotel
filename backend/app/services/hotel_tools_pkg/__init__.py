@@ -29,7 +29,7 @@ from app.services.hotel_tools_pkg.restaurant import (
     _handle_ver_carta, _handle_armar_pedido_carta, _handle_reservar_mesa,
     _handle_comprar_voucher, _handle_registrar_pedido,
 )
-from app.services.hotel_tools_pkg.misc import _handle_guardar_preferencia
+from app.services.hotel_tools_pkg.misc import _handle_guardar_preferencia, _handle_derivar_a_humano
 
 # Símbolos que OTROS módulos importan de hotel_tools (API pública histórica — reexport).
 from app.services.hotel_tools_pkg._shared import (  # noqa: F401
@@ -56,6 +56,7 @@ _DISPATCH = {
     "comprar_voucher": _handle_comprar_voucher,
     "registrar_pedido": _handle_registrar_pedido,
     "guardar_preferencia": _handle_guardar_preferencia,
+    "derivar_a_humano": _handle_derivar_a_humano,
 }
 
 
