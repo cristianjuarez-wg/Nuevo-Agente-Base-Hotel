@@ -520,11 +520,16 @@ class HotelPostSaleSDKOrchestrator:
         from app.services import guest_context_service
         guest_context = guest_context_service.build_guest_context(
             "guest", getattr(booking, "contact_id", None), service.db)
+        # Naturalidad opt-in por customer_facing (Fase 3): post-venta es customer_facing → lo recibe.
+        from app.domains.hotel.prompts.generation_prompts import NATURALIDAD_BLOCK
+        from app.domains.hotel.agent_specs import SPECS
+        _naturalidad = NATURALIDAD_BLOCK if SPECS["hotel_postsale"].customer_facing else ""
         return POSTSALE_TOOL_SYSTEM.format(
             identity_block=build_postsale_identity_block(profile, passenger_name),
             facts_block=build_facts_block(profile),  # HECHOS del negocio (Fase 3.5 → post-venta)
             passenger_name=passenger_name,  # el prompt lo usa además en la regla de no re-saludar
             guest_context=guest_context,
+            naturalidad_block=_naturalidad,
             package_context=booking_context,
             chat_history=self._format_history(history),
             continuidad=self._continuity_signal(service, session_id, history),
