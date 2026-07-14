@@ -61,8 +61,18 @@ export default function VouchersView() {
 
   const columns = [
     { key: 'code', label: 'Voucher', render: (v) => <span className="font-semibold text-hilton-700">{v.code}</span> },
-    { key: 'buyer_name', label: 'Comprador', render: (v) => v.buyer_name || '—' },
-    { key: 'items', label: 'Incluye', render: (v) => <span className="text-xs text-slatey">{itemsTxt(v)}</span> },
+    { key: 'buyer_name', label: 'Comprador', render: (v) => (
+      <div>
+        <p className="text-ink">{v.buyer_name || '—'}</p>
+        {v.buyer_phone && <p className="text-xs tabular-nums text-slatey">{v.buyer_phone}</p>}
+      </div>
+    ) },
+    { key: 'items', label: 'Incluye', render: (v) => (
+      <div className="text-xs text-slatey">
+        <p>{itemsTxt(v)}</p>
+        {v.notes && <p className="mt-0.5 text-amber-700">📝 {v.notes}</p>}
+      </div>
+    ) },
     { key: 'total', label: 'Total', render: (v) => <span className="tabular-nums">{formatUSD(v.total_usd)} <span className="text-slatey">/ {formatARS(v.total_ars)}</span></span> },
     { key: 'created_at', label: 'Emitido', render: (v) => formatDate(v.created_at) },
     { key: 'status', label: 'Estado', render: (v) => <StatusBadge status={v.status} /> },
@@ -76,7 +86,9 @@ export default function VouchersView() {
         <StatusBadge status={v.status} />
       </div>
       <p className="font-medium text-ink">{v.buyer_name || '—'}</p>
+      {v.buyer_phone && <p className="text-xs tabular-nums text-slatey">{v.buyer_phone}</p>}
       <p className="mt-1 text-xs text-slatey">{itemsTxt(v)}</p>
+      {v.notes && <p className="mt-1 text-xs text-amber-700">📝 {v.notes}</p>}
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(v.total_usd)}</span>
         <RedeemBtn v={v} />
