@@ -67,7 +67,17 @@ export default function OrdersView() {
     { key: 'order_code', label: 'Pedido', render: (r) => <span className="font-semibold text-hilton-700">{r.order_code}</span> },
     { key: 'guest_name', label: 'Cliente', render: (r) => r.guest_name || '—' },
     { key: 'items', label: 'Detalle', render: (r) => (
-      <span className="text-xs text-slatey">{(r.items || []).map((i) => `${i.qty}× ${i.name}`).join(', ')}</span>
+      <div className="max-w-[220px] text-xs text-slatey">
+        {(r.items || []).map((i, idx) => (
+          <span key={idx}>
+            {idx > 0 && ', '}{i.qty}× {i.name}
+            {i.notes && <span className="text-amber-600"> ({i.notes})</span>}
+          </span>
+        ))}
+        {r.notes && (
+          <p className="mt-0.5 text-amber-700">📝 {r.notes}</p>
+        )}
+      </div>
     ) },
     { key: 'fulfillment', label: 'Destino', render: (r) => <FulfillmentBadge f={r.fulfillment} /> },
     { key: 'pay', label: 'Pago', render: (r) => <Badge tone={r.payment_mode === 'folio' ? 'hilton' : 'gray'}>{r.payment_mode === 'folio' ? 'A la habitación' : 'Link'}</Badge> },
@@ -88,7 +98,15 @@ export default function OrdersView() {
         <StatusBadge status={r.status} />
       </div>
       <p className="font-medium text-ink">{r.guest_name || '—'}</p>
-      <p className="mt-1 text-xs text-slatey">{(r.items || []).map((i) => `${i.qty}× ${i.name}`).join(', ')}</p>
+      <p className="mt-1 text-xs text-slatey">
+        {(r.items || []).map((i, idx) => (
+          <span key={idx}>
+            {idx > 0 && ', '}{i.qty}× {i.name}
+            {i.notes && <span className="text-amber-600"> ({i.notes})</span>}
+          </span>
+        ))}
+      </p>
+      {r.notes && <p className="mt-1 text-xs text-amber-700">📝 {r.notes}</p>}
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_usd)}</span>
         <FulfillmentBadge f={r.fulfillment} />

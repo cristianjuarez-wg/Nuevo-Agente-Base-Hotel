@@ -284,6 +284,8 @@ export default function TicketsView() {
     </div>
   ) }
   const colSubject = { key: 'subject', label: 'Asunto', render: (r) => <span className="text-sm">{r.subject}</span> }
+  // Prioridad visible en la tabla (antes solo se veía dentro del detalle) — para triage de un vistazo.
+  const colPriority = { key: 'priority', label: 'Prioridad', sortable: true, render: (r) => <PriorityBadge priority={r.priority} /> }
   const colStatus = { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> }
   const colDate = { key: 'created_at', label: 'Fecha', sortable: true, render: (r) => formatDate(r.created_at) }
   const colActions = { key: 'actions', label: '', render: (r) => (
@@ -299,7 +301,7 @@ export default function TicketsView() {
 
   // Columnas específicas de OPERACIONES (área/asignado/gestión).
   const opsColumns = [
-    colTicket, colGuest, colSubject,
+    colTicket, colGuest, colSubject, colPriority,
     { key: 'area', label: 'Área', render: (r) => <AreaBadge area={r.assigned_area} /> },
     { key: 'assigned', label: 'Asignado a', render: (r) => (
       r.assigned_staff_name
@@ -317,7 +319,7 @@ export default function TicketsView() {
 
   // Columnas específicas de CONSULTAS (resolución auto-IA / escalado clásico).
   const consColumns = [
-    colTicket, colGuest, colSubject,
+    colTicket, colGuest, colSubject, colPriority,
     { key: 'category', label: 'Categoría', render: (r) => <CategoryBadge category={r.category} /> },
     colStatus,
     { key: 'resolution', label: 'Resolución', render: (r) => (
@@ -376,7 +378,10 @@ export default function TicketsView() {
     useTableControls(byArea, {
       searchKeys: ['ticket_number', 'guest_name', 'subject', 'booking_code'],
       pageSize: 50,
-      sortAccessors: { created_at: (r) => r.created_at || '' },
+      sortAccessors: {
+        created_at: (r) => r.created_at || '',
+        priority: (r) => ({ high: 3, medium: 2, low: 1 }[r.priority] ?? 0),
+      },
     })
 
   return (
@@ -609,6 +614,19 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Detalle del pedido/consulta (el texto completo, antes solo visible leyendo la charla). */}
+          {(ticket.description || ticket.room_type) && (
+            <div className="border-b border-mist px-5 py-4">
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">Detalle</p>
+              {ticket.room_type && (
+                <p className="mb-1 text-xs text-slatey">
+                  Habitación: {ticket.room_type}{ticket.room_number ? ` · N° ${ticket.room_number}` : ''}
+                </p>
+              )}
+              {ticket.description && <p className="whitespace-pre-wrap text-sm text-ink">{ticket.description}</p>}
             </div>
           )}
 
