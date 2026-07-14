@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, Column, String, DateTime, Integer, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from datetime import datetime
 from app.config import settings
 from app.utils.timezone_utils import utcnow_naive
@@ -34,7 +35,16 @@ class Document(Base):
 _db_url = settings.DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # PostgreSQL necesita pool_pre_ping para reconectar tras idle; SQLite no lo soporta.
-_engine_kwargs = {"pool_pre_ping": True} if _db_url.startswith("postgresql") else {}
+if _db_url.startswith("postgresql"):
+    _engine_kwargs = {"pool_pre_ping": True}
+elif ":memory:" in _db_url:
+    # SQLite :memory: (solo tests): cada conexión abre su PROPIA base vacía. Con StaticPool todas
+    # comparten UNA conexión, así que la siembra vía SessionLocal y la lectura ven los mismos datos.
+    # Sin esto, tests que usan app.models.database.SessionLocal directamente flaquean con
+    # "no such table" (ver DEUDA_TECNICA). NO aplica al SQLite de archivo (dev), que sí quiere pool.
+    _engine_kwargs = {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}}
+else:
+    _engine_kwargs = {}
 engine = create_engine(_db_url, **_engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

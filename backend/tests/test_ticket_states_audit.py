@@ -54,15 +54,17 @@ class TestOwnerMetricsRecognizeOperationalStates:
 
     def test_queja_asignada_cuenta_como_abierta_no_resuelta(self, db):
         # Una queja enrutada al staff (status 'asignado') NO debe contarse como resuelta.
+        # Robusto a tickets de otros tests en la misma DB en memoria (comparamos antes/después).
         from datetime import date, timedelta
         from app.services import business_metrics
-        self._mk_ticket(db, "asignado", category="complaint")
         start = date.today() - timedelta(days=1)
         end = date.today() + timedelta(days=1)
-        r = business_metrics.get_complaints(db, start, end)
-        assert r["total"] == 1
-        assert r["open"] == 1       # antes del fix: 0 (se contaba como resuelta)
-        assert r["resolved"] == 0
+        before = business_metrics.get_complaints(db, start, end)
+        self._mk_ticket(db, "asignado", category="complaint")
+        after = business_metrics.get_complaints(db, start, end)
+        assert after["total"] == before["total"] + 1
+        assert after["open"] == before["open"] + 1        # la queja asignada cuenta como ABIERTA
+        assert after["resolved"] == before["resolved"]    # NO como resuelta
 
     def test_postsale_metrics_cuenta_resuelto_operativo(self, db):
         # Un ticket cerrado por el loop operativo ('resuelto') debe contar como auto-resuelto.

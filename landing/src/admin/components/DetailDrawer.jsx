@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Mail, Phone, X, BedDouble, CalendarCheck,
   DollarSign, Star, Loader2, UtensilsCrossed, Receipt, Pencil, Save, LifeBuoy,
-  MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2,
+  MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2, Sparkles,
 } from 'lucide-react'
 import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getContactConversations, MEDIA_BASE } from '../../services/api'
 import { Badge, OriginBadge, Loading, formatDate, formatUSD } from '../ui'
@@ -205,6 +205,16 @@ export default function DetailDrawer({ contactId, onClose }) {
                     </span>
                   )}
                   {profile.active_stay?.code && <span className="tabular-nums opacity-80">· {profile.active_stay.code}</span>}
+                </div>
+              )}
+
+              {/* Resumen IA del huésped (lo mismo que usa el agente). Solo si existe. */}
+              {c.ai_summary && (
+                <div className="rounded-xl border border-hilton-100 bg-hilton-50/50 px-4 py-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hilton-700">
+                    <Sparkles size={13} /> Resumen del huésped
+                  </div>
+                  <p className="text-sm text-ink">{c.ai_summary}</p>
                 </div>
               )}
 
