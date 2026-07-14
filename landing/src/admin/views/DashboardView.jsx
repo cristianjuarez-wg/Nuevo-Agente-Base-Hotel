@@ -1,11 +1,25 @@
 import { useEffect, useState } from 'react'
 import {
   CalendarCheck, UserPlus, LifeBuoy, DollarSign, Bot, ArrowRight, AlertTriangle, BedDouble, UtensilsCrossed,
+  Percent, TrendingUp, TrendingDown, Sparkles,
 } from 'lucide-react'
 import { getDashboardSummary, listBookings, getTicketStats, getRestaurantStats } from '../../services/api'
 import { PageHeader, StatCard, Loading, OriginBadge, formatUSD, formatDate } from '../ui'
 import PeriodSelector from '../components/PeriodSelector'
 import { useBusinessProfile } from '../../hooks/useBusinessProfile'
+
+// Flecha de tendencia (▲/▼ con %) vs. los 30 días previos — cálculo del agente/negocio.
+function Trend({ value }) {
+  const v = Number(value) || 0
+  if (v === 0) return <span className="text-xs text-white/60">sin cambio</span>
+  const up = v > 0
+  const Icon = up ? TrendingUp : TrendingDown
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${up ? 'text-green-200' : 'text-red-200'}`}>
+      <Icon size={12} /> {up ? '+' : ''}{v}%
+    </span>
+  )
+}
 
 export default function DashboardView({ go }) {
   const HOTEL = useBusinessProfile()
@@ -35,6 +49,7 @@ export default function DashboardView({ go }) {
 
   const pc = data.summary?.period_cards || {}
   const today = data.summary?.today || {}
+  const trends = data.summary?.trends || {}
 
   return (
     <div>
@@ -44,13 +59,14 @@ export default function DashboardView({ go }) {
         right={<PeriodSelector value={period} onChange={setPeriod} />}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-7">
         <StatCard
           icon={BedDouble}
           label={`En casa hoy${today.guests ? ` · ${today.guests} huésp.` : ''}`}
           value={today.rooms_occupied ?? 0}
           tone="green"
         />
+        <StatCard icon={Percent} label="Ocupación del período" value={`${pc.occupancy_pct ?? 0}%`} tone="hilton" />
         <StatCard icon={CalendarCheck} label="Reservas" value={pc.bookings_count ?? 0} tone="hilton" />
         <StatCard icon={DollarSign} label="Ingresos (USD)" value={formatUSD(pc.revenue_usd || 0)} tone="green" />
         <StatCard
@@ -75,13 +91,25 @@ export default function DashboardView({ go }) {
               <p className="text-xs text-white/75">reservas del período</p>
             </div>
             <div>
-              <p className="font-serif text-3xl font-700 tabular-nums">{pc.leads ?? 0}</p>
+              <p className="flex items-baseline gap-1.5">
+                <span className="font-serif text-3xl font-700 tabular-nums">{pc.leads ?? 0}</span>
+                <Trend value={trends.leads_trend} />
+              </p>
               <p className="text-xs text-white/75">leads captados</p>
             </div>
             <div>
               <p className="font-serif text-3xl font-700 tabular-nums">{data.tickets.resolved}</p>
               <p className="text-xs text-white/75">consultas auto-resueltas</p>
             </div>
+          </div>
+          {/* Cierre del embudo: cuántos leads terminaron en reserva (lo calcula Aura). */}
+          <div className="mt-4 flex items-center gap-2 border-t border-white/20 pt-3 text-sm text-white/85">
+            <Sparkles size={15} className="text-white/80" />
+            <span>
+              Aura cerró <span className="font-700 tabular-nums">{pc.leads_closed ?? 0}</span> de esos leads
+              {' · '}<span className="font-700 tabular-nums">{pc.conversion_pct ?? 0}%</span> de conversión
+            </span>
+            <span className="ml-auto"><Trend value={trends.conversion_trend} /></span>
           </div>
         </div>
 
