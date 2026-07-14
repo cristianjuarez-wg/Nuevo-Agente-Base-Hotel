@@ -44,6 +44,55 @@ const TICKET_CATEGORY_LABELS = {
   general: 'General', service_request: 'Servicio',
 }
 
+const TICKET_PRIORITY = {
+  low: { tone: 'gray', label: 'Baja' }, medium: null,
+  high: { tone: 'amber', label: 'Alta' }, urgent: { tone: 'red', label: 'Urgente' },
+}
+
+// "2 adultos · 1 niño · 1 bebé" a partir de una reserva. '' si no hay dato de ocupación.
+function occupancyLabel(b) {
+  const parts = []
+  if (b.guests) parts.push(`${b.guests} adulto${b.guests === 1 ? '' : 's'}`)
+  if (b.children) parts.push(`${b.children} niño${b.children === 1 ? '' : 's'}`)
+  if (b.infants) parts.push(`${b.infants} bebé${b.infants === 1 ? '' : 's'}`)
+  return parts.join(' · ')
+}
+
+// Tira de estado: identifica si el contacto es prospecto, cliente o recurrente, y su actividad.
+function GuestStatusRibbon({ profile, c }) {
+  const stays = profile.stays_count || 0
+  const m = c.metrics || {}
+  // Un contacto sin reservas pero con conversaciones/leads es un PROSPECTO (lead), no un cliente vacío.
+  const esProspecto = stays === 0
+  const recurrente = profile.is_recurring && profile.has_past_stay
+
+  let badge
+  if (esProspecto) badge = { label: 'Prospecto · sin reservas', tone: 'bg-amber-100 text-amber-700' }
+  else if (recurrente) badge = { label: `Cliente recurrente · ${stays} estadías`, tone: 'bg-forest-100 text-forest-700' }
+  else badge = { label: 'Cliente', tone: 'bg-hilton-100 text-hilton-700' }
+
+  // Chips de actividad (útiles sobre todo para prospectos, donde las 4 stats están en 0).
+  const chips = []
+  if (m.total_conversations) chips.push({ icon: MessageSquare, txt: `${m.total_conversations} charlas` })
+  if (m.total_messages) chips.push({ icon: MessageCircle, txt: `${m.total_messages} mensajes` })
+  if (m.leads_generated) chips.push({ icon: Star, txt: `${m.leads_generated} leads` })
+  if (m.tickets_created) chips.push({ icon: LifeBuoy, txt: `${m.tickets_created} consultas` })
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${badge.tone}`}>{badge.label}</span>
+      {chips.map((ch, i) => {
+        const Icon = ch.icon
+        return (
+          <span key={i} className="inline-flex items-center gap-1 rounded-full bg-mist px-2 py-0.5 text-xs text-slatey">
+            <Icon size={11} /> {ch.txt}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Panel de detalle 360° (drawer lateral) ───────────────────────────────────
 function ProfileStat({ icon: Icon, label, value }) {
   return (
@@ -59,9 +108,12 @@ function PreferenceEditor({ profile, onSave, saving }) {
   const [allergies, setAllergies] = useState((prefs.allergies || []).join(', '))
   const [dietary, setDietary] = useState((prefs.dietary || []).join(', '))
   const [services, setServices] = useState((prefs.services_used || []).join(', '))
+  // family es lista de {name} (lo mismo que guarda el agente); acá se edita por nombres.
+  const [family, setFamily] = useState((prefs.family || []).map((f) => f?.name || f).filter(Boolean).join(', '))
   const [notes, setNotes] = useState(prefs.notes || '')
 
   const toList = (s) => s.split(',').map((x) => x.trim()).filter(Boolean)
+  const toFamily = (s) => toList(s).map((name) => ({ name }))
 
   return (
     <div className="space-y-3">
@@ -80,13 +132,18 @@ function PreferenceEditor({ profile, onSave, saving }) {
                value={services} onChange={(e) => setServices(e.target.value)}
                placeholder="guarda-skis, cochera" />
       </Field>
+      <Field label="Familia / acompañantes" hint="nombres separados por coma">
+        <input className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+               value={family} onChange={(e) => setFamily(e.target.value)}
+               placeholder="María (esposa), Tomás (hijo)" />
+      </Field>
       <Field label="Notas del hotel">
         <textarea className="w-full min-h-[64px] rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
                   value={notes} onChange={(e) => setNotes(e.target.value)}
                   placeholder="Prefiere pisos altos, viaja con mascota…" />
       </Field>
       <button
-        onClick={() => onSave({ ...prefs, allergies: toList(allergies), dietary: toList(dietary), services_used: toList(services), notes })}
+        onClick={() => onSave({ ...prefs, allergies: toList(allergies), dietary: toList(dietary), services_used: toList(services), family: toFamily(family), notes })}
         disabled={saving}
         className="btn-primary w-full py-2.5 text-sm disabled:opacity-60"
       >
@@ -196,6 +253,10 @@ export default function DetailDrawer({ contactId, onClose }) {
             <p className="text-sm text-slatey">No se pudo cargar el perfil.</p>
           ) : (
             <div className="space-y-5">
+              {/* Estado del contacto: distingue prospecto (conversó, nunca reservó) de cliente,
+                  y muestra actividad. Evita que un lead se vea "vacío" (todo en 0). */}
+              <GuestStatusRibbon profile={profile} c={c} />
+
               {profile.is_staying_now && (
                 <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
                   <BedDouble size={16} /> Alojado actualmente
@@ -205,6 +266,25 @@ export default function DetailDrawer({ contactId, onClose }) {
                     </span>
                   )}
                   {profile.active_stay?.code && <span className="tabular-nums opacity-80">· {profile.active_stay.code}</span>}
+                </div>
+              )}
+
+              {/* Reserva FUTURA: si tiene una por venir y NO está alojado todavía. */}
+              {!profile.is_staying_now && profile.upcoming_stay && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <CalendarCheck size={15} /> Reserva próxima
+                    {profile.upcoming_stay.code && (
+                      <span className="rounded bg-blue-600 px-2 py-0.5 text-xs font-semibold tabular-nums text-white">
+                        {profile.upcoming_stay.code}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 tabular-nums">
+                    {profile.upcoming_stay.room_type}
+                    {' · '}{formatDate(profile.upcoming_stay.check_in)} → {formatDate(profile.upcoming_stay.check_out)}
+                    {occupancyLabel(profile.upcoming_stay) && <span> · {occupancyLabel(profile.upcoming_stay)}</span>}
+                  </p>
                 </div>
               )}
 
@@ -251,6 +331,34 @@ export default function DetailDrawer({ contactId, onClose }) {
                 </div>
               )}
 
+              {/* Familia / acompañantes conocidos (solo lectura; se editan abajo). */}
+              {profile.preferences?.family?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-mist px-4 py-2.5 text-sm text-ink">
+                  <span className="font-medium text-slatey">Familia:</span>
+                  {profile.preferences.family.map((f, i) => (
+                    <span key={i} className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-ink shadow-sm">{f?.name || f}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Servicios que suele usar (solo lectura). */}
+              {profile.preferences?.services_used?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-mist px-4 py-2.5 text-sm text-ink">
+                  <span className="font-medium text-slatey">Servicios:</span>
+                  {profile.preferences.services_used.map((s, i) => (
+                    <span key={i} className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-ink shadow-sm">{s}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Notas del hotel (solo lectura; se editan abajo). */}
+              {profile.preferences?.notes && (
+                <div className="rounded-xl bg-mist px-4 py-2.5 text-sm text-ink">
+                  <span className="font-medium text-slatey">Notas: </span>
+                  <span className="whitespace-pre-wrap">{profile.preferences.notes}</span>
+                </div>
+              )}
+
               {/* Contacto */}
               <div className="rounded-2xl bg-white p-4 shadow-card">
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slatey">Contacto</h3>
@@ -275,6 +383,8 @@ export default function DetailDrawer({ contactId, onClose }) {
                             </p>
                             <p className="text-xs text-slatey tabular-nums">
                               {formatDate(s.check_in)} → {formatDate(s.check_out)}
+                              {occupancyLabel(s) && <span className="ml-1.5">· {occupancyLabel(s)}</span>}
+                              {s.promo_name && <span className="ml-1.5 text-forest-600">· {s.promo_name}</span>}
                             </p>
                           </div>
                           <span className="font-medium tabular-nums text-hilton-700">{formatUSD(s.total_price_usd)}</span>
@@ -447,8 +557,12 @@ function TicketDetailDrawer({ ticket, onClose }) {
           <p className="text-xs text-slatey tabular-nums">{ticket.ticket_number} · {formatDate(ticket.created_at)}</p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <Badge tone={st.tone}>{st.label}</Badge>
+            {TICKET_PRIORITY[ticket.priority] && (
+              <Badge tone={TICKET_PRIORITY[ticket.priority].tone}>{TICKET_PRIORITY[ticket.priority].label}</Badge>
+            )}
             {ticket.category && <Badge tone="gray">{TICKET_CATEGORY_LABELS[ticket.category] || ticket.category}</Badge>}
             {ticket.assigned_area && <Badge tone="gray">{ticket.assigned_area}</Badge>}
+            {ticket.assigned_staff_name && <Badge tone="gray">👤 {ticket.assigned_staff_name}</Badge>}
           </div>
         </div>
       </header>
