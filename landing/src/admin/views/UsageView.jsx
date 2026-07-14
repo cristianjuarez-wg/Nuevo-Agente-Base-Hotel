@@ -10,6 +10,28 @@ const formatCostPerConv = (usd, convs) => {
   return formatUSD(usd / convs, 2)
 }
 
+// Barra de progreso consumo/tope. Antes solo se veía `blocked` (rojo o nada); ahora el dueño
+// ve cuánto le queda antes del corte. Verde <70%, ámbar <100%, rojo al llegar al tope.
+function LimitBar({ label, spent, limit }) {
+  if (limit == null) return null
+  const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0
+  const tone = pct >= 100 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-green-500'
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-sm">
+        <span className="text-slatey">{label}</span>
+        <span className="tabular-nums text-ink">
+          {formatUsd(spent)} <span className="text-slatey">/ {formatUsd(limit)}</span>
+          <span className="ml-1.5 text-xs text-slatey">({Math.round(pct)}%)</span>
+        </span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-mist">
+        <div className={`h-full rounded-full transition-all ${tone}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
 export default function UsageView() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -27,6 +49,13 @@ export default function UsageView() {
   const today = summary?.today ?? { tokens: 0, usd: 0, by_model: [] }
   const month = summary?.month ?? { tokens: 0, usd: 0, by_model: [] }
   const blocked = summary?.blocked
+  const limits = summary?.limits ?? { enabled: false }
+  const hasLimits = limits.enabled && (limits.daily_limit_usd != null || limits.monthly_limit_usd != null)
+  // Mensaje del bloqueo, diferenciando cuál tope se superó.
+  const blockedMsg = summary?.daily_exceeded && summary?.monthly_exceeded
+    ? 'Se superaron los topes diario y mensual.'
+    : summary?.daily_exceeded ? 'Se superó el tope diario.'
+    : summary?.monthly_exceeded ? 'Se superó el tope mensual.' : ''
 
   return (
     <div>
@@ -41,7 +70,7 @@ export default function UsageView() {
           <div>
             <p className="font-semibold">Tope de gasto alcanzado</p>
             <p className="text-sm">
-              El agente está pausado y no responderá hasta que baje el consumo o subas el tope.
+              {blockedMsg} El agente está pausado y no responderá hasta que baje el consumo o subas el tope.
             </p>
           </div>
         </div>
@@ -64,6 +93,18 @@ export default function UsageView() {
           tone="green"
         />
       </div>
+
+      {/* Progreso hacia el tope de gasto: para que el corte no llegue de golpe. */}
+      {hasLimits && (
+        <div className="mt-6 rounded-2xl bg-white p-5 shadow-card">
+          <h2 className="mb-4 font-serif text-lg font-600 text-ink">Progreso hacia el tope</h2>
+          <div className="space-y-4">
+            <LimitBar label="Gasto de hoy" spent={today.usd} limit={limits.daily_limit_usd} />
+            <LimitBar label="Gasto del mes" spent={month.usd} limit={limits.monthly_limit_usd} />
+          </div>
+          <p className="mt-3 text-xs text-slatey">Los topes se configuran en Límites y seguridad.</p>
+        </div>
+      )}
 
       {/* Desglose por modelo (mes) */}
       <div className="mt-6 rounded-2xl bg-white p-5 shadow-card">
