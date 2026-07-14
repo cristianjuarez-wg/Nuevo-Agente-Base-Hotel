@@ -13,6 +13,13 @@ const ENTITY_LABELS = {
   messages: 'Mensajes',
   tickets: 'Tickets de soporte',
   staff: 'Equipo',
+  // Restaurante: antes ausentes en el estado y —más importante— en la confirmación de
+  // borrado, que ocultaba que "Limpiar datos demo" también borra estos registros.
+  menu_items: 'Platos de la carta',
+  orders: 'Pedidos',
+  table_reservations: 'Reservas de mesa',
+  vouchers: 'Vouchers',
+  ticket_events: 'Eventos de tickets',
 }
 
 function summary(counts) {
