@@ -46,6 +46,7 @@ from app.domains.hotel.prompts.tool_agent_prompts import (
 from app.domains.hotel.prompts.flow_blocks import flow_block_for
 from app.domains.hotel.prompts.generation_prompts import NATURALIDAD_BLOCK
 from app.domains.hotel.prompts.base_blocks import handoff_block as _handoff_block
+from app.domains.hotel.prompts.base_blocks import MULTI_INTENT_BLOCK
 from app.domains.hotel.prompts.context_blocks import (
     build_lead_context_block,
     build_contact_request_block,
@@ -543,6 +544,7 @@ class HotelSDKOrchestrator:
             language_block=build_language_block(language),
             naturalidad_block=NATURALIDAD_BLOCK if customer_facing else "",
             handoff_block=_handoff_block(handoff_disponible) if customer_facing else "",
+            multi_intent_block=MULTI_INTENT_BLOCK if customer_facing else "",
             ubicacion_block=build_location_block(prof),
             team_block=team_block,
             negocio=prof.get("business_name") or "el hotel",  # límite de dominio (Fase A)

@@ -153,6 +153,8 @@ variando la forma (ver CÓMO HABLÁS arriba) — sin repetir siempre la misma mu
 
 {handoff_block}
 
+{multi_intent_block}
+
 {guest_context}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTEXTO DE LA RESERVA:

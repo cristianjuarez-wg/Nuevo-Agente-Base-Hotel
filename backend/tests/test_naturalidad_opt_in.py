@@ -52,3 +52,13 @@ def test_opt_in_decide_el_valor():
     assert inject(SPECS["hotel_staff"]) == ""
     assert inject(SPECS["hotel_owner"]) == ""
     assert inject(SPECS["triage"]) == ""
+
+
+# ── Fase 5: multi-intent, mismo patrón opt-in customer_facing ──
+
+def test_multi_intent_en_pre_y_post_no_en_internos():
+    """El placeholder {multi_intent_block} va en pre-venta y post-venta; NO en owner/staff."""
+    assert TOOL_AGENT_SYSTEM.count("{multi_intent_block}") == 1
+    assert POSTSALE_TOOL_SYSTEM.count("{multi_intent_block}") == 1
+    assert "{multi_intent_block}" not in OWNER_AGENT_SYSTEM
+    assert "{multi_intent_block}" not in STAFF_AGENT_SYSTEM
