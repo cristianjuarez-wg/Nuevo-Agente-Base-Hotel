@@ -308,15 +308,31 @@ class ContactService:
             Lead.contact_id == contact_id
         ).order_by(Lead.created_at.desc()).all()
         
-        # (Fase 0.2: se retiraron las queries a SoldPackage/SupportTicket — modelos de
-        # turismo ya inexistentes; en el hotel esas tablas estaban vacías. Las claves
-        # "packages"/"tickets" se conservan vacías por compatibilidad del payload.)
+        # Tickets de soporte REALES del contacto (vía sus reservas, excluyendo los operativos de
+        # restaurante). Antes esta clave devolvía [] hardcodeado (vestigio de turismo, engañoso);
+        # ahora refleja los tickets como ya lo hace get_guest_profile. (`packages` queda [] — el
+        # modelo SoldPackage de turismo ya no existe; se conserva la clave por compat del payload.)
+        tickets = []
+        try:
+            from app.models.hotel import HotelTicket, Booking
+            booking_ids = [b.id for b in db.query(Booking.id).filter(Booking.contact_id == contact_id).all()]
+            if booking_ids:
+                tk = (
+                    db.query(HotelTicket)
+                    .filter(HotelTicket.booking_id.in_(booking_ids), HotelTicket.category != "restaurant")
+                    .order_by(HotelTicket.created_at.desc())
+                    .all()
+                )
+                tickets = [t.to_dict() for t in tk]
+        except Exception:  # noqa: BLE001 — nunca romper el 360 por los tickets
+            tickets = []
+
         return {
             "contact": contact.to_dict(),
             "conversations": [c.to_dict() for c in conversations],
             "leads": [l.to_dict() for l in leads],
             "packages": [],
-            "tickets": []
+            "tickets": tickets,
         }
     
     def search_contacts(

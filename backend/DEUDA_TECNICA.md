@@ -190,33 +190,23 @@ comparaciones cruzadas. Se unificó **todo timestamp de datos a `utcnow_naive()`
 > filtran columnas ahora en UTC; el borde de medianoche puede desplazarse hasta 3h. Es semántica de
 > reporte, no un cruce de convenciones; se afina si el cliente reporta discrepancias de borde.
 
-## Flake de aislamiento en la suite (infraestructura de tests, preexistente)
-`tests/test_leads_include_unnamed.py` falla de forma intermitente en la suite completa con
-`sqlite3.OperationalError: no such table: leads` (2 de cada 3 corridas, según el orden de
-colección de pytest). **Causa raíz** (verificada, NO es de producto): hay DOS engines SQLite
-`:memory:` en los tests. El `conftest.py` crea uno con `StaticPool` (una sola conexión
-compartida) para los fixtures `db`/`client`; pero el engine de producción
-(`app/models/database.py`, que es el que usa `SessionLocal` directamente) apunta también a
-`:memory:` **sin StaticPool** (`_engine_kwargs` vacío para SQLite). Sin StaticPool cada conexión
-de ese engine abre un `:memory:` vacío nuevo: el test siembra leads con una `SessionLocal()` y
-`get_active_leads()` abre otra conexión → base vacía → falla. Los tests que usan el fixture
-`client` (engine del conftest con StaticPool) NO sufren esto. **Fix cuando se encare** (fuera del
-alcance del rediseño de backoffice): darle `StaticPool` al engine de prod cuando la URL es
-`:memory:`, o que los tests que usan `app.models.database.SessionLocal` pasen por el engine del
-conftest. Riesgo medio (toca el arranque de la BD); requiere correr toda la suite varias veces.
+## Flake de aislamiento en la suite (infraestructura de tests) — ✅ RESUELTO
+**Estado: cerrado.** El engine de producción (`app/models/database.py`) ahora usa `StaticPool` +
+`check_same_thread=False` cuando la URL es SQLite `:memory:` (solo en tests) — así `SessionLocal`
+comparte una única conexión y la siembra/lectura ven los mismos datos (antes cada conexión abría
+un `:memory:` vacío → `no such table: leads` en `test_leads_include_unnamed`). No aplica al SQLite
+de archivo (dev), que sí quiere pool normal; Postgres intacto. Al estabilizar la conexión,
+`test_ticket_states_audit::test_queja_asignada_...` pasó a robustecerse con before/after (asumía
+BD limpia). Suite verificada: 261 passed, 0 flaky, en 5 corridas consecutivas.
 
-## 360 del cliente — asimetrías backoffice ↔ agente (de la auditoría Fase 1.5)
-Tras conectar el 360 al agente (tickets previos, detalle de estadías, family/servicios/notas),
-quedan dos asimetrías del lado del BACKOFFICE (no del agente), no urgentes:
-- **El operador NO ve el `ai_summary`**: se genera y se guarda (`summary_service`), el AGENTE lo
-  usa en su prompt, pero el `DetailDrawer` del admin no lo renderiza. Sería un panel útil para el
-  operador (resumen del huésped en una línea). Además, el `ai_summary` hoy resume conversaciones+
-  leads con vocabulario de turismo (`_format_contact_context`), no el 360 hotelero (estadías/
-  consumo/tickets) — conviene reorientarlo cuando se toque.
-- **`get_contact_360` (`GET /api/contacts/{id}`)** devuelve `packages` y `tickets` HARDCODEADOS
-  vacíos (`contact_service.py:318-319`, vestigio de turismo). El drawer real usa
-  `/{id}/profile` (get_guest_profile), así que este endpoint quedó como código muerto/engañoso:
-  limpiarlo o hacerlo devolver los tickets reales.
+## 360 del cliente — asimetrías backoffice ↔ agente (de la auditoría Fase 1.5) — ✅ RESUELTAS
+- **El operador ya ve el `ai_summary`**: el `DetailDrawer` lo renderiza en una tarjeta "Resumen
+  del huésped" (el dato ya viajaba en `contact.to_dict()`; era puro frontend). *Refinamiento
+  pendiente (menor):* el `ai_summary` hoy resume conversaciones+leads con vocabulario de turismo
+  (`summary_service._format_contact_context`), no el 360 hotelero — reorientarlo cuando se toque.
+- **`get_contact_360` (`GET /api/contacts/{id}`)** ya devuelve los `tickets` REALES del contacto
+  (reusa la query de `get_guest_profile`), en vez del `[]` hardcodeado engañoso. `packages` queda
+  `[]` (el modelo SoldPackage de turismo ya no existe; se conserva la clave por compat del payload).
 
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
