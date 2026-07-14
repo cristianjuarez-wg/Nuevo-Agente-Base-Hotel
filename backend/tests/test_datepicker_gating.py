@@ -9,6 +9,7 @@ from app.models.conversation import Conversation
 from app.routers.chat import (
     _availability_shown_in_session,
     _should_offer_datepicker,
+    _should_offer_table,
     _dates_already_given,
 )
 
@@ -41,6 +42,44 @@ def test_picker_legitimo_sin_disponibilidad_previa(client, db):
     assert _availability_shown_in_session(db, "sess-avail-off") is False
     pide_fechas = "¡Bárbaro! ¿Para qué fechas estás pensando? Así te fijo disponibilidad."
     assert _should_offer_datepicker(pide_fechas, [], has_room_cards=False) is True
+
+
+# ── Bug restaurante→habitación: "reservar una mesa para cenar" mostraba el date picker
+#    de HABITACIÓN porque Aura respondía "¿para qué fecha?" y ese texto lo disparaba. ──
+
+# Respuesta típica de Aura ante un pedido de mesa: pide fecha y personas (correcto para mesa),
+# pero su texto matchea los hints de fecha del date picker de habitación.
+_RESP_PIDE_FECHA_MESA = "¡Claro! ¿Para qué día y cuántas personas querés reservar la mesa?"
+
+
+def test_no_picker_habitacion_si_el_usuario_pidio_mesa():
+    """El mensaje del usuario expresa intención de MESA → NO se ofrece el selector de fechas de
+    habitación, aunque la respuesta de Aura mencione 'día'/'fecha'."""
+    assert _should_offer_datepicker(
+        _RESP_PIDE_FECHA_MESA, [], has_room_cards=False,
+        user_message="quiero reservar una mesa para cenar",
+    ) is False
+
+
+def test_no_picker_habitacion_si_el_usuario_menciono_restaurante():
+    """Intención de restaurante/comida ('para cenar') tampoco debe abrir el picker de habitación."""
+    assert _should_offer_datepicker(
+        "¿Para qué fecha lo querés?", [], has_room_cards=False,
+        user_message="hola, algo para cenar en el restaurante",
+    ) is False
+
+
+def test_fallback_de_mesa_dispara_para_reservar_una_mesa():
+    """El fallback de mesa SÍ reconoce 'reservar una mesa para cenar' (la card correcta)."""
+    assert _should_offer_table("quiero reservar una mesa para cenar", [], has_other_cards=False) is True
+
+
+def test_picker_habitacion_intacto_para_reserva_de_alojamiento():
+    """Regresión inversa: un pedido legítimo de habitación SIGUE ofreciendo el date picker."""
+    assert _should_offer_datepicker(
+        "¡Bárbaro! ¿Para qué fechas buscás la habitación?", [], has_room_cards=False,
+        user_message="quiero reservar una habitación para el finde",
+    ) is True
 
 
 def test_fechas_en_lenguaje_natural_se_detectan():

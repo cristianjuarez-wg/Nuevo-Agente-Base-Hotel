@@ -365,13 +365,19 @@ def _suggested_month(user_message: str) -> str | None:
 
 
 def _should_offer_datepicker(response_text: str, tools_used: list, has_room_cards: bool,
-                             context_type: str = "", dates_given: bool = False) -> bool:
-    """Decide si adjuntar el selector de fechas.
+                             context_type: str = "", dates_given: bool = False,
+                             user_message: str = "") -> bool:
+    """Decide si adjuntar el selector de fechas DE HABITACIÓN.
 
     El picker SOLO tiene sentido en PRE-VENTA cuando el agente está pidiendo fechas que el
     usuario AÚN NO dio. En post-venta/casual nunca se ofrece; tampoco si ya se mostraron
     habitaciones, se tocó una tool de reserva en el turno, o el usuario YA dio fechas en la
     conversación (aunque la respuesta vuelva a mencionar "fecha"/"del 24 al 31").
+
+    Defensa en profundidad (bug restaurante→habitación): el picker se dispara por palabras
+    genéricas de fecha en la RESPUESTA de Aura ("¿para qué fecha?"), que también aplican al
+    reservar una MESA. Por eso, si el MENSAJE DEL USUARIO expresó intención de mesa o de
+    restaurante/comida, NO ofrecemos el selector de habitación (lo maneja el flujo de mesa).
     """
     if context_type in ("postsale", "casual"):
         return False
@@ -381,6 +387,11 @@ def _should_offer_datepicker(response_text: str, tools_used: list, has_room_card
         return False
     used = tools_used or []
     if any(t in used for t in _BOOKING_FLOW_TOOLS):
+        return False
+    umsg = (user_message or "").lower()
+    # Intención de MESA o de RESTAURANTE/comida en el mensaje del usuario → no es reserva de
+    # habitación; el selector de fechas de habitación no aplica (mismo criterio que la carta).
+    if any(h in umsg for h in _TABLE_INTENT_HINTS) or any(h in umsg for h in _MENU_REQUEST_HINTS):
         return False
     text = (response_text or "").lower()
     return any(h in text for h in _DATE_REQUEST_HINTS)
@@ -717,8 +728,19 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
         ):
             cards = [_date_picker_card(_suggested_month(chat_request.message))]
 
+        # Fallback determinístico de MESA: el usuario quiere reservar mesa pero el LLM no llamó
+        # `reservar_mesa`. Va ANTES del date picker de habitación: "reservar una mesa" haría que
+        # Aura pida "¿para qué fecha?", y ese texto dispararía el selector de HABITACIÓN por error.
+        # Priorizando la mesa acá, el turno de restaurante nunca cae en el flujo de alojamiento.
+        elif _should_offer_table(chat_request.message,
+                                 result.get("tools_used", []),
+                                 has_other_cards=bool(cards),
+                                 context_type=result.get("context_type", "")):
+            cards = [_build_table_card_fallback(db, chat_request.session_id)]
+
         # Si el agente está pidiendo fechas y no mostró habitaciones, ofrecemos el selector.
-        # Nunca en post-venta/casual (el huésped con reserva no busca disponibilidad).
+        # Nunca en post-venta/casual (el huésped con reserva no busca disponibilidad). Tampoco si
+        # el mensaje del usuario fue de mesa/restaurante (se filtra dentro de la función).
         elif _should_offer_datepicker(result.get("response", ""),
                                     result.get("tools_used", []),
                                     has_room_cards=bool(cards),
@@ -726,15 +748,9 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                                     dates_given=_dates_already_given(
                                         chat_request.message,
                                         agent_service.conversation_history.get(chat_request.session_id, []),
-                                    )):
+                                    ),
+                                    user_message=chat_request.message):
             cards = [_date_picker_card(_suggested_month(chat_request.message))]
-
-        # Fallback determinístico: el usuario quiere reservar mesa pero el LLM no llamó la tool.
-        elif _should_offer_table(chat_request.message,
-                                 result.get("tools_used", []),
-                                 has_other_cards=bool(cards),
-                                 context_type=result.get("context_type", "")):
-            cards = [_build_table_card_fallback(db, chat_request.session_id)]
 
         # Fallback determinístico: el huésped pidió la carta pero el LLM no llamó la tool.
         # Igual le mostramos la carta interactiva (que nunca quede sin carta).
