@@ -45,6 +45,56 @@ export function ScoreBar({ score }) {
   )
 }
 
+// Traducciones legibles de lo que analiza Aura (los slugs vienen del lead_analyzer).
+const OBSTACLE_LABEL = {
+  precio: 'Precio', fechas: 'Fechas', tiempo: 'Momento / timing', informacion: 'Le faltan datos',
+}
+const NEXT_ACTION_LABEL = {
+  solicitar_contacto: 'Pedir sus datos de contacto',
+  resolver_dudas: 'Resolver dudas pendientes',
+  dar_informacion: 'Darle más información',
+  mantener_conversacion: 'Mantener la conversación',
+}
+
+// Bloque "Aura sugiere": presenta la inteligencia comercial que el agente ya dedujo
+// (por qué no cierra + qué hacer ahora) con distintivo propio del agente. Se muestra en el
+// drawer del lead. Devuelve null si Aura no dejó nada accionable.
+export function AuraInsight({ lead }) {
+  const obstacle = lead.obstacle && lead.obstacle !== 'ninguno' ? OBSTACLE_LABEL[lead.obstacle] : null
+  const nextAction = lead.nextAction ? NEXT_ACTION_LABEL[lead.nextAction] : null
+  if (!obstacle && !nextAction && !lead.contactReadiness) return null
+  return (
+    <div className="mx-4 mt-3 rounded-xl border border-forest-200 bg-forest-50/60 px-3.5 py-2.5">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-forest-700">
+        <Sparkles size={13} /> Aura detectó
+      </div>
+      <div className="space-y-1 text-sm text-ink">
+        {obstacle && (
+          <p><span className="text-slatey">Freno:</span> <span className="font-medium">{obstacle}</span></p>
+        )}
+        {nextAction && (
+          <p><span className="text-slatey">Sugerencia:</span> <span className="font-medium">{nextAction}</span></p>
+        )}
+        {lead.contactReadiness && (
+          <p className="inline-flex items-center gap-1 text-forest-700">
+            <UserCheck size={13} /> Listo para que lo contacte el equipo
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Chip compacto de "listo para contactar" para la tabla/card (mismo distintivo Aura).
+export function ReadyChip({ ready }) {
+  if (!ready) return null
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-forest-50 px-2 py-0.5 text-xs font-medium text-forest-700">
+      <UserCheck size={11} /> Listo p/ contactar
+    </span>
+  )
+}
+
 // Aplana el lead anidado del backend a una fila plana.
 function flatten(lead) {
   const c = lead.contact_info || {}
@@ -62,7 +112,15 @@ function flatten(lead) {
     phone: c.phone,
     type: cl.lead_type,
     score: cl.interest_score,
+    // Inteligencia comercial que Aura ya dedujo (antes se descartaba).
+    obstacle: cl.obstacle,
+    contactReadiness: cl.contact_readiness,
+    nextAction: md.next_action,
     interest: ti.main_interest,
+    secondaryInterests: ti.secondary_interests,
+    travelContext: ti.travel_context,
+    isEventLead: lead.event_info?.is_event_lead,
+    eventName: lead.event_info?.event_name,
     status: md.status,
     kanbanStage: lead.kanban?.stage,
     origin: md.origin,
@@ -153,7 +211,7 @@ export default function LeadsView() {
     { key: 'interest', label: 'Interés', render: (r) => r.interest || '—' },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'type', label: 'Tipo', render: (r) => (
-      <div className="flex items-center gap-1.5"><TypeBadge type={r.type} /><WonBadge status={r.status} stage={r.kanbanStage} /></div>
+      <div className="flex flex-wrap items-center gap-1.5"><TypeBadge type={r.type} /><WonBadge status={r.status} stage={r.kanbanStage} /><ReadyChip ready={r.contactReadiness} /></div>
     ) },
     { key: 'score', label: 'Score', sortable: true, render: (r) => <ScoreBar score={r.score} /> },
     { key: 'created_at', label: 'Fecha', sortable: true, render: (r) => formatDate(r.created_at) },
@@ -173,6 +231,13 @@ export default function LeadsView() {
         </div>
       </div>
       {r.interest && <p className="text-sm text-slatey">{r.interest}</p>}
+      {(r.obstacle && r.obstacle !== 'ninguno') || r.contactReadiness ? (
+        <p className="mt-1.5 inline-flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="inline-flex items-center gap-1 font-medium text-forest-700"><Sparkles size={11} /> Aura:</span>
+          {r.obstacle && r.obstacle !== 'ninguno' && <span className="text-slatey">freno {OBSTACLE_LABEL[r.obstacle]?.toLowerCase() || r.obstacle}</span>}
+          <ReadyChip ready={r.contactReadiness} />
+        </p>
+      ) : null}
       <div className="mt-2 space-y-0.5 text-xs text-slatey">
         {r.email && <p className="flex items-center gap-1"><Mail size={12} />{r.email}</p>}
         {r.phone && <p className="flex items-center gap-1"><Phone size={12} />{r.phone}<WhatsAppDot linked={r.whatsappLinked} title="Se comunicó por WhatsApp" /></p>}
@@ -321,6 +386,7 @@ export function LeadChatDrawer({ lead, onClose, onEdit }) {
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <TypeBadge type={lead.type} />
               <WonBadge status={lead.status} stage={lead.kanbanStage} />
+              {lead.isEventLead && <Badge tone="pink">{lead.eventName || 'Evento'}</Badge>}
               {lead.interest && <span className="text-xs text-slatey">{lead.interest}</span>}
             </div>
           </div>
@@ -337,8 +403,17 @@ export function LeadChatDrawer({ lead, onClose, onEdit }) {
           </div>
         </div>
 
+        {/* Inteligencia comercial que Aura ya dedujo (por qué no cierra + qué hacer). */}
+        <AuraInsight lead={lead} />
+        {(lead.secondaryInterests || lead.travelContext) && (
+          <div className="mx-4 mt-2 space-y-0.5 text-xs text-slatey">
+            {lead.secondaryInterests && <p><span className="font-medium text-ink">También le interesa:</span> {lead.secondaryInterests}</p>}
+            {lead.travelContext && <p><span className="font-medium text-ink">Contexto del viaje:</span> {lead.travelContext}</p>}
+          </div>
+        )}
+
         {/* Pestañas */}
-        <div className="flex gap-1 border-b border-mist px-3 pt-2">
+        <div className="mt-3 flex gap-1 border-b border-mist px-3 pt-2">
           <TabButton active={tab === 'actividad'} onClick={() => setTab('actividad')} icon={Activity}>Actividad</TabButton>
           <TabButton active={tab === 'conversacion'} onClick={() => setTab('conversacion')} icon={MessageSquare}>Conversación</TabButton>
         </div>

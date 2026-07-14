@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Inbox, TrendingUp, Trophy, XCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Inbox, TrendingUp, Trophy, XCircle, Target } from 'lucide-react'
 import { getKanbanLeads, moveLeadStage } from '../../services/api'
 import { OriginBadge, WhatsAppDot, formatNumber } from '../ui'
-import { TypeBadge, ScoreBar, LeadChatDrawer, EditLeadModal } from './LeadsView'
+import { TypeBadge, ScoreBar, ReadyChip, LeadChatDrawer, EditLeadModal } from './LeadsView'
 import { toast } from '../toast'
 
 // Mapea el lead del kanban (getKanbanLeads) al shape que esperan LeadChatDrawer/EditLeadModal.
@@ -19,6 +19,7 @@ function toDrawerLead(l) {
     status: l.status,
     kanbanStage: l.kanban_stage,
     interest: l.main_interest,
+    contactReadiness: l.contact_readiness,
     sessionId: l.session_id,
   }
 }
@@ -69,9 +70,11 @@ function LeadCard({ lead, colIndex, onMove, onOpen, dragging, onDragStart, onDra
           <WhatsAppDot linked={lead.whatsapp_linked} title="Se comunicó por WhatsApp" />
         </p>
       )}
+      {lead.main_interest && <p className="mt-1 text-xs text-slatey">{lead.main_interest}</p>}
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         <TypeBadge type={lead.lead_type} />
         {lead.channel && <OriginBadge origin={lead.channel === 'whatsapp' ? 'aura_whatsapp' : lead.channel === 'instagram' ? 'aura_instagram' : 'aura_web'} />}
+        <ReadyChip ready={lead.contact_readiness} />
       </div>
       <div className="mt-2.5">
         <ScoreBar score={lead.interest_score} />
@@ -167,12 +170,16 @@ export default function KanbanBoard() {
   const [editLead, setEditLead] = useState(null)   // lead en edición (modal)
   const dragFrom = useRef(null)
 
+  // Ordena una columna por prioridad (priority_score) desc: los leads más "listos para trabajar"
+  // quedan arriba. Aura ya calcula ese score (interés + tipo + tener contacto).
+  const byPriority = (arr) => [...(arr || [])].sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0))
+
   const load = () => {
     setLoading(true)
     getKanbanLeads()
       .then(({ columns, stats }) => {
-        setCols({ new: columns.new || [], contacted: columns.contacted || [],
-                  won: columns.won || [], lost: columns.lost || [] })
+        setCols({ new: byPriority(columns.new), contacted: byPriority(columns.contacted),
+                  won: byPriority(columns.won), lost: byPriority(columns.lost) })
         setStats(stats)
       })
       .catch(() => setCols({ new: [], contacted: [], won: [], lost: [] }))
@@ -226,6 +233,9 @@ export default function KanbanBoard() {
         <div className="mb-4 flex flex-wrap gap-2">
           <StatChip icon={Inbox} label="Total" value={formatNumber(stats.total_leads, 0)} />
           <StatChip icon={TrendingUp} label="Conversión" value={`${stats.conversion_rate}%`} tone="text-hilton-700" />
+          {typeof stats.success_rate === 'number' && (
+            <StatChip icon={Target} label="Efectividad" value={`${stats.success_rate}%`} tone="text-forest-700" />
+          )}
           <StatChip icon={Trophy} label="Ganados" value={formatNumber(stats.by_stage?.won ?? 0, 0)} tone="text-green-700" />
           <StatChip icon={XCircle} label="Perdidos" value={formatNumber(stats.by_stage?.lost ?? 0, 0)} tone="text-red-700" />
         </div>
