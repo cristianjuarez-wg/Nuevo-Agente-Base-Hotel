@@ -33,6 +33,8 @@ class BusinessProfileUpdate(BaseModel):
     dialect_style: Optional[str] = None
     city: Optional[str] = None
     region_line: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     primary_currency: Optional[str] = None

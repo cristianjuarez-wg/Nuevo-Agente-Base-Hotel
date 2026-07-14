@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Building2, MapPin, Coins, Pencil, X, Plus, Trash2 } from 'lucide-react'
+import { Building2, MapPin, Coins, Pencil, X, Plus, Trash2, Phone, Mail, UtensilsCrossed } from 'lucide-react'
 import { getBusinessProfile, updateBusinessProfile } from '../../../services/api'
 import { Badge } from '../../ui'
 import { toast } from '../../toast'
@@ -57,12 +57,28 @@ export default function BusinessIdentityView() {
                 <Building2 size={13} /> Agente: {profile.agent_display_name} ({profile.role_descriptor})
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <MapPin size={13} /> {profile.city || '—'} · {profile.timezone}
+                <MapPin size={13} /> {profile.city || '—'}{profile.region_line ? ` · ${profile.region_line}` : ''} · {profile.timezone}
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Coins size={13} /> {profile.language}
               </span>
+              {profile.restaurant_name && (
+                <span className="inline-flex items-center gap-1.5">
+                  <UtensilsCrossed size={13} /> {profile.restaurant_name}
+                </span>
+              )}
             </div>
+            {/* Contacto que el agente da a los huéspedes ("contactanos al…"). */}
+            {(profile.contact_phone || profile.contact_email) && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slatey">
+                {profile.contact_phone && (
+                  <span className="inline-flex items-center gap-1.5"><Phone size={13} /> {profile.contact_phone}</span>
+                )}
+                {profile.contact_email && (
+                  <span className="inline-flex items-center gap-1.5"><Mail size={13} /> {profile.contact_email}</span>
+                )}
+              </div>
+            )}
           </div>
 
           <button
@@ -121,6 +137,8 @@ function EditProfileModal({ profile, onClose, onSave }) {
     agent_display_name: profile.agent_display_name || '',
     role_descriptor: profile.role_descriptor || '',
     restaurant_name: profile.restaurant_name || '',
+    contact_phone: profile.contact_phone || '',
+    contact_email: profile.contact_email || '',
     city: profile.city || '',
     region_line: profile.region_line || '',
     timezone: profile.timezone || '',
@@ -181,6 +199,14 @@ function EditProfileModal({ profile, onClose, onSave }) {
           <div className="sm:col-span-2">
             <label className={labelCls}>Nombre del restaurante</label>
             <input value={f.restaurant_name} onChange={(e) => set('restaurant_name', e.target.value)} className={inputCls} placeholder="ej. Plaza — Hampton's Kitchen House" />
+          </div>
+          <div>
+            <label className={labelCls}>Teléfono de contacto</label>
+            <input value={f.contact_phone} onChange={(e) => set('contact_phone', e.target.value)} className={inputCls} placeholder="+54 294-474-6200" />
+          </div>
+          <div>
+            <label className={labelCls}>Email de contacto</label>
+            <input type="email" value={f.contact_email} onChange={(e) => set('contact_email', e.target.value)} className={inputCls} placeholder="info@hotel.com" />
           </div>
           <div>
             <label className={labelCls}>Ciudad</label>

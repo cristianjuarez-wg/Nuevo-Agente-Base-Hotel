@@ -20,3 +20,14 @@ def test_put_actualiza_restaurant_name(client, admin_headers):
     # Y se refleja en el subset público (mismo origen).
     pub = client.get("/api/public/business-profile").json()
     assert pub["restaurant_name"] == nuevo
+
+
+def test_put_actualiza_contacto_del_negocio(client, admin_headers):
+    """El PUT acepta contact_phone/contact_email (los usa el agente como fallback de contacto).
+    El schema BusinessProfileUpdate los omitía, así que el backoffice no podía editarlos."""
+    payload = {"contact_phone": "+54 294-400-0000", "contact_email": "hola@hotel-demo.com"}
+    r = client.put("/api/business-profile", json=payload, headers=admin_headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("contact_phone") == payload["contact_phone"]
+    assert body.get("contact_email") == payload["contact_email"]

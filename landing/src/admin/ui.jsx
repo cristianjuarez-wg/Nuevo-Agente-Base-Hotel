@@ -1,7 +1,7 @@
 import { Loader2, Bot, Globe, User, MessageCircle, Instagram } from 'lucide-react'
 
 // Formato unificado (única fuente de verdad en lib/format.js).
-export { formatNumber, formatUSD, formatARS, formatDate, formatDateTime } from '../lib/format'
+export { formatNumber, formatUSD, formatARS, formatMoney, formatDate, formatDateTime } from '../lib/format'
 
 // "2 adultos · 1 niño · 1 bebé" a partir de una reserva. '' si no hay dato de ocupación.
 // Compartido por el drawer 360 y la lista de reservas (misma fuente de verdad).

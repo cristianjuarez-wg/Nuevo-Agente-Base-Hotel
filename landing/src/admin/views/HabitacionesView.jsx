@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Hotel, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Save, Loader2, Users, BedDouble } from 'lucide-react'
+import { Hotel, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Save, Loader2, Users, BedDouble, Eye } from 'lucide-react'
 import { listRoomsAdmin, saveRoom, patchRoomStatus, deleteRoom } from '../../services/api'
-import { PageHeader, Badge, Loading, EmptyState, formatUSD, formatARS } from '../ui'
+import { PageHeader, Badge, Loading, EmptyState, formatUSD, formatARS, formatMoney } from '../ui'
 import ImageInput from '../components/ImageInput'
 import { toast } from '../toast'
 
@@ -104,11 +104,22 @@ export default function HabitacionesView() {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slatey">
                     <span className="inline-flex items-center gap-1"><Users size={13} /> {r.capacity} huésped(es)</span>
                     {r.bed_config && <span className="inline-flex items-center gap-1"><BedDouble size={13} /> {r.bed_config}</span>}
+                    {r.view && <span className="inline-flex items-center gap-1"><Eye size={13} /> {r.view}</span>}
                     <span>{r.total_units} unidad(es)</span>
                   </div>
+                  {r.amenities?.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {r.amenities.map((a, i) => (
+                        <span key={i} className="rounded-full bg-mist px-2 py-0.5 text-[11px] text-slatey">{a}</span>
+                      ))}
+                    </div>
+                  )}
                   <p className="mt-1.5 text-sm tabular-nums">
-                    <span className="font-semibold text-hilton-700">{formatUSD(r.base_price_usd)}</span>
-                    <span className="text-slatey"> / noche · {formatARS(r.base_price_ars)}</span>
+                    {/* Precio en la moneda PRIMARIA configurada (price_primary), con la otra como referencia. */}
+                    <span className="font-semibold text-hilton-700">
+                      {r.price_primary != null ? formatMoney(r.price_primary, r.primary_currency) : formatUSD(r.base_price_usd)}
+                    </span>
+                    <span className="text-slatey"> / noche · {r.primary_currency === 'ARS' ? formatUSD(r.base_price_usd) : formatARS(r.base_price_ars)}</span>
                   </p>
                 </div>
               </div>
