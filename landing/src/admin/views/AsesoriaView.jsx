@@ -6,7 +6,7 @@ import {
   listManagementDocs, uploadManagementDoc, setManagementDocStatus, deleteManagementDoc,
   resetAdvisorMemory, getManagementDocContent,
 } from '../../services/api'
-import { PageHeader, ResponsiveTable, Badge, Loading, EmptyState } from '../ui'
+import { PageHeader, ResponsiveTable, Badge, Loading, EmptyState, formatDate } from '../ui'
 import { toast } from '../toast'
 
 // Repositorio de conocimiento del CONSULTOR de gerencia: libros/documentos de gestión
@@ -99,6 +99,11 @@ export default function AsesoriaView() {
         <span className="underline-offset-2 hover:underline">{r.filename}</span>
       </button>
     ) },
+    { key: 'uploaded_at', label: 'Subido', render: (r) => (
+      <span className="text-xs text-slatey tabular-nums">
+        {r.uploaded_at && r.uploaded_at !== 'unknown' ? formatDate(r.uploaded_at) : '—'}
+      </span>
+    ) },
     { key: 'status', label: 'Estado', render: (r) => (
       <button onClick={() => toggle(r)} disabled={busy === r.filename} className="disabled:opacity-50">
         {r.status === 'active'
@@ -126,6 +131,9 @@ export default function AsesoriaView() {
         <button onClick={() => setViewDoc(r)} className="flex items-center gap-2 text-left font-medium text-ink hover:text-hilton-700">
           <FileText size={15} className="text-hilton-500" /><span className="hover:underline">{r.filename}</span>
         </button>
+        {r.uploaded_at && r.uploaded_at !== 'unknown' && (
+          <span className="text-xs text-slatey tabular-nums">{formatDate(r.uploaded_at)}</span>
+        )}
       </div>
       <div className="flex items-center justify-between">
         <button onClick={() => toggle(r)} disabled={busy === r.filename}>
