@@ -43,6 +43,11 @@ class ConversationMessage(Base):
     tokens_used = Column(Integer, nullable=True)
     response_time_ms = Column(Integer, nullable=True)
     model_used = Column(String(50), nullable=True)
+
+    # HITL: un mensaje con role='assistant' puede ser de Aura (default) o de un OPERADOR
+    # humano (respuesta manual). Este flag los distingue en el transcripto sin romper las
+    # lecturas que asumen user|assistant.
+    sent_by_human = Column(Boolean, default=False)
     
     # Vinculación a entidades (opcional)
     lead_id = Column(Integer, ForeignKey('leads.id'), nullable=True, index=True)
@@ -66,6 +71,7 @@ class ConversationMessage(Base):
             "sequence_number": self.sequence_number,
             "created_at": iso_business(self.created_at),
             "context_type": self.context_type,
+            "sent_by_human": bool(self.sent_by_human),
             "metadata": {
                 "has_context": self.has_context,
                 "sources_used": self.sources_used,
