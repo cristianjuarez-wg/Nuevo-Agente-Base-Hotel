@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  Users, RefreshCw, Phone, Mail, BedDouble, Trash2,
+  Users, RefreshCw, Phone, Mail, BedDouble, Trash2, Sparkles, LifeBuoy,
 } from 'lucide-react'
 import { listPassengers, deleteContact } from '../../services/api'
 import {
@@ -23,6 +23,8 @@ function flatten(c) {
     whatsappLinked: c.whatsapp_linked,
     origin: c.origin,
     stays: m.purchases_made ?? 0,
+    hasSummary: !!c.ai_summary,   // señal de "tiene resumen IA" (el texto completo vive en el 360)
+    ticketsCreated: m.tickets_created ?? 0,
     inHouse: !!c.is_staying_now,
     last: c.last_interaction_date,
   }
@@ -94,6 +96,12 @@ export default function PassengersView() {
       <div className="flex items-center gap-2">
         <button onClick={() => setSelected(r.id)} className="font-medium text-hilton-700 hover:underline">{r.name}</button>
         {r.inHouse && <Badge tone="green"><BedDouble size={11} className="mr-1" /> En casa</Badge>}
+        {r.hasSummary && <Sparkles size={13} className="text-hilton-400" title="Tiene resumen IA (ver 360°)" />}
+        {r.ticketsCreated > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-mist px-1.5 py-0.5 text-[11px] text-slatey" title="Consultas/reclamos generados">
+            <LifeBuoy size={11} /> {r.ticketsCreated}
+          </span>
+        )}
       </div>
     ) },
     { key: 'contact', label: 'Contacto', render: (r) => (
