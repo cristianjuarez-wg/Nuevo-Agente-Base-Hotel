@@ -374,9 +374,12 @@ async def reservar_mesa(
     fecha: str = "", turno: str = "", personas: int = 0, nombre: str = "",
     codigo_reserva: str = "", notas: str = "",
 ) -> str:
-    """Reserva una MESA del restaurante (no es pedir comida ahora). Úsala cuando quieran
-    reservar mesa para un día. La interfaz muestra un selector de día, turno y personas — NO
-    le pidas la hora por texto; de eso se encarga la tarjeta. El restaurante tiene dos turnos:
+    """Reserva una MESA del restaurante (no es pedir comida ahora). Úsala SIEMPRE que quieran
+    reservar una mesa, APENAS lo digan. LLAMALA DE ENTRADA AUNQUE FALTEN LA FECHA Y LAS PERSONAS:
+    la interfaz muestra un selector de día, turno y personas y el huésped completa ahí lo que
+    falte — NO le pidas la fecha, la hora ni las personas por texto antes de llamarla; de eso se
+    encarga la tarjeta. Pasá `fecha`/`turno`/`personas` solo si ya los mencionó; si no, llamala
+    igual con lo que tengas o sin argumentos. El restaurante tiene dos turnos:
     ALMUERZO (mediodía) y CENA (noche). Si el huésped dice "la noche"/"a cenar" pasá
     turno="cena"; si dice "al mediodía"/"a almorzar" pasá turno="almuerzo" (NUNCA pases "noche"
     ni un texto libre como turno). El horario puntual lo elige el huésped en el selector. Si el
