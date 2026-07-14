@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  RefreshCw, MessageSquare, UserPlus, CalendarCheck, MessageCircle, Globe, TrendingDown, UtensilsCrossed,
+  RefreshCw, MessageSquare, UserPlus, CalendarCheck, MessageCircle, Globe, TrendingDown, UtensilsCrossed, Instagram,
 } from 'lucide-react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList,
@@ -9,11 +9,12 @@ import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics, getRest
 import { PageHeader, StatCard, Loading, formatUSD } from '../ui'
 import PeriodSelector from '../components/PeriodSelector'
 
-// Selector de canal: Todos / Web / WhatsApp. Filtra funnel + heatmap.
+// Selector de canal: Todos / Web / WhatsApp / Instagram. Filtra funnel + heatmap.
 const CHANNELS = [
   { id: 'all', label: 'Todos', icon: null },
   { id: 'web', label: 'Web', icon: Globe },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { id: 'instagram', label: 'Instagram', icon: Instagram },
 ]
 
 function ChannelTabs({ value, onChange }) {
@@ -159,7 +160,7 @@ function Heatmap({ data, maxCount }) {
 
 // ── Distribución por canal (barras, no pie: solo 2 categorías) ────────────────
 function ChannelBars({ channels }) {
-  const colorFor = (key) => (key === 'whatsapp' ? '#16a34a' : '#005aa9')
+  const colorFor = (key) => (key === 'whatsapp' ? '#16a34a' : key === 'instagram' ? '#db2777' : '#005aa9')
   return (
     <ResponsiveContainer width="100%" height={140}>
       <BarChart data={channels} layout="vertical" margin={{ left: 8, right: 24 }}>
@@ -307,7 +308,7 @@ export default function AnalyticsView() {
             </Panel>
 
             {/* Distribución por canal */}
-            <Panel title="Conversaciones por canal" subtitle="Distribución real entre web y WhatsApp.">
+            <Panel title="Conversaciones por canal" subtitle="Distribución real por canal (web, WhatsApp, Instagram).">
               {(channels?.total_conversations ?? 0) === 0 ? (
                 <p className="py-8 text-center text-sm text-slatey">Todavía no hay conversaciones registradas.</p>
               ) : (

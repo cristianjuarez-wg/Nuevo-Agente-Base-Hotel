@@ -95,6 +95,8 @@ def run_light_migrations() -> None:
     ensure_column("leads", "created_by", "VARCHAR(120)")
     # Canal de la conversación (web/whatsapp) para analíticas segmentadas.
     ensure_column("conversations", "channel", "VARCHAR(20)")
+    # HITL: distinguir respuestas de un operador humano de las de Aura en el transcripto.
+    ensure_column("conversation_messages", "sent_by_human", "BOOLEAN")
     # Perfil extensible del huésped (gustos, servicios, familia) en JSON.
     ensure_column("contacts", "preferences", "TEXT")
     # Promociones aplicables al precio: mínimo de noches para elegibilidad.

@@ -330,7 +330,7 @@ async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depe
     try:
         agent_service._save_message_to_db(
             db=db, session_id=session_id, role="assistant",
-            content=text, context_type="pre_sale",
+            content=text, context_type="pre_sale", sent_by_human=True,
         )
     except Exception as e:  # noqa: BLE001
         logger.error("No se pudo guardar la respuesta humana", session_id=session_id, error=str(e))

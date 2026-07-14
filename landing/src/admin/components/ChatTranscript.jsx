@@ -1,19 +1,27 @@
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Loader2, MessageSquare } from 'lucide-react'
+import { Loader2, MessageSquare, UserCheck } from 'lucide-react'
 import { getConversation } from '../../services/api'
 import { formatDateTime } from '../ui'
 
 // Burbuja de un mensaje. Mismo lenguaje visual que el chat público (ChatWidget): el huésped
-// a la derecha en azul hilton; Aura a la izquierda en linen, con markdown.
-function Bubble({ role, content, at }) {
+// a la derecha en azul hilton; Aura a la izquierda en linen, con markdown. Una respuesta de
+// un OPERADOR humano (sent_by_human) se distingue de Aura con etiqueta y color propio.
+function Bubble({ role, content, at, human }) {
   const isUser = role === 'user'
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      {human && (
+        <span className="mb-0.5 inline-flex items-center gap-1 px-1 text-[10px] font-medium text-forest-700">
+          <UserCheck size={11} /> Operador
+        </span>
+      )}
       <div
         className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-          isUser ? 'rounded-br-md bg-hilton-700 text-white' : 'rounded-bl-md bg-linen text-ink'
+          isUser ? 'rounded-br-md bg-hilton-700 text-white'
+          : human ? 'rounded-bl-md border border-forest-200 bg-forest-50 text-ink'
+          : 'rounded-bl-md bg-linen text-ink'
         }`}
       >
         {isUser ? (
@@ -93,7 +101,7 @@ export default function ChatTranscript({ sessionId, pollMs = 0 }) {
   return (
     <div className="space-y-2.5 px-4 py-3">
       {messages.map((m) => (
-        <Bubble key={m.id} role={m.role} content={m.content} at={formatDateTime(m.created_at)} />
+        <Bubble key={m.id} role={m.role} content={m.content} at={formatDateTime(m.created_at)} human={m.sent_by_human} />
       ))}
     </div>
   )

@@ -46,3 +46,25 @@ def test_session_sin_mensajes_devuelve_lista_vacia(client):
     data = r.json()
     assert data["messages"] == []
     assert data["total"] == 0
+
+
+def test_expone_sent_by_human_para_distinguir_operador_de_aura(client, db):
+    """HITL: el transcripto debe marcar qué mensajes assistant son de un OPERADOR humano
+    (sent_by_human=True) vs de Aura (False), para pintarlos distinto en el backoffice."""
+    conv = Conversation(session_id="web-hitl-1", channel="web", context_type="pre_sale")
+    db.add(conv)
+    db.flush()
+    base = datetime(2026, 6, 23, 10, 0, 0)
+    db.add_all([
+        ConversationMessage(conversation_id=conv.id, session_id="web-hitl-1", role="assistant",
+                            content="Respuesta de Aura", sequence_number=1, context_type="pre_sale",
+                            created_at=base, sent_by_human=False),
+        ConversationMessage(conversation_id=conv.id, session_id="web-hitl-1", role="assistant",
+                            content="Respuesta del operador", sequence_number=2, context_type="pre_sale",
+                            created_at=base + timedelta(minutes=1), sent_by_human=True),
+    ])
+    db.commit()
+    msgs = client.get("/api/conversations/web-hitl-1/messages").json()["messages"]
+    by_human = {m["content"]: m["sent_by_human"] for m in msgs}
+    assert by_human["Respuesta de Aura"] is False
+    assert by_human["Respuesta del operador"] is True

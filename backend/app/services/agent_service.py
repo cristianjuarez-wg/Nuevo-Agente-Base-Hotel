@@ -319,7 +319,8 @@ class AgentService:
         context_type: str = 'pre_sale',
         tokens_used: int = None,
         response_time_ms: int = None,
-        model_used: str = None
+        model_used: str = None,
+        sent_by_human: bool = False,
     ):
         """
         🆕 VISIÓN 360°: Guarda un mensaje en la base de datos
@@ -378,7 +379,8 @@ class AgentService:
                 context_type=context_type,
                 tokens_used=tokens_used,
                 response_time_ms=response_time_ms,
-                model_used=model_used or settings.OPENAI_MODEL
+                model_used=model_used or settings.OPENAI_MODEL,
+                sent_by_human=sent_by_human,
             )
             
             db.add(message)
