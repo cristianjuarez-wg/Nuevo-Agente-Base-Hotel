@@ -30,6 +30,9 @@ class Verdict:
     # 5 señales de NATURALIDAD (Fase 3), mapean 1:1 al NATURALIDAD_BLOCK. Es MÉTRICA de calidad:
     # se reporta pero NO entra en el veredicto `ok` (estilo ≠ correctitud). Ver _NATURALIDAD_RUBRIC.
     naturalidad: Dict[str, bool] = field(default_factory=dict)
+    # 5 señales de COHERENCIA (Fase 5): si el agente se pierde ante mensajes confusos. También
+    # MÉTRICA reportada, NO entra en `ok`. Ver _COHERENCIA_RUBRIC.
+    coherencia: Dict[str, bool] = field(default_factory=dict)
     rules_respected: Dict[str, bool] = field(default_factory=dict)
     notes: str = ""
     ok: bool = False   # veredicto global (se computa: sin invenciones + reglas respetadas)
@@ -38,12 +41,17 @@ class Verdict:
         """True si TODAS las señales de naturalidad presentes están en verde (para el gate ≥80%)."""
         return all(bool(x) for x in self.naturalidad.values()) if self.naturalidad else True
 
+    def coherencia_ok(self) -> bool:
+        """True si TODAS las señales de coherencia presentes están en verde (para el gate ≥80%)."""
+        return all(bool(x) for x in self.coherencia.values()) if self.coherencia else True
+
     def to_dict(self) -> dict:
         return {
             "goal_achieved": self.goal_achieved,
             "invented_facts": self.invented_facts,
             "tone_ok": self.tone_ok,
             "naturalidad": self.naturalidad,
+            "coherencia": self.coherencia,
             "rules_respected": self.rules_respected,
             "notes": self.notes,
             "ok": self.ok,
@@ -73,6 +81,21 @@ _NATURALIDAD_RUBRIC = {
                           "tríos forzados de adjetivos y frases 'no es solo X, sino Y'.",
 }
 
+# Rúbrica de COHERENCIA (Fase 5): mide que el agente NO se pierda ante mensajes difíciles de
+# entender. Métrica reportada (no bloqueante). Una señal que NO aplica a la charla va como true.
+_COHERENCIA_RUBRIC = {
+    "mantuvo_el_hilo": "No se descarriló ni perdió el objetivo del huésped pese a ruido, "
+                       "off-topic o distracciones.",
+    "confirmo_antes_de_cambiar": "Si el huésped cambió un dato ya dado (fechas, personas), el "
+                                 "agente lo confirmó y usó el dato NUEVO, no el viejo.",
+    "no_invento_ante_ambiguedad": "Ante un pedido vago/ambiguo NO inventó ni asumió datos (fechas, "
+                                  "precios): pidió la aclaración mínima o usó una tool.",
+    "atendio_multi_intent": "Si el huésped pidió varias cosas a la vez, reconoció TODAS (no ignoró "
+                            "una intención).",
+    "sin_respuesta_muda": "Nunca quedó mudo ni respondió solo con una disculpa vacía; ante un "
+                          "problema (incluida una tool que falla) ofreció algo útil o una salida.",
+}
+
 
 def _trace_summary(tool_trace: List[Dict]) -> str:
     if not tool_trace:
@@ -95,6 +118,7 @@ async def judge_transcript(transcript_text: str, tool_trace: List[Dict],
     facts = "\n".join(f"- {f}" for f in (business_facts or [])) or "(sin hechos declarados)"
     rubric = "\n".join(f"- {k}: {v}" for k, v in _RUBRIC.items())
     nat_rubric = "\n".join(f"- {k}: {v}" for k, v in _NATURALIDAD_RUBRIC.items())
+    coh_rubric = "\n".join(f"- {k}: {v}" for k, v in _COHERENCIA_RUBRIC.items())
 
     prompt = f"""Sos un evaluador ESTRICTO de la calidad de un agente concierge de hotel. Evaluá la
 siguiente conversación entre un HUÉSPED (simulado) y el AGENTE.
@@ -119,6 +143,9 @@ RÚBRICA de reglas a chequear:
 RÚBRICA de NATURALIDAD (cómo suena el agente — evaluá sobre la conversación entera):
 {nat_rubric}
 
+RÚBRICA de COHERENCIA (si el agente NO se pierde ante mensajes confusos — evaluá sobre la charla):
+{coh_rubric}
+
 Respondé SOLO con un JSON con esta forma EXACTA:
 {{
   "goal_achieved": true|false,
@@ -126,6 +153,7 @@ Respondé SOLO con un JSON con esta forma EXACTA:
   "tone_ok": true|false,
   "rules_respected": {{"descuento_no_default": true|false, "alergia_segura": true|false, "cbu_exacto": true|false, "no_datos_de_otro_huesped": true|false, "no_inventa_precio": true|false}},
   "naturalidad": {{"sin_muletillas_bot": true|false, "vario_cierres": true|false, "una_pregunta_por_vez": true|false, "reconocio_antes_de_responder": true|false, "sin_lenguaje_de_ia": true|false}},
+  "coherencia": {{"mantuvo_el_hilo": true|false, "confirmo_antes_de_cambiar": true|false, "no_invento_ante_ambiguedad": true|false, "atendio_multi_intent": true|false, "sin_respuesta_muda": true|false}},
   "notes": "1-2 frases de resumen"
 }}
 Una regla o señal que NO aplica a esta conversación va como true (no se violó). invented_facts vacío si no hubo invenciones."""
@@ -148,11 +176,12 @@ Una regla o señal que NO aplica a esta conversación va como true (no se violó
         invented_facts=data.get("invented_facts") or [],
         tone_ok=bool(data.get("tone_ok", True)),
         naturalidad={k: bool(val) for k, val in (data.get("naturalidad") or {}).items()},
+        coherencia={k: bool(val) for k, val in (data.get("coherencia") or {}).items()},
         rules_respected=data.get("rules_respected") or {},
         notes=data.get("notes", ""),
     )
     # Veredicto global: sin invenciones Y todas las reglas evaluadas respetadas.
-    # NOTA: la naturalidad NO entra acá a propósito (estilo ≠ correctitud). Se reporta aparte.
+    # NOTA: naturalidad y coherencia NO entran acá a propósito (calidad ≠ correctitud). Se reportan aparte.
     reglas_ok = all(bool(x) for x in v.rules_respected.values()) if v.rules_respected else True
     v.ok = (len(v.invented_facts) == 0) and reglas_ok
     return v

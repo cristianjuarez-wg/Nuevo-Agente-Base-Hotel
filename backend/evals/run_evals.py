@@ -522,12 +522,43 @@ async def _main_async(selected, smoke=False, tier=None):
     return rc
 
 
+from contextlib import contextmanager
+
+
+@contextmanager
+def _tool_failing(tool_name: str):
+    """Fuerza que UNA tool falle (Fase 5, persona `fallo_de_tool`). Reemplaza temporalmente el
+    handler en el _DISPATCH del hotel para que lance: execute_tool ya lo envuelve en try/except y
+    le devuelve al agente un 'Error ejecutando ...'. Así verificamos que el agente NO inventa ni
+    queda mudo cuando una herramienta se cae. Vive SOLO en el harness de evals — no toca producción."""
+    from app.services.hotel_tools_pkg import _DISPATCH
+
+    def _boom(args, ctx):
+        raise RuntimeError(f"[eval] fallo inyectado en {tool_name}")
+
+    original = _DISPATCH.get(tool_name)
+    _DISPATCH[tool_name] = _boom
+    try:
+        yield
+    finally:
+        if original is not None:
+            _DISPATCH[tool_name] = original
+
+
 async def _sim_dispatch(session_id: str, message: str, history: list):
     """Manda UN turno al agente real (guest) y devuelve (response, tool_trace). Reusa
-    agent_service.chat, que encadena el historial por session_id automáticamente."""
+    agent_service.chat, que encadena el historial por session_id automáticamente.
+
+    Si la persona es `fallo_de_tool` (el session_id lo lleva en el prefijo sim-<persona>-...),
+    inyecta un fallo en consultar_disponibilidad para probar la resiliencia del agente."""
     db = SessionLocal()
+    inject_fail = "sim-fallo_de_tool-" in session_id
     try:
-        result = await agent_service.chat(db, message, session_id, "es")
+        if inject_fail:
+            with _tool_failing("consultar_disponibilidad"):
+                result = await agent_service.chat(db, message, session_id, "es")
+        else:
+            result = await agent_service.chat(db, message, session_id, "es")
         return result.get("response", ""), result.get("tool_trace", []) or []
     finally:
         db.close()
@@ -559,6 +590,8 @@ async def _run_simulations(personas_filter, flows_filter) -> int:
     nat_conv_ok = 0            # conversaciones con las 5 señales de naturalidad en verde
     nat_signal_fails: dict = {}  # conteo de fallos por señal (para el reporte)
     nat_total = 0
+    coh_conv_ok = 0           # conversaciones con las 5 señales de COHERENCIA en verde (Fase 5)
+    coh_signal_fails: dict = {}
     for persona in personas:
         for flow in flows:
             transcript = await run_simulation(persona, flow, _sim_dispatch)
@@ -568,32 +601,42 @@ async def _run_simulations(personas_filter, flows_filter) -> int:
                 goal=persona.goal, satisfied_when=persona.satisfied_when)
             status = "PASS" if verdict.ok else "FAIL"
             nat_flag = "nat✓" if verdict.naturalidad_ok() else "nat✗"
-            print(f"[{persona.key:11} {flow}] {status} {nat_flag}  ·  {len(transcript.turns)} turnos  ·  "
+            coh_flag = "coh✓" if verdict.coherencia_ok() else "coh✗"
+            print(f"[{persona.key:15} {flow}] {status} {nat_flag} {coh_flag}  ·  {len(transcript.turns)} turnos  ·  "
                   f"goal={verdict.goal_achieved}  invenciones={len(verdict.invented_facts)}")
             if verdict.notes:
                 print(f"    nota: {verdict.notes}")
             for inv in verdict.invented_facts:
                 print(f"    ⚠ invención: {inv.get('claim','')}")
-            # Naturalidad: MÉTRICA reportada, no bloqueante (no afecta `failed`).
+            # Naturalidad y coherencia: MÉTRICAS reportadas, no bloqueantes (no afectan `failed`).
             nat_total += 1
             if verdict.naturalidad_ok():
                 nat_conv_ok += 1
             for sig, ok_ in verdict.naturalidad.items():
                 if not ok_:
                     nat_signal_fails[sig] = nat_signal_fails.get(sig, 0) + 1
+            if verdict.coherencia_ok():
+                coh_conv_ok += 1
+            for sig, ok_ in verdict.coherencia.items():
+                if not ok_:
+                    coh_signal_fails[sig] = coh_signal_fails.get(sig, 0) + 1
             if not verdict.ok:
                 failed.append(f"{persona.key}/{flow}")
 
     print(f"\nTiempo total: {time.time()-t0:.1f}s")
-    # Reporte de NATURALIDAD (Fase 3): objetivo ≥80% de conversaciones con las 5 señales en verde.
-    if nat_total:
-        pct = 100 * nat_conv_ok / nat_total
+    # Reporte de NATURALIDAD (Fase 3) y COHERENCIA (Fase 5): objetivo ≥80% de conversaciones OK.
+    def _report(nombre, ok_count, fails):
+        if not nat_total:
+            return
+        pct = 100 * ok_count / nat_total
         gate = "✓" if pct >= 80 else "✗ (objetivo ≥80%)"
-        print(f"\nNaturalidad: {nat_conv_ok}/{nat_total} conversaciones con las 5 señales OK "
+        print(f"\n{nombre}: {ok_count}/{nat_total} conversaciones con las 5 señales OK "
               f"({pct:.0f}%) {gate}")
-        if nat_signal_fails:
+        if fails:
             print("  Fallos por señal: " + ", ".join(
-                f"{k}={v}" for k, v in sorted(nat_signal_fails.items(), key=lambda kv: -kv[1])))
+                f"{k}={v}" for k, v in sorted(fails.items(), key=lambda kv: -kv[1])))
+    _report("Naturalidad", nat_conv_ok, nat_signal_fails)
+    _report("Coherencia", coh_conv_ok, coh_signal_fails)
     _cleanup(session_ids)  # limpia por session_id (reservas/tickets/leads creados)
     if failed:
         print(f"Simulaciones con veredicto FAIL: {', '.join(failed)}")

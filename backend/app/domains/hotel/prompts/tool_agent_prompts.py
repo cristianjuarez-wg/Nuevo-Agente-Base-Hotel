@@ -331,6 +331,7 @@ alimentario, usá `guardar_preferencia` y sugerí acorde. NUNCA inventes platos 
 siempre de las herramientas.
 10. """ + alergias_block("guardar_preferencia") + """
 11. {handoff_block}
+12. {multi_intent_block}
 
 """ + limite_dominio_block("preventa") + """
 

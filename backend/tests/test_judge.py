@@ -87,3 +87,29 @@ def test_verdict_to_dict_incluye_naturalidad():
     from evals.judge import Verdict
     d = Verdict(naturalidad={"sin_muletillas_bot": True}).to_dict()
     assert "naturalidad" in d and d["naturalidad"] == {"sin_muletillas_bot": True}
+
+
+# ── Coherencia (Fase 5): tests deterministas, SIN LLM ──
+
+def test_verdict_coherencia_ok_helper():
+    from evals.judge import Verdict
+    assert Verdict(coherencia={}).coherencia_ok() is True
+    assert Verdict(coherencia={"mantuvo_el_hilo": True, "sin_respuesta_muda": True}).coherencia_ok() is True
+    assert Verdict(coherencia={"mantuvo_el_hilo": False}).coherencia_ok() is False
+
+
+def test_coherencia_no_afecta_el_veredicto_ok():
+    """La coherencia es MÉTRICA reportada: perderse NO tumba `ok` (invenciones + reglas duras)."""
+    from evals.judge import Verdict
+    v = Verdict(invented_facts=[], rules_respected={"no_inventa_precio": True},
+                coherencia={"mantuvo_el_hilo": False, "sin_respuesta_muda": False})
+    reglas_ok = all(bool(x) for x in v.rules_respected.values())
+    ok = (len(v.invented_facts) == 0) and reglas_ok
+    assert ok is True
+    assert v.coherencia_ok() is False
+
+
+def test_verdict_to_dict_incluye_coherencia():
+    from evals.judge import Verdict
+    d = Verdict(coherencia={"mantuvo_el_hilo": True}).to_dict()
+    assert "coherencia" in d and d["coherencia"] == {"mantuvo_el_hilo": True}

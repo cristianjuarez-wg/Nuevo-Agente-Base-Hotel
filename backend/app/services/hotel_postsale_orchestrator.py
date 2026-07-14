@@ -544,12 +544,13 @@ class HotelPostSaleSDKOrchestrator:
             "guest", getattr(booking, "contact_id", None), service.db)
         # Naturalidad opt-in por customer_facing (Fase 3): post-venta es customer_facing → lo recibe.
         from app.domains.hotel.prompts.generation_prompts import NATURALIDAD_BLOCK
-        from app.domains.hotel.prompts.base_blocks import handoff_block
+        from app.domains.hotel.prompts.base_blocks import handoff_block, MULTI_INTENT_BLOCK
         from app.domains.hotel.agent_specs import SPECS
         from app.services import human_attention_service
         _cf = SPECS["hotel_postsale"].customer_facing
         _naturalidad = NATURALIDAD_BLOCK if _cf else ""
         _handoff = handoff_block(human_attention_service.is_human_available(service.db)) if _cf else ""
+        _multi_intent = MULTI_INTENT_BLOCK if _cf else ""
         return POSTSALE_TOOL_SYSTEM.format(
             identity_block=build_postsale_identity_block(profile, passenger_name),
             facts_block=build_facts_block(profile),  # HECHOS del negocio (Fase 3.5 → post-venta)
@@ -557,6 +558,7 @@ class HotelPostSaleSDKOrchestrator:
             guest_context=guest_context,
             naturalidad_block=_naturalidad,
             handoff_block=_handoff,
+            multi_intent_block=_multi_intent,
             package_context=booking_context,
             chat_history=self._format_history(history),
             continuidad=self._continuity_signal(service, session_id, history),

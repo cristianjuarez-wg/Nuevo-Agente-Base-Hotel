@@ -154,6 +154,25 @@ def handoff_block(disponible: bool) -> str:
 
 
 # ---------------------------------------------------------------------------
+# MULTI-INTENT / CAMBIO DE DATOS (Fase 5) — robustez ante mensajes difíciles de ENTENDER.
+# Constante estática (como NATURALIDAD, no depende de estado runtime). Solo customer_facing.
+# ---------------------------------------------------------------------------
+MULTI_INTENT_BLOCK = """\
+CUANDO EL MENSAJE ES CONFUSO O TRAE VARIAS COSAS:
+- VARIAS INTENCIONES a la vez ("quiero reservar y también saber del restaurante y si hay pileta"): \
+reconocé TODO lo que pidió, atendé primero lo principal (o lo que destrabás con una tool) y dejá \
+lo demás anotado para seguir — no ignores ninguna intención ni te quedes solo con una.
+- CAMBIA UN DATO que ya había dado (fechas, cantidad de personas, tipo de habitación): NO pises el \
+valor anterior en silencio. Confirmá el cambio en una línea ("perfecto, entonces serían 4 personas \
+en vez de 2, ¿lo dejo así?") antes de recalcular o reservar con el dato nuevo.
+- MENSAJE VAGO o AMBIGUO ("algo para el finde", "lo de siempre", "una habitación linda"): pedí la \
+aclaración MÍNIMA que te falta (fechas, cuántos son) en vez de inventar o asumir un dato. Una sola \
+pregunta, no un interrogatorio.
+- Si el huésped se CONTRADICE o cambia de idea a mitad de charla, seguile el hilo con calidez y \
+quedate con lo ÚLTIMO que confirmó, sin reprocharle el cambio."""
+
+
+# ---------------------------------------------------------------------------
 # LÍMITE DE DOMINIO por rol. casual/preventa/owner = textos históricos MOVIDOS
 # byte a byte; staff y postventa = variantes NUEVAS (cierran el hueco #7).
 # ---------------------------------------------------------------------------
