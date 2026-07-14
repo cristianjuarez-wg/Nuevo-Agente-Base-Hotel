@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { UtensilsCrossed, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Save, Loader2 } from 'lucide-react'
+import { UtensilsCrossed, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Save, Loader2, Moon, AlertTriangle } from 'lucide-react'
 import { listMenuAdmin, saveMenuItem, patchMenuStatus, deleteMenuItem } from '../../../services/api'
 import { PageHeader, Badge, Loading, EmptyState, formatUSD, formatARS } from '../../ui'
 import ImageInput from '../../components/ImageInput'
@@ -72,8 +72,14 @@ export default function MenuView() {
                   <span className="font-semibold text-ink">{it.name}</span>
                   <Badge tone="gray">{it.category}</Badge>
                   {(it.tags || []).map((t) => <Badge key={t} tone="green">{t}</Badge>)}
+                  {it.only_dinner && <Badge tone="blue"><Moon size={11} className="mr-1" /> Solo cena</Badge>}
                   {!it.available && <Badge tone="amber">sin stock</Badge>}
                 </div>
+                {it.allergens?.length > 0 && (
+                  <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-red-600">
+                    <AlertTriangle size={11} /> Contiene: {it.allergens.join(', ')}
+                  </p>
+                )}
                 {it.description && <p className="mt-0.5 line-clamp-1 text-xs text-slatey">{it.description}</p>}
               </div>
               <span className="shrink-0 text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(it.price_usd)}<span className="ml-1 font-normal text-slatey">/ {formatARS(it.price_ars)}</span></span>

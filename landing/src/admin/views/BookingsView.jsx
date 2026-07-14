@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { CalendarCheck, RefreshCw, BedDouble, Clock, CheckCircle2, Trash2, MessageSquare, X, Send, Loader2 } from 'lucide-react'
 import { listBookings, deleteBooking, sendCheckinExpress } from '../../services/api'
 import {
-  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatUSD, formatARS, formatDate,
+  PageHeader, ResponsiveTable, Badge, OriginBadge, Loading, EmptyState, formatUSD, formatARS, formatDate, occupancyLabel,
 } from '../ui'
 import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
@@ -202,11 +202,24 @@ export default function BookingsView() {
         {r.room_number && <span className="ml-1.5 rounded bg-hilton-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-hilton-700">N° {r.room_number}</span>}
       </span>
     ) },
-    { key: 'stay', label: 'Estadía', sortable: true, sortKey: 'check_in', render: (r) => `${formatDate(r.check_in)} → ${formatDate(r.check_out)}` },
+    { key: 'stay', label: 'Estadía', sortable: true, sortKey: 'check_in', render: (r) => (
+      <div>
+        <p className="tabular-nums">{formatDate(r.check_in)} → {formatDate(r.check_out)}</p>
+        {occupancyLabel(r) && <p className="text-xs text-slatey">{occupancyLabel(r)}</p>}
+      </div>
+    ) },
     { key: 'stay_status', label: 'Situación', render: (r) => <StayBadge stay={r.stay_status} /> },
     { key: 'checkin', label: 'Check-in express', render: (r) => <CheckinBadge pre={r.pre_checkin} stay={r.stay_status} /> },
     { key: 'total', label: 'Total', sortable: true, render: (r) => (
-      <span className="tabular-nums">{formatUSD(r.total_price_usd)} <span className="text-slatey">/ {formatARS(r.total_price_ars)}</span></span>
+      <div className="tabular-nums">
+        <span>{formatUSD(r.total_price_usd)} <span className="text-slatey">/ {formatARS(r.total_price_ars)}</span></span>
+        {r.promo_name && (
+          <p className="text-xs text-forest-600">
+            {r.promo_name}
+            {r.full_price_usd > r.total_price_usd && <span className="ml-1 text-slatey line-through">{formatUSD(r.full_price_usd)}</span>}
+          </p>
+        )}
+      </div>
     ) },
     { key: 'origin', label: 'Origen', render: (r) => <OriginBadge origin={r.origin} /> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
@@ -226,7 +239,11 @@ export default function BookingsView() {
         {r.room_type}
         {r.room_number && <span className="ml-1.5 font-semibold tabular-nums text-hilton-700">· N° {r.room_number}</span>}
       </p>
-      <p className="mt-1 text-xs text-slatey">{formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)</p>
+      <p className="mt-1 text-xs text-slatey">
+        {formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)
+        {occupancyLabel(r) && <span> · {occupancyLabel(r)}</span>}
+      </p>
+      {r.promo_name && <p className="mt-0.5 text-xs text-forest-600">{r.promo_name}</p>}
       <div className="mt-1.5"><CheckinBadge pre={r.pre_checkin} stay={r.stay_status} /></div>
       <div className="mt-2 flex items-center justify-between">
         <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>

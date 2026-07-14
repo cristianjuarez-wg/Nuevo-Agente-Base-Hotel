@@ -5,7 +5,7 @@ import {
   MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2, Sparkles,
 } from 'lucide-react'
 import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getContactConversations, MEDIA_BASE } from '../../services/api'
-import { Badge, OriginBadge, Loading, formatDate, formatUSD } from '../ui'
+import { Badge, OriginBadge, Loading, formatDate, formatUSD, occupancyLabel } from '../ui'
 import { toast } from '../toast'
 import ChatTranscript from './ChatTranscript'
 
@@ -47,15 +47,6 @@ const TICKET_CATEGORY_LABELS = {
 const TICKET_PRIORITY = {
   low: { tone: 'gray', label: 'Baja' }, medium: null,
   high: { tone: 'amber', label: 'Alta' }, urgent: { tone: 'red', label: 'Urgente' },
-}
-
-// "2 adultos · 1 niño · 1 bebé" a partir de una reserva. '' si no hay dato de ocupación.
-function occupancyLabel(b) {
-  const parts = []
-  if (b.guests) parts.push(`${b.guests} adulto${b.guests === 1 ? '' : 's'}`)
-  if (b.children) parts.push(`${b.children} niño${b.children === 1 ? '' : 's'}`)
-  if (b.infants) parts.push(`${b.infants} bebé${b.infants === 1 ? '' : 's'}`)
-  return parts.join(' · ')
 }
 
 // Tira de estado: identifica si el contacto es prospecto, cliente o recurrente, y su actividad.

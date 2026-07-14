@@ -3,6 +3,16 @@ import { Loader2, Bot, Globe, User, MessageCircle, Instagram } from 'lucide-reac
 // Formato unificado (única fuente de verdad en lib/format.js).
 export { formatNumber, formatUSD, formatARS, formatDate, formatDateTime } from '../lib/format'
 
+// "2 adultos · 1 niño · 1 bebé" a partir de una reserva. '' si no hay dato de ocupación.
+// Compartido por el drawer 360 y la lista de reservas (misma fuente de verdad).
+export function occupancyLabel(b) {
+  const parts = []
+  if (b.guests) parts.push(`${b.guests} adulto${b.guests === 1 ? '' : 's'}`)
+  if (b.children) parts.push(`${b.children} niño${b.children === 1 ? '' : 's'}`)
+  if (b.infants) parts.push(`${b.infants} bebé${b.infants === 1 ? '' : 's'}`)
+  return parts.join(' · ')
+}
+
 export function PageHeader({ title, subtitle, right }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">

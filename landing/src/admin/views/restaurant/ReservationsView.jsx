@@ -64,7 +64,12 @@ export default function ReservationsView() {
 
   const columns = [
     { key: 'reserved_for', label: 'Fecha y hora', render: (r) => <span className="font-medium tabular-nums text-ink">{formatDateTime(r.reserved_for)}</span> },
-    { key: 'guest_name', label: 'A nombre de', render: (r) => r.guest_name || '—' },
+    { key: 'guest_name', label: 'A nombre de', render: (r) => (
+      <div>
+        <p className="text-ink">{r.guest_name || '—'}</p>
+        {r.guest_phone && <p className="text-xs tabular-nums text-slatey">{r.guest_phone}</p>}
+      </div>
+    ) },
     { key: 'party_size', label: 'Personas', render: (r) => <span className="inline-flex items-center gap-1 tabular-nums text-ink"><Users size={13} className="text-slatey" /> {r.party_size}</span> },
     { key: 'origin', label: 'Origen', render: (r) => <OriginCell r={r} /> },
     { key: 'notes', label: 'Pedido especial', render: (r) => (
@@ -84,6 +89,7 @@ export default function ReservationsView() {
         <StatusBadge status={r.status} />
       </div>
       <p className="font-medium text-ink">{r.guest_name || '—'}</p>
+      {r.guest_phone && <p className="text-xs tabular-nums text-slatey">{r.guest_phone}</p>}
       <div className="mt-1 flex items-center gap-3 text-xs text-slatey">
         <span className="inline-flex items-center gap-1"><Users size={12} /> {r.party_size}</span>
         <OriginCell r={r} />
