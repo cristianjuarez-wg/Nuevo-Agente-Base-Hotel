@@ -14,7 +14,24 @@ python -m evals.run_evals            # todos los escenarios (~50-75 llamadas Ope
 python -m evals.run_evals -s S5      # solo S5 (iterar barato)
 python -m evals.run_evals -s S5 -s S6
 python -m evals.run_evals --list     # ver los escenarios
+python -m evals.run_evals --handoff-gate   # GATE de ruteo + handoff (ver abajo)
 ```
+
+## Gate de comportamiento (ruteo + handoff) — OBLIGATORIO antes de mergear cambios de prompt
+
+El **route del triage** y **qué tool llama el LLM** viven 100% en prompts: ningún `pytest` los ve
+(pytest mockea el LLM). Dos bugs reincidieron por ahí sin que CI se enterara. Por eso, **antes de
+mergear cualquier cambio a un prompt de agente, al triage o a las specs**, corré el gate:
+
+```bash
+python -m evals.run_evals --handoff-gate      # ~12 escenarios, gasta OpenAI
+```
+
+Cubre: ruteo (saludo→casual, viaje→pre-venta), intención accionable → pre-venta (persona, urgencia,
+alergia, queja), servicio no sobre-deriva / persona sí deriva (post-venta), insistencia, y captura
+en deferred. **Criterio: 2 de 3 corridas verdes** (el LLM tiene variabilidad; un fallo aislado que
+no se repite es ruido, uno consistente es una regresión real). No va en CI (gasta OpenAI); es un
+gate manual pre-merge, pero es UN comando, no un procedimiento mental.
 
 > **Limpieza automática**: al terminar, el runner borra las reservas/mesas/tickets/leads que
 > creó (por `session_id`), para que cada corrida sea repetible. Si interrumpís la corrida a la
