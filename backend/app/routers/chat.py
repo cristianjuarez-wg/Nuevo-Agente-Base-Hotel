@@ -793,6 +793,8 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
             error=result.get("error", False),
             error_type=result.get("error_type"),
             cards=cards,
+            tools_used=result.get("tools_used"),
+            agent_key=result.get("agent_key"),
         )
         
         logger.info("Chat message processed successfully",

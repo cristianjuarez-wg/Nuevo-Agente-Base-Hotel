@@ -693,7 +693,11 @@ class AgentService:
                         "intent": "casual_conversation",
                         "context_type": "casual",
                         "processing_time": f"{total_duration:.2f}s",
-                        "session_info": self.get_session_info(session_id)
+                        "session_info": self.get_session_info(session_id),
+                        # Observabilidad: el casual no usa tools; explicitarlo evita que la
+                        # agregación por agente lo cuente como "desconocido".
+                        "tools_used": [],
+                        "agent_key": "casual",
                     }
 
                 is_postsale = (triage["route"] == ROUTE_POSTVENTA)

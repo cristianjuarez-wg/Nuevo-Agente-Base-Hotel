@@ -54,6 +54,10 @@ class ChatResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     error: bool = False
     error_type: Optional[str] = None
+    # Observabilidad: qué tools llamó el agente este turno y por qué agente pasó. El audit ya
+    # los registraba, pero el payload los descartaba (salía None). Ahora se exponen.
+    tools_used: Optional[List[str]] = None
+    agent_key: Optional[str] = None
     
     class Config:
         extra = "allow"  # Permite campos extra sin validar
