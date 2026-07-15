@@ -86,7 +86,7 @@ SPECS = {
             "presale.comercios_amigos", "presale.excursiones_y_atracciones",
             "presale.promos_vigentes", "presale.calcular_precio_promo", "presale.ver_carta",
             "presale.armar_pedido_carta", "presale.registrar_pedido", "presale.reservar_mesa",
-            "presale.comprar_voucher", "presale.guardar_preferencia",
+            "presale.comprar_voucher", "presale.guardar_preferencia", "presale.derivar_a_humano",
         ),
         prompt_composer="hotel_presale",
         input_guardrails=("presale.relevancia",),
