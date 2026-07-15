@@ -22,22 +22,25 @@ def _handle_derivar_a_humano(args: Dict, ctx: Dict) -> Dict:
     from app.services import human_attention_service, conversation_control_service as ctrl
     disponible = human_attention_service.is_human_available(db)
 
+    # Resumen puntual de la charla para que el humano la retome con contexto (ambos casos).
+    try:
+        from app.services.summary_service import summarize_session
+        resumen = summarize_session(session_id, db)
+    except Exception:  # noqa: BLE001
+        resumen = ""
+
     if disponible:
-        # Resumen puntual de la charla para que el humano la retome con contexto.
-        try:
-            from app.services.summary_service import summarize_session
-            resumen = summarize_session(session_id, db)
-        except Exception:  # noqa: BLE001
-            resumen = ""
-        ctrl.flag_needs_human(db, session_id, motivo=motivo, summary=resumen)
+        ctrl.flag_needs_human(db, session_id, motivo=motivo, summary=resumen, status="live")
         return {
             "tool_result": "Ya avisé a una persona del equipo, que va a tomar la conversación en "
                            "un momento. Quedate en línea que enseguida te atienden. 😊",
             "handoff": "live",
         }
 
-    # Sin atención en vivo: no prometer pase inmediato. El prompt ya instruye tomar datos/registrar
-    # para seguimiento; acá dejamos la marca informativa (sin activar toast de 'tomar ahora').
+    # Sin atención en vivo: no prometer pase inmediato. Igual dejamos rastro accionable en la
+    # bandeja (status="deferred") para que el equipo lo retome apenas haya atención — antes esto
+    # NO se marcaba y el pedido se perdía si nadie revisaba la conversación.
+    ctrl.flag_needs_human(db, session_id, motivo=motivo, summary=resumen, status="deferred")
     return {
         "tool_result": "En este momento no tengo una persona disponible en vivo, pero dejo tu "
                        "consulta registrada para que el equipo te contacte apenas haya atención. "

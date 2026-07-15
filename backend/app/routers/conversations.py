@@ -154,7 +154,9 @@ async def list_conversations(
         nh = (r.extra_metadata or {}).get("needs_human")
         needs_human = (
             {"active": True, "motivo": nh.get("motivo", ""), "summary": nh.get("summary", ""),
-             "since": nh.get("since")}
+             # status distingue "live" (hay atención, tomar ya) de "deferred" (pendiente de
+             # contacto). Marcas viejas sin status → "live" (retrocompatible).
+             "status": nh.get("status", "live"), "since": nh.get("since")}
             if (nh and nh.get("active")) else None
         )
         items.append({

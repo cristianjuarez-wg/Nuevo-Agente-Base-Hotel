@@ -125,6 +125,9 @@ export default function LiveConversationsView() {
 function ConversationPanel({ conv, onOpenProfile, onDelete }) {
   const controlled = !!conv.takeover?.active
   const needsHuman = !controlled && !!conv.needs_human?.active  // el agente pidió una persona
+  // "live" = había atención disponible (tomarla ya); "deferred" = sin atención en vivo, quedó
+  // pendiente de contacto. Marcas viejas sin status se tratan como "live" (retrocompatible).
+  const deferred = needsHuman && conv.needs_human?.status === 'deferred'
   const [busy, setBusy] = useState(false)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -213,9 +216,15 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
               </span>
             )}
             {needsHuman && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-500 text-emerald-700">
-                <Hand size={11} /> Requiere atención
-              </span>
+              deferred ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-500 text-amber-700">
+                  <Hand size={11} /> Pendiente · sin atención
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-500 text-emerald-700">
+                  <Hand size={11} /> Requiere atención
+                </span>
+              )
             )}
             {waStale && !controlled && (
               <span className="text-xs text-slatey/80">· Reanudando contacto · última actividad {timeAgo(conv.last_message_at)}</span>
@@ -248,8 +257,10 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
       </div>
 
       {needsHuman && (conv.needs_human?.summary || conv.needs_human?.motivo) && (
-        <div className="border-b border-emerald-100 bg-emerald-50/60 px-4 py-2.5">
-          <p className="text-xs font-600 uppercase tracking-wide text-emerald-700">Aura pidió una persona</p>
+        <div className={`border-b px-4 py-2.5 ${deferred ? 'border-amber-100 bg-amber-50/60' : 'border-emerald-100 bg-emerald-50/60'}`}>
+          <p className={`text-xs font-600 uppercase tracking-wide ${deferred ? 'text-amber-700' : 'text-emerald-700'}`}>
+            {deferred ? 'Aura pidió una persona · pendiente de contacto (sin atención en vivo)' : 'Aura pidió una persona'}
+          </p>
           <p className="mt-0.5 text-sm text-ink">
             {conv.needs_human.summary || conv.needs_human.motivo}
           </p>
@@ -299,9 +310,15 @@ function ConversationRow({ r, active, onClick }) {
             {r.display_name || r.name || r.phone || 'Visitante web'}
           </span>
           {r.needs_human?.active && !r.takeover?.active && (
-            <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-600 text-emerald-700">
-              atención
-            </span>
+            r.needs_human?.status === 'deferred' ? (
+              <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-600 text-amber-700">
+                pendiente
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-600 text-emerald-700">
+                atención
+              </span>
+            )
           )}
           <GuestStatusBadge status={r.guest_status} />
         </span>
