@@ -33,7 +33,8 @@ from app.domains.hotel.prompts.staff_tool_prompts import STAFF_AGENT_SYSTEM
 
 logger = get_logger(__name__)
 
-MAX_TURNS = 5
+# Config real del loop en la AgentSpec (agent_specs.py:hotel_staff). MAX_TURNS sin uso (eliminado);
+# MAX_HISTORY_MESSAGES solo lo usa el _build_input_list local.
 MAX_HISTORY_MESSAGES = 10
 
 _sdk_client = get_async_openai()
@@ -137,11 +138,8 @@ register_tool("staff.mis_tickets", mis_tickets)
 # ---------------------------------------------------------------------------
 class StaffOrchestrator:
     def __init__(self):
+        # El modelo real lo construye el runtime desde la spec; solo el nombre se usa (usage).
         self._model_name = settings.OPENAI_MODEL
-        self._model = OpenAIChatCompletionsModel(
-            model=settings.OPENAI_MODEL,
-            openai_client=_sdk_client,
-        )
 
     def _pending_summary(self, db: Session, staff: StaffMember) -> str:
         tickets = ops.list_staff_tickets(db, staff)

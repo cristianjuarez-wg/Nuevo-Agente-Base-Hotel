@@ -63,7 +63,10 @@ _AVAILABILITY_SHOWN_FLAG = "availability_shown"
 
 logger = get_logger(__name__)
 
-MAX_TURNS = 6
+# NOTA: la config REAL del loop (turns, history, temperatura, tools) vive en la AgentSpec
+# (agent_specs.py:hotel_presale). MAX_HISTORY_MESSAGES solo lo usa el `_build_input_list` local
+# (que el runtime NO usa — ver `run`). MAX_TURNS quedaba sin ningún uso: eliminado para que no
+# aparente ser la config viva.
 MAX_HISTORY_MESSAGES = 20
 
 # Cliente OpenAI compartido por el SDK (singleton del proyecto).
@@ -498,11 +501,10 @@ class HotelSDKOrchestrator:
     """Loop de tool calling de pre-venta del hotel sobre el OpenAI Agents SDK."""
 
     def __init__(self):
+        # El modelo real del loop lo construye el runtime desde la spec (sdk_runtime.run_agent).
+        # Acá solo guardamos el NOMBRE para el dict de usage del fallback; el objeto model que se
+        # construía era dead code (nunca se usaba para correr).
         self._model_name = settings.OPENAI_MODEL
-        self._model = OpenAIChatCompletionsModel(
-            model=settings.OPENAI_MODEL,
-            openai_client=_sdk_client,
-        )
         if not settings.DEBUG:
             set_tracing_disabled(False)
 

@@ -31,7 +31,8 @@ from app.domains.hotel.prompts.owner_prompts import OWNER_AGENT_SYSTEM
 
 logger = get_logger(__name__)
 
-MAX_TURNS = 6
+# Config real del loop en la AgentSpec (agent_specs.py:hotel_owner). MAX_TURNS sin uso (eliminado);
+# MAX_HISTORY_MESSAGES solo lo usa el _build_input_list local.
 MAX_HISTORY_MESSAGES = 20
 
 _sdk_client = get_async_openai()
@@ -542,11 +543,8 @@ class OwnerOrchestrator:
     """Loop del consultor de gerencia sobre el OpenAI Agents SDK (tools solo de BI)."""
 
     def __init__(self):
+        # El modelo real lo construye el runtime desde la spec; solo el nombre se usa (usage).
         self._model_name = settings.OPENAI_MODEL
-        self._model = OpenAIChatCompletionsModel(
-            model=settings.OPENAI_MODEL,
-            openai_client=_sdk_client,
-        )
 
     def _build_instructions(self, owner_name: str = "") -> str:
         now = now_business()
