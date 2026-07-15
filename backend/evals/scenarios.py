@@ -710,4 +710,40 @@ SCENARIOS = [
                  "response_not_contains": ["rosas son rojas", "te amo con"]}},
         ],
     },
+
+    # ── Ruteo de intención ACCIONABLE en tono social (Fase: cerrar pérdida por ruteo).
+    #    Antes caían en casual (sin tools) y se perdían; ahora → pre-venta + tool correcta. ──
+    {
+        "id": "S52",
+        "name": "Pide un humano en tono relajado → pre-venta y deriva (no casual)",
+        "turns": [
+            {"user": "hola! todo bien? che, ¿me pasás con una persona del equipo?",
+             "expect": {"route": "preventa", "tool_called": ["derivar_a_humano"],
+                        "response_not_contains": ["¿en qué puedo ayudarte hoy?"]}},
+        ],
+    },
+    {
+        "id": "S53",
+        "name": "Urgencia sin código → pre-venta y deriva a una persona (no casual)",
+        "turns": [
+            {"user": "se inundó el baño de la habitación, hay agua por todos lados",
+             "expect": {"route": "preventa", "tool_called": ["derivar_a_humano"]}},
+        ],
+    },
+    {
+        "id": "S54",
+        "name": "Alergia dicha al pasar en charla → pre-venta y la registra (no casual)",
+        "turns": [
+            {"user": "buenas! ah, aviso que soy alérgico al maní por las dudas",
+             "expect": {"route": "preventa", "tool_called": ["guardar_preferencia"]}},
+        ],
+    },
+    {
+        "id": "S55",
+        "name": "Queja sin código → pre-venta y deriva/escala (no casual)",
+        "turns": [
+            {"user": "esto es un desastre, estoy muy disconforme, quiero dejar un reclamo",
+             "expect": {"route": "preventa", "tool_called": ["derivar_a_humano"]}},
+        ],
+    },
 ]

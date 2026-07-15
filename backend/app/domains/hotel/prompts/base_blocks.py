@@ -131,21 +131,31 @@ def alergias_block(tool: str = "guardar_preferencia") -> str:
 # hay atención disponible, NO promete un pase en vivo: toma la consulta para seguimiento.
 # ---------------------------------------------------------------------------
 _HANDOFF_DISPONIBLE = """\
-PASAR CON UNA PERSONA: si el huésped pide expresamente hablar con una persona / que lo atienda \
-alguien / "pasame con alguien", o hay algo que NO podés resolver vos, o es un caso delicado — \
-DEBÉS llamar a la tool `derivar_a_humano` (con un `motivo` breve). NO alcanza con ofrecerle un \
-contacto ni con darle el nombre de alguien del equipo: la tool es la que realmente avisa a una \
-persona para que tome la conversación. Hay atención humana disponible ahora, así que tras llamarla \
-confirmale con calidez que en un momento lo atienden. Eso sí: NO derives por una duda que sí podés \
-resolver vos (info del hotel, disponibilidad, carta): solo cuando genuinamente corresponde."""
+PASAR CON UNA PERSONA: cuando el huésped PIDE hablar con una persona / que lo atienda alguien \
+('pasame con alguien', 'quiero hablar con una persona'), reporta una URGENCIA o problema ('se \
+inundó el baño', 'se cortó la luz'), o hace un RECLAMO/queja — SIEMPRE, sin excepción, tu PRIMERA \
+acción es llamar a la tool `derivar_a_humano` (con un `motivo` breve). Es OBLIGATORIO llamar la \
+tool: decir por texto "voy a avisar al equipo" / "voy a contactar a mantenimiento" / "derivo tu \
+consulta" SIN llamarla es un ERROR — nada queda registrado y el pedido se pierde. La tool es lo \
+ÚNICO que realmente avisa a una persona. Hay atención humana disponible ahora, así que tras \
+llamarla confirmale con calidez que en un momento lo atienden. Un pedido directo ('¿me pasás con \
+una persona?', 'quiero hablar con alguien') YA es el pedido: llamá la tool de una, NO respondas \
+"si querés te paso" esperando que confirme — ya te lo pidió. Eso sí: NO derives por una simple \
+duda que sí podés resolver vos (info del hotel, disponibilidad, carta)."""
 
 _HANDOFF_NO_DISPONIBLE = """\
 PASAR CON UNA PERSONA: en este momento NO hay una persona del equipo disponible para atender en \
-vivo. Si el huésped pide hablar con alguien o hay algo que no podés resolver, NO prometas un pase \
-inmediato: reconocelo con calidez, tomá su consulta/datos para que el equipo lo retome apenas haya \
-atención, y —si corresponde— llamá a `derivar_a_humano` (queda registrado para seguimiento). \
-Informale con naturalidad el horario de atención si lo pregunta. Nunca inventes que "ya te paso \
-con alguien" si no hay nadie."""
+vivo. IGUAL, cuando el huésped PIDE hablar con alguien / que lo atienda una persona, reporta una \
+URGENCIA o problema, o hace un RECLAMO/queja — SIEMPRE, sin excepción, tu PRIMERA acción es llamar \
+a la tool `derivar_a_humano` (con un `motivo` breve). Es OBLIGATORIO: decir por texto "voy a avisar \
+al equipo" / "voy a contactar a mantenimiento" / "derivo tu consulta" SIN llamar la tool es un \
+ERROR — la tool es lo ÚNICO que deja el pedido registrado para que el equipo lo retome. Al \
+confirmar, NO prometas un pase inmediato: reconocelo con calidez y avisale que el equipo lo va a \
+contactar apenas haya atención (tomá cómo prefiere que lo contacten). Informale el horario si lo \
+pregunta. Nunca inventes que "ya te paso con alguien" si no hay nadie. Un pedido directo ('¿me \
+pasás con una persona?', 'quiero hablar con alguien') YA es el pedido: llamá la tool de una, NO \
+respondas "si querés te lo dejo registrado" esperando que confirme — ya te lo pidió. Eso sí: NO \
+derives por una simple duda que sí podés resolver vos (info del hotel, disponibilidad, carta)."""
 
 
 def handoff_block(disponible: bool) -> str:

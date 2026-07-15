@@ -92,7 +92,19 @@ def flag_needs_human(db: Session, session_id: str, motivo: str = "", summary: st
     try:
         conv = _get_conv(db, session_id)
         if not conv:
-            return False
+            # La marca corre DENTRO del turno (la tool derivar_a_humano), antes de que el flujo
+            # persista el mensaje y cree la Conversation. Si no existe todavía, la creamos acá para
+            # que el pedido NO se pierda por orden de operaciones — el canal se deriva del session_id
+            # (mismo criterio que agent_service._save_message_to_db).
+            if session_id.startswith("wa_") or session_id.startswith("owner_"):
+                channel = "whatsapp"
+            elif session_id.startswith("ig_"):
+                channel = "instagram"
+            else:
+                channel = "web"
+            conv = Conversation(session_id=session_id, channel=channel)
+            db.add(conv)
+            db.flush()
         meta = dict(conv.extra_metadata or {})
         meta[_NEEDS_HUMAN_KEY] = {
             "active": True, "motivo": motivo, "summary": summary,

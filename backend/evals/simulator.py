@@ -162,6 +162,49 @@ PERSONAS: Dict[str, Persona] = {
         satisfied_when="Aunque la herramienta falle, el agente NO inventó precios ni disponibilidad, "
                        "NO quedó mudo, y ofreció una alternativa (reintentar, tomar el dato, derivar).",
     ),
+
+    # ── Intenciones ACCIONABLES envueltas en tono social (bug de ruteo): antes caían en el
+    #    agente casual, que no tiene tools, y se perdían. Ahora deben ir a pre-venta y disparar
+    #    la tool correcta (derivar_a_humano / guardar_preferencia). ──
+    "pide_humano": Persona(
+        key="pide_humano",
+        system_prompt=("Sos un huésped que quiere que lo atienda una PERSONA real del equipo, no un "
+                       "bot. Lo pedís de entrada y con tono relajado ('hola, ¿me pasás con alguien "
+                       "del equipo?'), sin dar contexto de reserva. No querés que Aura te resuelva: "
+                       "querés una persona."),
+        goal="Que te deriven a una persona del equipo (o que quede registrado tu pedido).",
+        satisfied_when="El agente reconoció el pedido y derivó a una persona (o dejó tu pedido "
+                       "registrado para que te contacten), sin ignorarlo ni re-presentarse como bot.",
+    ),
+    "urgencia_sin_codigo": Persona(
+        key="urgencia_sin_codigo",
+        system_prompt=("Sos un huésped con un PROBLEMA que necesita atención ya ('se inundó el baño', "
+                       "'hay una pérdida de agua', 'se cortó la luz en la habitación'). Lo contás "
+                       "directo, sin dar un código de reserva ni decir 'mi reserva'. Estás alterado "
+                       "pero sin insultar."),
+        goal="Que alguien del hotel se ocupe del problema urgente.",
+        satisfied_when="El agente tomó en serio la urgencia y derivó/escaló a una persona del equipo, "
+                       "sin quedarse en charla genérica ni ignorar el problema.",
+    ),
+    "alergia_al_pasar": Persona(
+        key="alergia_al_pasar",
+        system_prompt=("Sos un huésped que MENCIONA UNA ALERGIA al pasar, en medio de una charla "
+                       "informal o de una consulta ('ah, aviso que soy alérgico al maní', 'soy "
+                       "celíaco por las dudas'). No lo enmarcás como un pedido formal: lo tirás como "
+                       "un comentario."),
+        goal="Que el hotel tenga en cuenta tu alergia para tu estadía.",
+        satisfied_when="El agente registró la alergia (la reconoció con énfasis de seguridad y dijo "
+                       "que la tendrá en cuenta), sin dejarla pasar como comentario suelto.",
+    ),
+    "queja_sin_codigo": Persona(
+        key="queja_sin_codigo",
+        system_prompt=("Sos un huésped MOLESTO que se queja sin dar un código de reserva ('esto es un "
+                       "desastre', 'estoy muy disconforme con la atención', 'quiero dejar un "
+                       "reclamo'). No decís 'mi reserva' ni un HTL-XXXX; solo expresás tu malestar."),
+        goal="Que tu queja/reclamo sea escuchada y escalada a una persona del equipo.",
+        satisfied_when="El agente reconoció el reclamo con empatía y lo derivó/registró para una "
+                       "persona, sin responder con charla genérica ni minimizarlo.",
+    ),
 }
 
 
