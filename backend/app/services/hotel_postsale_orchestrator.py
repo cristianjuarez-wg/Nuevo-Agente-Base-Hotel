@@ -35,7 +35,8 @@ from app.domains.hotel.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
 
 logger = get_logger(__name__)
 
-MAX_TURNS = 5
+# La config real del loop vive en la AgentSpec (agent_specs.py:hotel_postsale). MAX_TURNS quedaba
+# sin uso (eliminado); MAX_HISTORY_MESSAGES solo lo usan los _build_input_list locales.
 MAX_HISTORY_MESSAGES = 8
 # Minutos desde el último mensaje a partir de los cuales un saludo de apertura vuelve a tener
 # sentido. Por debajo, el mensaje es "continuación inmediata" y NO hay que re-saludar.
@@ -484,11 +485,9 @@ register_guardrail("postsale.relevancia", relevancia_guardrail)
 # ---------------------------------------------------------------------------
 class HotelPostSaleSDKOrchestrator:
     def __init__(self):
+        # El modelo real lo construye el runtime desde la spec; guardamos solo el nombre para el
+        # dict de usage del fallback. El objeto model construido acá era dead code.
         self._model_name = settings.OPENAI_MODEL
-        self._model = OpenAIChatCompletionsModel(
-            model=settings.OPENAI_MODEL,
-            openai_client=_sdk_client,
-        )
         if not settings.DEBUG:
             set_tracing_disabled(False)
 
