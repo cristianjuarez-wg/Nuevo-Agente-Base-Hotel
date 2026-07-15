@@ -564,7 +564,8 @@ class HotelSDKOrchestrator:
             from app.models.conversation import Conversation
             conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
             return bool(conv and (conv.extra_metadata or {}).get(_AVAILABILITY_SHOWN_FLAG))
-        except Exception:
+        except Exception as e:  # noqa: BLE001
+            logger.debug("No se pudo leer el flag availability_shown", error=str(e))
             return False
 
     def _mark_availability_shown(self, db: Session, session_id: str) -> None:
@@ -722,7 +723,11 @@ class HotelSDKOrchestrator:
         try:
             _agent_row = agent_for_session(db, session_id)
             blocks = training_service.get_training_blocks(db, _agent_row.id if _agent_row else None)
-        except Exception:  # noqa: BLE001 — fail-open a los defaults
+        except Exception as e:  # noqa: BLE001 — fail-open a los defaults
+            # El cliente pierde su tono/política entrenados y cae a defaults: dejamos rastro
+            # (antes era un silencio total, difícil de diagnosticar "por qué cambió el tono").
+            logger.warning("No se pudieron cargar los training blocks; usando defaults",
+                           session_id=session_id, error=str(e))
             blocks = {"tono_block": DEFAULT_TONO_BLOCK, "politica_block": DEFAULT_POLITICA_BLOCK,
                       "training_block": ""}
         # Roster del equipo real (Fase 0.1): acompaña la regla anti-invención de

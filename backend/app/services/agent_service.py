@@ -94,7 +94,11 @@ class AgentService:
                 Booking.status != "cancelled",
                 Booking.created_at >= cutoff,
             ).first() is not None
-        except Exception:
+        except Exception as e:  # noqa: BLE001
+            # Degrada a "no reconocido" (el huésped que reservó recién quedará pidiendo el código).
+            # No rompe el turno, pero dejamos rastro: antes era un silencio total.
+            logger.debug("No se pudo verificar la reserva reciente de la sesión",
+                         session_id=session_id, error=str(e))
             return False
 
     # Palabras que el huésped usa para confirmar / negar la resolución de su pedido (Fase 4).
@@ -496,15 +500,21 @@ class AgentService:
             if not flow:
                 return None
             canales = flow.get("canales")
-            if not isinstance(canales, list):
+            # Fail-open ante config no-lista O lista VACÍA: una lista vacía no debe dejar sin
+            # atención a TODOS los canales (config incompleta ≠ "bloqueá todo"). Solo bloquea si
+            # hay una lista con canales y el actual no está en ella.
+            if not isinstance(canales, list) or not canales:
                 return None
             sid = session_id or ""
             channel = ("whatsapp" if sid.startswith("wa_")
                        else "instagram" if sid.startswith("ig_") else "web")
             if channel in canales:
                 return None
-            logger.info("Pre-venta: canal no asignado al flujo, no se atiende",
-                        session_id=session_id, channel=channel)
+            # El bloqueo deja al huésped sin atención (web con aviso; WhatsApp/IG en silencio,
+            # porque el webhook saltea el envío vacío). Es un silencio DELIBERADO — logueamos
+            # warning (no info) para que sea diagnosticable si un huésped real queda sin respuesta.
+            logger.warning("Pre-venta: canal no asignado al flujo, NO se atiende (silencio en WA/IG)",
+                           session_id=session_id, channel=channel, canales_permitidos=canales)
             base = {"has_context": False, "intent": "channel_blocked",
                     "context_type": "blocked", "channel_blocked": True,
                     "session_info": self.get_session_info(session_id)}
