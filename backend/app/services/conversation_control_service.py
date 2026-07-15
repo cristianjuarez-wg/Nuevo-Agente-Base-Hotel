@@ -80,12 +80,15 @@ def get_state(db: Session, session_id: str) -> Optional[Dict]:
     return state if (state and state.get("active")) else None
 
 
-def flag_needs_human(db: Session, session_id: str, motivo: str = "", summary: str = "") -> bool:
+def flag_needs_human(db: Session, session_id: str, motivo: str = "", summary: str = "",
+                     status: str = "live") -> bool:
     """Marca que la conversación necesita atención humana (Fase 4, lo pone el AGENTE).
 
-    Guarda motivo + resumen de la charla + timestamp en extra_metadata["needs_human"]. El
-    backoffice la resalta y avisa (toast). Devuelve True si se marcó. No pausa a Aura (eso lo hace
-    el takeover del humano). Best-effort: no rompe el turno."""
+    Guarda motivo + resumen de la charla + timestamp + status en extra_metadata["needs_human"].
+    `status` distingue: "live" (hay atención disponible ahora — el operador la toma ya) vs
+    "deferred" (no hay atención en vivo — queda pendiente de contacto). El backoffice la resalta y
+    avisa (toast). Devuelve True si se marcó. No pausa a Aura (eso lo hace el takeover del humano).
+    Best-effort: no rompe el turno."""
     try:
         conv = _get_conv(db, session_id)
         if not conv:
@@ -93,11 +96,13 @@ def flag_needs_human(db: Session, session_id: str, motivo: str = "", summary: st
         meta = dict(conv.extra_metadata or {})
         meta[_NEEDS_HUMAN_KEY] = {
             "active": True, "motivo": motivo, "summary": summary,
+            "status": status,
             "since": utcnow_naive().isoformat(),
         }
         conv.extra_metadata = meta
         db.commit()
-        logger.info("Conversación marcada needs_human", session_id=session_id, motivo=motivo)
+        logger.info("Conversación marcada needs_human", session_id=session_id,
+                    motivo=motivo, status=status)
         return True
     except Exception as e:  # noqa: BLE001
         logger.warning("No se pudo marcar needs_human", session_id=session_id, error=str(e))

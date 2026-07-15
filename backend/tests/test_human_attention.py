@@ -63,6 +63,49 @@ def test_takeover_limpia_needs_human(db):
     assert ctrl.get_needs_human(db, "wa_needs2") is None  # limpiada por el takeover
 
 
+def test_flag_needs_human_status_default_y_explicito(db):
+    """El status distingue live/deferred. Default 'live' (retrocompatible)."""
+    from app.models.conversation import Conversation
+    db.add(Conversation(session_id="wa_st1", channel="whatsapp"))
+    db.add(Conversation(session_id="wa_st2", channel="whatsapp"))
+    db.commit()
+    # Sin status → "live".
+    ctrl.flag_needs_human(db, "wa_st1", motivo="x")
+    assert ctrl.get_needs_human(db, "wa_st1")["status"] == "live"
+    # Explícito "deferred".
+    ctrl.flag_needs_human(db, "wa_st2", motivo="x", status="deferred")
+    assert ctrl.get_needs_human(db, "wa_st2")["status"] == "deferred"
+
+
+def test_derivar_a_humano_apagada_deja_rastro_deferred(db):
+    """Con atención APAGADA, derivar_a_humano igual marca la conversación (status='deferred')
+    para que quede accionable en la bandeja — antes NO dejaba rastro y el pedido se perdía."""
+    from app.models.conversation import Conversation
+    from app.services.hotel_tools_pkg.misc import _handle_derivar_a_humano
+    has.update_config(db, {"enabled": False, "on_call": False})  # apagada
+    db.add(Conversation(session_id="wa_defer1", channel="whatsapp"))
+    db.commit()
+    out = _handle_derivar_a_humano({"motivo": "quiere hablar con alguien"},
+                                   {"db": db, "session_id": "wa_defer1"})
+    assert out["handoff"] == "deferred"
+    state = ctrl.get_needs_human(db, "wa_defer1")
+    assert state and state["active"] and state["status"] == "deferred"
+
+
+def test_derivar_a_humano_disponible_marca_live(db):
+    """Con atención DISPONIBLE (guardia), derivar_a_humano marca status='live'."""
+    from app.models.conversation import Conversation
+    from app.services.hotel_tools_pkg.misc import _handle_derivar_a_humano
+    has.update_config(db, {"enabled": True, "on_call": True})  # disponible ya
+    db.add(Conversation(session_id="wa_live1", channel="whatsapp"))
+    db.commit()
+    out = _handle_derivar_a_humano({"motivo": "necesita ayuda"},
+                                   {"db": db, "session_id": "wa_live1"})
+    assert out["handoff"] == "live"
+    state = ctrl.get_needs_human(db, "wa_live1")
+    assert state and state["status"] == "live"
+
+
 def test_handoff_block_cambia_por_disponibilidad():
     disp = handoff_block(True)
     no = handoff_block(False)
