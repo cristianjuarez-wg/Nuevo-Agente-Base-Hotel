@@ -361,7 +361,8 @@ SCENARIOS = [
             {"user": f"Reservá la King del {CI_INHOUSE} al {CO_INHOUSE} para 2 adultos. Soy Fede Luna, tel 1166660012.",
              "expect": {"tool_called": "crear_reserva"}},
             {"user": "el aire acondicionado de mi habitación no anda",
-             "expect": {"tool_called": "solicitar_servicio"}},
+             "expect": {"tool_called": "solicitar_servicio",
+                        "tool_not_called": "derivar_a_humano"}},
         ],
     },
     {
@@ -744,6 +745,42 @@ SCENARIOS = [
         "turns": [
             {"user": "esto es un desastre, estoy muy disconforme, quiero dejar un reclamo",
              "expect": {"route": "preventa", "tool_called": ["derivar_a_humano"]}},
+        ],
+    },
+
+    # ── Anti-sobre-derivación: un pedido de SERVICIO de un alojado va por solicitar_servicio,
+    #    NO se escala a una persona; solo se deriva ante pedido explícito o insistencia. ──
+    {
+        "id": "S56",
+        "name": "Pedido de servicio simple (alojado): toalla → solicitar_servicio, no deriva",
+        "turns": [
+            {"user": f"Reservá la Twin del {CI_INHOUSE} al {CO_INHOUSE} para 2 adultos. Soy Ana López, tel 1133334444.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "hola! me podés mandar una toalla limpia a la habitación?",
+             "expect": {"tool_called": "solicitar_servicio",
+                        "tool_not_called": "derivar_a_humano"}},
+        ],
+    },
+    {
+        "id": "S57",
+        "name": "Servicio primero, deriva si INSISTE: aire roto → ticket; luego 'quiero una persona' → deriva",
+        "turns": [
+            {"user": f"Reservá la King del {CI_INHOUSE} al {CO_INHOUSE} para 2 adultos. Soy Diego Paz, tel 1166660010.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "el aire no anda, hace mucho calor",
+             "expect": {"tool_called": "solicitar_servicio", "tool_not_called": "derivar_a_humano"}},
+            {"user": "no, así no, necesito hablar con una persona del equipo ya",
+             "expect": {"tool_called": "derivar_a_humano"}},
+        ],
+    },
+    {
+        "id": "S58",
+        "name": "Pedido explícito de persona (alojado) → deriva de una, sin ofrecer ticket",
+        "turns": [
+            {"user": f"Reservá la Twin del {CI_INHOUSE} al {CO_INHOUSE} para 2 adultos. Soy Sol Ruiz, tel 1155556666.",
+             "expect": {"tool_called": "crear_reserva"}},
+            {"user": "quiero hablar con una persona del equipo por favor",
+             "expect": {"tool_called": "derivar_a_humano"}},
         ],
     },
 ]

@@ -91,13 +91,27 @@ class HotelPostventaContext:
 async def analizar_escalacion(
     ctx: RunContextWrapper[HotelPostventaContext], consulta: str
 ) -> str:
-    """Analiza la consulta del huésped sobre su reserva y determina si podés resolverla
+    """Analiza una CONSULTA del huésped sobre su reserva y determina si podés resolverla
     vos (informativa: horarios, servicios, qué incluye) o si requiere escalar a un asesor
     humano (cambios de fecha, cancelaciones, reembolsos, reclamos, problemas de cobro).
-    OBLIGATORIO llamarla UNA vez antes de tu respuesta final. Respetá su veredicto."""
+    OBLIGATORIO llamarla UNA vez antes de tu respuesta final A UNA CONSULTA. Respetá su veredicto.
+    NO la uses cuando el huésped ya PIDIÓ expresamente hablar con una persona o INSISTE en ello:
+    ese caso va DIRECTO por `derivar_a_humano` (que avisa a una persona y deja el pedido registrado),
+    no por acá. Tampoco para un pedido de servicio (eso es `solicitar_servicio`)."""
     context = ctx.context
     analysis = await context.service.analyze_escalation(consulta, context.booking)
     context.escalation_analysis = analysis
+
+    # ENCADENAMIENTO: si el huésped PIDE una persona, este carril no alcanza (escala el ticket
+    # pero no avisa a la bandeja en vivo). El tool-result instruye llamar `derivar_a_humano`,
+    # que es la tool que marca needs_human — el LLM sigue las instrucciones del tool-result.
+    if analysis.get("wants_human"):
+        motivo = analysis.get("escalation_reason") or "el huésped pide hablar con una persona"
+        return (
+            f"EL HUÉSPED PIDE UNA PERSONA. Llamá AHORA la tool `derivar_a_humano` con "
+            f"motivo=\"{motivo}\" — es la tool que avisa a una persona del equipo y deja el "
+            "pedido registrado en la bandeja. Después confirmale con calidez lo que devuelva."
+        )
 
     if analysis.get("requires_escalation"):
         return (
@@ -187,7 +201,8 @@ async def solicitar_servicio(
             "Confirmá al huésped con calidez que el equipo ya fue avisado y se ocupará a la "
             "brevedad. Si es algo urgente que afecta su confort (ej. aire/calefacción), "
             "mostrá empatía extra y ofrecé avisar a recepción de inmediato. No prometas un "
-            "horario exacto."
+            "horario exacto. IMPORTANTE: si el huésped NO queda conforme con esta solución o "
+            "pide hablar con una PERSONA, NO registres otro pedido: llamá `derivar_a_humano`."
         )
     except Exception as e:  # noqa: BLE001
         logger.error("solicitar_servicio (post-venta) falló", error=str(e))
@@ -403,11 +418,14 @@ async def excursiones_y_atracciones(ctx: RunContextWrapper[HotelPostventaContext
 
 @function_tool
 async def derivar_a_humano(ctx: RunContextWrapper[HotelPostventaContext], motivo: str = "") -> str:
-    """Deriva la conversación a una PERSONA del equipo del hotel. Úsala SOLO cuando el huésped
-    pide expresamente hablar con alguien, o cuando hay algo que genuinamente NO podés resolver ni
-    con `solicitar_servicio` ni escalando (no como escape fácil). El sistema decide, según haya
-    atención humana disponible, si lo pasa en vivo o lo deja para seguimiento — vos solo llamás la
-    tool con un `motivo` breve y confirmás con calidez lo que devuelva."""
+    """Deriva la conversación a una PERSONA del equipo del hotel. Cuando el huésped PIDE
+    expresamente hablar con alguien / que lo atienda una persona, o INSISTE en ello tras ofrecerle
+    resolverlo, llamá ESTA tool DIRECTO — no `analizar_escalacion` (esa es solo para clasificar una
+    consulta ambigua). Usala también cuando hay algo que genuinamente NO podés resolver ni con
+    `solicitar_servicio` ni respondiendo vos. Es la ÚNICA tool que realmente avisa a una persona y
+    deja el pedido registrado. El sistema decide, según haya atención humana disponible, si lo pasa
+    en vivo o lo deja para seguimiento — vos solo llamás la tool con un `motivo` breve y confirmás
+    con calidez lo que devuelva."""
     from app.services.hotel_tools import execute_tool
     result = await execute_tool("derivar_a_humano", {"motivo": motivo}, ctx.context.restaurant_tool_ctx())
     return result.get("tool_result", "")
@@ -577,7 +595,7 @@ class HotelPostSaleSDKOrchestrator:
         start = time.time()
 
         # Fase 2.2: el loop del SDK corre por el runtime declarativo (spec hotel_postsale:
-        # turns=5, hist=8, temp=0.7, 12 tools, guardrail). Este orquestador conserva su
+        # turns=5, hist=8, temp=0.7, 13 tools, guardrail). Este orquestador conserva su
         # try/except propio: el tripwire tiene respuesta específica y el fallo genérico
         # alimenta run_failed (que fuerza la ESCALACIÓN determinística del ticket).
         from app.core.agents.sdk_runtime import run_agent, build_input_list
