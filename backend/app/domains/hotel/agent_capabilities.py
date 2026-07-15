@@ -49,8 +49,9 @@ _CAPABILITY_GROUPS: Dict[str, List[dict]] = {
         },
         {
             "group": "Post-venta y atención",
-            "summary": "Toma pedidos de servicio durante la estadía y escala los reclamos al equipo.",
-            "keys": {"solicitar_servicio", "analizar_escalacion"},
+            "summary": "Toma pedidos de servicio durante la estadía, escala los reclamos y deriva la "
+                       "conversación a una persona del equipo cuando el huésped lo pide.",
+            "keys": {"solicitar_servicio", "analizar_escalacion", "derivar_a_humano"},
         },
     ],
     "management": [
