@@ -268,11 +268,16 @@ class HotelPostSaleService:
             "NO ESCALAR (requires_escalation=false) los PEDIDOS DE SERVICIO de la estadía "
             "(toallas, limpieza, algo que no funciona, llave, late checkout, room service): "
             "esos se registran como pedido para el staff con otra herramienta, no se escalan. "
-            "Categoría 'service' para esos casos.\n\n"
+            "Categoría 'service' para esos casos.\n"
+            "ADEMÁS, marcá wants_human=true SOLO si el huésped PIDE expresamente hablar con una "
+            "PERSONA / que lo atienda alguien del equipo, o INSISTE en eso ('quiero hablar con "
+            "una persona', 'pasame con alguien', 'no quiero hablar con un bot'). Una queja o un "
+            "pedido común SIN pedir una persona NO es wants_human.\n\n"
             f"CONSULTA DEL HUÉSPED: \"{consulta}\"\n\n"
             "Respondé SOLO un JSON: "
             '{"requires_escalation": bool, "urgency_level": "baja|media|alta", '
-            '"escalation_reason": "...", "category": "info|change|cancel|complaint|general"}'
+            '"escalation_reason": "...", "category": "info|change|cancel|complaint|general", '
+            '"wants_human": bool}'
         )
         try:
             resp = await self.client.chat.completions.create(
@@ -288,6 +293,9 @@ class HotelPostSaleService:
                 "urgency_level": data.get("urgency_level", "media"),
                 "escalation_reason": data.get("escalation_reason", ""),
                 "category": data.get("category", "general"),
+                # El huésped pide expresamente una PERSONA (no solo escalar el caso): el
+                # orquestador encadena este flag hacia `derivar_a_humano` (bandeja en vivo).
+                "wants_human": bool(data.get("wants_human", False)),
             }
         except Exception as e:
             logger.error("Hotel escalation analysis failed, escalando por seguridad", error=str(e))
@@ -296,6 +304,7 @@ class HotelPostSaleService:
                 "urgency_level": "alta",
                 "escalation_reason": "no se pudo analizar la consulta (falla del análisis)",
                 "category": "general",
+                "wants_human": False,
             }
 
     # ------------------------------------------------------------------

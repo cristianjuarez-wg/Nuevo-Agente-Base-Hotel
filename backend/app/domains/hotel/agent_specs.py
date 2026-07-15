@@ -63,7 +63,7 @@ SPECS = {
             "postsale.registrar_preferencia", "postsale.ver_carta", "postsale.reservar_mesa",
             "postsale.armar_pedido_carta", "postsale.consultar_pago",
             "postsale.comercios_amigos", "postsale.promociones_vigentes",
-            "postsale.excursiones_y_atracciones",
+            "postsale.excursiones_y_atracciones", "postsale.derivar_a_humano",
         ),
         prompt_composer="hotel_postsale",
         input_guardrails=("postsale.relevancia",),
