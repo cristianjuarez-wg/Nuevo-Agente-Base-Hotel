@@ -187,8 +187,8 @@ def _should_offer_menu(user_message: str, tools_used: list, has_other_cards: boo
             menu = restaurant_service.list_menu(db, include_inactive=False)
             if _match_menu_items(text, menu).get("matched"):
                 return True
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001
+            logger.debug("Fallo al matchear platos de la carta en el fallback", error=str(e))
     return False
 
 
@@ -300,7 +300,8 @@ def _availability_shown_in_session(db, session_id: str) -> bool:
         from app.services.hotel_sdk_orchestrator import _AVAILABILITY_SHOWN_FLAG
         conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
         return bool(conv and (conv.extra_metadata or {}).get(_AVAILABILITY_SHOWN_FLAG))
-    except Exception:
+    except Exception as e:  # noqa: BLE001
+        logger.debug("No se pudo leer availability_shown de la sesión", error=str(e))
         return False
 
 
@@ -838,8 +839,10 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                 "model": (result.get("usage") or {}).get("model"),
                 "processing_time_s": round(processing_time, 2),
             })
-        except Exception:
-            pass  # auditar nunca debe afectar la respuesta
+        except Exception as audit_error:  # noqa: BLE001
+            # Auditar nunca debe afectar la respuesta, PERO perder la traza del turno es un
+            # problema de diagnóstico: lo dejamos visible (antes era un silencio total).
+            logger.warning("No se pudo auditar el turno (log_turn)", error=str(audit_error))
         
         # Trackear conversación para métricas - SIEMPRE, no solo cuando hay destinos
         try:

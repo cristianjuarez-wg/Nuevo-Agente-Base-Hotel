@@ -66,6 +66,20 @@ def test_canal_no_asignado_corta(db):
     _set_canales(db, ["whatsapp", "web", "instagram"])
 
 
+def test_lista_vacia_es_fail_open(db):
+    """Una lista de canales VACÍA no debe bloquear a TODOS (config incompleta ≠ 'bloqueá todo').
+    Fail-open: se atiende en cualquier canal."""
+    seed_agents(db)
+    seed_skills(db)
+    _set_canales(db, [])  # lista vacía
+
+    for sid in ("wa_5493411111111", "ig_12345", "web-abc123"):
+        assert agent_service._preventa_channel_gate(db, sid) is None, \
+            "lista vacía no debe dejar sin atención"
+
+    _set_canales(db, ["whatsapp", "web", "instagram"])  # restaurar
+
+
 def test_kill_switch_apaga_el_gate(db):
     """Con la capa del Centro apagada, el gate no corta nada (fail-open: se atiende)."""
     seed_agents(db)
