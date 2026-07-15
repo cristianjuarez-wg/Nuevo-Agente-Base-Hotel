@@ -50,12 +50,17 @@ set_tracing_export_api_key(settings.OPENAI_API_KEY)
 # CONTEXTO POR TURNO
 # ---------------------------------------------------------------------------
 class HotelPostventaContext:
-    def __init__(self, service, booking, ticket, message: str, history: List[Dict]):
+    def __init__(self, service, booking, ticket, message: str, history: List[Dict],
+                 session_id: str = ""):
         self.service = service          # HotelPostSaleService
         self.booking = booking          # Booking validado
         self.ticket = ticket            # HotelTicket de sesión
         self.message = message
         self.history = history
+        # Sesión EN CURSO (la de la conversación viva). Distinta de booking.session_id (la sesión
+        # donde se CREÓ la reserva): si el huésped escribe desde otro canal, difieren. Las tools que
+        # marcan la conversación (derivar_a_humano → needs_human) deben usar ESTA, no la del booking.
+        self.session_id = session_id
         self.escalation_analysis = None  # lo escribe analizar_escalacion
         self.service_requested = False   # lo marca solicitar_servicio (no re-tocar el ticket)
         self.room_photos_card = None     # lo setea ver_fotos_habitacion (card para el chat)
@@ -67,7 +72,9 @@ class HotelPostventaContext:
         Lleva la sesión y el contacto de la reserva para que el huésped no pierda su contexto."""
         return {
             "db": self.service.db,
-            "session_id": getattr(self.booking, "session_id", None),
+            # Sesión viva de la conversación (fallback a la del booking solo si no la tenemos):
+            # así derivar_a_humano marca la charla EN CURSO, no la sesión donde se creó la reserva.
+            "session_id": self.session_id or getattr(self.booking, "session_id", None),
             "contact_id": getattr(self.booking, "contact_id", None),
         }
 
@@ -603,7 +610,8 @@ class HotelPostSaleSDKOrchestrator:
         spec = SPECS["hotel_postsale"]
 
         instructions = self._build_instructions(service, booking, history, session_id)
-        run_ctx = HotelPostventaContext(service, booking, ticket, message, history)
+        run_ctx = HotelPostventaContext(service, booking, ticket, message, history,
+                                        session_id=session_id)
         input_list = build_input_list(history, message, spec.max_history)
 
         from agents import InputGuardrailTripwireTriggered
@@ -656,6 +664,34 @@ class HotelPostSaleSDKOrchestrator:
             status = service.apply_ticket_action(
                 ticket, requires_escalation, response_text, message, analysis
             )
+
+        # BACKSTOP DETERMINÍSTICO DE DERIVACIÓN A BANDEJA: si el análisis detectó que el huésped
+        # PIDE una persona (wants_human) pero el LLM NO llamó `derivar_a_humano` este turno, el
+        # pedido no habría dejado rastro en la bandeja (needs_human). Lo marcamos por código —igual
+        # que requires_escalation respalda el ticket— para que el carril bandeja no dependa 100%
+        # de que el LLM obedezca la instrucción del tool-result.
+        if analysis and analysis.get("wants_human") and "derivar_a_humano" not in (tools_used or []):
+            try:
+                from app.services import conversation_control_service as _ctrl
+                from app.services import human_attention_service as _has
+                from app.services.summary_service import summarize_session as _summarize
+                _sid = run_ctx.session_id or getattr(booking, "session_id", None)
+                if _sid:
+                    _status = "live" if _has.is_human_available(service.db) else "deferred"
+                    try:
+                        _resumen = _summarize(_sid, service.db)
+                    except Exception:  # noqa: BLE001
+                        _resumen = ""
+                    _ctrl.flag_needs_human(
+                        service.db, _sid,
+                        motivo=(analysis.get("escalation_reason") or "el huésped pide hablar con una persona"),
+                        summary=_resumen, status=_status,
+                    )
+                    logger.info("Backstop needs_human aplicado (LLM no llamó derivar_a_humano)",
+                                session_id=_sid, status=_status)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("No se pudo aplicar el backstop de needs_human",
+                               session_id=run_ctx.session_id, error=str(e))
 
         duration = time.time() - start
         logger.info("Hotel post-venta SDK turn completed",
