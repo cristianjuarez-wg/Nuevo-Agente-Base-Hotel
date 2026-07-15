@@ -494,17 +494,33 @@ def _print_report(reports: list) -> int:
 # que toque prompts/composers/specs. Los ids son de core_scenarios (genéricos, no del Hampton).
 _SMOKE_IDS = {"S2", "S11", "S12", "S30", "S40", "S43", "S45", "S47"}
 
+# GATE DE COMPORTAMIENTO (ruteo + elección de tool): cubre los caminos donde reincidieron los
+# bugs de handoff/ruteo que NINGÚN pytest ve (el route del triage y qué tool llama el LLM viven
+# 100% en prompts). Gate OBLIGATORIO antes de mergear cualquier cambio de prompt/triage/specs:
+#   python -m evals.run_evals --handoff-gate     (criterio 2 de 3 corridas verdes)
+# - Ruteo casual/viaje/código: S1, S11 (saludo→casual), S17 (charla no dispara carta).
+# - Intención accionable → pre-venta (no casual): S52 (persona), S53 (urgencia), S54 (alergia),
+#   S55 (queja).
+# - Servicio no sobre-deriva / persona sí deriva (post-venta): S29, S56 (servicio→ticket),
+#   S57 (insistencia→deriva), S58 (persona→deriva directo).
+# - Deferred pide contacto: S59.
+_HANDOFF_GATE_IDS = {"S1", "S11", "S17", "S52", "S53", "S54", "S55",
+                     "S29", "S56", "S57", "S58", "S59"}
 
-async def _main_async(selected, smoke=False, tier=None):
+
+async def _main_async(selected, smoke=False, tier=None, handoff_gate=False):
     scen = list(SCENARIOS)
     if smoke:
         scen = [s for s in scen if s["id"] in _SMOKE_IDS]
+    if handoff_gate:
+        scen = [s for s in scen if s["id"] in _HANDOFF_GATE_IDS]
     if tier:
         scen = [s for s in scen if s.get("tier", "core") == tier]
     if selected:
         scen = [s for s in scen if s["id"] in selected]
     if not scen:
-        print(f"No hay escenarios que coincidan (selected={selected}, smoke={smoke}, tier={tier})")
+        print(f"No hay escenarios que coincidan (selected={selected}, smoke={smoke}, "
+              f"handoff_gate={handoff_gate}, tier={tier})")
         return 2
     print(f"Corriendo {len(scen)} escenario(s) contra el agente real…")
     t0 = time.time()
@@ -650,6 +666,9 @@ def main():
     ap.add_argument("--list", action="store_true", help="Lista los escenarios y sale.")
     ap.add_argument("--smoke", action="store_true",
                     help="Corre solo el subconjunto SMOKE (barato, para CI).")
+    ap.add_argument("--handoff-gate", action="store_true", dest="handoff_gate",
+                    help="Gate de comportamiento (ruteo + tool-calling): corre los escenarios de "
+                         "handoff/ruteo. OBLIGATORIO antes de mergear cambios de prompt/triage/specs.")
     ap.add_argument("--tier", choices=["core", "instance"], default=None,
                     help="Filtra por tier: core (genéricos del vertical) o instance (del cliente).")
     # Modo simulador (Workstream T.2) — conversaciones humanas + LLM-as-judge. GASTA OpenAI.
@@ -673,7 +692,8 @@ def main():
         sys.exit(rc)
 
     selected = set(args.scenario) if args.scenario else None
-    rc = asyncio.run(_main_async(selected, smoke=args.smoke, tier=args.tier))
+    rc = asyncio.run(_main_async(selected, smoke=args.smoke, tier=args.tier,
+                                 handoff_gate=args.handoff_gate))
     sys.exit(rc)
 
 
