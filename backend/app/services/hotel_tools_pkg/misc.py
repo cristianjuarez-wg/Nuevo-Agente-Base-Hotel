@@ -44,7 +44,9 @@ def _handle_derivar_a_humano(args: Dict, ctx: Dict) -> Dict:
     return {
         "tool_result": "En este momento no tengo una persona disponible en vivo, pero dejo tu "
                        "consulta registrada para que el equipo te contacte apenas haya atención. "
-                       "Si querés, decime cómo prefieren contactarte.",
+                       "Si aún no tenés los datos de contacto del huésped (nombre y teléfono), "
+                       "pedíselos en tu respuesta para que el equipo sepa a quién llamar; si ya "
+                       "los tenés (WhatsApp o huésped identificado), no se los vuelvas a pedir.",
         "handoff": "deferred",
     }
 

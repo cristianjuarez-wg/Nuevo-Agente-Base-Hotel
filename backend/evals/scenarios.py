@@ -783,4 +783,19 @@ SCENARIOS = [
              "expect": {"tool_called": "derivar_a_humano"}},
         ],
     },
+    {
+        "id": "S59",
+        "name": "Deferred web anónimo: deriva Y pide nombre+teléfono (sin datos no hay a quién llamar)",
+        # Requiere atención humana APAGADA en la DB del eval (default del demo). El visitante es
+        # web anónimo: al derivar en deferred, Aura debe pedir los datos de contacto en la misma
+        # respuesta. El turno 2 con el teléfono se captura por el carril automático (validado por
+        # test_handoff_deferred_capture.py; acá se valida el comportamiento conversacional).
+        "turns": [
+            {"user": "hola, necesito que me contacte una persona del equipo del hotel",
+             "expect": {"route": "preventa", "tool_called": ["derivar_a_humano"],
+                        "response_contains": ["teléfono"]}},
+            {"user": "dale. soy Ana Suárez y mi teléfono es 1122334455",
+             "expect": {"response_not_contains": ["no puedo", "no tengo forma"]}},
+        ],
+    },
 ]
