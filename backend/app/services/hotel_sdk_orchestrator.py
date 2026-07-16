@@ -310,17 +310,8 @@ async def calcular_precio_promo(
     return result.get("tool_result", "")
 
 
-@function_tool
-async def ver_carta(ctx: RunContextWrapper[HotelContext], categoria: str = "") -> str:
-    """Devuelve la carta del restaurante PLAZA - Hampton's Kitchen House (platos, precios,
-    tags dietéticos) y un link para que el cliente arme su pedido en la pantalla de carrito.
-    Úsala cuando pregunten por el menú, qué hay para comer/tomar, room service o pedir comida.
-    `categoria` opcional filtra (ej. "tapas", "postre", "trago"). Si el cliente tiene
-    preferencias dietéticas guardadas, sugerí acorde."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("ver_carta", {"categoria": categoria}, tool_ctx)
-    ctx.context.absorb(tool_ctx)
-    return result.get("tool_result", "")
+# ver_carta se declara UNA sola vez en hotel_tools_pkg.agent_tools (Fase 6) y se
+# importa más abajo, junto al _TOOLS.
 
 
 @function_tool
@@ -427,7 +418,7 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelContext], motivo: str = "
 
 # Tools declaradas UNA vez y compartidas con post-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
-    comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes,
+    comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes, ver_carta,
 )
 
 _TOOLS = [
