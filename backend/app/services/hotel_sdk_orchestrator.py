@@ -85,11 +85,16 @@ class HotelContext:
     orquestador necesita para armar la respuesta final.
     """
 
-    def __init__(self, db: Session, message: str, history: List[Dict], session_id: str = ""):
+    def __init__(self, db: Session, message: str, history: List[Dict], session_id: str = "",
+                 contact_id: Optional[int] = None):
         self.db = db
         self.message = message
         self.history = history
         self.session_id = session_id
+        # Contacto resuelto del huésped (Fase 6): antes solo post-venta lo pasaba al ctx. Con
+        # esto las tools de restaurante (_resolve_contact) lo reciben directo también en pre-venta;
+        # si es None, _resolve_contact cae al fallback por teléfono del wa_ (comportamiento previo).
+        self.contact_id = contact_id
         self.document_sources: List = []
         # Habitaciones consultadas en este turno (para renderizar tarjetas en el chat).
         self.rooms_offered: List[Dict] = []
@@ -108,6 +113,7 @@ class HotelContext:
             "message": self.message,
             "history": self.history,
             "session_id": self.session_id,
+            "contact_id": self.contact_id,
             "document_sources": self.document_sources,
             "rooms_offered": self.rooms_offered,
             "promo_offer": self.promo_offer,
@@ -609,8 +615,11 @@ class HotelSDKOrchestrator:
     async def _build_lead_block(
         self, db: Session, message: str, session_id: str, history: List[Dict],
         flow_criteria: Optional[Dict] = None,
-    ) -> tuple[str, Dict, bool]:
-        """Análisis de lead transversal (igual que Freeway, sin geo)."""
+    ) -> tuple[str, Dict, bool, Optional[int]]:
+        """Análisis de lead transversal (igual que Freeway, sin geo).
+
+        Devuelve además el contact_id resuelto (Fase 6) para que run() lo pase al HotelContext.
+        """
         lead = lead_service._get_or_create_lead(db, session_id)
         has_contact_info = lead.is_complete_lead()
         is_whatsapp = session_id.startswith("wa_")
@@ -642,7 +651,7 @@ class HotelSDKOrchestrator:
 
         # Perfil del huésped conocido (recurrente/alojado): personaliza la conversación.
         # Se antepone a cualquier bloque de lead cuando hay historial real.
-        guest_block = self._build_guest_block(db, session_id, lead)
+        guest_block, contact_id = self._build_guest_block(db, session_id, lead)
 
         lead_block = ""
         if has_contact_info:
@@ -680,17 +689,21 @@ class HotelSDKOrchestrator:
                 lead_block = build_contact_request_block(main_interest)
 
         # El perfil del huésped va PRIMERO (contexto de quién es), luego el bloque de lead.
-        return (guest_block + lead_block), lead_analysis, should_request_contact
+        return (guest_block + lead_block), lead_analysis, should_request_contact, contact_id
 
-    def _build_guest_block(self, db: Session, session_id: str, lead) -> str:
+    def _build_guest_block(self, db: Session, session_id: str, lead) -> tuple[str, Optional[int]]:
         """Bloque de perfil del huésped para pre-venta (nivel guest = 360 completo).
 
         Delega en guest_context_service (helper único con niveles por rol, Fase 1). El bloque
         es idéntico al anterior para un huésped sin ai_summary; con ai_summary suma una línea.
+
+        Devuelve también el contact_id resuelto (Fase 6): pre-venta lo propaga al HotelContext
+        para que las tools de restaurante lo reciban en el ctx (antes solo lo tenía post-venta),
+        cerrando la asimetría por la que un huésped web identificado no resolvía su contacto.
         """
         from app.services import guest_context_service
         contact_id = guest_context_service.resolve_contact_id(session_id, lead, db)
-        return guest_context_service.build_guest_context("guest", contact_id, db)
+        return guest_context_service.build_guest_context("guest", contact_id, db), contact_id
 
     def _build_input_list(self, history: List[Dict], message: str) -> List[Dict]:
         recent = history[-MAX_HISTORY_MESSAGES:] if len(history) > MAX_HISTORY_MESSAGES else history
@@ -710,7 +723,7 @@ class HotelSDKOrchestrator:
         flow_criteria = skill_service.get_flow_values_for_session(db, session_id, "flujo_preventa")
 
         # 1. Lead analysis transversal → bloque para el prompt
-        lead_block, lead_analysis, should_request_contact = await self._build_lead_block(
+        lead_block, lead_analysis, should_request_contact, contact_id = await self._build_lead_block(
             db, message, session_id, history, flow_criteria=flow_criteria
         )
 
@@ -757,7 +770,7 @@ class HotelSDKOrchestrator:
         )
 
         # 3. Contexto del turno
-        run_ctx = HotelContext(db, message, history, session_id=session_id)
+        run_ctx = HotelContext(db, message, history, session_id=session_id, contact_id=contact_id)
         input_list = build_input_list(history, message, spec.max_history)
 
         # 4. Ejecutar el loop del SDK

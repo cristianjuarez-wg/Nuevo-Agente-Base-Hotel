@@ -67,6 +67,9 @@ class HotelPostventaContext:
         self.room_photos_card = None     # lo setea ver_fotos_habitacion (card para el chat)
         self.menu_card = None            # lo setea ver_carta/armar_pedido_carta
         self.table_card = None           # lo setea reservar_mesa
+        # Fuentes RAG del turno (Fase 6): las escribe _handle_info_hotel cuando post-venta
+        # adopta el handler seguro de conocimiento (antes el RAG inline no registraba sources).
+        self.document_sources: List = []
 
     def restaurant_tool_ctx(self) -> Dict:
         """ctx dict para reusar los handlers de restaurante de hotel_tools (execute_tool).
@@ -77,6 +80,10 @@ class HotelPostventaContext:
             # así derivar_a_humano marca la charla EN CURSO, no la sesión donde se creó la reserva.
             "session_id": self.session_id or getattr(self.booking, "session_id", None),
             "contact_id": getattr(self.booking, "contact_id", None),
+            # Código de la reserva (Fase 6): el folio-preset de la carta lo usa para precargar
+            # el checkout del huésped in-house. Antes solo pre-venta lo pasaba; post resolvía el
+            # folio solo por session_id (degradado). Paridad con pre-venta.
+            "booking_code": getattr(self.booking, "code", None),
         }
 
     def absorb_restaurant(self, tool_ctx: Dict):
@@ -87,9 +94,25 @@ class HotelPostventaContext:
             self.table_card = tool_ctx["table_card"]
 
     def knowledge_tool_ctx(self) -> Dict:
-        """ctx dict mínimo para reusar los handlers de conocimiento de hotel_tools
-        (info_pago, comercios_amigos, promos_vigentes, excursiones): solo necesitan `db`."""
-        return {"db": self.service.db}
+        """ctx dict para reusar los handlers de conocimiento de hotel_tools (info_pago,
+        comercios_amigos, promos_vigentes, excursiones, info_hotel).
+
+        Fase 6: se amplía con session_id/message/history/document_sources para que post-venta
+        pueda adoptar el handler seguro `_handle_info_hotel` (RAG con sources + anti-injection),
+        que lee `message`/`history` y escribe `document_sources`. Los handlers que solo usan `db`
+        ignoran las keys extra."""
+        return {
+            "db": self.service.db,
+            "session_id": self.session_id or getattr(self.booking, "session_id", None),
+            "message": self.message,
+            "history": self.history,
+            "document_sources": self.document_sources,
+        }
+
+    def absorb_knowledge(self, tool_ctx: Dict):
+        """Recupera las fuentes RAG que _handle_info_hotel dejó en el tool_ctx (Fase 6)."""
+        if tool_ctx.get("document_sources"):
+            self.document_sources = tool_ctx["document_sources"]
 
 
 # ---------------------------------------------------------------------------
