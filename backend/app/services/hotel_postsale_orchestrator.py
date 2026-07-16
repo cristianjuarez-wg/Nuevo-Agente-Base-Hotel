@@ -415,30 +415,12 @@ async def armar_pedido_carta(ctx: RunContextWrapper[HotelPostventaContext], item
 # El huésped alojado también pregunta cómo pagar el saldo, dónde comer con beneficio,
 # qué promos hay o qué excursiones hacer. Reusan los handlers de hotel_tools (datos
 # EXACTOS de la DB) en vez del RAG difuso.
-@function_tool
-async def consultar_pago(ctx: RunContextWrapper[HotelPostventaContext], consulta: str = "") -> str:
-    """Devuelve los datos EXACTOS de pago/transferencia (CBU, alias, titular, medios de pago)
-    cargados por el hotel. Úsala cuando el huésped pregunte cómo pagar el saldo, pida el CBU,
-    el alias, los datos bancarios o una cuenta en otra moneda. Pasale `consulta` con lo que
-    pidió. NUNCA inventes ni modifiques un dato bancario."""
-    from app.services.hotel_tools import execute_tool
-    result = await execute_tool("info_pago", {"consulta": consulta}, ctx.context.knowledge_tool_ctx())
-    return result.get("tool_result", "")
-
-
+#
+# info_pago (antes consultar_pago), promos_vigentes (antes promociones_vigentes),
 # comercios_amigos y excursiones_y_atracciones se declaran UNA sola vez en
 # hotel_tools_pkg.agent_tools (Fase 6) y se importan más abajo, junto al _TOOLS.
-# promociones_vigentes se unifica a promos_vigentes en la sub-fase 2.
-
-
-@function_tool
-async def promociones_vigentes(ctx: RunContextWrapper[HotelPostventaContext]) -> str:
-    """Devuelve las promociones activas del hotel con sus condiciones EXACTAS. Úsala cuando el
-    huésped pregunte qué promociones o descuentos hay. Si no hay ninguna activa, decilo; no
-    inventes promos."""
-    from app.services.hotel_tools import execute_tool
-    result = await execute_tool("promos_vigentes", {}, ctx.context.knowledge_tool_ctx())
-    return result.get("tool_result", "")
+# El rename unifica el nombre por rol: el huésped de post-venta ve las mismas tools que
+# el de pre-venta (docstring canónico compartido), no una variante propia.
 
 
 @function_tool
@@ -458,13 +440,13 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelPostventaContext], motivo
 
 # Tools declaradas UNA vez y compartidas con pre-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
-    comercios_amigos, excursiones_y_atracciones,
+    comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes,
 )
 
 _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
           ver_fotos_habitacion, registrar_preferencia,
           ver_carta, reservar_mesa, armar_pedido_carta,
-          consultar_pago, comercios_amigos, promociones_vigentes, excursiones_y_atracciones,
+          info_pago, comercios_amigos, promos_vigentes, excursiones_y_atracciones,
           derivar_a_humano]
 
 # Fase 2.2: registro en el ToolRegistry con key "postsale.<nombre>".

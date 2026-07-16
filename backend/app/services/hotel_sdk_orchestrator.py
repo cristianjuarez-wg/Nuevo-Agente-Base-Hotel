@@ -247,18 +247,8 @@ async def consultar_reserva(ctx: RunContextWrapper[HotelContext], code: str) -> 
     return result.get("tool_result", "")
 
 
-@function_tool
-async def info_pago(ctx: RunContextWrapper[HotelContext], consulta: str = "") -> str:
-    """Devuelve los datos EXACTOS de pago y transferencia bancaria del hotel: medios de
-    pago aceptados, y para transferencias el titular, banco, CBU y alias.
-    Úsala SOLO cuando el usuario pregunte específicamente cómo pagar, dónde/cómo transferir,
-    pida el CBU, el alias o los datos bancarios. Para cualquier OTRA consulta del hotel
-    (servicios, habitaciones, políticas, ubicación) usá `info_hotel`, no esta.
-    El parámetro `consulta` es la pregunta del usuario (opcional, informativo).
-    Devolvé los datos tal cual, sin inventar ni alterar."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("info_pago", {"consulta": consulta}, tool_ctx)
-    return result.get("tool_result", "")
+# info_pago y promos_vigentes se declaran UNA sola vez en hotel_tools_pkg.agent_tools
+# (Fase 6) y se importan más abajo, junto al _TOOLS.
 
 
 @function_tool
@@ -288,19 +278,6 @@ async def como_llegar(
 
 # comercios_amigos y excursiones_y_atracciones se declaran UNA sola vez en
 # hotel_tools_pkg.agent_tools (Fase 6) y se importan más abajo, junto al _TOOLS.
-
-
-@function_tool
-async def promos_vigentes(ctx: RunContextWrapper[HotelContext], consulta: str = "") -> str:
-    """Devuelve las promociones y ofertas especiales VIGENTES del hotel en este momento,
-    con descripción de cada una, el tipo de descuento y las condiciones.
-    Úsala SIEMPRE que el usuario pregunte EN GENERAL sobre promociones, ofertas, descuentos,
-    tarifas especiales o 'qué promociones tienen' (listado informativo).
-    Para CALCULAR el precio con descuento de una estadía concreta, usá `calcular_precio_promo`.
-    Devolvé los datos tal cual, sin inventar ni modificar ningún beneficio."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("promos_vigentes", {"consulta": consulta}, tool_ctx)
-    return result.get("tool_result", "")
 
 
 @function_tool
@@ -450,7 +427,7 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelContext], motivo: str = "
 
 # Tools declaradas UNA vez y compartidas con post-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
-    comercios_amigos, excursiones_y_atracciones,
+    comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes,
 )
 
 _TOOLS = [

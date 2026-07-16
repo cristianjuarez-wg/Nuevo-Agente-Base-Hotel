@@ -39,13 +39,12 @@ _CAPABILITY_GROUPS: Dict[str, List[dict]] = {
         {
             "group": "Extras y recomendaciones",
             "summary": "Recomienda comercios amigos, excursiones y atracciones, y las promociones vigentes.",
-            "keys": {"comercios_amigos", "excursiones_y_atracciones", "promos_vigentes",
-                     "promociones_vigentes"},
+            "keys": {"comercios_amigos", "excursiones_y_atracciones", "promos_vigentes"},
         },
         {
             "group": "Pagos y preferencias",
             "summary": "Comparte los datos de pago y guarda las preferencias del huésped para su estadía.",
-            "keys": {"info_pago", "consultar_pago", "guardar_preferencia", "registrar_preferencia"},
+            "keys": {"info_pago", "guardar_preferencia", "registrar_preferencia"},
         },
         {
             "group": "Post-venta y atención",
