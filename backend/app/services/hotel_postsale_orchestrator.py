@@ -365,17 +365,9 @@ async def registrar_preferencia(
 # ── Restaurante en POST-VENTA (capa compartida con pre-venta) ───────────────────
 # El huésped que YA reservó puede gestionar el restaurante sin perder el contexto de su
 # reserva (fechas, contacto). Reusan los mismos handlers de hotel_tools vía execute_tool.
-@function_tool
-async def ver_carta(ctx: RunContextWrapper[HotelPostventaContext], categoria: str = "") -> str:
-    """Muestra la carta del restaurante PLAZA como tarjeta interactiva. Úsala cuando el huésped
-    pida ver el menú/carta o qué hay para comer/tomar."""
-    from app.services.hotel_tools import execute_tool
-    tc = ctx.context.restaurant_tool_ctx()
-    result = await execute_tool("ver_carta", {"categoria": categoria}, tc)
-    ctx.context.absorb_restaurant(tc)
-    return result.get("tool_result", "")
-
-
+#
+# ver_carta se declara UNA sola vez en hotel_tools_pkg.agent_tools (Fase 6) y se importa
+# más abajo, junto al _TOOLS. armar_pedido_carta y reservar_mesa se dedup en sub-fases 4 y 7.
 @function_tool
 async def reservar_mesa(
     ctx: RunContextWrapper[HotelPostventaContext],
@@ -440,7 +432,7 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelPostventaContext], motivo
 
 # Tools declaradas UNA vez y compartidas con pre-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
-    comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes,
+    comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes, ver_carta,
 )
 
 _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
