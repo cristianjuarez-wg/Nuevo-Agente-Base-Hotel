@@ -352,13 +352,10 @@ async def reservar_mesa(
     en `notas` tal cual lo dijo: queda guardado en la reserva y el equipo del salón lo tiene en
     cuenta. NO la confundas con `consultar_disponibilidad` (reservar habitación) ni con
     `ver_carta` (pedir comida)."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("reservar_mesa", {
-        "fecha": fecha, "turno": turno, "personas": personas,
-        "nombre": nombre, "codigo_reserva": codigo_reserva, "notas": notas,
-    }, tool_ctx)
-    ctx.context.absorb(tool_ctx)
-    return result.get("tool_result", "")
+    # Cuerpo compartido con post-venta (Fase 6). Pre-venta pasa el codigo_reserva que dio el
+    # LLM (el huésped puede tener su HTL-XXXX); post lo inyecta de booking.code. La firma
+    # diverge (por eso wrappers por rol), el cuerpo no.
+    return await reservar_mesa_body(ctx, fecha, turno, personas, nombre, codigo_reserva, notas)
 
 
 @function_tool
@@ -410,7 +407,7 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelContext], motivo: str = "
 # Tools declaradas UNA vez y compartidas con post-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
     comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes, ver_carta,
-    armar_pedido_carta, derivar_a_humano_body,
+    armar_pedido_carta, derivar_a_humano_body, reservar_mesa_body,
 )
 
 _TOOLS = [

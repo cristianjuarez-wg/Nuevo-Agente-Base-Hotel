@@ -379,16 +379,12 @@ async def reservar_mesa(
     horario puntual lo elige en el selector. Si menciona una OCASIÓN o pedido especial
     (cumpleaños, aniversario, recibir con champán, una alergia para esa cena), pasalo en `notas`:
     queda guardado en la reserva y el equipo del salón lo tiene en cuenta."""
-    from app.services.hotel_tools import execute_tool
-    tc = ctx.context.restaurant_tool_ctx()
-    # Asociar a su reserva por defecto.
+    # Cuerpo compartido con pre-venta (Fase 6). Post NO expone codigo_reserva al LLM: lo inyecta
+    # desde booking.code para asociar la mesa a la reserva del huésped por defecto. La firma
+    # diverge de pre (por eso wrappers por rol), el cuerpo no.
+    from app.services.hotel_tools_pkg.agent_tools import reservar_mesa_body
     codigo = getattr(ctx.context.booking, "code", "") or ""
-    result = await execute_tool("reservar_mesa", {
-        "fecha": fecha, "turno": turno, "personas": personas,
-        "nombre": nombre, "codigo_reserva": codigo, "notas": notas,
-    }, tc)
-    ctx.context.absorb_restaurant(tc)
-    return result.get("tool_result", "")
+    return await reservar_mesa_body(ctx, fecha, turno, personas, nombre, codigo, notas)
 
 
 # armar_pedido_carta se declara UNA sola vez en hotel_tools_pkg.agent_tools (Fase 6) y
