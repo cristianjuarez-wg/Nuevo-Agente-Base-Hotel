@@ -402,15 +402,15 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelContext], motivo: str = "
     (no como escape fácil ante cualquier duda). El sistema decide, según haya atención humana
     disponible, si lo pasa en vivo o lo deja registrado para seguimiento — vos solo llamás la tool
     con un `motivo` breve y confirmás con calidez lo que devuelva."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("derivar_a_humano", {"motivo": motivo}, tool_ctx)
-    return result.get("tool_result", "")
+    # Cuerpo compartido con post-venta (Fase 6): el docstring diverge por rol pero la lógica
+    # es idéntica. Antes duplicada → causa raíz de los bugs reincidentes de derivación.
+    return await derivar_a_humano_body(ctx, motivo)
 
 
 # Tools declaradas UNA vez y compartidas con post-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
     comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes, ver_carta,
-    armar_pedido_carta,
+    armar_pedido_carta, derivar_a_humano_body,
 )
 
 _TOOLS = [

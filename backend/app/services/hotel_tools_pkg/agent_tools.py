@@ -120,3 +120,15 @@ async def armar_pedido_carta(ctx: RunContextWrapper[HotelToolCtx], items_texto: 
     result = await execute_tool("armar_pedido_carta", {"items_texto": items_texto}, tool_ctx)
     ctx.context.absorb_restaurant(tool_ctx)
     return result.get("tool_result", "")
+
+
+# ── Cuerpo compartido de tools cuyo DOCSTRING diverge legítimamente por rol ──────
+# derivar_a_humano: el docstring de post referencia tools hermanas (analizar_escalacion,
+# solicitar_servicio) que no existen en pre. El bug reincidente (x2) era del CUERPO, no
+# del texto: se comparte el cuerpo acá y cada orquestador deja un wrapper delgado con su
+# propio docstring. El handler solo usa db + session_id, presentes en restaurant_ctx() de
+# ambos roles.
+async def derivar_a_humano_body(ctx: RunContextWrapper[HotelToolCtx], motivo: str = "") -> str:
+    tool_ctx = ctx.context.restaurant_ctx()
+    result = await execute_tool("derivar_a_humano", {"motivo": motivo}, tool_ctx)
+    return result.get("tool_result", "")

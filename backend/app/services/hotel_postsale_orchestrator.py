@@ -418,9 +418,11 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelPostventaContext], motivo
     deja el pedido registrado. El sistema decide, según haya atención humana disponible, si lo pasa
     en vivo o lo deja para seguimiento — vos solo llamás la tool con un `motivo` breve y confirmás
     con calidez lo que devuelva."""
-    from app.services.hotel_tools import execute_tool
-    result = await execute_tool("derivar_a_humano", {"motivo": motivo}, ctx.context.restaurant_tool_ctx())
-    return result.get("tool_result", "")
+    # Cuerpo compartido con pre-venta (Fase 6): el docstring diverge (post referencia
+    # analizar_escalacion/solicitar_servicio, que pre no tiene) pero la lógica es idéntica.
+    # Antes duplicada → causa raíz de los bugs reincidentes de derivación (falto la tool 2 veces).
+    from app.services.hotel_tools_pkg.agent_tools import derivar_a_humano_body
+    return await derivar_a_humano_body(ctx, motivo)
 
 
 # Tools declaradas UNA vez y compartidas con pre-venta (Fase 6).
