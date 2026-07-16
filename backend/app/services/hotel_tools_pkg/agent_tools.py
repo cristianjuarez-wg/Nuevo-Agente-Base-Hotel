@@ -68,3 +68,28 @@ async def excursiones_y_atracciones(ctx: RunContextWrapper[HotelToolCtx], catego
         "excursiones_y_atracciones", {"categoria": categoria}, ctx.context.knowledge_ctx()
     )
     return result.get("tool_result", "")
+
+
+@function_tool
+async def info_pago(ctx: RunContextWrapper[HotelToolCtx], consulta: str = "") -> str:
+    """Devuelve los datos EXACTOS de pago y transferencia bancaria del hotel: medios de
+    pago aceptados, y para transferencias el titular, banco, CBU y alias.
+    Úsala SOLO cuando el usuario pregunte específicamente cómo pagar, dónde/cómo transferir,
+    pida el CBU, el alias o los datos bancarios. Para cualquier OTRA consulta del hotel
+    (servicios, habitaciones, políticas, ubicación) usá `info_hotel`, no esta.
+    El parámetro `consulta` es la pregunta del usuario (opcional, informativo).
+    Devolvé los datos tal cual, sin inventar ni alterar."""
+    result = await execute_tool("info_pago", {"consulta": consulta}, ctx.context.knowledge_ctx())
+    return result.get("tool_result", "")
+
+
+@function_tool
+async def promos_vigentes(ctx: RunContextWrapper[HotelToolCtx], consulta: str = "") -> str:
+    """Devuelve las promociones y ofertas especiales VIGENTES del hotel en este momento,
+    con descripción de cada una, el tipo de descuento y las condiciones.
+    Úsala SIEMPRE que el usuario pregunte EN GENERAL sobre promociones, ofertas, descuentos,
+    tarifas especiales o 'qué promociones tienen' (listado informativo).
+    Para CALCULAR el precio con descuento de una estadía concreta, usá `calcular_precio_promo`.
+    Devolvé los datos tal cual, sin inventar ni modificar ningún beneficio."""
+    result = await execute_tool("promos_vigentes", {"consulta": consulta}, ctx.context.knowledge_ctx())
+    return result.get("tool_result", "")

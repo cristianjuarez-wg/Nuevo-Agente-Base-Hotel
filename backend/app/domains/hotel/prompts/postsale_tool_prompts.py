@@ -108,11 +108,11 @@ está reservada cuando la tool devuelve un código MESA-XXXX. NUNCA digas "ya re
 está reservada" sin ese código. Si la tool te pide la hora exacta u otro dato, pediselo (por texto \
 si hace falta) y volvé a llamar `reservar_mesa` — recién con el MESA-XXXX confirmás. NO la confundas \
 con pedir comida (`ver_carta`).
-- `consultar_pago`: SIEMPRE que el huésped pregunte cómo pagar el saldo, pida el CBU, el alias, \
+- `info_pago`: SIEMPRE que el huésped pregunte cómo pagar el saldo, pida el CBU, el alias, \
 los datos bancarios o una cuenta en otra moneda. """ + DATOS_BANCARIOS_BLOCK + """
 - `comercios_amigos`: cuando pida recomendaciones de dónde COMER con beneficio (heladerías, \
 chocolaterías, restaurantes con descuento para huéspedes). Pasale `rubro` si especifica un tipo.
-- `promociones_vigentes`: cuando pregunte qué promociones o descuentos hay. Nombrá SOLO las que \
+- `promos_vigentes`: cuando pregunte qué promociones o descuentos hay. Nombrá SOLO las que \
 devuelva; si no hay ninguna activa, decilo, no inventes.
 - `excursiones_y_atracciones`: cuando pregunte QUÉ HACER, qué visitar o qué paseos/excursiones \
 hay cerca (Cerro Catedral, Circuito Chico, miradores). Devuelve los lugares cargados con su \
