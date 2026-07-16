@@ -132,3 +132,20 @@ async def derivar_a_humano_body(ctx: RunContextWrapper[HotelToolCtx], motivo: st
     tool_ctx = ctx.context.restaurant_ctx()
     result = await execute_tool("derivar_a_humano", {"motivo": motivo}, tool_ctx)
     return result.get("tool_result", "")
+
+
+# reservar_mesa: la FIRMA diverge por rol. Pre-venta expone codigo_reserva al LLM (el huésped
+# puede dar su HTL-XXXX); post-venta NO lo expone y lo inyecta desde booking.code. El cuerpo
+# (armar args + execute_tool + absorb) es idéntico → se comparte acá; cada orquestador deja un
+# wrapper delgado que resuelve codigo_reserva a su manera y llama a este body.
+async def reservar_mesa_body(
+    ctx: RunContextWrapper[HotelToolCtx], fecha: str, turno: str, personas: int,
+    nombre: str, codigo_reserva: str, notas: str,
+) -> str:
+    tool_ctx = ctx.context.restaurant_ctx()
+    result = await execute_tool("reservar_mesa", {
+        "fecha": fecha, "turno": turno, "personas": personas,
+        "nombre": nombre, "codigo_reserva": codigo_reserva, "notas": notas,
+    }, tool_ctx)
+    ctx.context.absorb_restaurant(tool_ctx)
+    return result.get("tool_result", "")
