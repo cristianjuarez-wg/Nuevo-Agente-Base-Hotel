@@ -249,14 +249,14 @@ SCENARIOS = [
         "id": "S19",
         "tier": "instance",  # depende de hechos del Hampton (sauna/spa, promo Stay&Park)
         "name": "Post-venta: servicios sin inventar (no sauna/spa)",
-        "tool_called_any": True,  # con que llame UNA tool de info (consultar_info_hotel o info_hotel)
+        "tool_called_any": True,  # con que llame la tool de info (info_hotel, unificada Fase 6)
         "turns": [
             {"user": f"Reservá la King del {CI} al {CO} para 2 adultos. Soy Ana Gómez, tel 1166667777.",
              "expect": {"tool_called": "crear_reserva"}},
             {"user": "qué servicios adicionales tengo?",
-             # Debe consultar info (post-venta usa consultar_info_hotel; pre-venta usa info_hotel)
+             # Debe consultar info con info_hotel (mismo nombre en pre y post desde Fase 6)
              # y NUNCA inventar spa/sauna. (palabra completa: "spa" no debe matchear "espacio")
-             "expect": {"tool_called": ["consultar_info_hotel", "info_hotel"],
+             "expect": {"tool_called": "info_hotel",
                         "response_not_contains_word": ["sauna", "spa"]}},
         ],
     },

@@ -34,7 +34,7 @@ _CAPABILITY_GROUPS: Dict[str, List[dict]] = {
         {
             "group": "Información y llegada",
             "summary": "Responde sobre el hotel y sus servicios, cómo llegar y las fotos de las habitaciones.",
-            "keys": {"info_hotel", "consultar_info_hotel", "como_llegar", "ver_fotos_habitacion"},
+            "keys": {"info_hotel", "como_llegar", "ver_fotos_habitacion"},
         },
         {
             "group": "Extras y recomendaciones",
