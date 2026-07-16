@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2, Info, BedDouble, Trash2, Instagram as InstagramIcon } from 'lucide-react'
+import { MessageSquare, Globe, Circle, Hand, Bot, Send, Loader2, Info, BedDouble, Trash2, Instagram as InstagramIcon, MessageCircle } from 'lucide-react'
 import {
   listConversations, takeOverConversation, releaseConversation, sendHumanReply, deleteConversation,
 } from '../../services/api'
@@ -8,6 +8,17 @@ import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import ChatTranscript from '../components/ChatTranscript'
 import DetailDrawer from '../components/DetailDrawer'
+import { FilterChip } from '../components/FilterChip'
+
+// Filtro por canal de la bandeja (chips arriba de la lista). Lista unificada por defecto
+// ('all'): el origen ya se distingue por el ícono de cada fila (ChannelBadge); los chips son
+// para ENFOCARSE en un canal cuando hace falta, no para fragmentar la cola de atención.
+const CHANNEL_FILTERS = [
+  { key: 'all', label: 'Todos', icon: null },
+  { key: 'web', label: 'Web', icon: Globe },
+  { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { key: 'instagram', label: 'Instagram', icon: InstagramIcon },
+]
 
 // Badge según el estado del interlocutor (lo manda el backend en `guest_status`).
 function GuestStatusBadge({ status }) {
@@ -40,6 +51,7 @@ export default function LiveConversationsView() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [channel, setChannel] = useState('all')  // filtro por canal (all | web | whatsapp | instagram)
   const [selected, setSelected] = useState(null)  // session_id abierto
   const [profileId, setProfileId] = useState(null)  // contact_id para el drawer 360°
   const firstLoad = useRef(true)
@@ -57,12 +69,25 @@ export default function LiveConversationsView() {
     return () => { active = false; clearInterval(id) }
   }, [])
 
+  // Canal de una fila, normalizado: null/desconocido cuenta como 'web' (igual que ChannelBadge,
+  // que cae al globo web por defecto). Así el filtro no "pierde" filas sin channel.
+  const rowChannel = (r) => (r.channel === 'whatsapp' || r.channel === 'instagram' ? r.channel : 'web')
+
+  // Contadores por canal (para los chips) — sobre TODAS las filas, sin importar la búsqueda de texto.
+  const channelCounts = rows.reduce((acc, r) => {
+    const c = rowChannel(r)
+    acc.all += 1; acc[c] = (acc[c] || 0) + 1
+    return acc
+  }, { all: 0, web: 0, whatsapp: 0, instagram: 0 })
+
   const q = query.trim().toLowerCase()
-  const filtered = !q ? rows : rows.filter((r) =>
-    (r.display_name || r.name || '').toLowerCase().includes(q) ||
-    (r.phone || '').toLowerCase().includes(q) ||
-    (r.last_message_preview || '').toLowerCase().includes(q)
-  )
+  const filtered = rows.filter((r) => {
+    if (channel !== 'all' && rowChannel(r) !== channel) return false
+    if (!q) return true
+    return (r.display_name || r.name || '').toLowerCase().includes(q) ||
+      (r.phone || '').toLowerCase().includes(q) ||
+      (r.last_message_preview || '').toLowerCase().includes(q)
+  })
 
   const selectedConv = rows.find((r) => r.session_id === selected) || null
 
@@ -83,13 +108,24 @@ export default function LiveConversationsView() {
     <div className="flex h-full min-h-0 flex-1 gap-3">
       {/* Panel izquierdo: lista de conversaciones */}
       <div className="flex w-full max-w-sm shrink-0 flex-col rounded-2xl border border-mist bg-white">
-        <div className="border-b border-mist p-3">
+        <div className="border-b border-mist p-3 space-y-2.5">
           <SearchInput value={query} onChange={setQuery} placeholder="Buscar por nombre, teléfono o mensaje…" />
+          {/* Filtro por canal: lista unificada por defecto; el ícono de cada fila ya distingue el origen. */}
+          <div className="flex flex-wrap gap-1.5">
+            {CHANNEL_FILTERS.map((f) => (
+              <FilterChip key={f.key} label={f.label} icon={f.icon}
+                          count={channelCounts[f.key]}
+                          active={channel === f.key}
+                          onClick={() => setChannel(f.key)} />
+            ))}
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <EmptyState icon={MessageSquare} title="Sin conversaciones"
-                        desc="Cuando alguien escriba por web o WhatsApp, aparecerá acá." />
+                        desc={channel === 'all'
+                          ? 'Cuando alguien escriba por web, WhatsApp o Instagram, aparecerá acá.'
+                          : 'No hay conversaciones de este canal por ahora.'} />
           ) : (
             filtered.map((r) => (
               <ConversationRow key={r.session_id} r={r}
