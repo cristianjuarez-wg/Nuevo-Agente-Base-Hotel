@@ -314,17 +314,8 @@ async def calcular_precio_promo(
 # importa más abajo, junto al _TOOLS.
 
 
-@function_tool
-async def armar_pedido_carta(ctx: RunContextWrapper[HotelContext], items_texto: str) -> str:
-    """Cuando el cliente diga POR TEXTO qué quiere comer/tomar (ej. "quiero el ojo de bife y una
-    pinta"), usá esta tool para devolverle la carta interactiva YA con esos platos precargados,
-    para que confirme o ajuste y elija dónde lo quiere. Pasale en `items_texto` lo que pidió,
-    tal cual. Si algún plato no se reconoce, el sistema te avisa para que lo aclares (NUNCA
-    inventes platos ni precios)."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("armar_pedido_carta", {"items_texto": items_texto}, tool_ctx)
-    ctx.context.absorb(tool_ctx)
-    return result.get("tool_result", "")
+# armar_pedido_carta se declara UNA sola vez en hotel_tools_pkg.agent_tools (Fase 6) y
+# se importa más abajo, junto al _TOOLS.
 
 
 @function_tool
@@ -419,6 +410,7 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelContext], motivo: str = "
 # Tools declaradas UNA vez y compartidas con post-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
     comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes, ver_carta,
+    armar_pedido_carta,
 )
 
 _TOOLS = [
