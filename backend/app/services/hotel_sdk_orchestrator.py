@@ -122,6 +122,23 @@ class HotelContext:
             "booking_code": self.booking_code,
         }
 
+    # --- Contrato uniforme para las tools compartidas (Fase 6) -------------------
+    # agent_tools.py declara cada tool UNA vez y obtiene el ctx por estos nombres, sin
+    # saber de qué rol viene. En pre-venta el ctx es siempre el mismo (as_tool_ctx, que
+    # ya lleva todo); knowledge/restaurant apuntan al mismo dict. absorb_knowledge y
+    # absorb_restaurant son el mismo absorb() (pre recupera todos los campos de una).
+    def knowledge_ctx(self) -> Dict:
+        return self.as_tool_ctx()
+
+    def restaurant_ctx(self) -> Dict:
+        return self.as_tool_ctx()
+
+    def absorb_knowledge(self, tool_ctx: Dict):
+        self.absorb(tool_ctx)
+
+    def absorb_restaurant(self, tool_ctx: Dict):
+        self.absorb(tool_ctx)
+
     def absorb(self, tool_ctx: Dict):
         self.document_sources = tool_ctx.get("document_sources", self.document_sources)
         self.rooms_offered = tool_ctx.get("rooms_offered", self.rooms_offered)
@@ -269,32 +286,8 @@ async def como_llegar(
     return result.get("tool_result", "")
 
 
-@function_tool
-async def comercios_amigos(ctx: RunContextWrapper[HotelContext], rubro: str = "") -> str:
-    """Devuelve los comercios amigos del hotel (gastronomía, heladerías, chocolaterías,
-    restaurantes con acuerdo) y sus beneficios/descuentos para huéspedes.
-    Úsala cuando el usuario pida recomendaciones de dónde comer, lugares con descuento,
-    heladerías, chocolaterías o restaurantes cerca del hotel.
-    `rubro` (opcional): tipo de comercio que busca (ej. "heladería", "restaurante").
-    Si no hay comercios amigos para ese rubro, la herramienta devuelve un link de
-    búsqueda en Google Maps; compartilo igual."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("comercios_amigos", {"rubro": rubro}, tool_ctx)
-    return result.get("tool_result", "")
-
-
-@function_tool
-async def excursiones_y_atracciones(ctx: RunContextWrapper[HotelContext], categoria: str = "") -> str:
-    """Devuelve las EXCURSIONES y ATRACCIONES de la zona cargadas en el backoffice
-    (Cerro Catedral, Circuito Chico, miradores, paseos), con su descripción y ubicación.
-    Úsala cuando el huésped pregunte QUÉ HACER, qué visitar, qué paseos/excursiones hay
-    cerca del hotel o pida recomendaciones de lugares para conocer.
-    `categoria` (opcional): tipo de lugar (ej. "excursión", "atracción").
-    NO la confundas con `comercios_amigos` (esa es para dónde COMER con descuento) ni con
-    `como_llegar` (esa arma la ruta a UN destino puntual)."""
-    tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("excursiones_y_atracciones", {"categoria": categoria}, tool_ctx)
-    return result.get("tool_result", "")
+# comercios_amigos y excursiones_y_atracciones se declaran UNA sola vez en
+# hotel_tools_pkg.agent_tools (Fase 6) y se importan más abajo, junto al _TOOLS.
 
 
 @function_tool
@@ -454,6 +447,11 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelContext], motivo: str = "
     result = await execute_tool("derivar_a_humano", {"motivo": motivo}, tool_ctx)
     return result.get("tool_result", "")
 
+
+# Tools declaradas UNA vez y compartidas con post-venta (Fase 6).
+from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
+    comercios_amigos, excursiones_y_atracciones,
+)
 
 _TOOLS = [
     info_hotel, consultar_disponibilidad, crear_reserva, consultar_reserva, info_pago,

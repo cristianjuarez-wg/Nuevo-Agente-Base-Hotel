@@ -114,6 +114,16 @@ class HotelPostventaContext:
         if tool_ctx.get("document_sources"):
             self.document_sources = tool_ctx["document_sources"]
 
+    # --- Contrato uniforme para las tools compartidas (Fase 6) -------------------
+    # agent_tools.py declara cada tool UNA vez y obtiene el ctx por estos nombres. En
+    # post-venta knowledge y restaurant tienen builders distintos (el de restaurante lleva
+    # contact_id/booking_code; el de conocimiento no), así que los mapeamos explícitamente.
+    def knowledge_ctx(self) -> Dict:
+        return self.knowledge_tool_ctx()
+
+    def restaurant_ctx(self) -> Dict:
+        return self.restaurant_tool_ctx()
+
 
 # ---------------------------------------------------------------------------
 # TOOL — análisis de severidad/escalación
@@ -416,14 +426,9 @@ async def consultar_pago(ctx: RunContextWrapper[HotelPostventaContext], consulta
     return result.get("tool_result", "")
 
 
-@function_tool
-async def comercios_amigos(ctx: RunContextWrapper[HotelPostventaContext], rubro: str = "") -> str:
-    """Devuelve los comercios amigos del hotel (gastronomía con acuerdo) y sus beneficios para
-    huéspedes. Úsala cuando el huésped pida dónde comer con descuento, heladerías, chocolaterías
-    o restaurantes cerca. `rubro` (opcional): tipo de comercio."""
-    from app.services.hotel_tools import execute_tool
-    result = await execute_tool("comercios_amigos", {"rubro": rubro}, ctx.context.knowledge_tool_ctx())
-    return result.get("tool_result", "")
+# comercios_amigos y excursiones_y_atracciones se declaran UNA sola vez en
+# hotel_tools_pkg.agent_tools (Fase 6) y se importan más abajo, junto al _TOOLS.
+# promociones_vigentes se unifica a promos_vigentes en la sub-fase 2.
 
 
 @function_tool
@@ -433,17 +438,6 @@ async def promociones_vigentes(ctx: RunContextWrapper[HotelPostventaContext]) ->
     inventes promos."""
     from app.services.hotel_tools import execute_tool
     result = await execute_tool("promos_vigentes", {}, ctx.context.knowledge_tool_ctx())
-    return result.get("tool_result", "")
-
-
-@function_tool
-async def excursiones_y_atracciones(ctx: RunContextWrapper[HotelPostventaContext], categoria: str = "") -> str:
-    """Devuelve las excursiones y atracciones de la zona cargadas por el hotel, con descripción
-    y ubicación. Úsala cuando el huésped pregunte qué hacer, qué visitar o qué paseos/excursiones
-    hay cerca. `categoria` (opcional): tipo de lugar. No la confundas con `comercios_amigos`
-    (dónde comer) ni con dudas de la reserva."""
-    from app.services.hotel_tools import execute_tool
-    result = await execute_tool("excursiones_y_atracciones", {"categoria": categoria}, ctx.context.knowledge_tool_ctx())
     return result.get("tool_result", "")
 
 
@@ -461,6 +455,11 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelPostventaContext], motivo
     result = await execute_tool("derivar_a_humano", {"motivo": motivo}, ctx.context.restaurant_tool_ctx())
     return result.get("tool_result", "")
 
+
+# Tools declaradas UNA vez y compartidas con pre-venta (Fase 6).
+from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
+    comercios_amigos, excursiones_y_atracciones,
+)
 
 _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
           ver_fotos_habitacion, registrar_preferencia,
