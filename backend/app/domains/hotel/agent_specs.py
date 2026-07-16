@@ -58,7 +58,7 @@ SPECS = {
         max_turns=5,
         max_history=8,
         tools=(
-            "postsale.analizar_escalacion", "postsale.consultar_info_hotel",
+            "postsale.analizar_escalacion", "postsale.info_hotel",
             "postsale.solicitar_servicio", "postsale.ver_fotos_habitacion",
             "postsale.registrar_preferencia", "postsale.ver_carta", "postsale.reservar_mesa",
             "postsale.armar_pedido_carta", "postsale.info_pago",

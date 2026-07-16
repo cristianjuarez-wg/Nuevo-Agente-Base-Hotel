@@ -170,7 +170,7 @@ async def analizar_escalacion(
 
 
 @function_tool
-async def consultar_info_hotel(
+async def info_hotel(
     ctx: RunContextWrapper[HotelPostventaContext], query: str
 ) -> str:
     """Consulta la base de conocimiento del hotel para responder dudas INFORMATIVAS del
@@ -180,17 +180,16 @@ async def consultar_info_hotel(
     una política o servicio (aunque sea sobre cancelación o cambios), para informarle la
     condición antes de ofrecer pasar a un asesor. NO inventes: respondé solo con lo que
     devuelva esta herramienta."""
-    try:
-        from app.core.rag.rag_service import rag_service
-        context_text = await rag_service.retrieve_context(query)
-        if not context_text or context_text.strip() == "NO_CONTEXT_FOUND":
-            return ("No encontré ese detalle en la información del hotel. Para ese caso "
-                    "puntual, lo mejor es coordinar con un asesor del hotel.")
-        return context_text
-    except Exception as e:  # noqa: BLE001
-        logger.error("consultar_info_hotel (post-venta) falló", error=str(e))
-        return ("No pude acceder a la información en este momento. Un asesor del hotel "
-                "puede ayudarte con ese detalle.")
+    # Fase 6: se unifica al nombre y al HANDLER de pre-venta (_handle_info_hotel vía
+    # execute_tool). Antes esta tool reimplementaba el RAG inline SIN wrap_untrusted_docs
+    # (anti prompt-injection sobre docs que sube el cliente) ni document_sources — una
+    # degradacion de seguridad. Ahora post-venta gana ambos. El docstring sigue siendo el
+    # de post (contexto "durante la estadia"): el nombre se unifica, el texto es de rol.
+    from app.services.hotel_tools import execute_tool
+    tool_ctx = ctx.context.knowledge_ctx()
+    result = await execute_tool("info_hotel", {"query": query}, tool_ctx)
+    ctx.context.absorb_knowledge(tool_ctx)
+    return result.get("tool_result", "")
 
 
 @function_tool
@@ -204,7 +203,7 @@ async def solicitar_servicio(
     atienda (housekeeping, mantenimiento, recepción). Úsala cuando el huésped NECESITA una
     acción concreta durante su estadía: toallas/amenities, limpieza, algo que no funciona
     (aire, TV, WiFi, luz), una llave nueva, late checkout, room service, una almohada extra,
-    etc. NO la uses para dudas informativas (eso es consultar_info_hotel) ni para
+    etc. NO la uses para dudas informativas (eso es info_hotel) ni para
     cancelar/cambiar la reserva (eso escala).
 
     Args:
@@ -431,7 +430,7 @@ from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
     armar_pedido_carta,
 )
 
-_TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
+_TOOLS = [analizar_escalacion, info_hotel, solicitar_servicio,
           ver_fotos_habitacion, registrar_preferencia,
           ver_carta, reservar_mesa, armar_pedido_carta,
           info_pago, comercios_amigos, promos_vigentes, excursiones_y_atracciones,
