@@ -107,3 +107,16 @@ async def ver_carta(ctx: RunContextWrapper[HotelToolCtx], categoria: str = "") -
     result = await execute_tool("ver_carta", {"categoria": categoria}, tool_ctx)
     ctx.context.absorb_restaurant(tool_ctx)
     return result.get("tool_result", "")
+
+
+@function_tool
+async def armar_pedido_carta(ctx: RunContextWrapper[HotelToolCtx], items_texto: str = "") -> str:
+    """Cuando el cliente diga POR TEXTO qué quiere comer/tomar (ej. "quiero el ojo de bife y una
+    pinta"), usá esta tool para devolverle la carta interactiva YA con esos platos precargados,
+    para que confirme o ajuste y elija dónde lo quiere. Pasale en `items_texto` lo que pidió,
+    tal cual. Si algún plato no se reconoce, el sistema te avisa para que lo aclares (NUNCA
+    inventes platos ni precios)."""
+    tool_ctx = ctx.context.restaurant_ctx()
+    result = await execute_tool("armar_pedido_carta", {"items_texto": items_texto}, tool_ctx)
+    ctx.context.absorb_restaurant(tool_ctx)
+    return result.get("tool_result", "")

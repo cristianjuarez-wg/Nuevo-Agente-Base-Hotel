@@ -392,15 +392,8 @@ async def reservar_mesa(
     return result.get("tool_result", "")
 
 
-@function_tool
-async def armar_pedido_carta(ctx: RunContextWrapper[HotelPostventaContext], items_texto: str = "") -> str:
-    """El huésped dijo qué quiere comer/pedir por texto. Devuelve la carta con esos platos
-    precargados para que confirme el pedido."""
-    from app.services.hotel_tools import execute_tool
-    tc = ctx.context.restaurant_tool_ctx()
-    result = await execute_tool("armar_pedido_carta", {"items_texto": items_texto}, tc)
-    ctx.context.absorb_restaurant(tc)
-    return result.get("tool_result", "")
+# armar_pedido_carta se declara UNA sola vez en hotel_tools_pkg.agent_tools (Fase 6) y
+# se importa más abajo, junto al _TOOLS.
 
 
 # ── Conocimiento determinístico en POST-VENTA (capa compartida con pre-venta) ───
@@ -433,6 +426,7 @@ async def derivar_a_humano(ctx: RunContextWrapper[HotelPostventaContext], motivo
 # Tools declaradas UNA vez y compartidas con pre-venta (Fase 6).
 from app.services.hotel_tools_pkg.agent_tools import (  # noqa: E402
     comercios_amigos, excursiones_y_atracciones, info_pago, promos_vigentes, ver_carta,
+    armar_pedido_carta,
 )
 
 _TOOLS = [analizar_escalacion, consultar_info_hotel, solicitar_servicio,
