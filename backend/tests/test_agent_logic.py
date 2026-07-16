@@ -127,7 +127,7 @@ class TestSDKRunnerFallback:
 
         # Mockear lo I/O: lead block vacío y Runner que revienta.
         async def fake_lead_block(*a, **k):
-            return ("", {"lead_type": "FRIO"}, False)
+            return ("", {"lead_type": "FRIO"}, False, None)
 
         with patch.object(orch, "_build_lead_block", side_effect=fake_lead_block), \
              patch.object(mod.Runner, "run", new=AsyncMock(side_effect=RuntimeError("OpenAI 500"))):
