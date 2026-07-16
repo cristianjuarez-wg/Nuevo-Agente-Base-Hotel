@@ -13,11 +13,16 @@ import { FilterChip } from '../components/FilterChip'
 // Filtro por canal de la bandeja (chips arriba de la lista). Lista unificada por defecto
 // ('all'): el origen ya se distingue por el ícono de cada fila (ChannelBadge); los chips son
 // para ENFOCARSE en un canal cuando hace falta, no para fragmentar la cola de atención.
+// 'Todos' lleva texto (no tiene ícono obvio); los tres canales van SOLO con su ícono —ya
+// inequívoco— para que los 4 chips entren en un renglón sin ensanchar la columna. El nombre
+// del canal se conserva en el title/aria-label (hover + accesibilidad).
+// Color de marca por canal, igual que ChannelBadge (globo azul / WhatsApp verde / IG rosa),
+// para que el ícono solo ya sea inequívoco.
 const CHANNEL_FILTERS = [
-  { key: 'all', label: 'Todos', icon: null },
-  { key: 'web', label: 'Web', icon: Globe },
-  { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
-  { key: 'instagram', label: 'Instagram', icon: InstagramIcon },
+  { key: 'all', label: 'Todos', icon: null, iconOnly: false, iconClassName: '' },
+  { key: 'web', label: 'Chat web', icon: Globe, iconOnly: true, iconClassName: 'text-hilton-500' },
+  { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, iconOnly: true, iconClassName: 'text-green-500' },
+  { key: 'instagram', label: 'Instagram', icon: InstagramIcon, iconOnly: true, iconClassName: 'text-pink-500' },
 ]
 
 // Badge según el estado del interlocutor (lo manda el backend en `guest_status`).
@@ -113,7 +118,8 @@ export default function LiveConversationsView() {
           {/* Filtro por canal: lista unificada por defecto; el ícono de cada fila ya distingue el origen. */}
           <div className="flex flex-wrap gap-1.5">
             {CHANNEL_FILTERS.map((f) => (
-              <FilterChip key={f.key} label={f.label} icon={f.icon}
+              <FilterChip key={f.key} label={f.label} icon={f.icon} iconOnly={f.iconOnly}
+                          iconClassName={f.iconClassName}
                           count={channelCounts[f.key]}
                           active={channel === f.key}
                           onClick={() => setChannel(f.key)} />
