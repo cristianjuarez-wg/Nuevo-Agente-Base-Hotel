@@ -50,3 +50,5 @@ def is_pure_social(message: str) -> bool:
         # Solo rellenos (ej. "nada mas", "ok dale"): cierre social.
         return True
     return all(w in _SOCIAL_WORDS for w in core)
+
+

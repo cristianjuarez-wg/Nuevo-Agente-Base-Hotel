@@ -332,6 +332,48 @@ SCENARIOS = [
         ],
     },
     {
+        "id": "S25b",
+        "name": "Local (sin alojarse) reserva mesa y pide recomendación → NO pide código HTL",
+        # El bug reportado: un residente local reserva una MESA y pide "recomendame de la carta".
+        # El restaurante NO exige código de habitación. Debe recomendar, no pedir HTL-XXXX.
+        "turns": [
+            {"user": "Hola! vivo en Bariloche, quiero reservar una mesa en el restaurante del hotel.",
+             "expect": {"tool_called": "reservar_mesa", "card": "table_reservation"}},
+            {"user": "Confirmé mi reserva de mesa MESA-HHHR.",
+             "expect": {"response_not_contains": ["HTL-", "formato HTL"]}},
+            {"user": "si, qué me recomendás de la carta?",
+             "expect": {"route": "preventa",
+                        "response_not_contains": ["HTL-", "formato HTL", "necesito tu código"]}},
+        ],
+    },
+    {
+        "id": "S25c",
+        "name": "Usuario tipea un código de MESA a mano pidiendo algo → no lo secuestra la felicitación",
+        # Bug B: "MESA-XXXX" suelto (no el acuse del frontend) NO debe disparar la felicitación
+        # enlatada ni el gate de HTL; debe atender la intención real (recomendación/carta).
+        "tool_called_any": True,
+        "turns": [
+            {"user": "Hola, quiero reservar una mesa para 2 personas.",
+             "expect": {"tool_called": "reservar_mesa"}},
+            {"user": "MESA-ABCD, me recomendás algo rico de la carta?",
+             "expect": {"route": "preventa",
+                        "tool_called": ["ver_carta", "armar_pedido_carta"],
+                        "response_not_contains": ["quedó reservada", "HTL-", "necesito tu código"]}},
+        ],
+    },
+    {
+        "id": "S25d",
+        "name": "Local pide comida sin reserva de habitación → muestra la carta, sin pedir HTL",
+        # Caso 4: local que quiere comer, sin estar alojado. La carta funciona sin código.
+        "tool_called_any": True,
+        "turns": [
+            {"user": "buenas, tienen algo para comer? se me antoja una milanesa con papas",
+             "expect": {"route": "preventa",
+                        "tool_called": ["ver_carta", "armar_pedido_carta"],
+                        "response_not_contains": ["HTL-", "formato HTL", "necesito tu código"]}},
+        ],
+    },
+    {
         "id": "S27",
         "name": "G1: reserva FUTURA pide toallas → no registra como in-house",
         "turns": [

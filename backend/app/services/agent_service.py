@@ -36,6 +36,15 @@ class AgentService:
     # ("Confirmé mi reserva de mesa MESA-XXXX") tras crear la mesa en el selector: lo
     # interceptamos para felicitar, NO para mandarlo al post-venta del hotel (que pide HTL-).
     TABLE_CODE_PATTERN = r'\bMESA-[A-Z0-9]{4}\b'
+    # ACUSE COMPLETO del frontend (i18n/chat.js:tableConfirmedMsg, 4 idiomas). Solo este acuse
+    # exacto dispara la felicitación; un MESA-XXXX suelto que el usuario tipea a mano (ej.
+    # "MESA-HHHR, recomendame algo") NO debe ser secuestrado — sigue al ruteo como restaurante.
+    # Se exige una frase de confirmación de mesa ("reserva/reservei/booking/réservation" + "mesa/
+    # table") ADYACENTE al código, cubriendo es/en/pt/fr.
+    TABLE_ACK_PATTERN = (
+        r'(confirm[ée]|confirmei|confirmed|confirm[ée])[^.]{0,40}'
+        r'(mesa|table)[^.]{0,20}MESA-[A-Z0-9]{4}'
+    )
 
     # Frases sociales centralizadas. Usadas en: _detect_postsale_context (guard de
     # saludos), _classify_first_message (fallback), y detección de despedidas en chat().
@@ -170,10 +179,14 @@ class AgentService:
         cálida con los datos reales (fecha/turno/personas) y NO seguimos al ruteo (evita que el
         post-venta del hotel pida un código HTL-). Devuelve None si el mensaje no es ese acuse.
         """
-        m = re.search(self.TABLE_CODE_PATTERN, (message or "").upper())
-        if not m:
+        # Exigir el ACUSE COMPLETO del frontend, no un MESA-XXXX suelto: así "MESA-HHHR,
+        # recomendame algo" (código tipeado a mano) NO se secuestra y sigue al ruteo.
+        if not re.search(self.TABLE_ACK_PATTERN, message or "", re.IGNORECASE):
             return None
-        code = m.group(0)
+        code_m = re.search(self.TABLE_CODE_PATTERN, (message or "").upper())
+        if not code_m:
+            return None
+        code = code_m.group(0)
 
         # Buscar la reserva real para felicitar con sus datos (si existe).
         detalle = ""
@@ -716,7 +729,20 @@ class AgentService:
                     postsale_service = HotelPostSaleService(db)
 
                     gate = await postsale_service.run_gate(message, session_id, history)
-                    if gate["handled"]:
+                    if gate.get("fallback_preventa"):
+                        # Post-venta no pudo identificar NINGUNA reserva (ni código, ni
+                        # sesión, ni teléfono). En vez del callejón sin salida ("dame tu
+                        # HTL"), la consulta cae a PRE-VENTA, que atiende sin reserva
+                        # (carta, mesa, info) y pide el código solo si el usuario quiere
+                        # algo de SU reserva (consultar_reserva). Decisión semántica del
+                        # agente, no de un regex.
+                        logger.info("Post-venta sin reserva hallable → fallback a pre-venta",
+                                    session_id=session_id, message_preview=message[:50])
+                        is_postsale = False
+                        _gate = self._preventa_channel_gate(db, session_id)
+                        if _gate:
+                            return _gate
+                    elif gate["handled"]:
                         # Respuesta terminal del gate (validación fallida o solo-código)
                         response_text = gate["result"].get("response", "")
                         history.append({"role": "user", "content": message})
@@ -727,34 +753,35 @@ class AgentService:
                         gate["result"]["session_info"] = self.get_session_info(session_id)
                         return gate["result"]
 
-                    # Listo para el loop con tools (Agents SDK).
-                    from app.services.hotel_postsale_orchestrator import hotel_postsale_sdk_orchestrator
-                    orch_result = await hotel_postsale_sdk_orchestrator.run(
-                        postsale_service, gate["booking"], gate["ticket"],
-                        gate["query_to_process"], session_id, history
-                    )
-                    response_text = orch_result["response"]
-                    history.append({"role": "user", "content": message})
-                    history.append({"role": "assistant", "content": response_text})
-                    self._update_session_metadata(session_id)
+                    else:
+                        # Listo para el loop con tools (Agents SDK).
+                        from app.services.hotel_postsale_orchestrator import hotel_postsale_sdk_orchestrator
+                        orch_result = await hotel_postsale_sdk_orchestrator.run(
+                            postsale_service, gate["booking"], gate["ticket"],
+                            gate["query_to_process"], session_id, history
+                        )
+                        response_text = orch_result["response"]
+                        history.append({"role": "user", "content": message})
+                        history.append({"role": "assistant", "content": response_text})
+                        self._update_session_metadata(session_id)
 
-                    # Registrar consumo de tokens del turno post-venta (para panel y tope).
-                    ps_usage = orch_result.get("usage", {})
-                    if ps_usage.get("total_tokens"):
-                        try:
-                            self._save_message_to_db(
-                                db=db, session_id=session_id, role='assistant',
-                                content=response_text, context_type='post_sale',
-                                tokens_used=ps_usage.get("total_tokens"),
-                                model_used=ps_usage.get("model") or settings.OPENAI_MODEL,
-                            )
-                        except Exception as e:
-                            logger.error("Error saving postsale usage to DB",
-                                         session_id=session_id, error=str(e))
+                        # Registrar consumo de tokens del turno post-venta (panel y tope).
+                        ps_usage = orch_result.get("usage", {})
+                        if ps_usage.get("total_tokens"):
+                            try:
+                                self._save_message_to_db(
+                                    db=db, session_id=session_id, role='assistant',
+                                    content=response_text, context_type='post_sale',
+                                    tokens_used=ps_usage.get("total_tokens"),
+                                    model_used=ps_usage.get("model") or settings.OPENAI_MODEL,
+                                )
+                            except Exception as e:
+                                logger.error("Error saving postsale usage to DB",
+                                             session_id=session_id, error=str(e))
 
-                    orch_result["session_info"] = self.get_session_info(session_id)
-                    orch_result["context_type"] = "postsale"
-                    return orch_result
+                        orch_result["session_info"] = self.get_session_info(session_id)
+                        orch_result["context_type"] = "postsale"
+                        return orch_result
 
                 except Exception as e:
                     import traceback

@@ -42,6 +42,45 @@ class TestBookingCodeDetection:
 
 
 # ---------------------------------------------------------------------------
+# 1b. Interceptor del ACUSE de reserva de mesa (solo el acuse real del frontend,
+#     no un MESA-XXXX suelto que el usuario tipea a mano pidiendo otra cosa).
+# ---------------------------------------------------------------------------
+class TestTableConfirmationInterceptor:
+    def _svc(self):
+        from app.services.agent_service import agent_service
+        return agent_service
+
+    @pytest.mark.parametrize("message", [
+        # El acuse real que emite el frontend (i18n/chat.js:tableConfirmedMsg), 4 idiomas.
+        "Confirmé mi reserva de mesa MESA-HHHR.",
+        "I confirmed my table booking MESA-HHHR.",
+        "Confirmei minha reserva de mesa MESA-HHHR.",
+        "J’ai confirmé ma réservation de table MESA-HHHR.",
+    ])
+    def test_acuse_real_dispara(self, message):
+        db = MagicMock()
+        db.query.return_value.filter.return_value.first.return_value = None  # sin detalle
+        resp = self._svc()._handle_table_confirmation(db, message, "web-test", [])
+        assert resp is not None
+        assert resp.get("intent") == "table_reservation_confirmed"
+
+    @pytest.mark.parametrize("message", [
+        # Código de mesa tipeado a mano PIDIENDO otra cosa: NO debe secuestrar la conversación.
+        "MESA-HHHR, recomendame algo de la carta",
+        "mi código es MESA-HHHR, qué me recomendás?",
+        "MESA-HHHR",
+        # Sin código: tampoco.
+        "tenés mesa para hoy a la noche?",
+    ])
+    def test_codigo_suelto_no_dispara(self, message):
+        db = MagicMock()
+        resp = self._svc()._handle_table_confirmation(db, message, "web-test", [])
+        assert resp is None
+
+
+
+
+# ---------------------------------------------------------------------------
 # 2. Acción determinística sobre el ticket del HOTEL (escalar vs auto-resolver)
 # ---------------------------------------------------------------------------
 class TestApplyTicketAction:

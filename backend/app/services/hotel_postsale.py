@@ -132,13 +132,13 @@ class HotelPostSaleService:
                     "valid": False,
                     "message": "¡Un placer ayudarte! Que tengas una hermosa estadía en Bariloche 😊",
                 }
-            return {
-                "valid": False,
-                "message": (
-                    "Para ayudarte con tu reserva necesito tu código (formato HTL-XXXX). "
-                    "Lo encontrás en el email de confirmación de tu reserva."
-                ),
-            }
+            # Sin código y sin reserva hallable (ni por sesión ni por teléfono): post-venta
+            # no puede identificar al huésped. En vez de EXIGIR el HTL-XXXX (callejón sin
+            # salida para un local o anónimo que quizás solo preguntó por la carta), la
+            # consulta CAE A PRE-VENTA, que atiende sin reserva y —si el usuario realmente
+            # quiere algo de SU reserva— le pide el código por la vía natural del agente
+            # (consultar_reserva). La decisión semántica queda en el LLM, no en un regex.
+            return {"valid": False, "fallback_preventa": True}
 
         booking = self._find_booking(code)
         if not booking:
@@ -411,13 +411,19 @@ class HotelPostSaleService:
         """Valida acceso y prepara el turno.
 
         Returns:
-          - {"handled": True, "result": {...}}            → respuesta terminal (validación
-            fallida o solo-código → bienvenida); no sigue al orquestador.
+          - {"handled": True, "result": {...}}            → respuesta terminal (código
+            inválido o solo-código → bienvenida); no sigue al orquestador.
+          - {"handled": False, "fallback_preventa": True} → sin reserva hallable: el
+            llamador debe caer a PRE-VENTA (no se exige el HTL).
           - {"handled": False, "booking": Booking, "ticket": HotelTicket,
              "query_to_process": str}                     → listo para el loop de tools.
         """
         validation = self.validate_access(message, session_id, history)
         if not validation["valid"]:
+            if validation.get("fallback_preventa"):
+                # Sin reserva hallable: no bloquear pidiendo el HTL — el llamador cae a
+                # pre-venta, que atiende sin reserva (y pide el código solo si hace falta).
+                return {"handled": False, "fallback_preventa": True}
             return {"handled": True, "result": {
                 "response": validation["message"],
                 "requires_validation": True,
