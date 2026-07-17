@@ -36,6 +36,15 @@ class AgentService:
     # ("Confirmé mi reserva de mesa MESA-XXXX") tras crear la mesa en el selector: lo
     # interceptamos para felicitar, NO para mandarlo al post-venta del hotel (que pide HTL-).
     TABLE_CODE_PATTERN = r'\bMESA-[A-Z0-9]{4}\b'
+    # ACUSE COMPLETO del frontend (i18n/chat.js:tableConfirmedMsg, 4 idiomas). Solo este acuse
+    # exacto dispara la felicitación; un MESA-XXXX suelto que el usuario tipea a mano (ej.
+    # "MESA-HHHR, recomendame algo") NO debe ser secuestrado — sigue al ruteo como restaurante.
+    # Se exige una frase de confirmación de mesa ("reserva/reservei/booking/réservation" + "mesa/
+    # table") ADYACENTE al código, cubriendo es/en/pt/fr.
+    TABLE_ACK_PATTERN = (
+        r'(confirm[ée]|confirmei|confirmed|confirm[ée])[^.]{0,40}'
+        r'(mesa|table)[^.]{0,20}MESA-[A-Z0-9]{4}'
+    )
 
     # Frases sociales centralizadas. Usadas en: _detect_postsale_context (guard de
     # saludos), _classify_first_message (fallback), y detección de despedidas en chat().
@@ -170,10 +179,14 @@ class AgentService:
         cálida con los datos reales (fecha/turno/personas) y NO seguimos al ruteo (evita que el
         post-venta del hotel pida un código HTL-). Devuelve None si el mensaje no es ese acuse.
         """
-        m = re.search(self.TABLE_CODE_PATTERN, (message or "").upper())
-        if not m:
+        # Exigir el ACUSE COMPLETO del frontend, no un MESA-XXXX suelto: así "MESA-HHHR,
+        # recomendame algo" (código tipeado a mano) NO se secuestra y sigue al ruteo.
+        if not re.search(self.TABLE_ACK_PATTERN, message or "", re.IGNORECASE):
             return None
-        code = m.group(0)
+        code_m = re.search(self.TABLE_CODE_PATTERN, (message or "").upper())
+        if not code_m:
+            return None
+        code = code_m.group(0)
 
         # Buscar la reserva real para felicitar con sus datos (si existe).
         detalle = ""
