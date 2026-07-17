@@ -85,6 +85,16 @@ class AgentService:
         from app.utils.social_text import is_pure_social
         return is_pure_social(message)
 
+    def _looks_like_restaurant(self, message: str) -> bool:
+        """True si el mensaje es una consulta de RESTAURANTE (carta/mesa/comida/bebida).
+
+        El restaurante va SIEMPRE a pre-venta (donde funciona sin exigir el código de
+        habitación HTL-XXXX): reservar mesa, ver la carta, pedir comida o pedir una
+        recomendación no requiere estar alojado. Señal determinística en app.utils.social_text.
+        """
+        from app.utils.social_text import looks_like_restaurant
+        return looks_like_restaurant(message)
+
     def _session_has_recent_booking(self, db, session_id: str) -> bool:
         """True si en ESTA sesión web se creó una reserva dentro de la ventana de sesión (24h).
 
@@ -635,7 +645,14 @@ class AgentService:
             # la sesión tenga contexto de reserva: es un cierre, no una consulta. Va a casual.
             # (Si el mensaje trae un código de reserva, sí es señal explícita → post-venta.)
             is_pure_social = self._is_pure_social(message) and not has_booking_code
-            if (has_booking_code or has_active_postsale or has_session_booking) and not is_pure_social:
+            # RESTAURANTE (carta/mesa/comida): va SIEMPRE a pre-venta (funciona sin código de
+            # habitación). Una reserva de sesión (has_session_booking) NO debe forzar post-venta
+            # cuando el mensaje es de restaurante: el que reservó una mesa —o incluso el alojado—
+            # que pide la carta no tiene por qué entrar al gate que pide HTL. Un HTL-XXXX explícito
+            # en el mensaje sí es señal dura y manda a post-venta (quiere algo de su estadía).
+            is_restaurant = self._looks_like_restaurant(message) and not has_booking_code
+            if (has_booking_code or has_active_postsale or has_session_booking) \
+                    and not is_pure_social and not is_restaurant:
                 is_postsale = True
             else:
                 from app.services.triage_sdk_orchestrator import (

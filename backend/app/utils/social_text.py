@@ -50,3 +50,36 @@ def is_pure_social(message: str) -> bool:
         # Solo rellenos (ej. "nada mas", "ok dale"): cierre social.
         return True
     return all(w in _SOCIAL_WORDS for w in core)
+
+
+# Señales léxicas de que el mensaje es del RESTAURANTE (carta, mesa, comida, bebida). Se
+# comparan como substring sobre el texto normalizado (sin tildes), así "menú"/"menu" y frases
+# multi-palabra ("reservar mesa", "room service") matchean igual. ESPECÍFICAS de comida/carta/
+# mesa a propósito: NO incluye "reserva" sola (matchearía "cambiar mi reserva" de habitación).
+_RESTAURANT_PHRASES = (
+    "carta", "menu", "restaurant", "restaurante", "comer", "comida", "cenar", "cena",
+    "almorzar", "almuerzo", "desayun", "plato", "platos", "reservar mesa", "reservar una mesa",
+    "una mesa", "la mesa", "room service", "pedir comida", "pedido de comida", "bebida",
+    "tomar algo", "trago", "postre", "vino", "cerveza", "recomend",
+)
+
+# Frases que, aunque contengan una palabra de restaurante, son de la ESTADÍA (habitación) y
+# NO deben tratarse como restaurante. Ej.: "mesa de luz" (mobiliario de la habitación).
+_RESTAURANT_ANTIPHRASES = (
+    "mesa de luz", "mesa de noche", "mesita de luz",
+)
+
+
+def looks_like_restaurant(message: str) -> bool:
+    """True si el mensaje parece una consulta de RESTAURANTE (carta/mesa/comida/bebida).
+
+    Señal léxica determinística para rutear el restaurante a pre-venta (donde funciona sin
+    exigir el código de habitación HTL-XXXX), sin depender del LLM del triage. Conservador:
+    solo matchea frases específicas de comida/carta/mesa; ignora anti-frases de la habitación.
+    """
+    t = _normalize(message)
+    if not t:
+        return False
+    if any(anti in t for anti in _RESTAURANT_ANTIPHRASES):
+        return False
+    return any(kw in t for kw in _RESTAURANT_PHRASES)
