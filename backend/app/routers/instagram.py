@@ -15,6 +15,9 @@ Decisiones de diseño:
 - Funciona con la app de Meta en modo desarrollo (testers, sin App Review) — ver INSTAGRAM_SETUP.md.
 """
 import asyncio
+import hashlib
+import hmac
+import json
 
 from fastapi import APIRouter, Request
 from fastapi.responses import PlainTextResponse, Response
@@ -49,6 +52,23 @@ async def verify_webhook(request: Request):
     return Response(status_code=403)
 
 
+def _verify_meta_signature(raw_body: bytes, signature_header: str | None) -> bool:
+    """Valida X-Hub-Signature-256 (HMAC-SHA256 del body crudo con el App Secret de Meta).
+
+    Mismo criterio que la firma de Twilio (routers/whatsapp.py): si INSTAGRAM_APP_SECRET
+    no está configurado (dev/local), fail-open con warning; si está configurado y la firma
+    falta o no coincide → se rechaza (403).
+    """
+    secret = (settings.INSTAGRAM_APP_SECRET or "").strip()
+    if not secret:
+        logger.warning("Instagram: INSTAGRAM_APP_SECRET no configurado; webhook sin validación de firma")
+        return True
+    if not signature_header or not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature_header[len("sha256="):])
+
+
 @router.post("/webhook")
 async def receive_webhook(request: Request):
     """Recibe DMs entrantes de Instagram (formato Meta).
@@ -57,8 +77,13 @@ async def receive_webhook(request: Request):
     "message": {"text": ...}}]}]}. Respondemos 200 enseguida y procesamos en background
     (mismo patrón que el webhook de Twilio). Los echoes (nuestros propios envíos) se ignoran.
     """
+    raw = await request.body()
+    if not _verify_meta_signature(raw, request.headers.get("X-Hub-Signature-256")):
+        logger.warning("Instagram: firma X-Hub-Signature-256 inválida")
+        return Response(status_code=403)
+
     try:
-        payload = await request.json()
+        payload = json.loads(raw or b"{}")
     except Exception:  # noqa: BLE001 — payload no-JSON: 200 igual (Meta reintenta si no)
         return Response(status_code=200)
 

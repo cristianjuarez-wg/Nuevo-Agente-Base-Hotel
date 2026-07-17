@@ -16,7 +16,7 @@ import asyncio
 
 from app.models.database import SessionLocal
 from app.models.knowledge import KnowledgeEntry
-from app.services import knowledge_service
+from app.domains.hotel.services import knowledge_service
 
 # (category, title, content, data)
 ENTRIES = [

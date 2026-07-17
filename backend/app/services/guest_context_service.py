@@ -22,6 +22,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.observability.logging_config import get_logger
+from app.utils.channel_utils import is_whatsapp_session, phone_from_session
 
 logger = get_logger(__name__)
 
@@ -33,9 +34,9 @@ def resolve_contact_id(session_id: str, lead, db: Session) -> Optional[int]:
     """
     try:
         contact_id = getattr(lead, "contact_id", None) if lead is not None else None
-        if not contact_id and session_id and session_id.startswith("wa_"):
+        if not contact_id and session_id and is_whatsapp_session(session_id):
             from app.models.contact import Contact
-            phone = "+" + session_id[3:]
+            phone = phone_from_session(session_id)
             c = db.query(Contact).filter(Contact.phone_number == phone).first()
             contact_id = c.id if c else None
         if not contact_id and session_id:

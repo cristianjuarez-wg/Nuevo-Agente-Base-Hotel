@@ -19,7 +19,7 @@ import asyncio
 
 from app.models.database import SessionLocal
 from app.models.knowledge import Place
-from app.services import knowledge_service
+from app.domains.hotel.services import knowledge_service
 
 # Maps por búsqueda de nombre (sin place_id inventado).
 def _maps(query: str) -> str:

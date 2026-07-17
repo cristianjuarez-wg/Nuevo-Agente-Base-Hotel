@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.services import reservation_service
+from app.core.security.admin_auth import require_admin_key
 from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -97,13 +98,13 @@ async def get_booking(code: str, db: Session = Depends(get_db)):
     return {"booking": booking}
 
 
-@router.get("/bookings")
+@router.get("/bookings", dependencies=[Depends(require_admin_key)])
 async def list_bookings(db: Session = Depends(get_db)):
     """Lista todas las reservas (para el backoffice)."""
     return {"bookings": reservation_service.list_bookings(db)}
 
 
-@router.delete("/bookings/{code}")
+@router.delete("/bookings/{code}", dependencies=[Depends(require_admin_key)])
 async def delete_booking(code: str, db: Session = Depends(get_db)):
     """Elimina una reserva por su código (backoffice)."""
     ok = reservation_service.delete_booking(db, code)

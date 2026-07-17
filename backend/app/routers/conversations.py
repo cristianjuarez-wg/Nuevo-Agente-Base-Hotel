@@ -18,11 +18,11 @@ from app.models.conversation_message import ConversationMessage
 from app.models.contact import Contact
 from app.models.lead import Lead
 from app.models.hotel import Booking
-from app.utils.timezone_utils import iso_business
+from app.utils.timezone_utils import iso_business, utcnow_naive
+from app.utils.channel_utils import channel_from_session, phone_from_session
+from app.core.security.admin_auth import require_admin_key
 from app.core.observability.logging_config import get_logger
-# Ventana "en vivo" centralizada en el servicio de control (fuente única).
 from app.services.conversation_control_service import LIVE_WINDOW_MINUTES
-from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -30,11 +30,11 @@ router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
 
 def _phone_from_wa_session(session_id: str) -> Optional[str]:
-    """Deriva el teléfono (+549...) de un session_id de WhatsApp ('wa_<phone>')."""
-    return ("+" + session_id[3:]) if (session_id or "").startswith("wa_") else None
+    """Deriva el teléfono (+...) de un session_id de WhatsApp."""
+    return phone_from_session(session_id)
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require_admin_key)])
 async def list_conversations(
     channel: str = Query("whatsapp"),
     limit: int = Query(100, ge=1, le=300),
@@ -83,7 +83,7 @@ async def list_conversations(
     live_cutoff = utcnow_naive() - timedelta(minutes=LIVE_WINDOW_MINUTES)
 
     def _phone_from_session(sid: str) -> Optional[str]:
-        return ("+" + sid[3:]) if (sid or "").startswith("wa_") else None
+        return phone_from_session(sid)
 
     # Bookings en lote (para guest_status: alojado ahora vs reserva futura). Una sola query.
     from datetime import date as _date
@@ -182,7 +182,7 @@ async def list_conversations(
     return {"conversations": items, "total": total, "limit": limit, "offset": offset}
 
 
-@router.get("/{session_id}/messages")
+@router.get("/{session_id}/messages", dependencies=[Depends(require_admin_key)])
 async def get_conversation_messages(
     session_id: str,
     limit: int = Query(200, ge=1, le=500),
@@ -230,7 +230,7 @@ _WEB_OFFLINE_MSG = ("El visitante cerró el chat web; no se puede tomar el contr
                     "Para retomar contacto, usá WhatsApp.")
 
 
-@router.post("/{session_id}/takeover")
+@router.post("/{session_id}/takeover", dependencies=[Depends(require_admin_key)])
 async def takeover_conversation(session_id: str, payload: TakeoverPayload,
                                 db: Session = Depends(get_db)):
     """Un humano toma el control: Aura deja de responder en esta conversación."""
@@ -244,7 +244,7 @@ async def takeover_conversation(session_id: str, payload: TakeoverPayload,
     return {"taken_over": True, "state": conv_ctrl.get_state(db, session_id)}
 
 
-@router.post("/{session_id}/release")
+@router.post("/{session_id}/release", dependencies=[Depends(require_admin_key)])
 async def release_conversation(session_id: str, db: Session = Depends(get_db)):
     """Libera la conversación: Aura retoma."""
     from app.services import conversation_control_service as conv_ctrl
@@ -252,7 +252,7 @@ async def release_conversation(session_id: str, db: Session = Depends(get_db)):
     return {"released": True}
 
 
-@router.delete("/{session_id}")
+@router.delete("/{session_id}", dependencies=[Depends(require_admin_key)])
 async def delete_conversation(session_id: str, db: Session = Depends(get_db)):
     """Elimina DEFINITIVAMENTE una conversación: el hilo de chat + sus mensajes.
 
@@ -287,7 +287,7 @@ async def delete_conversation(session_id: str, db: Session = Depends(get_db)):
     return {"deleted": True, "session_id": session_id, "deleted_messages": deleted_messages}
 
 
-@router.post("/{session_id}/reply")
+@router.post("/{session_id}/reply", dependencies=[Depends(require_admin_key)])
 async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depends(get_db)):
     """Envía una respuesta HUMANA al huésped y la registra en la conversación.
 
@@ -356,19 +356,56 @@ async def human_reply(session_id: str, payload: ReplyPayload, db: Session = Depe
     return {"sent": True, "delivered_whatsapp": delivered, "ws_pushed": pushed}
 
 
+def _ws_credential_ok(websocket: WebSocket) -> bool:
+    """Valida la credencial del handshake WS para clientes SIN Origin (no-browser).
+
+    El widget del huésped (browser) siempre manda Origin y se valida con origin_allowed;
+    los browsers no permiten leer sessionStorage del backoffice desde el sitio público,
+    así que al huésped NO se le pide credencial (el session_id acota el alcance y el
+    socket es de solo recepción). Un cliente no-browser (script) en cambio puede ocultar
+    el Origin: a ese se le exige `?api_key=` (== ADMIN_KEY) o `?token=` (JWT de admin).
+    Fail-open solo en DEBUG (dev/tests). Misma lógica que admin_auth.require_admin_key.
+    """
+    from app.config import settings
+
+    api_key = (websocket.query_params.get("api_key") or "").strip()
+    expected = (settings.ADMIN_KEY or "").strip()
+    if expected and api_key == expected:
+        return True
+
+    token = (websocket.query_params.get("token") or "").strip()
+    if token:
+        from app.core.security.auth import decode_token
+        try:
+            decode_token(token)  # lanza HTTPException 401 si es inválido/expirado
+            return True
+        except Exception:  # noqa: BLE001 — credencial inválida
+            return False
+
+    # Sin credencial: permitir solo en dev/test (DEBUG), nunca en producción.
+    return bool(settings.DEBUG)
+
+
 @router.websocket("/ws/{session_id}")
 async def conversation_ws(websocket: WebSocket, session_id: str):
     """Canal de SOLO RECEPCIÓN para el widget del chat web: recibe las respuestas humanas en
     vivo (cuando un asesor tomó la conversación). El visitante sigue ENVIANDO por HTTP
     (/api/chat/message); este socket solo empuja mensajes del servidor al cliente.
 
-    Valida el Origin a mano: el CORSMiddleware NO cubre el handshake WebSocket.
+    Valida el Origin a mano: el CORSMiddleware NO cubre el handshake WebSocket. Los clientes
+    sin Origin (no-browser) deben autenticarse con ?api_key= o ?token= (ver _ws_credential_ok).
     """
     from app.core.channels.ws_hub import ws_hub, origin_allowed
 
-    if not origin_allowed(websocket.headers.get("origin")):
+    origin = websocket.headers.get("origin")
+    if not origin_allowed(origin):
         await websocket.close(code=1008)  # policy violation
-        logger.warning("WS rechazado por Origin", origin=websocket.headers.get("origin"))
+        logger.warning("WS rechazado por Origin", origin=origin)
+        return
+
+    if not origin and not _ws_credential_ok(websocket):
+        await websocket.close(code=4401)  # no autorizado
+        logger.warning("WS rechazado: cliente sin Origin ni credencial", session_id=session_id)
         return
 
     await websocket.accept()

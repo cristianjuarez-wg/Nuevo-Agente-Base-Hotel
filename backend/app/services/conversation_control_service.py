@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.models.conversation import Conversation
 from app.core.observability.logging_config import get_logger
 from app.utils.timezone_utils import utcnow_naive
+from app.utils.channel_utils import channel_from_session
 
 logger = get_logger(__name__)
 
@@ -96,12 +97,7 @@ def flag_needs_human(db: Session, session_id: str, motivo: str = "", summary: st
             # persista el mensaje y cree la Conversation. Si no existe todavía, la creamos acá para
             # que el pedido NO se pierda por orden de operaciones — el canal se deriva del session_id
             # (mismo criterio que agent_service._save_message_to_db).
-            if session_id.startswith("wa_") or session_id.startswith("owner_"):
-                channel = "whatsapp"
-            elif session_id.startswith("ig_"):
-                channel = "instagram"
-            else:
-                channel = "web"
+            channel = channel_from_session(session_id)
             conv = Conversation(session_id=session_id, channel=channel)
             db.add(conv)
             db.flush()

@@ -362,47 +362,6 @@ class VectorStoreService:
             logger.error("Error getting collection stats", error=str(e))
             return {"error": str(e)}
     
-    def get_available_countries(self) -> List[str]:
-        """
-        Obtiene lista de países que tienen documentación en el vector store
-        🆕 ARREGLADO: Lee TODOS los países, incluyendo paquetes multi-país
-        
-        Returns:
-            Lista de países únicos con documentos disponibles
-        """
-        try:
-            # Obtener todos los metadatos de la colección
-            results = self.collection.get(include=["metadatas"])
-            
-            # Extraer países únicos de los metadatos
-            countries = set()
-            for metadata in results.get('metadatas', []):
-                # 🆕 Leer campo 'countries' (lista completa)
-                countries_str = metadata.get('countries')
-                if countries_str:
-                    # Separar por comas y agregar cada país
-                    for country in countries_str.split(','):
-                        country = country.strip()
-                        if country:
-                            countries.add(country)
-                else:
-                    # Fallback: leer campo 'country' (singular, legacy)
-                    country = metadata.get('country')
-                    if country:
-                        countries.add(country)
-            
-            country_list = sorted(list(countries))
-            
-            logger.info("Available countries retrieved",
-                       total_countries=len(country_list),
-                       countries=country_list[:10])  # Log primeros 10
-            
-            return country_list
-            
-        except Exception as e:
-            logger.error("Error getting available countries", error=str(e))
-            return []
-    
     def health_check(self) -> tuple[bool, str]:
         """Verifica el estado de salud del vector store"""
         try:

@@ -168,4 +168,4 @@ async def generate_casual_response(client, message: str, history: List[Dict],
                     error=str(e),
                     message=message[:50])
         # Fallback genérico
-        return "¡Hola! 😊 ¿En qué puedo ayudarte con tu estadía en el Hampton Bariloche?", usage
+        return "¡Hola! 😊 ¿En qué puedo ayudarte con tu estadía en el hotel?", usage

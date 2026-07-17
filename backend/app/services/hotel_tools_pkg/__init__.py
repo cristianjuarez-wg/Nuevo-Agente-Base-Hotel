@@ -79,4 +79,5 @@ async def execute_tool(name: str, args: Dict, ctx: Dict) -> Dict:
         return handler(args, ctx)
     except Exception as e:
         logger.error("Error executing hotel tool", tool=name, error=str(e))
-        return {"tool_result": f"Error ejecutando {name}: {e}"}
+        # No devolvemos detalles internos al LLM para evitar fugas de información.
+        return {"tool_result": "Error ejecutando la herramienta. Por favor intentá de nuevo."}

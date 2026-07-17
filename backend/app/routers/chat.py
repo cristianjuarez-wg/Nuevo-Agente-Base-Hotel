@@ -6,8 +6,6 @@ from app.models.schemas import (
     ClearHistoryResponse,
     GreetingResponse,
     AgentStatsResponse,
-    DestinationsResponse,
-    GeographyAnalysis,
     SessionInfo
 )
 from app.models.database import get_db
@@ -49,9 +47,9 @@ def _edge_message(key: str, language: str) -> str:
 # Saludo inicial por idioma. Para "es" se usa el del perfil (profile_manager); para el
 # resto, estos saludos cortos (el saludo es lo único visible del greeting al cambiar idioma).
 _GREETINGS = {
-    "en": "Hi! I'm Aura, your virtual concierge at Hampton by Hilton Bariloche. How can I help you?",
-    "pt": "Olá! Sou a Aura, sua concierge virtual no Hampton by Hilton Bariloche. Como posso ajudar?",
-    "fr": "Bonjour ! Je suis Aura, votre concierge virtuelle au Hampton by Hilton Bariloche. Comment puis-je vous aider ?",
+    "en": "Hi! I'm Aura, your virtual concierge at the hotel. How can I help you?",
+    "pt": "Olá! Sou a Aura, sua concierge virtual no hotel. Como posso ajudar?",
+    "fr": "Bonjour ! Je suis Aura, votre concierge virtuelle à l'hôtel. Comment puis-je vous aider ?",
 }
 
 # Marca de arranque del proceso, para reportar uptime en /stats.
@@ -244,7 +242,7 @@ def _build_menu_card_fallback(db, session_id: str, user_message: str = "") -> di
     return {
         "type": "menu_interactive",
         "title": "Carta del restaurante",
-        "description": "Cocina patagónica de PLAZA - Hampton's Kitchen House.",
+        "description": "Cocina patagónica de nuestro restaurante.",
         "items": menu,
         "session_id": session_id,
         "fallback_url": url,
@@ -619,56 +617,7 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
                 error_type="timeout",
                 processing_time=f"{CHAT_TIMEOUT_SECONDS}s",
             )
-        
-        # 🆕 FIX: Corregir nombres de paquetes truncados o incompletos
-        import re
-        document_sources = result.get("document_sources", [])
-        response_text = result["response"]
-        
-        if document_sources:
-            for source in document_sources:
-                # Obtener nombre completo del documento
-                package_name = source.get("document", "").replace(".pdf", "").replace(".PDF", "")
-                
-                # Solo procesar paquetes multi-país o con guión
-                if " y " in package_name or " - " in package_name:
-                    # Extraer la parte de países (antes del guión)
-                    countries_part = package_name.split(" - ")[0] if " - " in package_name else package_name
-                    
-                    # Extraer todos los países del nombre
-                    countries = []
-                    for part in countries_part.split(" y "):
-                        for country in part.split(","):
-                            country = country.strip()
-                            # Filtrar palabras que no son países
-                            if country and not any(word in country.lower() for word in ["todo", "incluido", "desde"]):
-                                countries.append(country)
-                    
-                    # Buscar patrones truncados con CUALQUIERA de los países
-                    for country in countries:
-                        # Patrón 1: "**País y -**" o "**País y -" (truncado con guión)
-                        pattern1 = rf'\*\*{re.escape(country)}\s+y\s+-\s*\*?\*?'
-                        # Patrón 2: "**Países**" sin el sufijo (ej: "**Japón y Corea Del Sur**" sin "- Todo Incluido")
-                        pattern2 = rf'\*\*{re.escape(countries_part)}\*\*'
-                        
-                        if re.search(pattern1, response_text, re.IGNORECASE):
-                            # Reemplazar truncado con nombre completo
-                            response_text = re.sub(pattern1, f'**{package_name}**', response_text, flags=re.IGNORECASE)
-                            logger.info("Fixed truncated package name",
-                                      from_pattern=f"{country} y -",
-                                      to_name=package_name)
-                            break
-                        elif re.search(pattern2, response_text, re.IGNORECASE) and " - " in package_name:
-                            # Reemplazar incompleto con nombre completo
-                            response_text = re.sub(pattern2, f'**{package_name}**', response_text, flags=re.IGNORECASE)
-                            logger.info("Fixed incomplete package name",
-                                      from_pattern=countries_part,
-                                      to_name=package_name)
-                            break
-            
-            # Actualizar la respuesta con el nombre corregido
-            result["response"] = response_text
-        
+
         # Convertir resultado a formato de respuesta (schema flexible)
         geography_analysis = result.get("geography_analysis", {})
 
@@ -846,53 +795,30 @@ async def send_message(request: Request, chat_request: ChatRequest, db: Session 
             # problema de diagnóstico: lo dejamos visible (antes era un silencio total).
             logger.warning("No se pudo auditar el turno (log_turn)", error=str(audit_error))
         
-        # Trackear conversación para métricas - SIEMPRE, no solo cuando hay destinos
+        # Trackear conversación para métricas (solo documentos consultados, sin residuos de
+        # geografía/paquetes del dominio turismo).
         try:
-            # Extraer destino principal del análisis geográfico
-            destination = None
-            if geography_analysis:
-                countries = geography_analysis.get("countries", [])
-                if countries:
-                    destination = countries[0]  # Primer país mencionado
-            
-            # Extraer documentos de las fuentes
             documents = []
             document_sources = result.get("document_sources", [])
-            
-            if document_sources:
-                for source in document_sources:
-                    doc_name = source.get("document", "")
-                    if doc_name and doc_name not in documents:
-                        documents.append(doc_name)
-            
-            # Extraer paquetes (simplificado - del nombre del documento)
-            packages = []
-            for doc in documents:
-                # Extraer nombre del paquete del nombre del archivo
-                # Ej: "Europa Clásica.pdf" -> "Europa Clásica"
-                package_name = doc.replace(".pdf", "").replace(".PDF", "")
-                if package_name and package_name not in packages:
-                    packages.append(package_name)
-            
-            # ✅ TRACKEAR SIEMPRE - incluso sin destinos o documentos
+            for source in document_sources:
+                doc_name = source.get("document", "")
+                if doc_name and doc_name not in documents:
+                    documents.append(doc_name)
+
             metrics_service.track_conversation(
                 db,
                 session_id=chat_request.session_id,
                 is_user_message=True,
                 response_time=processing_time,
-                destination=destination,
                 documents=documents if documents else None,
-                packages=packages if packages else None
             )
-            
+
             logger.info("Conversation tracked",
                        session_id=chat_request.session_id,
-                       destination=destination,
-                       documents_count=len(documents),
-                       packages_count=len(packages))
+                       documents_count=len(documents))
         except Exception as tracking_error:
             logger.warning("Error tracking conversation metrics", error=str(tracking_error))
-        
+
         return response
     
     except Exception as e:
@@ -1036,31 +962,6 @@ async def get_agent_stats():
         raise HTTPException(
             status_code=500,
             detail=f"Error obteniendo estadísticas: {str(e)}"
-        )
-
-@router.get("/destinations", response_model=DestinationsResponse)
-async def get_available_destinations():
-    """Obtiene destinos disponibles en el sistema"""
-    try:
-        logger.debug("Getting available destinations")
-        
-        destinations = await rag_service.get_available_destinations()
-        
-        if "error" in destinations:
-            raise HTTPException(
-                status_code=500,
-                detail=destinations["error"]
-            )
-        
-        return DestinationsResponse(**destinations)
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error getting destinations", error=str(e))
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error obteniendo destinos: {str(e)}"
         )
 
 @router.get("/health")

@@ -242,19 +242,6 @@ class RAGService:
             "is_final": True,
         }
 
-    async def get_available_destinations(self) -> Dict:
-        """Resumen del contenido del vector store. Stub sin geografía: el endpoint
-        /destinations (residuo de turismo) sigue respondiendo con los stats de la KB."""
-        try:
-            stats = self.vector_store.get_collection_stats()
-            return {
-                "documents_loaded": stats.get("total_documents", 0),
-                "sources": stats.get("sources", []),
-            }
-        except Exception as e:
-            logger.error("Error getting available destinations", error=str(e))
-            return {"error": str(e)}
-
     def get_service_health(self) -> Dict:
         """Obtiene estado de salud del servicio RAG"""
         try:

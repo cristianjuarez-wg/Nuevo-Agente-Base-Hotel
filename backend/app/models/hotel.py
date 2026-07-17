@@ -132,7 +132,8 @@ class Booking(Base):
 
     # Check-in express (Guest Experience Layer): el huésped adelanta su check-in por WhatsApp.
     # JSON con: status (pending|in_progress|completed), estimated_arrival ("18:30"),
-    # document_url ("/media/checkin/<code>.jpg"), started_at, completed_at.
+    # document_url ("/api/checkin/document/<code>", endpoint autenticado) + document_file
+    # (nombre real en disco, impredecible), started_at, completed_at.
     pre_checkin = Column(JSON, nullable=True, default=dict)
 
     # Dato de demostración (generado por el seed). Permite limpiar solo lo demo.

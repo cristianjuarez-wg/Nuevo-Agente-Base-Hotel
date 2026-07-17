@@ -10,20 +10,54 @@ acciones sensibles. El flujo conversacional posterior lo maneja checkin_express_
 (determinístico, fuera del LLM); ver routers/whatsapp.py.
 """
 from datetime import date, timedelta
+import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.models.hotel import Booking
 from app.services import checkin_express_service as checkin
 from app.core.channels.whatsapp_service import whatsapp_service
-from app.routers.whatsapp import to_whatsapp_text
+from app.routers.whatsapp import to_whatsapp_text, _checkin_docs_dir
 from app.core.security.admin_auth import require_admin_key
+from app.config import settings
 from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/checkin", tags=["Check-in Express"])
+
+
+def _require_admin_key_or_query(request: Request, db: Session = Depends(get_db)) -> None:
+    """Misma regla que require_admin_key, pero acepta también ?api_key= / ?token= (JWT).
+
+    Necesario porque el backoffice abre el documento con un <a href> (el browser no puede
+    adjuntar headers Authorization/X-Admin-Key en esa navegación).
+    """
+    try:
+        require_admin_key(
+            x_admin_key=request.headers.get("x-admin-key"),
+            authorization=request.headers.get("authorization"),
+            db=db,
+        )
+        return
+    except HTTPException:
+        pass
+
+    expected = (settings.ADMIN_KEY or "").strip()
+    api_key = (request.query_params.get("api_key") or "").strip()
+    if expected and api_key == expected:
+        return
+    token = (request.query_params.get("token") or "").strip()
+    if token:
+        from app.core.security.auth import decode_token
+        try:
+            decode_token(token)
+            return
+        except HTTPException:
+            pass
+    raise HTTPException(status_code=401, detail="Autenticación requerida.")
 
 
 def _start_one(db: Session, booking: Booking) -> dict:
@@ -94,3 +128,33 @@ def get_checkin_status(code: str, db: Session = Depends(get_db)):
     if not booking:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     return {"code": code, "pre_checkin": booking.pre_checkin or {}}
+
+
+@router.get("/document/{code}")
+def get_checkin_document(code: str, db: Session = Depends(get_db),
+                         _: None = Depends(_require_admin_key_or_query)):
+    """Sirve la foto del documento del check-in express (DNI/pasaporte). AUTENTICADO.
+
+    El archivo vive fuera del mount público /media y su nombre en disco es impredecible
+    (se lee de Booking.pre_checkin["document_file"], NO de la URL). Documentos legacy
+    (guardados antes de este cambio, "/media/checkin/<code>.jpg") se sirven desde su
+    ubicación original para no romper el backoffice sobre datos viejos.
+    """
+    booking = db.query(Booking).filter(Booking.code == code).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+    pre = booking.pre_checkin or {}
+
+    filename = pre.get("document_file")
+    if filename:
+        path = os.path.join(_checkin_docs_dir(), os.path.basename(filename))
+    else:
+        # Legacy: document_url = "/media/checkin/<file>" (quedaron en el mount público).
+        legacy = (pre.get("document_url") or "")
+        if not legacy.startswith("/media/checkin/"):
+            raise HTTPException(status_code=404, detail="La reserva no tiene documento cargado")
+        path = os.path.join(settings.MEDIA_DIR, "checkin", os.path.basename(legacy))
+
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    return FileResponse(path)

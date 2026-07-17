@@ -9,9 +9,11 @@ from app.services.contact_service import ContactService
 from app.core.observability.logging_config import get_logger
 from typing import Dict, List, Optional, Tuple
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from app.core.llm.openai_client import get_async_openai
 from app.config import settings
+from app.utils.channel_utils import channel_from_session, phone_from_session
+from app.utils.timezone_utils import utcnow_naive
 import json
 
 logger = get_logger(__name__)
@@ -261,13 +263,11 @@ class LeadService:
         lead = db.query(Lead).filter(Lead.session_id == session_id).first()
         
         if not lead:
-            # Canal derivado del session_id: WhatsApp usa el prefijo "wa_", Instagram "ig_".
-            is_wa = session_id.startswith("wa_")
-            is_ig = session_id.startswith("ig_")
-            channel = "whatsapp" if is_wa else ("instagram" if is_ig else "web")
+            # Canal derivado del session_id: centralizado en channel_utils.
+            channel = channel_from_session(session_id)
             # En WhatsApp el teléfono ES la sesión: lo guardamos en el lead para que Aura sepa
             # que ya lo conoce (y no se lo pida) y para arrancar el contacto con el dato.
-            wa_phone = ("+" + session_id[3:]) if is_wa else None
+            wa_phone = phone_from_session(session_id)
             lead = Lead(
                 session_id=session_id,
                 lead_type="FRIO",
@@ -803,7 +803,7 @@ Responde SOLO con el JSON."""
             lead = db.query(Lead).filter(Lead.id == lead_id).first()
             if lead:
                 lead.status = status
-                lead.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                lead.updated_at = utcnow_naive()
                 db.commit()
                 logger.info("Lead status updated", lead_id=lead_id, new_status=status)
                 return True
@@ -829,7 +829,7 @@ Responde SOLO con el JSON."""
                 if key in fields and fields[key] is not None:
                     val = str(fields[key]).strip() or None
                     setattr(lead, key, val)
-            lead.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            lead.updated_at = utcnow_naive()
 
             # Propagar al Contact vinculado (si lo hay) para no desincronizar el 360°.
             if lead.contact_id:
@@ -957,7 +957,7 @@ Responde SOLO con el JSON."""
         if metadata.get('updated_at'):
             try:
                 updated = datetime.fromisoformat(metadata['updated_at'].replace('Z', '+00:00'))
-                hours_old = (datetime.now(timezone.utc).replace(tzinfo=None) - updated.replace(tzinfo=None)).total_seconds() / 3600
+                hours_old = (utcnow_naive() - updated.replace(tzinfo=None)).total_seconds() / 3600
                 if hours_old > 24:
                     score -= min(hours_old / 24, 2)  # Máximo -2 puntos
             except Exception as e:

@@ -78,9 +78,14 @@ class Settings(BaseSettings):
     ADMIN_KEY: Optional[str] = None
 
     # ── Auth del backoffice (Fase 2.5) ────────────────────────────────────────
-    # Secreto para firmar los JWT de sesión. En producción SE DEBE setear un valor real
-    # (largo y aleatorio). En dev cae a un default con una advertencia en el log.
+    # Secreto para firmar los JWT de sesión. En producción (DEBUG=False) es OBLIGATORIO
+    # setear un valor real (largo y aleatorio): la app NO arranca con el default inseguro
+    # (ver lifespan en main.py). En dev se permite el default.
     JWT_SECRET: str = "dev-insecure-change-me"
+
+    # Instagram: App Secret de la app de Meta, para validar la firma X-Hub-Signature-256
+    # del webhook (HMAC-SHA256 del body crudo). Vacío = fail-open con warning (dev/local).
+    INSTAGRAM_APP_SECRET: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 720  # 12 h — sesión de trabajo del backoffice
     # Bootstrap del primer admin (solo se usa si la tabla admin_users está vacía).

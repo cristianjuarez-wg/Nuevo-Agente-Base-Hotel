@@ -55,6 +55,10 @@ Solo falta crear las cuentas y cargar 3 variables en Render.
    - `INSTAGRAM_ACCESS_TOKEN` = el token generado
    - `INSTAGRAM_ACCOUNT_ID` = el ID de la cuenta
    - `INSTAGRAM_VERIFY_TOKEN` = el token que inventaste en el Paso 4
+   - `INSTAGRAM_APP_SECRET` = el **App Secret** de la app (se obtiene en Meta for Developers →
+     tu app → **Settings → Basic → App Secret**, botón "Show"). El backend lo usa para validar
+     la firma `X-Hub-Signature-256` de cada webhook (HMAC-SHA256 del body). Sin esta variable
+     el webhook queda fail-open (solo recomendable en local).
 4. Guardá (Render redeploya solo).
 
 ## Paso 6 — Invitar testers (el "join" de Instagram)

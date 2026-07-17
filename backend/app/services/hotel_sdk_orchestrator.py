@@ -40,6 +40,8 @@ from app.services.lead_service import lead_service
 from app.services.lead_analyzer import lead_analyzer
 from app.core.rag.rag_service import rag_service
 from app.services.hotel_tools import execute_tool
+from app.services import business_profile_service
+from app.constants.guardrails import JAILBREAK_MARKERS
 from app.domains.hotel.prompts.tool_agent_prompts import (
     TOOL_AGENT_SYSTEM, DEFAULT_TONO_BLOCK, DEFAULT_POLITICA_BLOCK,
 )
@@ -239,11 +241,25 @@ async def crear_reserva(
 
 
 @function_tool
-async def consultar_reserva(ctx: RunContextWrapper[HotelContext], code: str) -> str:
+async def consultar_reserva(
+    ctx: RunContextWrapper[HotelContext],
+    code: str,
+    apellido: str = "",
+    telefono: str = "",
+) -> str:
     """Consulta el estado y los detalles de una reserva existente a partir de su código
-    (formato HTL-XXXX). Úsala cuando el usuario quiera ver o confirmar su reserva."""
+    (formato HTL-XXXX). Úsala cuando el usuario quiera ver o confirmar su reserva.
+
+    POR PRIVACIDAD, antes de llamar esta tool pedí al huésped UN segundo factor de
+    verificación: su APELLIDO o su TELÉFONO de contacto. Si la reserva no tiene
+    contacto registrado, pasá `apellido` y/o `telefono` igual: el backend decidirá.
+    """
     tool_ctx = ctx.context.as_tool_ctx()
-    result = await execute_tool("consultar_reserva", {"code": code}, tool_ctx)
+    result = await execute_tool(
+        "consultar_reserva",
+        {"code": code, "apellido": apellido, "telefono": telefono},
+        tool_ctx,
+    )
     return result.get("tool_result", "")
 
 
@@ -426,19 +442,13 @@ for _t in _TOOLS:
 # ---------------------------------------------------------------------------
 # GUARDRAIL — input anti-jailbreak (mismo patrón que Freeway)
 # ---------------------------------------------------------------------------
-_JAILBREAK_MARKERS = (
-    "ignore previous", "ignora las instrucciones", "system prompt",
-    "olvida tus instrucciones", "reveal your prompt", "actúa como",
-)
-
-
 @input_guardrail
 async def relevancia_guardrail(
     ctx: RunContextWrapper[HotelContext], agent: Agent, user_input
 ) -> GuardrailFunctionOutput:
     text = user_input if isinstance(user_input, str) else str(user_input)
     text_lower = text.lower()
-    is_jailbreak = any(m in text_lower for m in _JAILBREAK_MARKERS)
+    is_jailbreak = any(m in text_lower for m in JAILBREAK_MARKERS)
 
     if is_jailbreak:
         logger.warning("Hotel pre-venta input guardrail: possible jailbreak attempt",
@@ -746,8 +756,13 @@ class HotelSDKOrchestrator:
             tool_trace = build_tool_trace(out["result"])
         except InputGuardrailTripwireTriggered:
             logger.warning("Hotel pre-venta: input guardrail tripwire", session_id=session_id)
+            try:
+                prof = business_profile_service.get_profile(db)
+                business_name = prof.get("business_name") or "el hotel"
+            except Exception:  # noqa: BLE001
+                business_name = "el hotel"
             response_text = (
-                "Estoy acá para ayudarte con tu estadía en el Hampton by Hilton Bariloche. "
+                f"Estoy acá para ayudarte con tu estadía en {business_name}. "
                 "¿Querés que te muestre las habitaciones o consultemos disponibilidad? 😊"
             )
             tools_used = []

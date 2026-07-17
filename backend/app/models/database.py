@@ -5,6 +5,9 @@ from sqlalchemy.pool import StaticPool
 from datetime import datetime
 from app.config import settings
 from app.utils.timezone_utils import utcnow_naive
+from app.core.observability.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 Base = declarative_base()
 
@@ -69,9 +72,11 @@ def ensure_column(table: str, column: str, ddl_type: str) -> None:
             return
         with engine.begin() as conn:
             conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {ddl_type}'))
-    except Exception:
-        # Una migración fallida no debe impedir el arranque; se loguea en otra capa.
-        pass
+    except Exception as e:
+        # Una migración fallida NO debe quedar en silencio: se loguea y se relanza
+        # para que el operador se entere y no se arranque con esquema inconsistente.
+        logger.warning("ensure_column falló", table=table, column=column, error=str(e))
+        raise
 
 
 def run_light_migrations() -> None:
@@ -146,8 +151,9 @@ def run_light_migrations() -> None:
     # dependencias ya importadas (las FKs a contacts/bookings necesitan esas tablas).
     try:
         Base.metadata.create_all(bind=engine)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("create_all en migraciones falló", error=str(e))
+        raise
     # hotel_tickets.booking_id pasó a nullable (pedidos de visitante sin reserva).
     # Cubrimos ambos motores: SQLite recrea la tabla; Postgres (Render) usa ALTER COLUMN.
     _make_nullable_sqlite("hotel_tickets", "booking_id")
@@ -181,9 +187,9 @@ def _make_nullable_sqlite(table: str, column: str) -> None:
             tbl.create(bind=conn)
             conn.execute(text(f'INSERT INTO {table} ({col_names}) SELECT {col_names} FROM {table}_old'))
             conn.execute(text(f'DROP TABLE {table}_old'))
-    except Exception:
-        # Una migración fallida no debe impedir el arranque.
-        pass
+    except Exception as e:
+        logger.warning("_make_nullable_sqlite falló", table=table, column=column, error=str(e))
+        raise
 
 
 def _make_nullable_postgres(table: str, column: str) -> None:
@@ -203,9 +209,9 @@ def _make_nullable_postgres(table: str, column: str) -> None:
             return  # ya es nullable
         with engine.begin() as conn:
             conn.execute(text(f'ALTER TABLE {table} ALTER COLUMN {column} DROP NOT NULL'))
-    except Exception:
-        # Una migración fallida no debe impedir el arranque.
-        pass
+    except Exception as e:
+        logger.warning("_make_nullable_postgres falló", table=table, column=column, error=str(e))
+        raise
 
 
 def _backfill(table: str, column: str, value: str) -> None:
@@ -222,8 +228,9 @@ def _backfill(table: str, column: str, value: str) -> None:
                 text(f"UPDATE {table} SET {column} = :v WHERE {column} IS NULL"),
                 {"v": value},
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("_backfill falló", table=table, column=column, error=str(e))
+        raise
 
 
 def get_db():

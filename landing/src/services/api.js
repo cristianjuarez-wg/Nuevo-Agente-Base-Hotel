@@ -8,7 +8,14 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8010'
 // una sesión (el visitante recibe por acá las respuestas humanas en vivo).
 export function chatWsUrl(sessionId) {
   const base = API_BASE.replace(/^http/, 'ws').replace(/\/$/, '')
-  return `${base}/api/conversations/ws/${encodeURIComponent(sessionId)}`
+  const url = `${base}/api/conversations/ws/${encodeURIComponent(sessionId)}`
+  // Clientes sin Origin (no-browser) deben autenticarse; si hay credencial de admin en
+  // sessionStorage la adjuntamos. El widget del huésped (browser) se valida por Origin.
+  const token = getAuthToken()
+  if (token) return `${url}?token=${encodeURIComponent(token)}`
+  const key = getAdminKey()
+  if (key) return `${url}?api_key=${encodeURIComponent(key)}`
+  return url
 }
 
 const client = axios.create({

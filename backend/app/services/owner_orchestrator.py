@@ -559,7 +559,7 @@ class OwnerOrchestrator:
             _prof = business_profile_service.get_profile(_db)
         finally:
             _db.close()
-        business_name = _prof.get("business_name") or "Hampton by Hilton Bariloche"
+        business_name = _prof.get("business_name") or "el hotel"
         # Contexto del negocio compuesto desde el perfil (Fase A): ciudad + color local. La
         # estacionalidad/economía específica del cliente sale de su material de entrenamiento.
         city = _prof.get("city") or ""

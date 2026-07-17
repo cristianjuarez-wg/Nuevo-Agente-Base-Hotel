@@ -8,13 +8,14 @@ Endpoints de autenticación del backoffice (Fase 2.5).
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.models.admin_user import AdminUser
 from app.core.security import auth
+from app.core.security.rate_limit import limiter
 from app.core.observability.logging_config import get_logger
 from app.utils.timezone_utils import now_business
 
@@ -34,7 +35,8 @@ class NewUserPayload(BaseModel):
 
 
 @router.post("/login")
-async def login(payload: LoginPayload, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")  # anti fuerza bruta: 5 intentos por minuto por IP
+async def login(request: Request, payload: LoginPayload, db: Session = Depends(get_db)):
     user = auth.authenticate(db, payload.email, payload.password)
     if not user:
         raise HTTPException(status_code=401, detail="Email o contraseña incorrectos.")
@@ -60,6 +62,8 @@ async def list_users(_: AdminUser = Depends(auth.require_role("admin")),
 async def create_user(payload: NewUserPayload,
                       _: AdminUser = Depends(auth.require_role("admin")),
                       db: Session = Depends(get_db)):
+    if len(payload.password) < 8:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres.")
     email = payload.email.strip().lower()
     if db.query(AdminUser).filter(AdminUser.email == email).first():
         raise HTTPException(status_code=409, detail="Ya existe un usuario con ese email.")

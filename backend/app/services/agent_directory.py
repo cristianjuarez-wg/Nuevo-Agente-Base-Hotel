@@ -14,7 +14,7 @@ prefijo del `session_id` (asignado en agent_router.py), evitando agregar una FK
   session_id            → agente
   "owner_..."           → Asesor (management)
   "staff_..."           → Operaciones (staff)
-  "wa_..." / "web-..."  → Aura (guest)
+  "wa_..." / "ig_..." / "web-..."  → Aura (guest)
 """
 from typing import Optional
 
@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.models.agent import Agent
 from app.core.observability.logging_config import get_logger
+from app.utils.channel_utils import session_prefixes_for_role as _channel_prefixes_for_role
 
 logger = get_logger(__name__)
 
@@ -96,12 +97,7 @@ def role_for_session(session_id: Optional[str]) -> str:
 
 def session_prefixes_for_role(role: str) -> list[str]:
     """Prefijos de session_id que pertenecen a un rol (para filtrar consumo/métricas)."""
-    if role == "management":
-        return ["owner_"]
-    if role == "staff":
-        return ["staff_"]
-    # guest: WhatsApp del huésped (wa_) + web (web-).
-    return ["wa_", "web-", "web_"]
+    return _channel_prefixes_for_role(role)
 
 
 def agent_for_session(db: Session, session_id: Optional[str]) -> Optional[Agent]:

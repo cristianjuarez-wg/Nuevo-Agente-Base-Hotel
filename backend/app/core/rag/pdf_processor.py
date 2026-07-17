@@ -3,8 +3,7 @@ from app.core.rag.text_splitter import RecursiveCharacterTextSplitter
 from typing import List, Dict, Optional
 from app.config import settings
 from app.core.observability.logging_config import get_logger
-from app.core.rag.document_classifier import document_classifier
-from app.core.rag.llm_metadata_extractor import llm_extractor  # 🆕 Extractor LLM
+from app.core.rag.llm_metadata_extractor import llm_extractor  # Extractor LLM
 import hashlib
 import os
 from datetime import datetime

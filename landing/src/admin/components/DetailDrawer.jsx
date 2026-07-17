@@ -4,7 +4,7 @@ import {
   DollarSign, Star, Loader2, UtensilsCrossed, Receipt, Pencil, Save, LifeBuoy,
   MessageSquare, MessageCircle, Globe, ChevronLeft, ChevronRight, CheckCircle2, Sparkles,
 } from 'lucide-react'
-import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getContactConversations, MEDIA_BASE } from '../../services/api'
+import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getContactConversations, MEDIA_BASE, getAuthToken, getAdminKey } from '../../services/api'
 import { Badge, OriginBadge, Loading, formatDate, formatUSD, occupancyLabel } from '../ui'
 import { toast } from '../toast'
 import ChatTranscript from './ChatTranscript'
@@ -13,9 +13,17 @@ import ChatTranscript from './ChatTranscript'
 function CheckinExpressInfo({ stay }) {
   const pre = stay?.pre_checkin
   if (!pre || pre.status !== 'completed') return null
-  const docUrl = pre.document_url
+  let docUrl = pre.document_url
     ? (pre.document_url.startsWith('http') ? pre.document_url : `${MEDIA_BASE}${pre.document_url}`)
     : null
+  // El endpoint del documento es autenticado y un <a href> no manda headers: la credencial
+  // va por query param (el backend la valida igual que X-Admin-Key / Bearer).
+  if (docUrl && docUrl.includes('/api/checkin/document/')) {
+    const token = getAuthToken()
+    const key = getAdminKey()
+    if (token) docUrl += `?token=${encodeURIComponent(token)}`
+    else if (key) docUrl += `?api_key=${encodeURIComponent(key)}`
+  }
   return (
     <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
       <p className="flex items-center gap-1.5 font-semibold">✅ Check-in express completado</p>

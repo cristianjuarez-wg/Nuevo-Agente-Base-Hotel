@@ -9,9 +9,9 @@ from app.services.contact_service import ContactService
 from app.services.summary_service import SummaryService
 from app.config import settings
 from app.core.observability.logging_config import get_logger
-from app.utils.timezone_utils import iso_business
+from app.utils.timezone_utils import iso_business, utcnow_naive
 from pydantic import BaseModel
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 
 logger = get_logger(__name__)
 
@@ -602,7 +602,7 @@ async def get_stats_overview(
     
     # Contactos activos (última interacción en últimos 30 días)
     from datetime import timedelta
-    thirty_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
+    thirty_days_ago = utcnow_naive() - timedelta(days=30)
     active_contacts = db.query(Contact).filter(
         Contact.last_interaction_date >= thirty_days_ago
     ).count()

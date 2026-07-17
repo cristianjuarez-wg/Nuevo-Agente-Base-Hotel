@@ -98,14 +98,25 @@ def _send_agent_reply(to_phone: str, result: dict) -> bool:
     return sent
 
 
-def _save_checkin_document(media_url: str, content_type: str | None,
-                           session_id: str, db: Session) -> str | None:
-    """Descarga la imagen del documento (Twilio media) y la guarda en MEDIA_DIR/checkin/.
+def _checkin_docs_dir() -> str:
+    """Directorio de documentos de check-in: FUERA de MEDIA_DIR (que se sirve público en
+    /media). Queda como hermano (en Render: /data/checkin_docs, mismo disco persistente).
+    Se accede solo por el endpoint autenticado GET /api/checkin/document/{code}."""
+    import os
+    return os.path.join(os.path.dirname(os.path.normpath(settings.MEDIA_DIR)), "checkin_docs")
 
-    Devuelve la ruta pública ("/media/checkin/<code>.<ext>") o None si falló. Twilio exige
-    autenticación básica (Account SID + Auth Token) para bajar el media.
+
+def _save_checkin_document(media_url: str, content_type: str | None,
+                           session_id: str, db: Session) -> dict | None:
+    """Descarga la imagen del documento (Twilio media) y la guarda con nombre impredecible.
+
+    Devuelve {"file": <nombre en disco>, "url": <ruta del endpoint autenticado>} o None si
+    falló. El nombre lleva un sufijo aleatorio (no es adivinable con el código de reserva) y
+    el archivo NO queda expuesto en el mount público /media. Twilio exige autenticación
+    básica (Account SID + Auth Token) para bajar el media.
     """
     import os
+    import uuid
     import requests
     from app.models.hotel import Booking
 
@@ -129,12 +140,12 @@ def _save_checkin_document(media_url: str, content_type: str | None,
                          status=resp.status_code, session_id=session_id)
             return None
 
-        checkin_dir = os.path.join(settings.MEDIA_DIR, "checkin")
+        checkin_dir = _checkin_docs_dir()
         os.makedirs(checkin_dir, exist_ok=True)
-        filename = f"{code}.{ext}"
+        filename = f"{code}_{uuid.uuid4().hex[:12]}.{ext}"
         with open(os.path.join(checkin_dir, filename), "wb") as f:
             f.write(resp.content)
-        return f"/media/checkin/{filename}"
+        return {"file": filename, "url": f"/api/checkin/document/{code}"}
     except Exception as e:  # noqa: BLE001
         logger.error("Check-in: error guardando el documento", error=str(e), session_id=session_id)
         return None
@@ -232,8 +243,9 @@ async def _process_and_reply(
             from app.services import checkin_express_service as checkin
             # (a) Llegó una IMAGEN y estábamos esperando el documento → guardarla y cerrar.
             if image_url and checkin.awaiting_document(db, session_id):
-                doc_url = _save_checkin_document(image_url, image_type, session_id, db)
-                reply = checkin.save_document(db, session_id, doc_url) if doc_url else (
+                saved = _save_checkin_document(image_url, image_type, session_id, db)
+                reply = checkin.save_document(db, session_id, saved["url"],
+                                              document_file=saved["file"]) if saved else (
                     "No pude guardar la imagen 🙇. ¿Podés reenviarla? O escribí *OMITIR* "
                     "para mostrar el documento al llegar.")
                 whatsapp_service.send_text(phone, to_whatsapp_text(reply))

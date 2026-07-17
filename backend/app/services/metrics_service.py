@@ -77,9 +77,6 @@ class MetricsService:
             
             conversion_rate = (leads_with_contact / active_leads * 100) if active_leads > 0 else 0
             
-            # Obtener destinos populares
-            popular_destinations = self._get_popular_destinations(db)
-            
             # Crear snapshot
             snapshot = MetricsSnapshot(
                 snapshot_date=utcnow_naive(),
@@ -97,7 +94,7 @@ class MetricsService:
                 leads_with_contact=leads_with_contact,
                 leads_ready_contact=leads_ready,
                 conversion_rate=float(conversion_rate),
-                popular_destinations=popular_destinations
+                popular_destinations=[]
             )
             
             db.add(snapshot)
@@ -370,35 +367,6 @@ class MetricsService:
                 "total_conversations": 0,
             }
     
-    def get_popular_packages(self, db: Session, limit: int = 10) -> List[Dict]:
-        """Obtiene paquetes más vistos"""
-        try:
-            # Obtener todas las conversaciones con paquetes
-            conversations = db.query(Conversation).filter(
-                Conversation.packages_viewed.isnot(None)
-            ).all()
-            
-            # Contar paquetes
-            all_packages = []
-            for conv in conversations:
-                if conv.packages_viewed:
-                    all_packages.extend(conv.packages_viewed)
-            
-            # Contar frecuencias
-            package_counts = Counter(all_packages)
-            
-            # Top N
-            top_packages = [
-                {"name": package, "views": count}
-                for package, count in package_counts.most_common(limit)
-            ]
-            
-            return top_packages
-            
-        except Exception as e:
-            logger.error("Error getting popular packages", error=str(e))
-            return []
-    
     def get_popular_documents(self, db: Session, limit: int = 10) -> List[Dict]:
         """Obtiene documentos más utilizados"""
         try:
@@ -431,13 +399,11 @@ class MetricsService:
     def get_content_metrics(self, db: Session) -> Dict:
         """Obtiene todas las métricas de contenido juntas"""
         try:
-            destinations = self._get_popular_destinations(db)
-            packages = self.get_popular_packages(db, limit=10)
             documents = self.get_popular_documents(db, limit=10)
             
             return {
-                "destinations": destinations.get("top_destinations", [])[:5],
-                "packages": packages[:5],
+                "destinations": [],
+                "packages": [],
                 "documents": documents[:5]
             }
         except Exception as e:
@@ -449,12 +415,10 @@ class MetricsService:
             }
     
     def track_conversation(self, db: Session, session_id: str, is_user_message: bool = True, 
-                          response_time: float = 0.0, destination: str = None,
-                          documents: List[str] = None, packages: List[str] = None) -> None:
+                          response_time: float = 0.0, documents: List[str] = None) -> None:
         """Trackea una conversación y actualiza métricas"""
         logger.info("track_conversation called", 
                    session_id=session_id,
-                   destination=destination,
                    documents_count=len(documents) if documents else 0)
         
         try:
@@ -489,16 +453,9 @@ class MetricsService:
                         conversation.avg_response_time + response_time
                     ) / 2
             
-            if destination:
-                conversation.add_destination(destination)
-            
             if documents:
                 for doc in documents:
                     conversation.add_document(doc)
-            
-            if packages:
-                for package in packages:
-                    conversation.add_package(package)
             
             conversation.calculate_duration()
             
@@ -570,35 +527,6 @@ class MetricsService:
         trend = ((current - previous) / previous) * 100
         return round(trend, 1)
     
-    def _get_popular_destinations(self, db: Session) -> Dict:
-        """Obtiene destinos más mencionados"""
-        try:
-            # Obtener todas las conversaciones con destinos
-            conversations = db.query(Conversation).filter(
-                Conversation.destinations_mentioned.isnot(None)
-            ).all()
-            
-            # Contar destinos
-            all_destinations = []
-            for conv in conversations:
-                if conv.destinations_mentioned:
-                    all_destinations.extend(conv.destinations_mentioned)
-            
-            # Contar frecuencias
-            destination_counts = Counter(all_destinations)
-            
-            # Top 10
-            top_destinations = [
-                {"name": dest, "count": count}
-                for dest, count in destination_counts.most_common(10)
-            ]
-            
-            return {"top_destinations": top_destinations}
-
-        except Exception as e:
-            logger.error("Error getting popular destinations", error=str(e))
-            return {"top_destinations": []}
-
     def get_postsale_metrics(self, db: Session, start=None, end=None) -> Dict:
         """Métricas de calidad del agente POST-VENTA (soporte al huésped en viaje), en período.
 

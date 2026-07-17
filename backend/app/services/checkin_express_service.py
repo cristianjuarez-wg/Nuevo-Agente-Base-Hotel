@@ -37,7 +37,8 @@ STEP_DONE = "done"
 # Marca en el estado del conversation_state_manager para identificar el flujo.
 _FLOW = "checkin_express"
 
-_HOTEL_PHONE = "+54 294-474-6200"
+# _HOTEL_PHONE quedó reemplazado por el contacto del BusinessProfile; legacy comentado.
+# _HOTEL_PHONE = "+54 294-474-6200"
 
 
 def _now() -> str:
@@ -100,7 +101,7 @@ def start(db: Session, booking: Booking) -> str:
     co = booking.check_out.strftime("%d/%m") if booking.check_out else "—"
     hab = booking.room.room_type if booking.room else "tu habitación"
     return (
-        f"¡Hola {nombre}! 😊 Soy Aura, del Hampton by Hilton Bariloche. Te escribo para que "
+        f"¡Hola {nombre}! 😊 Soy Aura, del hotel. Te escribo para que "
         f"adelantes tu *check-in* y al llegar solo retires tu llave, sin esperas.\n\n"
         f"Tu reserva *{booking.code}*:\n"
         f"🛏️ {hab}\n📅 Del {ci} al {co}\n\n"
@@ -183,16 +184,22 @@ def handle_text_step(db: Session, session_id: str, text: str) -> str:
             "Si necesitás algo más, escribime.")
 
 
-def save_document(db: Session, session_id: str, document_url: str) -> Optional[str]:
+def save_document(db: Session, session_id: str, document_url: str,
+                  document_file: Optional[str] = None) -> Optional[str]:
     """Registra el documento recibido (lo guarda el webhook) y cierra el flujo.
 
-    `document_url` es la ruta pública ya guardada (ej. "/media/checkin/HTL-XXXX.jpg").
+    `document_url` es la ruta del endpoint autenticado ("/api/checkin/document/<code>") y
+    `document_file` el nombre real en disco (impredecible, con sufijo aleatorio) — el
+    endpoint lo usa para servir el archivo sin exponer un path adivinable.
     Devuelve el mensaje de cierre, o None si no había flujo activo para esta sesión.
     """
     b = _get_booking_by_session(db, session_id)
     if not b or (b.pre_checkin or {}).get("step") != STEP_DOCUMENT:
         return None
-    _save(db, b, document_url=document_url)
+    fields = {"document_url": document_url}
+    if document_file:
+        fields["document_file"] = document_file
+    _save(db, b, **fields)
     return _finish(db, b, session_id, with_document=True)
 
 

@@ -45,6 +45,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db
 from app.models.restaurant import MenuItem
 from app.services import restaurant_service, exchange_rate_service
+from app.core.security.admin_auth import require_admin_key
 from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -120,7 +121,7 @@ class VoucherPayload(BaseModel):
 
 
 # ── Carta ────────────────────────────────────────────────────────────────────
-@router.get("/menu")
+@router.get("/menu", dependencies=[Depends(require_admin_key)])
 def list_menu_admin(db: Session = Depends(get_db)):
     items = restaurant_service.list_menu(db, include_inactive=True)
     return {"menu": items, "exchange_rate": exchange_rate_service.get_current_rate(db)}
@@ -131,7 +132,7 @@ def list_menu_public(db: Session = Depends(get_db)):
     return {"menu": restaurant_service.list_menu(db, include_inactive=False)}
 
 
-@router.post("/menu/seed")
+@router.post("/menu/seed", dependencies=[Depends(require_admin_key)])
 def seed_menu(force: bool = False, db: Session = Depends(get_db)):
     """Siembra la carta real (restaurant_menu_seed.MENU) — solo la carta, nada más.
 
@@ -165,7 +166,7 @@ def seed_menu(force: bool = False, db: Session = Depends(get_db)):
     return {"ok": True, "seeded": len(rows), "force": force}
 
 
-@router.post("/menu")
+@router.post("/menu", dependencies=[Depends(require_admin_key)])
 async def create_menu_item(payload: MenuItemPayload, db: Session = Depends(get_db)):
     item = MenuItem(
         name=payload.name.strip(),
@@ -188,7 +189,7 @@ async def create_menu_item(payload: MenuItemPayload, db: Session = Depends(get_d
     return item.to_dict(rate=rate)
 
 
-@router.put("/menu/{item_id}")
+@router.put("/menu/{item_id}", dependencies=[Depends(require_admin_key)])
 async def update_menu_item(item_id: int, payload: MenuItemPayload, db: Session = Depends(get_db)):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
@@ -211,7 +212,7 @@ async def update_menu_item(item_id: int, payload: MenuItemPayload, db: Session =
     return item.to_dict(rate=rate)
 
 
-@router.patch("/menu/{item_id}/status")
+@router.patch("/menu/{item_id}/status", dependencies=[Depends(require_admin_key)])
 async def update_menu_status(item_id: int, payload: StatusUpdate, db: Session = Depends(get_db)):
     if payload.status not in ("active", "inactive"):
         raise HTTPException(400, "Estado inválido.")
@@ -225,7 +226,7 @@ async def update_menu_status(item_id: int, payload: StatusUpdate, db: Session = 
     return item.to_dict()
 
 
-@router.delete("/menu/{item_id}")
+@router.delete("/menu/{item_id}", dependencies=[Depends(require_admin_key)])
 async def delete_menu_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
@@ -237,7 +238,7 @@ async def delete_menu_item(item_id: int, db: Session = Depends(get_db)):
 
 
 # ── Pedidos ──────────────────────────────────────────────────────────────────
-@router.get("/orders")
+@router.get("/orders", dependencies=[Depends(require_admin_key)])
 def list_orders(db: Session = Depends(get_db)):
     return {"orders": restaurant_service.list_orders(db)}
 
@@ -276,7 +277,7 @@ def create_order(payload: OrderPayload, db: Session = Depends(get_db)):
     return result
 
 
-@router.patch("/orders/{code}/status")
+@router.patch("/orders/{code}/status", dependencies=[Depends(require_admin_key)])
 def patch_order_status(code: str, payload: OrderStatusUpdate, db: Session = Depends(get_db)):
     o = restaurant_service.set_order_status(db, code, payload.status)
     if not o:
@@ -285,7 +286,7 @@ def patch_order_status(code: str, payload: OrderStatusUpdate, db: Session = Depe
 
 
 # ── Folio ────────────────────────────────────────────────────────────────────
-@router.get("/folio/{booking_code}")
+@router.get("/folio/{booking_code}", dependencies=[Depends(require_admin_key)])
 def get_folio(booking_code: str, db: Session = Depends(get_db)):
     folio = restaurant_service.get_folio(db, booking_code)
     if not folio:
@@ -293,7 +294,7 @@ def get_folio(booking_code: str, db: Session = Depends(get_db)):
     return folio
 
 
-@router.post("/folio/{booking_code}/settle")
+@router.post("/folio/{booking_code}/settle", dependencies=[Depends(require_admin_key)])
 def settle_folio(booking_code: str, db: Session = Depends(get_db)):
     folio = restaurant_service.settle_folio(db, booking_code)
     if not folio:
@@ -308,7 +309,7 @@ def restaurant_slots():
     return {"slots": restaurant_service.RESTAURANT_SLOTS}
 
 
-@router.get("/table-reservations")
+@router.get("/table-reservations", dependencies=[Depends(require_admin_key)])
 def list_table_reservations(scope: Optional[str] = None, db: Session = Depends(get_db)):
     """Agenda de reservas de mesa (orden por fecha ASC). scope: today | week | upcoming."""
     return {"reservations": restaurant_service.list_table_reservations(db, scope=scope)}
@@ -334,7 +335,7 @@ def create_table_reservation(payload: TableReservationPayload, db: Session = Dep
     return result
 
 
-@router.patch("/table-reservations/{code}/status")
+@router.patch("/table-reservations/{code}/status", dependencies=[Depends(require_admin_key)])
 def patch_table_reservation_status(code: str, payload: TableReservationStatusUpdate, db: Session = Depends(get_db)):
     r = restaurant_service.set_table_reservation_status(db, code, payload.status)
     if not r:
@@ -343,7 +344,7 @@ def patch_table_reservation_status(code: str, payload: TableReservationStatusUpd
 
 
 # ── Vouchers (Fase 3) ─────────────────────────────────────────────────────────
-@router.get("/vouchers")
+@router.get("/vouchers", dependencies=[Depends(require_admin_key)])
 def list_vouchers(status: Optional[str] = None, db: Session = Depends(get_db)):
     return {"vouchers": restaurant_service.list_vouchers(db, status=status)}
 
@@ -373,7 +374,7 @@ def create_voucher(payload: VoucherPayload, db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/vouchers/{code}/redeem")
+@router.post("/vouchers/{code}/redeem", dependencies=[Depends(require_admin_key)])
 def redeem_voucher(code: str, db: Session = Depends(get_db)):
     result = restaurant_service.redeem_voucher(db, code)
     if "error" in result:
@@ -382,6 +383,6 @@ def redeem_voucher(code: str, db: Session = Depends(get_db)):
 
 
 # ── Stats ────────────────────────────────────────────────────────────────────
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(require_admin_key)])
 def restaurant_stats(db: Session = Depends(get_db)):
     return restaurant_service.stats(db)

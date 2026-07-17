@@ -1,0 +1,48 @@
+name: Evaluaciones LLM (on-demand)
+
+# Estas evals usan OpenAI y cuestan dinero. Se ejecutan manualmente o en schedule,
+# NUNCA en cada push. Requieren los secrets OPENAI_API_KEY y DATABASE_URL sembrada.
+on:
+  workflow_dispatch:
+  # Descomentar para ejecutar una vez por día a la 1 AM (UTC-3 ≈ 4 AM UTC).
+  # schedule:
+  #   - cron: '0 4 * * *'
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Seed demo data
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///eval.db' }}
+        run: |
+          python seed_hotel.py
+          python seed_room_units.py
+          python seed_knowledge.py
+          python seed_places.py
+          python seed_promotions.py
+
+      - name: Run evals
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///eval.db' }}
+        run: |
+          python -m evals.run_evals

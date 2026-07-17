@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -8,34 +8,23 @@ class ChatRequest(BaseModel):
     session_id: str = Field(..., min_length=8, max_length=64, description="ID único de sesión")
     language: str = Field("es", description="Idioma de respuesta: es | en | pt | fr")
 
-    @validator('message')
+    @field_validator('message')
     def validate_message(cls, v):
         if not v.strip():
             raise ValueError('El mensaje no puede estar vacío')
         return v.strip()
 
-    @validator('language')
+    @field_validator('language')
     def validate_language(cls, v):
         v = (v or "es").lower()
         return v if v in {"es", "en", "pt", "fr"} else "es"
     
-    @validator('session_id')
+    @field_validator('session_id')
     def validate_session_id(cls, v):
         import re
         if not re.match(r'^[a-zA-Z0-9_\-]{8,64}$', v):
             raise ValueError('Session ID debe contener solo letras, números, guiones y guiones bajos')
         return v
-
-class GeographyAnalysis(BaseModel):
-    continent: Optional[str] = None
-    countries: List[str] = []
-    cities: List[str] = []
-    requires_mapping: bool = False
-    suggested_countries: Optional[List[str]] = None
-    continents_mentioned: Optional[List[str]] = None
-    
-    class Config:
-        extra = "allow"  # Permite campos extra sin validar
 
 class SessionInfo(BaseModel):
     exists: bool
@@ -58,9 +47,8 @@ class ChatResponse(BaseModel):
     # los registraba, pero el payload los descartaba (salía None). Ahora se exponen.
     tools_used: Optional[List[str]] = None
     agent_key: Optional[str] = None
-    
-    class Config:
-        extra = "allow"  # Permite campos extra sin validar
+
+    model_config = ConfigDict(extra="allow")
 
 class DocumentUploadResponse(BaseModel):
     filename: str
@@ -117,13 +105,6 @@ class AgentStatsResponse(BaseModel):
     openai_config: Dict[str, Any]
     uptime: Optional[str] = None
 
-class DestinationsResponse(BaseModel):
-    documents_loaded: int
-    sources: List[str]
-    continents_available: List[str]
-    countries_available: int
-    sample_countries: List[str]
-
 class ErrorResponse(BaseModel):
     error: str
     message: str
@@ -145,7 +126,7 @@ class AgentConfigUpdate(BaseModel):
     no_info_response: Optional[str] = None
     temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
     
-    @validator('temperature')
+    @field_validator('temperature')
     def validate_temperature(cls, v):
         if v is not None and (v < 0.0 or v > 2.0):
             raise ValueError('Temperature debe estar entre 0.0 y 2.0')

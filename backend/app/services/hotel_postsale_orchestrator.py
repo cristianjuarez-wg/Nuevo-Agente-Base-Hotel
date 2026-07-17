@@ -9,7 +9,7 @@ Diferencias con Freeway: sin tools de vuelos ni proveedores (no aplican al hotel
 Firma pública `run(service, booking, ticket, message, session_id, history) -> Dict`.
 """
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from agents import (
@@ -31,7 +31,10 @@ from app.core.profile.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
+from app.services import business_profile_service
+from app.constants.guardrails import JAILBREAK_MARKERS
 from app.domains.hotel.prompts.postsale_tool_prompts import POSTSALE_TOOL_SYSTEM
+from app.utils.timezone_utils import utcnow_naive
 
 logger = get_logger(__name__)
 
@@ -441,18 +444,12 @@ for _t in _TOOLS:
 # ---------------------------------------------------------------------------
 # GUARDRAIL — input anti-jailbreak
 # ---------------------------------------------------------------------------
-_JAILBREAK_MARKERS = (
-    "ignore previous", "ignora las instrucciones", "system prompt",
-    "olvida tus instrucciones", "reveal your prompt", "actúa como",
-)
-
-
 @input_guardrail
 async def relevancia_guardrail(
     ctx: RunContextWrapper[HotelPostventaContext], agent: Agent, user_input
 ) -> GuardrailFunctionOutput:
     text = user_input if isinstance(user_input, str) else str(user_input)
-    is_jailbreak = any(m in text.lower() for m in _JAILBREAK_MARKERS)
+    is_jailbreak = any(m in text.lower() for m in JAILBREAK_MARKERS)
     if is_jailbreak:
         logger.warning("Hotel post-venta input guardrail: possible jailbreak attempt",
                        preview=text.lower()[:80])
@@ -512,9 +509,10 @@ class HotelPostSaleSDKOrchestrator:
             return ""
         if last_at is None:
             return "INICIO de la conversación: podés abrir con un saludo breve y cálido."
-        if last_at.tzinfo is None:
-            last_at = last_at.replace(tzinfo=timezone.utc)
-        gap_min = (datetime.now(timezone.utc) - last_at).total_seconds() / 60.0
+        # Unificar a naive UTC para comparar con utcnow_naive().
+        if last_at.tzinfo is not None:
+            last_at = last_at.replace(tzinfo=None)
+        gap_min = (utcnow_naive() - last_at).total_seconds() / 60.0
         # Umbral configurable desde el flujo de post-venta del Centro (Fase A);
         # sin config → el default histórico (paridad).
         greeting_gap = GREETING_GAP_MINUTES
@@ -616,8 +614,13 @@ class HotelPostSaleSDKOrchestrator:
             tool_trace = build_tool_trace(out["result"])
         except InputGuardrailTripwireTriggered:
             logger.warning("Hotel post-venta: input guardrail tripwire", session_id=session_id)
+            try:
+                prof = business_profile_service.get_profile(run_ctx.service.db)
+                business_name = prof.get("business_name") or "el hotel"
+            except Exception:  # noqa: BLE001
+                business_name = "el hotel"
             response_text = (
-                "Estoy acá para ayudarte con tu reserva en el Hampton Bariloche. "
+                f"Estoy acá para ayudarte con tu reserva en {business_name}. "
                 "¿En qué puedo asistirte con tu estadía? 😊"
             )
             tools_used = []

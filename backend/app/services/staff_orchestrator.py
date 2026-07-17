@@ -188,7 +188,7 @@ class StaffOrchestrator:
         profile = business_profile_service.get_profile(db)
         return STAFF_AGENT_SYSTEM.format(
             nombre_agente=profile.get("agent_display_name") or profile_manager.get_agent_name(),
-            business_name=profile.get("business_name") or "Hampton by Hilton Bariloche",
+            business_name=profile.get("business_name") or "el hotel",
             staff_name=staff.name,
             staff_area=staff.area or "general",
             fecha_actual=fecha,

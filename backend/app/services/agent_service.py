@@ -2,7 +2,8 @@ from app.core.llm.openai_client import get_async_openai
 from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from app.config import settings
-from app.utils.timezone_utils import now_business
+from app.utils.timezone_utils import now_business, utcnow_naive
+from app.utils.channel_utils import channel_from_session, is_web_session
 from app.core.rag.rag_service import rag_service
 from app.services.lead_service import lead_service
 from app.core.profile.agent_profile import profile_manager
@@ -13,7 +14,7 @@ from app.domains.hotel.services import casual_agent
 import asyncio
 import time
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 import re
 
 # 🆕 Imports para módulo post-venta
@@ -348,12 +349,7 @@ class AgentService:
             if not conversation:
                 # Canal derivado del session_id (mismo criterio que Lead.channel).
                 # `owner_` = asesor de gerencia por WhatsApp (context_type "management").
-                if session_id.startswith("wa_") or session_id.startswith("owner_"):
-                    channel = "whatsapp"
-                elif session_id.startswith("ig_"):
-                    channel = "instagram"
-                else:
-                    channel = "web"
+                channel = channel_from_session(session_id)
                 conversation = Conversation(
                     session_id=session_id,
                     context_type=context_type,
@@ -395,7 +391,7 @@ class AgentService:
                 conversation.user_message_count += 1
             else:
                 conversation.agent_message_count += 1
-            conversation.last_message_at = datetime.now(timezone.utc)
+            conversation.last_message_at = utcnow_naive()
             
             db.commit()
             
@@ -506,8 +502,7 @@ class AgentService:
             if not isinstance(canales, list) or not canales:
                 return None
             sid = session_id or ""
-            channel = ("whatsapp" if sid.startswith("wa_")
-                       else "instagram" if sid.startswith("ig_") else "web")
+            channel = channel_from_session(sid)
             if channel in canales:
                 return None
             # El bloqueo deja al huésped sin atención (web con aviso; WhatsApp/IG en silencio,
@@ -919,7 +914,7 @@ class AgentService:
                 
                 # Conversaciones activas (últimas 24 horas o sin finalizar)
                 from datetime import datetime, timedelta
-                yesterday = datetime.now(timezone.utc) - timedelta(days=1)
+                yesterday = utcnow_naive() - timedelta(days=1)
                 active_sessions = db.query(func.count(Conversation.id)).filter(
                     Conversation.last_message_at >= yesterday
                 ).scalar() or 0

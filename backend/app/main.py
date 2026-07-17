@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
@@ -9,6 +9,7 @@ from pathlib import Path
 from app.routers import chat, documents, admin, leads, analytics, reservations, hotel_tickets, usage, knowledge, whatsapp, instagram, promotions, chat_themes, exchange_rate, rooms_admin, contacts, staff, management_knowledge, demo, restaurant, kanban, conversations, checkin, agents, business_profile, auth
 from app.config import settings
 from app.core.security.rate_limit import limiter
+from app.core.security.admin_auth import require_admin_key
 from slowapi.errors import RateLimitExceeded
 from app.models.schemas import HealthResponse, HealthStatus, ServiceHealth
 from app.core.rag.vector_store import get_vector_store
@@ -32,6 +33,13 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Hampton Bariloche Concierge API starting up",
                environment="production" if not settings.DEBUG else "development",
                log_level=settings.LOG_LEVEL)
+
+    # Fase 0 (seguridad): en producción el JWT_SECRET no puede ser el default inseguro —
+    # cualquiera podría firmar tokens de admin válidos. Fail-fast: no arrancar.
+    if not settings.DEBUG and settings.JWT_SECRET == "dev-insecure-change-me":
+        logger.critical("JWT_SECRET inseguro en producción: seteá un valor real "
+                        "(DEBUG=False + JWT_SECRET default). La app no arranca.")
+        raise RuntimeError("JWT_SECRET inseguro en producción (ver logs).")
     
     try:
         # Registrar los modelos de dominio cuyas relationships se declaran por string
@@ -108,8 +116,8 @@ app = FastAPI(
     title="Hampton Bariloche Concierge API",
     description="API del concierge virtual del Hampton by Hilton Bariloche (RAG + agente)",
     version="1.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
     lifespan=lifespan
 )
 
@@ -237,23 +245,28 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Incluir routers
+# Fase 0 (seguridad): los routers 100% backoffice se montan con `require_admin_key`
+# (JWT o X-Admin-Key; fail-closed en producción, bypass solo en DEBUG). Los routers
+# mixtos (reservations, restaurant, chat_themes, conversations) aplican la dependencia
+# endpoint por endpoint, porque tienen endpoints públicos del sitio/widget del huésped.
+_admin_dep = [Depends(require_admin_key)]
 app.include_router(chat.router)
-app.include_router(documents.router)
-app.include_router(admin.router)
-app.include_router(leads.router)
-app.include_router(kanban.router)
-app.include_router(analytics.router)
+app.include_router(documents.router, dependencies=_admin_dep)
+app.include_router(admin.router, dependencies=_admin_dep)
+app.include_router(leads.router, dependencies=_admin_dep)
+app.include_router(kanban.router, dependencies=_admin_dep)
+app.include_router(analytics.router, dependencies=_admin_dep)
 app.include_router(reservations.router)
-app.include_router(hotel_tickets.router)
+app.include_router(hotel_tickets.router, dependencies=_admin_dep)
 app.include_router(usage.router)
-app.include_router(knowledge.router)
-app.include_router(promotions.router)
+app.include_router(knowledge.router, dependencies=_admin_dep)
+app.include_router(promotions.router, dependencies=_admin_dep)
 app.include_router(chat_themes.router)
 app.include_router(exchange_rate.router)
-app.include_router(rooms_admin.router)
-app.include_router(contacts.router)
-app.include_router(staff.router)
-app.include_router(management_knowledge.router)
+app.include_router(rooms_admin.router, dependencies=_admin_dep)
+app.include_router(contacts.router, dependencies=_admin_dep)
+app.include_router(staff.router, dependencies=_admin_dep)
+app.include_router(management_knowledge.router, dependencies=_admin_dep)
 app.include_router(demo.router)
 app.include_router(restaurant.router)
 app.include_router(whatsapp.router)
@@ -280,6 +293,15 @@ app.mount("/vouchers", StaticFiles(directory=str(vouchers_dir)), name="vouchers"
 media_dir = Path(settings.MEDIA_DIR)
 media_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=str(media_dir)), name="media")
+
+
+# Proteger documentos de check-in legacy: los archivos que quedaron en /media/checkin/
+# antes de Fase 0 ya no deben ser accesibles públicamente. El endpoint /api/checkin/document
+# sigue sirviéndolos autenticado. Esta ruta intercepta cualquier GET directo a /media/checkin/.
+@app.get("/media/checkin/{path:path}")
+async def block_checkin_media(path: str):
+    return Response(status_code=404)
+
 
 # Endpoints principales
 @app.get("/", response_model=HealthResponse)

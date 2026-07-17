@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db
 from app.models.chat_theme import ChatTheme
+from app.core.security.admin_auth import require_admin_key
 from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -126,13 +127,13 @@ def _deactivate_others(db: Session, keep_id) -> None:
             other.updated_at = utcnow_naive()
 
 
-@router.get("/api/chat-themes/")
+@router.get("/api/chat-themes/", dependencies=[Depends(require_admin_key)])
 def list_themes(db: Session = Depends(get_db)):
     themes = db.query(ChatTheme).order_by(ChatTheme.created_at.desc()).all()
     return {"themes": [t.to_dict() for t in themes], "total": len(themes)}
 
 
-@router.post("/api/chat-themes/")
+@router.post("/api/chat-themes/", dependencies=[Depends(require_admin_key)])
 def create_theme(payload: ThemePayload, db: Session = Depends(get_db)):
     theme = ChatTheme(**payload.model_dump())
     # Si nace activo o fijado, desactiva al resto.
@@ -145,7 +146,7 @@ def create_theme(payload: ThemePayload, db: Session = Depends(get_db)):
     return theme.to_dict()
 
 
-@router.put("/api/chat-themes/{theme_id}")
+@router.put("/api/chat-themes/{theme_id}", dependencies=[Depends(require_admin_key)])
 def update_theme(theme_id: int, payload: ThemePayload, db: Session = Depends(get_db)):
     t = db.query(ChatTheme).filter(ChatTheme.id == theme_id).first()
     if not t:
@@ -162,7 +163,7 @@ def update_theme(theme_id: int, payload: ThemePayload, db: Session = Depends(get
     return t.to_dict()
 
 
-@router.patch("/api/chat-themes/{theme_id}/status")
+@router.patch("/api/chat-themes/{theme_id}/status", dependencies=[Depends(require_admin_key)])
 def update_status(theme_id: int, payload: StatusUpdate, db: Session = Depends(get_db)):
     if payload.status not in ("active", "pinned", "inactive"):
         raise HTTPException(400, "Estado inválido.")
@@ -182,7 +183,7 @@ def update_status(theme_id: int, payload: StatusUpdate, db: Session = Depends(ge
     return t.to_dict()
 
 
-@router.delete("/api/chat-themes/{theme_id}")
+@router.delete("/api/chat-themes/{theme_id}", dependencies=[Depends(require_admin_key)])
 def delete_theme(theme_id: int, db: Session = Depends(get_db)):
     t = db.query(ChatTheme).filter(ChatTheme.id == theme_id).first()
     if not t:

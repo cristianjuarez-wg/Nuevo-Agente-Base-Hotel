@@ -14,10 +14,10 @@ import asyncio
 import hashlib
 from pathlib import Path
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.core.rag.text_splitter import RecursiveCharacterTextSplitter
 
 from app.config import settings
-from app.services.vector_store import get_vector_store
+from app.core.rag.vector_store import get_vector_store
 from app.models.database import SessionLocal
 from app.models.database import Document
 

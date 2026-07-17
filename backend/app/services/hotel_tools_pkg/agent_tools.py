@@ -98,8 +98,8 @@ async def promos_vigentes(ctx: RunContextWrapper[HotelToolCtx], consulta: str = 
 # ── Tools de RESTAURANTE (necesitan session_id/contact_id/booking_code del ctx) ──
 @function_tool
 async def ver_carta(ctx: RunContextWrapper[HotelToolCtx], categoria: str = "") -> str:
-    """Devuelve la carta del restaurante PLAZA - Hampton's Kitchen House (platos, precios,
-    tags dietéticos) y un link para que el cliente arme su pedido en la pantalla de carrito.
+    """Devuelve la carta de nuestro restaurante (platos, precios, tags dietéticos) y un link
+    para que el cliente arme su pedido en la pantalla de carrito.
     Úsala cuando pregunten por el menú, qué hay para comer/tomar, room service o pedir comida.
     `categoria` opcional filtra (ej. "tapas", "postre", "trago"). Si el cliente tiene
     preferencias dietéticas guardadas, sugerí acorde."""

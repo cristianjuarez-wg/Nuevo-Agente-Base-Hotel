@@ -1,12 +1,22 @@
 """Handlers de hotel tools — grupo booking (Fase 2.3, extraído de hotel_tools.py sin cambios)."""
+import unicodedata
 from datetime import date  # noqa: F401
 from typing import Dict, Optional  # noqa: F401
 from app.services.hotel_tools_pkg._shared import *  # noqa: F401,F403
 from app.services.hotel_tools_pkg import _shared
+from app.utils.phone_normalizer import phones_match
 
 # `logger` se usa en este módulo (disponibilidad/crear_reserva) pero no venía del import *
 # de _shared (no está en su __all__): sin esto, crear_reserva lanzaba NameError en runtime.
 logger = get_logger(__name__)  # noqa: F405
+
+
+def _normalize_last_name(text: str) -> str:
+    """Apellido normalizado: sin tildes, minúsculas, sin espacios extra."""
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
+    return " ".join(text.lower().split())
 
 
 def _handle_consultar_disponibilidad(args: Dict, ctx: Dict) -> Dict:
@@ -241,7 +251,12 @@ def _handle_crear_reserva(args: Dict, ctx: Dict) -> Dict:
 
 
 def _handle_consultar_reserva(args: Dict, ctx: Dict) -> Dict:
-    """Consulta el estado de una reserva existente por su código HTL-XXXX."""
+    """Consulta el estado de una reserva existente por su código HTL-XXXX.
+
+    POR PRIVACIDAD exige un segundo factor de verificación (apellido o teléfono del
+    contacto de la reserva). Si la reserva no tiene contacto, se pide amablemente el
+    apellido como mecanismo conservador.
+    """
     db: Optional[Session] = ctx.get("db")
     if db is None:
         return {"tool_result": "Error interno: sin conexión a base de datos."}
@@ -263,6 +278,59 @@ def _handle_consultar_reserva(args: Dict, ctx: Dict) -> Dict:
                 "Verificá que esté bien escrito (ej: HTL-A1B2)."
             )
         }
+
+    # --- Segundo factor de verificación de identidad (Fase 1) ---
+    provided_apellido = (args.get("apellido") or "").strip()
+    provided_telefono = (args.get("telefono") or "").strip()
+
+    contact = None
+    contact_id = booking.get("contact_id")
+    if contact_id:
+        contact = db.query(Contact).filter(Contact.id == contact_id).first()
+
+    contact_has_factor = bool(contact and (contact.last_name or contact.phone_number))
+
+    if contact_has_factor:
+        # Se requiere AL MENOS un factor y que coincida con el contacto.
+        if not provided_apellido and not provided_telefono:
+            return {
+                "tool_result": (
+                    "Para proteger los datos de tu reserva, necesito confirmar tu identidad. "
+                    "¿Podés indicarme el apellido o el teléfono con el que fue hecha la reserva?"
+                )
+            }
+        apellido_ok = False
+        if provided_apellido and contact.last_name:
+            apellido_ok = _normalize_last_name(provided_apellido) == _normalize_last_name(contact.last_name)
+        telefono_ok = False
+        if provided_telefono and contact.phone_number:
+            telefono_ok = phones_match(provided_telefono, contact.phone_number)
+        if not apellido_ok and not telefono_ok:
+            logger.warning(
+                "consultar_reserva: segundo factor no coincide",
+                code=code,
+                provided_apellido=provided_apellido,
+                provided_telefono=provided_telefono,
+            )
+            return {
+                "tool_result": (
+                    "El apellido o teléfono no coincide con la reserva. "
+                    "Verificá los datos y volvé a intentarlo."
+                )
+            }
+    else:
+        # Reserva sin contacto: pedimos conservadoramente el apellido si no lo dio.
+        if not provided_apellido and not provided_telefono:
+            logger.warning(
+                "consultar_reserva: reserva sin contacto, se pide apellido como factor",
+                code=code,
+            )
+            return {
+                "tool_result": (
+                    "Para proteger los datos de tu reserva, necesito confirmar tu identidad. "
+                    "¿Podés indicarme el apellido con el que fue hecha la reserva?"
+                )
+            }
 
     # Recordar el código validado en esta charla: si luego pide comida, el checkout lo reusa
     # (no le re-preguntamos si es huésped ni el código). El gate de folio (in-house) lo
