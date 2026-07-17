@@ -128,3 +128,66 @@ class TestWhatsappPostsaleGate:
         res = await _gate(db).run_gate("recomendame algo de la carta", "web-nueva", history=[])
         assert res["handled"] is False
         assert res.get("fallback_preventa") is True
+
+
+def _mk_folio_order(db, session_id, booking_id, code="RST-T001"):
+    from app.models.restaurant import RestaurantOrder
+    o = RestaurantOrder(order_code=code, booking_id=booking_id, session_id=session_id,
+                        payment_mode="folio", fulfillment="room_service",
+                        total_usd=47, total_ars=69975, status="confirmado")
+    db.add(o); db.commit()
+    return o
+
+
+class TestContinuidadFolio:
+    """Continuidad de identidad: si el huésped ya identificó su reserva en ESTA sesión al
+    cargar un pedido al folio (tipeó su HTL en el carrito), el gate NO se la re-pide.
+    Reproduce el bug reportado: pedido a folio de HTL-Y3QM → '¿puedo hacer el checkout?'
+    → el gate pedía el código que acababa de usar."""
+
+    def test_pedido_a_folio_en_sesion_reconoce_la_reserva(self, db):
+        today = date.today()
+        # Reserva PREEXISTENTE (creada en OTRA sesión — session_id distinto al de la charla).
+        bk = _mk_booking(db, None, today - timedelta(days=1), today + timedelta(days=2), "HTL-Y3Q1")
+        _mk_folio_order(db, "web-charla-actual", bk.id, code="RST-F001")
+
+        res = _gate(db).validate_access("puedo hacer el checkout por acá?",
+                                        "web-charla-actual", history=[])
+        assert res["valid"] is True
+        assert res["code"] == "HTL-Y3Q1"
+
+    def test_pedido_de_otra_sesion_no_filtra_la_reserva(self, db):
+        # El pedido a folio fue en OTRA sesión: esta charla no tiene derecho a esa reserva.
+        today = date.today()
+        bk = _mk_booking(db, None, today - timedelta(days=1), today + timedelta(days=2), "HTL-Y3Q2")
+        _mk_folio_order(db, "web-otra-charla", bk.id, code="RST-F002")
+
+        res = _gate(db).validate_access("puedo hacer el checkout?", "web-esta-charla", history=[])
+        assert res["valid"] is False
+        assert res.get("fallback_preventa") is True
+
+    def test_reserva_cancelada_no_cuenta(self, db):
+        today = date.today()
+        bk = _mk_booking(db, None, today - timedelta(days=1), today + timedelta(days=2),
+                         "HTL-Y3Q3", status="cancelled")
+        _mk_folio_order(db, "web-charla-c", bk.id, code="RST-F003")
+
+        res = _gate(db).validate_access("una consulta de mi reserva", "web-charla-c", history=[])
+        assert res["valid"] is False
+        assert res.get("fallback_preventa") is True
+
+    def test_mesa_asociada_a_reserva_tambien_reconoce(self, db):
+        # Una MESA asociada a la reserva (codigo_reserva dado al reservarla) también
+        # identifica al huésped en la sesión.
+        from app.models.restaurant import TableReservation
+        today = date.today()
+        bk = _mk_booking(db, None, today - timedelta(days=1), today + timedelta(days=2), "HTL-Y3Q4")
+        tr = TableReservation(code="MESA-T001", booking_id=bk.id, session_id="web-charla-m",
+                              party_size=2, status="confirmada",
+                              reserved_for=datetime.now() + timedelta(days=1))
+        db.add(tr); db.commit()
+
+        res = _gate(db).validate_access("hasta qué hora es el check-out?",
+                                        "web-charla-m", history=[])
+        assert res["valid"] is True
+        assert res["code"] == "HTL-Y3Q4"
