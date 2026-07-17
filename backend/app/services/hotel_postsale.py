@@ -91,6 +91,55 @@ class HotelPostSaleService:
             .first()
         )
 
+    def _find_booking_by_session_activity(self, session_id: str) -> Optional[Booking]:
+        """Reserva que el huésped YA identificó en ESTA sesión al operar el restaurante.
+
+        Continuidad de identidad: si en esta charla se cargó un pedido al folio (el huésped
+        tipeó y validó su HTL-XXXX en el carrito) o se asoció una mesa a su reserva, el
+        sistema ya sabe cuál es su reserva — el gate NO debe volver a pedirle el código.
+        El dato ya está persistido (RestaurantOrder/TableReservation llevan session_id y
+        booking_id); esta vía solo lo lee. Devuelve el Booking vigente (no cancelado,
+        check_out >= hoy) de la actividad más reciente; None si no hay."""
+        if not session_id:
+            return None
+        from app.models.restaurant import RestaurantOrder, TableReservation
+
+        candidates = []
+        order = (
+            self.db.query(RestaurantOrder)
+            .filter(RestaurantOrder.session_id == session_id,
+                    RestaurantOrder.booking_id.isnot(None))
+            .order_by(RestaurantOrder.created_at.desc())
+            .first()
+        )
+        if order:
+            candidates.append((order.created_at, order.booking_id))
+        table = (
+            self.db.query(TableReservation)
+            .filter(TableReservation.session_id == session_id,
+                    TableReservation.booking_id.isnot(None))
+            .order_by(TableReservation.created_at.desc())
+            .first()
+        )
+        if table:
+            candidates.append((table.created_at, table.booking_id))
+
+        today = now_business().date()
+        # Más reciente primero (created_at puede ser None en datos viejos: va al final).
+        from datetime import datetime as _dt
+        candidates.sort(key=lambda c: c[0] or _dt.min, reverse=True)
+        for _, booking_id in candidates:
+            booking = (
+                self.db.query(Booking)
+                .filter(Booking.id == booking_id,
+                        Booking.status != "cancelled",
+                        Booking.check_out >= today)
+                .first()
+            )
+            if booking:
+                return booking
+        return None
+
     def validate_access(
         self, message: str, session_id: str, history: List[Dict] = None
     ) -> Dict:
@@ -119,6 +168,15 @@ class HotelPostSaleService:
         # Web: si reservó en ESTA sesión, reconocemos su reserva sin pedir el código de nuevo.
         if not code:
             booking = self._find_booking_by_session(session_id)
+            if booking:
+                return {"valid": True, "booking": booking, "code": booking.code}
+
+        # CONTINUIDAD DE FOLIO/MESA: si en ESTA sesión el huésped ya identificó su reserva
+        # al operar el restaurante (pedido cargado al folio con su HTL validado en el
+        # carrito, o mesa asociada a su reserva), el sistema YA conoce su reserva — sería
+        # absurdo re-pedirle el código que acaba de usar.
+        if not code:
+            booking = self._find_booking_by_session_activity(session_id)
             if booking:
                 return {"valid": True, "booking": booking, "code": booking.code}
 
