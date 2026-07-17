@@ -79,15 +79,16 @@ class TestWhatsappPostsaleGate:
         assert res["valid"] is True
         assert res["code"] == "HTL-WA02"
 
-    def test_wa_sin_reserva_pide_codigo(self, db):
-        # Teléfono de WhatsApp sin contacto/reserva → comportamiento de hoy (pide el código).
+    def test_wa_sin_reserva_cae_a_preventa(self, db):
+        # Teléfono de WhatsApp sin contacto/reserva → ya NO se exige el código: la consulta
+        # cae a pre-venta (que atiende sin reserva y pide el código solo si hace falta).
         session_id = "wa_5491170009999"
         res = _gate(db).validate_access("hola, un problema con mi reserva", session_id, history=[])
         assert res["valid"] is False
-        assert "HTL-XXXX" in res["message"]
+        assert res.get("fallback_preventa") is True
 
     def test_wa_reserva_pasada_no_cuenta(self, db):
-        # Reserva ya terminada (check_out < hoy) NO debe usarse → pide el código.
+        # Reserva ya terminada (check_out < hoy) NO debe usarse → cae a pre-venta.
         phone = "+5491170000003"
         c = _mk_contact(db, phone)
         today = date.today()
@@ -96,13 +97,13 @@ class TestWhatsappPostsaleGate:
         session_id = "wa_" + phone.lstrip("+")
         res = _gate(db).validate_access("consulta", session_id, history=[])
         assert res["valid"] is False
-        assert "HTL-XXXX" in res["message"]
+        assert res.get("fallback_preventa") is True
 
-    def test_web_sin_codigo_pide_codigo(self, db):
-        # Web no tiene teléfono → debe seguir pidiendo el código (sin cambios).
+    def test_web_sin_codigo_cae_a_preventa(self, db):
+        # Web sin reserva hallable → fallback a pre-venta, no el callejón "dame tu HTL".
         res = _gate(db).validate_access("hola, sobre mi reserva", "web-abc123", history=[])
         assert res["valid"] is False
-        assert "HTL-XXXX" in res["message"]
+        assert res.get("fallback_preventa") is True
 
     def test_codigo_en_mensaje_sigue_funcionando(self, db):
         # Si el huésped SÍ tipea el código (HTL-XXXX, 4 alfanuméricos), la vía actual lo
@@ -111,3 +112,19 @@ class TestWhatsappPostsaleGate:
         res = _gate(db).validate_access("mi código es HTL-TY01", "web-xyz", history=[])
         assert res["valid"] is True
         assert res["code"] == "HTL-TY01"
+
+    def test_codigo_invalido_sigue_avisando(self, db):
+        # Código tipeado que NO existe: el aviso "no encuentro esa reserva" se mantiene
+        # (el usuario dio un código explícito; verificar es lo correcto, no el fallback).
+        res = _gate(db).validate_access("mi código es HTL-ZZ99", "web-xyz", history=[])
+        assert res["valid"] is False
+        assert res.get("fallback_preventa") is None
+        assert "HTL-ZZ99" in res["message"]
+
+    @pytest.mark.asyncio
+    async def test_run_gate_propaga_fallback_preventa(self, db):
+        # run_gate propaga el fallback como handled=False + fallback_preventa (el llamador
+        # cae a pre-venta en vez de responder el pedido de código).
+        res = await _gate(db).run_gate("recomendame algo de la carta", "web-nueva", history=[])
+        assert res["handled"] is False
+        assert res.get("fallback_preventa") is True

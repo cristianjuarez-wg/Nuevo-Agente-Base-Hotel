@@ -85,16 +85,6 @@ class AgentService:
         from app.utils.social_text import is_pure_social
         return is_pure_social(message)
 
-    def _looks_like_restaurant(self, message: str) -> bool:
-        """True si el mensaje es una consulta de RESTAURANTE (carta/mesa/comida/bebida).
-
-        El restaurante va SIEMPRE a pre-venta (donde funciona sin exigir el código de
-        habitación HTL-XXXX): reservar mesa, ver la carta, pedir comida o pedir una
-        recomendación no requiere estar alojado. Señal determinística en app.utils.social_text.
-        """
-        from app.utils.social_text import looks_like_restaurant
-        return looks_like_restaurant(message)
-
     def _session_has_recent_booking(self, db, session_id: str) -> bool:
         """True si en ESTA sesión web se creó una reserva dentro de la ventana de sesión (24h).
 
@@ -645,25 +635,7 @@ class AgentService:
             # la sesión tenga contexto de reserva: es un cierre, no una consulta. Va a casual.
             # (Si el mensaje trae un código de reserva, sí es señal explícita → post-venta.)
             is_pure_social = self._is_pure_social(message) and not has_booking_code
-            # RESTAURANTE (carta/mesa/comida): va SIEMPRE a pre-venta (funciona sin código de
-            # habitación). Una reserva de sesión (has_session_booking) NO debe forzar post-venta
-            # cuando el mensaje es de restaurante: el que reservó una mesa —o incluso el alojado—
-            # que pide la carta no tiene por qué entrar al gate que pide HTL. Un HTL-XXXX explícito
-            # en el mensaje sí es señal dura y manda a post-venta (quiere algo de su estadía).
-            is_restaurant = self._looks_like_restaurant(message) and not has_booking_code
-            if is_restaurant:
-                # SEÑAL DURA DE RESTAURANTE → pre-venta directo, sin gastar el triage. El
-                # restaurante (carta/mesa/comida) funciona sin código de habitación y no debe
-                # caer ni en post-venta (gate HTL) ni en casual (el triage a veces lee
-                # "recomendame algo" como charla). Pre-venta tiene ver_carta/reservar_mesa.
-                is_postsale = False
-                logger.info("Señal dura de restaurante → pre-venta", session_id=session_id,
-                            message_preview=message[:50])
-                _gate = self._preventa_channel_gate(db, session_id)
-                if _gate:
-                    return _gate
-            elif (has_booking_code or has_active_postsale or has_session_booking) \
-                    and not is_pure_social:
+            if (has_booking_code or has_active_postsale or has_session_booking) and not is_pure_social:
                 is_postsale = True
             else:
                 from app.services.triage_sdk_orchestrator import (
@@ -757,7 +729,20 @@ class AgentService:
                     postsale_service = HotelPostSaleService(db)
 
                     gate = await postsale_service.run_gate(message, session_id, history)
-                    if gate["handled"]:
+                    if gate.get("fallback_preventa"):
+                        # Post-venta no pudo identificar NINGUNA reserva (ni código, ni
+                        # sesión, ni teléfono). En vez del callejón sin salida ("dame tu
+                        # HTL"), la consulta cae a PRE-VENTA, que atiende sin reserva
+                        # (carta, mesa, info) y pide el código solo si el usuario quiere
+                        # algo de SU reserva (consultar_reserva). Decisión semántica del
+                        # agente, no de un regex.
+                        logger.info("Post-venta sin reserva hallable → fallback a pre-venta",
+                                    session_id=session_id, message_preview=message[:50])
+                        is_postsale = False
+                        _gate = self._preventa_channel_gate(db, session_id)
+                        if _gate:
+                            return _gate
+                    elif gate["handled"]:
                         # Respuesta terminal del gate (validación fallida o solo-código)
                         response_text = gate["result"].get("response", "")
                         history.append({"role": "user", "content": message})
@@ -768,34 +753,35 @@ class AgentService:
                         gate["result"]["session_info"] = self.get_session_info(session_id)
                         return gate["result"]
 
-                    # Listo para el loop con tools (Agents SDK).
-                    from app.services.hotel_postsale_orchestrator import hotel_postsale_sdk_orchestrator
-                    orch_result = await hotel_postsale_sdk_orchestrator.run(
-                        postsale_service, gate["booking"], gate["ticket"],
-                        gate["query_to_process"], session_id, history
-                    )
-                    response_text = orch_result["response"]
-                    history.append({"role": "user", "content": message})
-                    history.append({"role": "assistant", "content": response_text})
-                    self._update_session_metadata(session_id)
+                    else:
+                        # Listo para el loop con tools (Agents SDK).
+                        from app.services.hotel_postsale_orchestrator import hotel_postsale_sdk_orchestrator
+                        orch_result = await hotel_postsale_sdk_orchestrator.run(
+                            postsale_service, gate["booking"], gate["ticket"],
+                            gate["query_to_process"], session_id, history
+                        )
+                        response_text = orch_result["response"]
+                        history.append({"role": "user", "content": message})
+                        history.append({"role": "assistant", "content": response_text})
+                        self._update_session_metadata(session_id)
 
-                    # Registrar consumo de tokens del turno post-venta (para panel y tope).
-                    ps_usage = orch_result.get("usage", {})
-                    if ps_usage.get("total_tokens"):
-                        try:
-                            self._save_message_to_db(
-                                db=db, session_id=session_id, role='assistant',
-                                content=response_text, context_type='post_sale',
-                                tokens_used=ps_usage.get("total_tokens"),
-                                model_used=ps_usage.get("model") or settings.OPENAI_MODEL,
-                            )
-                        except Exception as e:
-                            logger.error("Error saving postsale usage to DB",
-                                         session_id=session_id, error=str(e))
+                        # Registrar consumo de tokens del turno post-venta (panel y tope).
+                        ps_usage = orch_result.get("usage", {})
+                        if ps_usage.get("total_tokens"):
+                            try:
+                                self._save_message_to_db(
+                                    db=db, session_id=session_id, role='assistant',
+                                    content=response_text, context_type='post_sale',
+                                    tokens_used=ps_usage.get("total_tokens"),
+                                    model_used=ps_usage.get("model") or settings.OPENAI_MODEL,
+                                )
+                            except Exception as e:
+                                logger.error("Error saving postsale usage to DB",
+                                             session_id=session_id, error=str(e))
 
-                    orch_result["session_info"] = self.get_session_info(session_id)
-                    orch_result["context_type"] = "postsale"
-                    return orch_result
+                        orch_result["session_info"] = self.get_session_info(session_id)
+                        orch_result["context_type"] = "postsale"
+                        return orch_result
 
                 except Exception as e:
                     import traceback

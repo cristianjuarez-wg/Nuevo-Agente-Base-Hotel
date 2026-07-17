@@ -323,15 +323,12 @@ SCENARIOS = [
     },
     {
         "id": "S25",
-        "name": "Restaurante va a pre-venta aunque el huésped tenga reserva (regla: restaurante ≠ estadía)",
-        # El restaurante funciona sin exigir código de habitación para cualquiera. Aunque el
-        # huésped haya reservado en la sesión, pedir la carta va a PRE-VENTA (donde ver_carta
-        # corre sin gate de HTL); el perfil del alojado se suma igual por _resolve_contact.
+        "name": "Restaurante disponible en post-venta (huésped reconocido por sesión)",
         "turns": [
             {"user": f"Reservá la King del {CI} al {CO} para 2 adultos. Soy Carla Ortiz, tel 1166660002.",
              "expect": {"tool_called": "crear_reserva"}},
             {"user": "me mostrás la carta del restaurante?",
-             "expect": {"route": "preventa", "tool_called": "ver_carta", "card": "menu_interactive"}},
+             "expect": {"route": "postsale", "tool_called": "ver_carta", "card": "menu_interactive"}},
         ],
     },
     {

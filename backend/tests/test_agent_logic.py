@@ -78,38 +78,6 @@ class TestTableConfirmationInterceptor:
         assert resp is None
 
 
-# ---------------------------------------------------------------------------
-# 1c. Señal léxica de RESTAURANTE (rutea a pre-venta, no exige código de habitación).
-# ---------------------------------------------------------------------------
-class TestLooksLikeRestaurant:
-    def _svc(self):
-        from app.services.agent_service import agent_service
-        return agent_service
-
-    @pytest.mark.parametrize("message", [
-        "recomendame algo de la carta",
-        "me mostrás el menú?",
-        "quiero reservar una mesa para 2",
-        "tienen algo para comer? se me antoja una milanesa",
-        "quiero pedir comida a la habitación",  # room service = restaurante
-        "qué platos tienen?",
-        "me traés un trago?",
-        "quiero ver la carta del restaurante",
-    ])
-    def test_detecta_restaurante(self, message):
-        assert self._svc()._looks_like_restaurant(message) is True
-
-    @pytest.mark.parametrize("message", [
-        # Estadía / habitación: NO es restaurante.
-        "quiero hacer el check-in",
-        "necesito cambiar la fecha de mi reserva",
-        "cancelá mi reserva HTL-6XV6",
-        "a qué hora es el check-out?",
-        "se rompió el aire de la habitación",
-        "la mesa de luz de mi cuarto está rota",  # anti-frase: mobiliario, no restaurante
-    ])
-    def test_no_detecta_en_temas_de_estadia(self, message):
-        assert self._svc()._looks_like_restaurant(message) is False
 
 
 # ---------------------------------------------------------------------------
