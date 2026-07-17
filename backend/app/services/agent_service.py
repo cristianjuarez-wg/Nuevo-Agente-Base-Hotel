@@ -651,8 +651,19 @@ class AgentService:
             # que pide la carta no tiene por qué entrar al gate que pide HTL. Un HTL-XXXX explícito
             # en el mensaje sí es señal dura y manda a post-venta (quiere algo de su estadía).
             is_restaurant = self._looks_like_restaurant(message) and not has_booking_code
-            if (has_booking_code or has_active_postsale or has_session_booking) \
-                    and not is_pure_social and not is_restaurant:
+            if is_restaurant:
+                # SEÑAL DURA DE RESTAURANTE → pre-venta directo, sin gastar el triage. El
+                # restaurante (carta/mesa/comida) funciona sin código de habitación y no debe
+                # caer ni en post-venta (gate HTL) ni en casual (el triage a veces lee
+                # "recomendame algo" como charla). Pre-venta tiene ver_carta/reservar_mesa.
+                is_postsale = False
+                logger.info("Señal dura de restaurante → pre-venta", session_id=session_id,
+                            message_preview=message[:50])
+                _gate = self._preventa_channel_gate(db, session_id)
+                if _gate:
+                    return _gate
+            elif (has_booking_code or has_active_postsale or has_session_booking) \
+                    and not is_pure_social:
                 is_postsale = True
             else:
                 from app.services.triage_sdk_orchestrator import (
