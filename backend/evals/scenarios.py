@@ -464,6 +464,30 @@ SCENARIOS = [
         ],
     },
     {
+        "id": "S31b",
+        "name": "Check-in anticipado NO dispara el date picker de reserva (colisión de palabra)",
+        # Bug reportado: preguntar por check-in anticipado mostraba el selector de fechas de
+        # RESERVA fuera de contexto (la palabra "check-in" en la respuesta de Aura lo disparaba).
+        "turns": [
+            {"user": "podría hacer por acá un check-in anticipado?",
+             "expect": {"no_card": "date_picker"}},
+        ],
+    },
+    {
+        "id": "S31c",
+        "name": "Check-in express: relato real (lo envía el hotel por WhatsApp), sin picker",
+        # El check-in express EXISTE y lo inicia el hotel por WhatsApp la víspera. Aura debe
+        # contarlo bien (no inventar "proceso online" ni negar que exista) y NO mostrar el picker.
+        "tier": "instance",  # depende del hecho del Hampton (express por WhatsApp)
+        "turns": [
+            {"user": "tienen check in express? cómo funciona?",
+             "expect": {"tool_called": "info_hotel", "no_card": "date_picker",
+                        "response_not_contains": ["no tenemos un proceso específico",
+                                                  "no tengo información específica",
+                                                  "adelantar parte del proceso online"]}},
+        ],
+    },
+    {
         "id": "S32",
         "name": "Fechas + cantidad en el mismo mensaje → consulta directo (no re-pregunta)",
         # Regresión: si ya viene la cantidad (como cuando llega del selector), NO preguntar.

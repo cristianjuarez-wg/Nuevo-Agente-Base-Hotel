@@ -119,6 +119,7 @@ def _build_cards(result: dict, user_message: str, session_id: str, db) -> list:
         dates_given=chat_router._dates_already_given(
             user_message, agent_service.conversation_history.get(session_id, []),
         ),
+        user_message=user_message,  # espeja chat.py:716 (necesario para la guarda de check-in)
     ):
         cards = [chat_router._date_picker_card()]
     elif chat_router._should_offer_table(

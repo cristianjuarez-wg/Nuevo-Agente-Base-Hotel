@@ -98,9 +98,12 @@ def _date_picker_card(suggested_month: str | None = None) -> dict:
 
 
 # Señales en la respuesta del agente de que está pidiendo fechas/huéspedes.
+# NOTA: "check-in" NO va acá. La palabra aparece casi siempre en la respuesta de Aura
+# hablando de la POLÍTICA de check-in ("el check-in es a partir de las 15:00"), no pidiendo
+# fechas de reserva — y disparaba el selector fuera de contexto (bug del "check-in anticipado").
+# El picker se dispara igual por las señales inequívocas de pedido de fechas de abajo.
 _DATE_REQUEST_HINTS = (
-    "fecha", "check-in", "check in", "checkin", "qué día", "que dia",
-    "cuándo", "cuando", "disponibilidad para",
+    "fecha", "qué día", "que dia", "cuándo", "cuando", "disponibilidad para",
 )
 
 # Tools que indican que el usuario YA pasó la etapa de elegir fechas: mostró
@@ -139,6 +142,13 @@ _MENU_TOOLS = ("ver_carta", "armar_pedido_carta")
 # fallback de la carta NO debe dispararse aunque el mensaje diga "cenar/comer".
 _TABLE_INTENT_HINTS = ("reservar mesa", "reservar una mesa", "una mesa", "reserva de mesa",
                        "mesa para", "reservar lugar")
+
+# Señales de que el usuario pregunta por el CHECK-IN como procedimiento/política (horario,
+# express, anticipado, early), NO que quiere reservar. La respuesta de Aura a estos mensajes
+# suele contener "cuándo"/"fecha" ("¿cuándo llegás?"), que dispararía el selector de fechas de
+# RESERVA fuera de contexto. En estos turnos NO se ofrece el date picker de habitación.
+_CHECKIN_INTENT_HINTS = ("check in", "check-in", "checkin", "chek in", "chekin",
+                         "hacer el ingreso", "hora de ingreso", "horario de ingreso")
 
 # Señales de que el usuario quiere RESERVAR UNA HABITACIÓN (no comida): la carta del
 # restaurante NO debe ofrecerse en estos turnos. Defensa en profundidad para que el flujo
@@ -391,6 +401,10 @@ def _should_offer_datepicker(response_text: str, tools_used: list, has_room_card
     # Intención de MESA o de RESTAURANTE/comida en el mensaje del usuario → no es reserva de
     # habitación; el selector de fechas de habitación no aplica (mismo criterio que la carta).
     if any(h in umsg for h in _TABLE_INTENT_HINTS) or any(h in umsg for h in _MENU_REQUEST_HINTS):
+        return False
+    # Pregunta por el CHECK-IN (horario/express/anticipado): la respuesta suele decir "cuándo
+    # llegás", que NO es pedir fechas de reserva. No ofrecer el selector.
+    if any(h in umsg for h in _CHECKIN_INTENT_HINTS):
         return False
     text = (response_text or "").lower()
     return any(h in text for h in _DATE_REQUEST_HINTS)
