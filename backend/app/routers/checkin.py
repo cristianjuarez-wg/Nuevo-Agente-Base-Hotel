@@ -121,9 +121,13 @@ def send_checkin_tomorrow(db: Session = Depends(get_db)):
     return {"date": tomorrow.isoformat(), "candidates": len(bookings), "sent": sent, "results": results}
 
 
-@router.get("/{code}")
+@router.get("/{code}", dependencies=[Depends(require_admin_key)])
 def get_checkin_status(code: str, db: Session = Depends(get_db)):
-    """Estado del pre-check-in de una reserva (para mostrar en el backoffice)."""
+    """Estado del pre-check-in de una reserva (backoffice, requiere credencial).
+
+    Devuelve `pre_checkin`, que lleva datos personales del huésped (documento, nombre, hora
+    de llegada) y es enumerable por código de reserva: nunca debe quedar abierto.
+    """
     booking = db.query(Booking).filter(Booking.code == code).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")

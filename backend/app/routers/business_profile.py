@@ -42,9 +42,13 @@ class BusinessProfileUpdate(BaseModel):
     facts: Optional[List[str]] = None
 
 
-@router.get("/business-profile")
+@router.get("/business-profile", dependencies=[Depends(require_admin_key)])
 async def get_business_profile(db: Session = Depends(get_db)):
-    """Perfil completo de identidad del negocio (backoffice)."""
+    """Perfil completo de identidad del negocio (backoffice, requiere credencial).
+
+    Incluye campos internos (`facts` del prompt, contacto, config regional). La landing
+    pública NO usa este endpoint: consume `/public/business-profile` (subset seguro).
+    """
     return business_profile_service.get_profile(db)
 
 

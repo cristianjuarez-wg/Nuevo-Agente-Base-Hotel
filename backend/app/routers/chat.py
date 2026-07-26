@@ -15,6 +15,7 @@ from app.services.metrics_service import metrics_service
 from app.core.profile.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
 from app.core.security.rate_limit import limiter, CHAT_RATE_LIMIT
+from app.core.security.admin_auth import require_admin_key
 import asyncio
 import time
 from datetime import datetime
@@ -955,9 +956,14 @@ async def get_session_info(session_id: str):
             detail=f"Error obteniendo información de sesión: {str(e)}"
         )
 
-@router.get("/stats", response_model=AgentStatsResponse)
+@router.get("/stats", response_model=AgentStatsResponse,
+            dependencies=[Depends(require_admin_key)])
 async def get_agent_stats():
-    """Obtiene estadísticas del agente"""
+    """Estadísticas del servicio del agente (backoffice, requiere credencial).
+
+    Expone estado interno (modelo, circuit breaker, sesiones activas): no es información
+    para el widget del huésped, que solo usa /message, /greeting, /clear y /health.
+    """
     try:
         logger.debug("Getting agent stats")
         

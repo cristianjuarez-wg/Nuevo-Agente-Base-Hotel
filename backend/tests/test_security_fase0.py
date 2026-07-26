@@ -11,6 +11,8 @@ Sin OpenAI. Verifica:
 import hashlib
 import hmac
 
+import pytest
+
 from app.config import settings
 
 
@@ -97,3 +99,67 @@ def test_endpoints_publicos_siguen_abiertos_en_produccion(client, monkeypatch):
     assert client.get("/api/chat/theme").status_code == 200
     assert client.get("/api/restaurant/menu/public").status_code == 200
     assert client.get("/api/reservations/rooms").status_code == 200
+
+
+# ── (d) GETs de backoffice que estaban ABIERTOS (hallazgo C2 de la auditoría) ──
+# El agujero no fueron 3 endpoints puntuales sino el patrón implícito de montar routers
+# sin decidir qué es público. Estos tests fijan la decisión: todo lo de abajo exige
+# credencial, y la whitelist de `test_superficie_publica_completa` es la única excepción.
+
+# GETs que exponían datos de negocio (costos, entrenamiento, config) o PII sin auth.
+_GETS_QUE_DEBEN_EXIGIR_CREDENCIAL = (
+    "/api/usage/summary",              # gasto en USD
+    "/api/usage/config",               # topes de gasto
+    "/api/business-profile",           # perfil COMPLETO (contacto + facts internos)
+    "/api/agents",                     # catálogo de agentes
+    "/api/agents/centro-config",
+    "/api/agents/training-schemas",
+    "/api/agents/1",                   # config/prompts del agente
+    "/api/agents/1/capabilities",
+    "/api/agents/1/performance",       # costo de IA por agente
+    "/api/agents/1/daily-report",
+    "/api/agents/1/training",          # corpus de entrenamiento del cliente
+    "/api/agents/1/skills",
+    "/api/exchange-rate",              # config de cotización
+    "/api/human-attention",            # horarios de guardia
+    "/api/demo/status",                # conteos de la instancia
+    "/api/chat/stats",                 # estado interno del servicio
+    "/api/checkin/HTL-TEST",           # PII de pre-check-in (documento, nombre)
+)
+
+
+@pytest.mark.parametrize("path", _GETS_QUE_DEBEN_EXIGIR_CREDENCIAL)
+def test_gets_de_backoffice_exigen_credencial(client, monkeypatch, path):
+    monkeypatch.setattr(settings, "DEBUG", False)
+    monkeypatch.setattr(settings, "ADMIN_KEY", "clave-real")
+    r = client.get(path)
+    assert r.status_code == 401, f"{path} debería exigir credencial (got {r.status_code})"
+
+
+@pytest.mark.parametrize("path", _GETS_QUE_DEBEN_EXIGIR_CREDENCIAL)
+def test_gets_de_backoffice_pasan_con_jwt(client, admin_headers, monkeypatch, path):
+    """Con JWT del backoffice NO deben dar 401 (404/422 es aceptable: el recurso puede no existir)."""
+    monkeypatch.setattr(settings, "DEBUG", False)
+    monkeypatch.setattr(settings, "ADMIN_KEY", "clave-real")
+    r = client.get(path, headers=admin_headers)
+    assert r.status_code != 401, f"{path} rechaza un JWT válido"
+
+
+def test_superficie_publica_completa(client, monkeypatch):
+    """WHITELIST: lo ÚNICO que puede responder sin credencial (ver main.py).
+
+    Si un endpoint nuevo necesita entrar acá, es una decisión explícita — no un descuido.
+    """
+    monkeypatch.setattr(settings, "DEBUG", False)
+    monkeypatch.setattr(settings, "ADMIN_KEY", "clave-real")
+    publicos = (
+        "/",                                   # health
+        "/api/chat/health",
+        "/api/chat/theme",                     # tema del widget
+        "/api/public/business-profile",        # identidad pública de la landing
+        "/api/restaurant/menu/public",         # carta pública
+        "/api/reservations/rooms",             # habitaciones que muestra la landing
+    )
+    for path in publicos:
+        r = client.get(path)
+        assert r.status_code == 200, f"{path} debe seguir siendo público (got {r.status_code})"
