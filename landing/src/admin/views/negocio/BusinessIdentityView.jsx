@@ -139,6 +139,8 @@ function EditProfileModal({ profile, onClose, onSave }) {
     restaurant_name: profile.restaurant_name || '',
     contact_phone: profile.contact_phone || '',
     contact_email: profile.contact_email || '',
+    contact_address: profile.contact_address || '',
+    instagram: profile.instagram || '',
     city: profile.city || '',
     region_line: profile.region_line || '',
     timezone: profile.timezone || '',
@@ -202,11 +204,20 @@ function EditProfileModal({ profile, onClose, onSave }) {
           </div>
           <div>
             <label className={labelCls}>Teléfono de contacto</label>
-            <input value={f.contact_phone} onChange={(e) => set('contact_phone', e.target.value)} className={inputCls} placeholder="+54 294-474-6200" />
+            <input value={f.contact_phone} onChange={(e) => set('contact_phone', e.target.value)} className={inputCls} placeholder="+54 11 5555-5555" />
           </div>
           <div>
             <label className={labelCls}>Email de contacto</label>
-            <input type="email" value={f.contact_email} onChange={(e) => set('contact_email', e.target.value)} className={inputCls} placeholder="info@hotel.com" />
+            <input type="email" value={f.contact_email} onChange={(e) => set('contact_email', e.target.value)} className={inputCls} placeholder="info@tunegocio.com" />
+          </div>
+          {/* Contacto público: lo muestra la landing (footer y sección de ubicación). */}
+          <div className="sm:col-span-2">
+            <label className={labelCls}>Dirección</label>
+            <input value={f.contact_address} onChange={(e) => set('contact_address', e.target.value)} className={inputCls} placeholder="Calle 123, Ciudad, País" />
+          </div>
+          <div>
+            <label className={labelCls}>Instagram</label>
+            <input value={f.instagram} onChange={(e) => set('instagram', e.target.value)} className={inputCls} placeholder="@tunegocio" />
           </div>
           <div>
             <label className={labelCls}>Ciudad</label>

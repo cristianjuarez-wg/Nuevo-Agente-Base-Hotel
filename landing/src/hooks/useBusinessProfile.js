@@ -10,9 +10,10 @@ import { MEDIA_BASE as API_BASE } from '../services/api'
  * tiene marca, sin flash ni spinner. Al montar, hace fetch al endpoint público
  * `/api/public/business-profile` y pisa lo que traiga; si el backend está caído, queda HOTEL.
  *
- * Normaliza los nombres del endpoint (business_name/brand_line/agent_display_name) a las claves
- * de HOTEL (name/tagline/agentName) para que los componentes lean una sola forma. Cliente nuevo
- * NO edita hotelInfo.js ni rebuildea: la landing se adapta al perfil del backend.
+ * Normaliza los nombres del endpoint (business_name/brand_line/agent_display_name/contact_*) a
+ * las claves de HOTEL (name/tagline/agentName/address/phone/email) para que los componentes lean
+ * una sola forma. Cliente nuevo NO edita hotelInfo.js ni rebuildea: la landing —incluido el
+ * contacto del footer y la ubicación— se adapta al perfil cargado en el backoffice.
  */
 export function useBusinessProfile() {
   const [profile, setProfile] = useState(HOTEL)
@@ -34,6 +35,12 @@ export function useBusinessProfile() {
           language: d.language ?? p.language,
           primaryCurrency: d.primary_currency ?? p.primaryCurrency,
           secondaryCurrency: d.secondary_currency ?? p.secondaryCurrency,
+          // Contacto público (footer / sección ubicación): viene del backoffice, no del código.
+          address: d.contact_address ?? p.address,
+          phone: d.contact_phone ?? p.phone,
+          email: d.contact_email ?? p.email,
+          instagram: d.instagram ?? p.instagram,
+          mapsQuery: d.contact_address || p.mapsQuery,
         }))
       })
       .catch(() => {})

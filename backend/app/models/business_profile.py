@@ -53,6 +53,10 @@ class BusinessProfile(Base):
     # ── Contacto (para fallbacks del agente: "contactanos al ..."). Fase 3.5. ──
     contact_phone = Column(String, nullable=True)              # "+54 294-474-6200"
     contact_email = Column(String, nullable=True)              # "info@hamptonbariloche.com"
+    # Identidad pública que la landing muestra (footer/ubicación). Vive acá para que el cliente
+    # la edite desde el backoffice y NO quede hardcodeada en el frontend.
+    contact_address = Column(String, nullable=True)            # "Libertad 290, San Carlos de Bariloche"
+    instagram = Column(String, nullable=True)                  # "@hamptonbariloche"
 
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -78,6 +82,8 @@ class BusinessProfile(Base):
             "facts": self.facts or [],
             "contact_phone": self.contact_phone,
             "contact_email": self.contact_email,
+            "contact_address": self.contact_address,
+            "instagram": self.instagram,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
@@ -98,5 +104,9 @@ try:
                 _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN contact_email VARCHAR"))
             if "restaurant_name" not in cols:
                 _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN restaurant_name VARCHAR"))
+            if "contact_address" not in cols:
+                _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN contact_address VARCHAR"))
+            if "instagram" not in cols:
+                _conn.execute(_text("ALTER TABLE business_profile ADD COLUMN instagram VARCHAR"))
 except Exception:  # noqa: BLE001 — best-effort; en Postgres/prod lo maneja Alembic
     pass

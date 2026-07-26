@@ -38,3 +38,7 @@ Thumbs.db
 
 # Claude Code: configuración y planes locales (no compartir)
 .claude/
+
+# Documentos de OTROS proyectos que quedaron mezclados en este repo (respaldados
+# en ../_docs_otros_proyectos/). No pertenecen al producto de hoteles.
+ANALISIS_RFI_ASISTENTE_FISCAL.*
