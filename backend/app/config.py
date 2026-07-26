@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # Almacenamiento de imágenes subidas desde el backoffice (repositorio de conocimiento).
     # En Render apuntar al disco persistente: MEDIA_DIR=/data/uploads_img
     MEDIA_DIR: str = "./uploads_img"
+
+    # Auditoría de turnos del chat (JSONL con mensajes del huésped → PII). NUNCA dentro del
+    # paquete: se escribe acá y este directorio está gitignoreado. En Render apuntar al disco
+    # persistente para que el rastro sobreviva al deploy: AUDIT_LOG_DIR=/data/audit
+    AUDIT_LOG_DIR: str = "./audit_logs"
     
     # OpenAI Config
     OPENAI_MODEL: str = "gpt-4o"  # Modelo principal para generación de respuestas

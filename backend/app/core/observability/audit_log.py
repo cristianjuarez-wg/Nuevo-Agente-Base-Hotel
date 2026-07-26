@@ -1,13 +1,20 @@
 """
 Auditoría de turnos del chat de Aura.
 
-Escribe UNA línea JSON por turno (JSONL) en backend/logs/aura_audit.jsonl con toda
-la traza: mensaje del usuario, ruta del triage (casual/pre/post), tools llamadas
-(nombre + args + resultado), respuesta final, cards adjuntadas, lead analysis,
-tokens y tiempos. Sirve para auditar cómo razona el agente y detectar errores de
-lógica revisando las conversaciones turno a turno.
+Escribe UNA línea JSON por turno (JSONL) con toda la traza: mensaje del usuario, ruta del
+triage (casual/pre/post), tools llamadas (nombre + args + resultado), respuesta final, cards
+adjuntadas, lead analysis, tokens y tiempos. Sirve para auditar cómo razona el agente y
+detectar errores de lógica revisando las conversaciones turno a turno.
+
+DÓNDE ESCRIBE (importante — el contenido es PII): en `settings.AUDIT_LOG_DIR`, FUERA del
+paquete de la app y gitignoreado. Antes se escribía dentro de `app/logs/`, lo que metía
+conversaciones de huéspedes en el árbol del repo (riesgo de commiteo) y las perdía en cada
+deploy. En Render conviene apuntarlo al disco persistente (AUDIT_LOG_DIR=/data/audit) para que
+el rastro sobreviva; si no, el archivo es efímero por diseño de la plataforma.
 
 Activación: AUDIT_CHAT=true (default activado en DEBUG). Se puede apagar en prod.
+Retención: rotación simple por tamaño (_MAX_BYTES) con UN backup .1; no hay purga por fecha.
+Si se necesita retención por política, rotar/expirar desde fuera (logrotate o el disco).
 Pensado para no romper nunca el flujo del chat: cualquier error al loguear se traga.
 """
 import json
@@ -21,8 +28,9 @@ from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# Carpeta y archivo de auditoría (junto al backend).
-_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs")
+# Carpeta y archivo de auditoría. Configurable (AUDIT_LOG_DIR) y FUERA del paquete: el JSONL
+# lleva mensajes de huéspedes (PII) y no debe vivir en el árbol de código ni terminar en git.
+_LOG_DIR = os.path.abspath(getattr(settings, "AUDIT_LOG_DIR", None) or "./audit_logs")
 _LOG_FILE = os.path.join(_LOG_DIR, "aura_audit.jsonl")
 
 # Rotación simple: si el archivo supera este tamaño, se renombra a .1 (un solo backup).
