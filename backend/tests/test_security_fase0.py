@@ -11,6 +11,8 @@ Sin OpenAI. Verifica:
 import hashlib
 import hmac
 
+import pytest
+
 from app.config import settings
 
 
@@ -64,10 +66,66 @@ def test_instagram_firma_valida_pasa(client, monkeypatch):
     assert _post_ig(client, body, "app-secret-real").status_code == 200
 
 
-def test_instagram_sin_secret_fail_open(client, monkeypatch):
+def test_instagram_sin_secret_permisivo_en_dev(client, monkeypatch):
+    """En DEBUG (dev/local) se acepta sin firma, para poder probar con curl/ngrok."""
     monkeypatch.setattr(settings, "INSTAGRAM_APP_SECRET", "")
+    monkeypatch.setattr(settings, "DEBUG", True)
     body = b'{"object": "instagram", "entry": []}'
     assert _post_ig(client, body, None).status_code == 200
+
+
+def test_instagram_sin_secret_fail_closed_en_produccion(client, monkeypatch):
+    """M6: en producción, sin App Secret NO se puede verificar el origen → 403.
+
+    Un webhook abierto deja que cualquiera con la URL inyecte mensajes falsos al agente.
+    """
+    monkeypatch.setattr(settings, "INSTAGRAM_APP_SECRET", "")
+    monkeypatch.setattr(settings, "DEBUG", False)
+    body = b'{"object": "instagram", "entry": []}'
+    assert _post_ig(client, body, None).status_code == 403
+
+
+def test_whatsapp_sin_token_fail_closed_en_produccion(client, monkeypatch):
+    """M6: idem WhatsApp — sin TWILIO_AUTH_TOKEN el webhook rechaza en producción."""
+    monkeypatch.setattr(settings, "TWILIO_AUTH_TOKEN", "")
+    monkeypatch.setattr(settings, "DEBUG", False)
+    r = client.post("/api/whatsapp/webhook",
+                    data={"From": "whatsapp:+5491100000000", "Body": "hola"})
+    assert r.status_code == 403
+
+
+def test_whatsapp_sin_token_permisivo_en_dev(client, monkeypatch):
+    monkeypatch.setattr(settings, "TWILIO_AUTH_TOKEN", "")
+    monkeypatch.setattr(settings, "DEBUG", True)
+    r = client.post("/api/whatsapp/webhook",
+                    data={"From": "whatsapp:+5491100000000", "Body": ""})  # sin body → ignora
+    assert r.status_code == 200
+
+
+def test_public_url_usa_los_headers_del_proxy():
+    """La firma de Twilio se valida contra la URL PÚBLICA, no la interna del contenedor.
+
+    Detrás del proxy de Render, request.url reporta http://host-interno; si firmáramos contra
+    eso, los POST legítimos de Twilio fallarían. Debe reconstruirse con X-Forwarded-*.
+    """
+    from types import SimpleNamespace
+    from app.routers.whatsapp import _public_url
+
+    req = SimpleNamespace(
+        headers={"x-forwarded-proto": "https", "x-forwarded-host": "api.hotel.com"},
+        url=SimpleNamespace(path="/api/whatsapp/webhook", query=""),
+    )
+    assert _public_url(req) == "https://api.hotel.com/api/whatsapp/webhook"
+
+    # Sin headers de proxy (dev local) cae a str(request.url), la URL tal cual la ve la app.
+    class _Url(str):
+        path = "/api/whatsapp/webhook"
+        query = ""
+
+    req_local = SimpleNamespace(
+        headers={}, url=_Url("http://localhost:8010/api/whatsapp/webhook"),
+    )
+    assert _public_url(req_local) == "http://localhost:8010/api/whatsapp/webhook"
 
 
 # ── (c) Routers de backoffice: fail-closed en producción ─────────────────────
@@ -97,3 +155,67 @@ def test_endpoints_publicos_siguen_abiertos_en_produccion(client, monkeypatch):
     assert client.get("/api/chat/theme").status_code == 200
     assert client.get("/api/restaurant/menu/public").status_code == 200
     assert client.get("/api/reservations/rooms").status_code == 200
+
+
+# ── (d) GETs de backoffice que estaban ABIERTOS (hallazgo C2 de la auditoría) ──
+# El agujero no fueron 3 endpoints puntuales sino el patrón implícito de montar routers
+# sin decidir qué es público. Estos tests fijan la decisión: todo lo de abajo exige
+# credencial, y la whitelist de `test_superficie_publica_completa` es la única excepción.
+
+# GETs que exponían datos de negocio (costos, entrenamiento, config) o PII sin auth.
+_GETS_QUE_DEBEN_EXIGIR_CREDENCIAL = (
+    "/api/usage/summary",              # gasto en USD
+    "/api/usage/config",               # topes de gasto
+    "/api/business-profile",           # perfil COMPLETO (contacto + facts internos)
+    "/api/agents",                     # catálogo de agentes
+    "/api/agents/centro-config",
+    "/api/agents/training-schemas",
+    "/api/agents/1",                   # config/prompts del agente
+    "/api/agents/1/capabilities",
+    "/api/agents/1/performance",       # costo de IA por agente
+    "/api/agents/1/daily-report",
+    "/api/agents/1/training",          # corpus de entrenamiento del cliente
+    "/api/agents/1/skills",
+    "/api/exchange-rate",              # config de cotización
+    "/api/human-attention",            # horarios de guardia
+    "/api/demo/status",                # conteos de la instancia
+    "/api/chat/stats",                 # estado interno del servicio
+    "/api/checkin/HTL-TEST",           # PII de pre-check-in (documento, nombre)
+)
+
+
+@pytest.mark.parametrize("path", _GETS_QUE_DEBEN_EXIGIR_CREDENCIAL)
+def test_gets_de_backoffice_exigen_credencial(client, monkeypatch, path):
+    monkeypatch.setattr(settings, "DEBUG", False)
+    monkeypatch.setattr(settings, "ADMIN_KEY", "clave-real")
+    r = client.get(path)
+    assert r.status_code == 401, f"{path} debería exigir credencial (got {r.status_code})"
+
+
+@pytest.mark.parametrize("path", _GETS_QUE_DEBEN_EXIGIR_CREDENCIAL)
+def test_gets_de_backoffice_pasan_con_jwt(client, admin_headers, monkeypatch, path):
+    """Con JWT del backoffice NO deben dar 401 (404/422 es aceptable: el recurso puede no existir)."""
+    monkeypatch.setattr(settings, "DEBUG", False)
+    monkeypatch.setattr(settings, "ADMIN_KEY", "clave-real")
+    r = client.get(path, headers=admin_headers)
+    assert r.status_code != 401, f"{path} rechaza un JWT válido"
+
+
+def test_superficie_publica_completa(client, monkeypatch):
+    """WHITELIST: lo ÚNICO que puede responder sin credencial (ver main.py).
+
+    Si un endpoint nuevo necesita entrar acá, es una decisión explícita — no un descuido.
+    """
+    monkeypatch.setattr(settings, "DEBUG", False)
+    monkeypatch.setattr(settings, "ADMIN_KEY", "clave-real")
+    publicos = (
+        "/",                                   # health
+        "/api/chat/health",
+        "/api/chat/theme",                     # tema del widget
+        "/api/public/business-profile",        # identidad pública de la landing
+        "/api/restaurant/menu/public",         # carta pública
+        "/api/reservations/rooms",             # habitaciones que muestra la landing
+    )
+    for path in publicos:
+        r = client.get(path)
+        assert r.status_code == 200, f"{path} debe seguir siendo público (got {r.status_code})"

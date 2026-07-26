@@ -23,8 +23,14 @@ backend/chroma_db_postsale/
 backend/uploads/
 backend/vouchers/
 
-# Logs de auditoría del chat (generados en runtime)
+# Logs de auditoría del chat (generados en runtime). Contienen PII (mensajes de huéspedes):
+# NUNCA deben entrar al repo. El destino real es settings.AUDIT_LOG_DIR (fuera del paquete);
+# las otras rutas quedan por si algún entorno viejo todavía escribe ahí.
 backend/logs/
+backend/app/logs/
+backend/audit_logs/
+audit_logs/
+aura_audit.jsonl*
 
 # OS
 .DS_Store
@@ -32,3 +38,7 @@ Thumbs.db
 
 # Claude Code: configuración y planes locales (no compartir)
 .claude/
+
+# Documentos de OTROS proyectos que quedaron mezclados en este repo (respaldados
+# en ../_docs_otros_proyectos/). No pertenecen al producto de hoteles.
+ANALISIS_RFI_ASISTENTE_FISCAL.*

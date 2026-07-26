@@ -169,7 +169,7 @@ def update_profile(db: Session, data: dict) -> dict:
         "restaurant_name",
         "timezone", "locale", "language", "dialect_style", "city", "region_line",
         "lat", "lng", "primary_currency", "secondary_currency", "facts",
-        "contact_phone", "contact_email",
+        "contact_phone", "contact_email", "contact_address", "instagram",
     }
     for key, value in (data or {}).items():
         if key in editable:

@@ -35,6 +35,27 @@ _FALLBACK_IMG = "https://lirp.cdn-website.com/02afd0e4/dms3rep/multi/opt/BRCHXHX
 _contact_service = ContactService()
 
 
+def _public_url(request: Request) -> str:
+    """URL PÚBLICA del request, para validar la firma de Twilio detrás de un proxy.
+
+    Twilio firma la URL a la que él hizo POST (https://tu-dominio/...). Detrás del proxy de
+    Render, `request.url` puede reportar el esquema/host internos (http://0.0.0.0:8000/...) y
+    la firma NO coincidiría, rechazando mensajes legítimos. Reconstruimos con los headers
+    X-Forwarded-* que setea el proxy; si no están, caemos a request.url (dev/local).
+
+    Se puede fijar explícitamente con PUBLIC_BASE_URL cuando el proxy no manda los headers.
+    """
+    base = (getattr(settings, "PUBLIC_BASE_URL", "") or "").strip().rstrip("/")
+    if base:
+        return f"{base}{request.url.path}" + (f"?{request.url.query}" if request.url.query else "")
+    proto = request.headers.get("x-forwarded-proto")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if proto and host:
+        return f"{proto}://{host}{request.url.path}" + (
+            f"?{request.url.query}" if request.url.query else "")
+    return str(request.url)
+
+
 def to_whatsapp_text(text: str) -> str:
     """Convierte el Markdown del agente al formato de WhatsApp.
 
@@ -338,14 +359,21 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     message_sid = form.get("MessageSid", "")  # para el typing indicator / read-receipt
 
     # Validación de firma: garantiza que el POST viene de Twilio.
-    if settings.TWILIO_AUTH_TOKEN:
+    # FAIL-CLOSED en producción: sin el auth token no se puede verificar el origen, y un
+    # webhook abierto permite que cualquiera con la URL inyecte mensajes falsos al agente.
+    if not settings.TWILIO_AUTH_TOKEN:
+        if not settings.DEBUG:
+            logger.error("WhatsApp: TWILIO_AUTH_TOKEN no configurado en producción; "
+                         "webhook RECHAZADO (seteá la variable para habilitar el canal)")
+            return Response(status_code=403)
+        logger.warning("WhatsApp: sin TWILIO_AUTH_TOKEN; se acepta por DEBUG (solo dev)")
+    else:
         from twilio.request_validator import RequestValidator
 
         validator = RequestValidator(settings.TWILIO_AUTH_TOKEN)
         signature = request.headers.get("X-Twilio-Signature", "")
-        url = str(request.url)
-        if not validator.validate(url, dict(form), signature):
-            logger.warning("WhatsApp: firma de Twilio inválida", url=url)
+        if not validator.validate(_public_url(request), dict(form), signature):
+            logger.warning("WhatsApp: firma de Twilio inválida", url=_public_url(request))
             return Response(status_code=403)
 
     # Media entrante: Twilio la manda sin Body de texto. Distinguimos:

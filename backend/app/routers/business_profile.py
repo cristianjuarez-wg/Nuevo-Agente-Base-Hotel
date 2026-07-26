@@ -42,9 +42,13 @@ class BusinessProfileUpdate(BaseModel):
     facts: Optional[List[str]] = None
 
 
-@router.get("/business-profile")
+@router.get("/business-profile", dependencies=[Depends(require_admin_key)])
 async def get_business_profile(db: Session = Depends(get_db)):
-    """Perfil completo de identidad del negocio (backoffice)."""
+    """Perfil completo de identidad del negocio (backoffice, requiere credencial).
+
+    Incluye campos internos (`facts` del prompt, contacto, config regional). La landing
+    pública NO usa este endpoint: consume `/public/business-profile` (subset seguro).
+    """
     return business_profile_service.get_profile(db)
 
 
@@ -59,7 +63,13 @@ async def update_business_profile(payload: BusinessProfileUpdate, db: Session = 
 
 @router.get("/public/business-profile")
 async def get_public_business_profile(db: Session = Depends(get_db)):
-    """Subset SEGURO para la landing pública (sin datos internos ni auth)."""
+    """Subset SEGURO para la landing pública (sin datos internos ni auth).
+
+    Incluye el contacto que el negocio YA publica en su web/redes (dirección, teléfono, email,
+    Instagram): la landing lo muestra en el footer y en la sección de ubicación. Sirviéndolo
+    desde acá, el cliente lo edita en el backoffice y el frontend no lleva datos hardcodeados
+    de ningún cliente. NO se exponen `facts` ni otros campos internos del prompt.
+    """
     p = business_profile_service.get_profile(db)
     return {
         "business_name": p.get("business_name"),
@@ -71,4 +81,9 @@ async def get_public_business_profile(db: Session = Depends(get_db)):
         "language": p.get("language"),
         "primary_currency": p.get("primary_currency"),
         "secondary_currency": p.get("secondary_currency"),
+        # Contacto público (el que ya figura en la web/redes del negocio).
+        "contact_address": p.get("contact_address"),
+        "contact_phone": p.get("contact_phone"),
+        "contact_email": p.get("contact_email"),
+        "instagram": p.get("instagram"),
     }

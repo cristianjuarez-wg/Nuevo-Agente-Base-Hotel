@@ -40,7 +40,20 @@ async def lifespan(app: FastAPI):
         logger.critical("JWT_SECRET inseguro en producción: seteá un valor real "
                         "(DEBUG=False + JWT_SECRET default). La app no arranca.")
         raise RuntimeError("JWT_SECRET inseguro en producción (ver logs).")
-    
+
+    # Webhooks sin credencial de firma: en producción se RECHAZAN (fail-closed), porque sin
+    # firma cualquiera con la URL puede inyectar mensajes falsos al agente. No abortamos el
+    # arranque (un hotel puede no usar esos canales), pero avisamos fuerte: si el canal deja
+    # de recibir mensajes, este log dice exactamente qué variable falta.
+    if not settings.DEBUG:
+        for _var, _canal in (("TWILIO_AUTH_TOKEN", "WhatsApp"),
+                             ("INSTAGRAM_APP_SECRET", "Instagram")):
+            if not (getattr(settings, _var, "") or "").strip():
+                logger.critical(
+                    f"{_canal}: {_var} NO configurado en producción → el webhook de {_canal} "
+                    f"rechazará todos los mensajes (403). Seteá {_var} para habilitar el canal.")
+
+
     try:
         # Registrar los modelos de dominio cuyas relationships se declaran por string
         # (Booking→ExtraCharge, HotelTicket→StaffMember), para que el mapper las resuelva.
@@ -244,44 +257,60 @@ async def log_requests(request: Request, call_next):
     
     return response
 
-# Incluir routers
-# Fase 0 (seguridad): los routers 100% backoffice se montan con `require_admin_key`
-# (JWT o X-Admin-Key; fail-closed en producción, bypass solo en DEBUG). Los routers
-# mixtos (reservations, restaurant, chat_themes, conversations) aplican la dependencia
-# endpoint por endpoint, porque tienen endpoints públicos del sitio/widget del huésped.
+# ── Inclusión de routers y SUPERFICIE PÚBLICA (whitelist explícita) ──────────────
+#
+# Regla: TODO es admin salvo lo que esté en la whitelist de abajo. Los routers 100%
+# backoffice se montan con `require_admin_key` (JWT o X-Admin-Key; fail-closed en
+# producción, bypass solo en DEBUG). Los routers MIXTOS se montan pelados y aplican la
+# dependencia endpoint por endpoint, porque conviven endpoints del sitio/widget del huésped.
+#
+# WHITELIST — lo único que queda accesible sin credencial, y por qué:
+#   · chat.*            → el widget del huésped (mensajes, saludo, tema, health). Sin login.
+#   · conversations WS  → canal del widget para el takeover humano (valida Origin).
+#   · whatsapp/instagram webhooks → los autentica la FIRMA del proveedor, no un token.
+#   · auth.login        → es el login (rate-limited).
+#   · reservations: rooms, availability, POST bookings, GET bookings/{code}
+#                       → la landing muestra habitaciones y el huésped reserva/consulta
+#                         con su código (el código ES la credencial).
+#   · restaurant: menu/public, slots, POST orders/vouchers/table-reservations,
+#     GET orders|vouchers/{code}, validate-booking/{code}
+#                       → carta pública y flujo de pedido del comensal (por código).
+#   · business_profile: /public/business-profile → subset seguro que consume la landing.
+#   · "/" , /metrics, /media/* → health, scraping de métricas y media pública.
+# Todo lo demás (costos, config, entrenamiento, PII, perfil completo) EXIGE credencial.
 _admin_dep = [Depends(require_admin_key)]
-app.include_router(chat.router)
+app.include_router(chat.router)                                            # público (widget)
 app.include_router(documents.router, dependencies=_admin_dep)
 app.include_router(admin.router, dependencies=_admin_dep)
 app.include_router(leads.router, dependencies=_admin_dep)
 app.include_router(kanban.router, dependencies=_admin_dep)
 app.include_router(analytics.router, dependencies=_admin_dep)
-app.include_router(reservations.router)
+app.include_router(reservations.router)                                    # mixto (por endpoint)
 app.include_router(hotel_tickets.router, dependencies=_admin_dep)
-app.include_router(usage.router)
+app.include_router(usage.router, dependencies=_admin_dep)                  # costos → admin
 app.include_router(knowledge.router, dependencies=_admin_dep)
 app.include_router(promotions.router, dependencies=_admin_dep)
-app.include_router(chat_themes.router)
-app.include_router(exchange_rate.router)
+app.include_router(chat_themes.router)                                     # mixto (tema público)
+app.include_router(exchange_rate.router, dependencies=_admin_dep)          # config → admin
 app.include_router(rooms_admin.router, dependencies=_admin_dep)
 app.include_router(contacts.router, dependencies=_admin_dep)
 app.include_router(staff.router, dependencies=_admin_dep)
 app.include_router(management_knowledge.router, dependencies=_admin_dep)
-app.include_router(demo.router)
-app.include_router(restaurant.router)
-app.include_router(whatsapp.router)
-app.include_router(instagram.router)
-app.include_router(conversations.router)
-app.include_router(checkin.router)
-app.include_router(agents.router)
-app.include_router(business_profile.router)
-app.include_router(auth.router)
+app.include_router(demo.router, dependencies=_admin_dep)                   # datos demo → admin
+app.include_router(restaurant.router)                                      # mixto (por endpoint)
+app.include_router(whatsapp.router)                                        # webhook (firma)
+app.include_router(instagram.router)                                       # webhook (firma)
+app.include_router(conversations.router)                                   # mixto (WS público)
+app.include_router(checkin.router)                                         # mixto (por endpoint)
+app.include_router(agents.router, dependencies=_admin_dep)                 # 100% backoffice
+app.include_router(business_profile.router)                                # mixto (/public/*)
+app.include_router(auth.router)                                            # login público
 from app.routers import prompt_config_versions  # noqa: E402
-app.include_router(prompt_config_versions.router)
+app.include_router(prompt_config_versions.router)                          # dep por endpoint
 from app.routers import observability as _observability  # noqa: E402
-app.include_router(_observability.router)
+app.include_router(_observability.router)                                  # dep por endpoint
 from app.routers import human_attention  # noqa: E402
-app.include_router(human_attention.router)
+app.include_router(human_attention.router, dependencies=_admin_dep)        # config → admin
 
 # Montar directorio de vouchers como archivos estáticos
 vouchers_dir = Path(__file__).parent.parent / "vouchers"

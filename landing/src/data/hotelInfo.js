@@ -1,17 +1,23 @@
-// Datos estáticos del hotel (reales del Hampton by Hilton Bariloche).
-// Las habitaciones se cargan dinámicamente desde el backend; esto es contenido fijo.
-
+// Identidad de FALLBACK de la landing: placeholder NEUTRO, sin datos de ningún cliente real.
+//
+// La identidad real la sirve el backend en `/api/public/business-profile` y la aplica
+// `useBusinessProfile()`, que usa este objeto solo como estado inicial (evita el flash sin marca
+// mientras carga) y como red si el backend está caído. Un cliente nuevo NO edita este archivo:
+// carga su perfil en el backoffice.
+//
+// NO poner acá datos reales de un cliente (dirección, teléfono, email): quedarían como estado
+// inicial de CUALQUIER instancia y se filtrarían entre clientes.
 export const HOTEL = {
-  name: 'Hampton by Hilton',
-  city: 'Bariloche',
-  tagline: 'El primer Hilton de la Patagonia',
-  address: 'Libertad 290, San Carlos de Bariloche, Patagonia, Argentina',
-  phone: '+54 294-474-6200',
-  email: 'info@hamptonbariloche.com',
-  instagram: '@hamptonbariloche',
+  name: 'Su Negocio',
+  city: '',
+  tagline: '',
+  address: '',
+  phone: '',
+  email: '',
+  instagram: '',
   checkIn: '15:00',
   checkOut: '11:00',
-  mapsQuery: 'Hampton by Hilton Bariloche, Libertad 290, San Carlos de Bariloche',
+  mapsQuery: '',
 }
 
 // Servicios destacados (lucide icon names resueltos en el componente)
