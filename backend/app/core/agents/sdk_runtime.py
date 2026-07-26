@@ -18,6 +18,7 @@ from typing import Dict, List, Optional
 from agents import Agent, ModelSettings, OpenAIChatCompletionsModel, Runner
 
 from app.config import settings
+from app.core.llm.circuit_breaker import openai_circuit_breaker
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
 from app.core.observability.logging_config import get_logger
@@ -77,7 +78,16 @@ async def run_agent(
     usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": model_name}
     start = time.time()
     try:
-        result = await Runner.run(agent, input=input_list, context=context, max_turns=spec.max_turns)
+        # CIRCUIT BREAKER (C3): el loop del SDK es el único punto por donde pasan TODAS las
+        # llamadas al LLM, así que acá es donde el breaker sirve. Si OpenAI se cae, tras N
+        # fallos seguidos el circuito abre y los turnos siguientes fallan RÁPIDO (con el
+        # fallback del orquestador) en vez de esperar el timeout completo del SDK en cada uno.
+        # Solo abren el circuito errores reales de la API (APIError/RateLimit/Timeout/
+        # Connection, ver circuit_breaker.py): un tripwire del guardrail o un bug de código
+        # NO cuentan como caída del proveedor.
+        result = await openai_circuit_breaker.acall(
+            Runner.run, agent, input=input_list, context=context, max_turns=spec.max_turns,
+        )
         usage = extract_usage(result, model=model_name)
         out = {
             "response": result.final_output or "",

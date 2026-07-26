@@ -84,12 +84,16 @@ async def lifespan(app: FastAPI):
             seed_agents(_seed_db)
             seed_skills(_seed_db)
             seed_training_defaults(_seed_db)
-            # Identidad del negocio (Fase 1): siembra id=1 con los valores del Hampton
-            # si no existe. Paridad: el agente se comporta igual con estos defaults.
+            # Identidad del negocio: garantiza que exista la fila id=1 para no arrancar sin
+            # perfil. Los valores de fábrica son los del Hampton (primera instancia); una
+            # instancia nueva los sobreescribe con `bootstrap_instance <cliente>.yaml`.
             business_profile_service.ensure_seeded(_seed_db)
-            # Fase A: rellena los facts del Hampton si su perfil ya existía con facts=[]
-            # (los hechos se movieron del texto de los prompts al perfil).
-            business_profile_service.ensure_hampton_facts(_seed_db)
+            # NOTA (C4): `ensure_hampton_facts` NO se llama acá. Es una migración one-shot de
+            # la Fase A, específica de UN cliente ("si el negocio ES el Hampton"), y no tiene
+            # lugar en el arranque genérico del producto. Si hiciera falta reaplicarla:
+            #     python -c "from app.models.database import SessionLocal; \
+            #         from app.services import business_profile_service as b; \
+            #         d=SessionLocal(); b.ensure_hampton_facts(d); d.close()"
             # Tarea B: crea la tabla room_prices y la puebla desde las columnas legacy
             # (base_price_usd/ars) si faltan — idempotente.
             _room_price_model.ensure_table()

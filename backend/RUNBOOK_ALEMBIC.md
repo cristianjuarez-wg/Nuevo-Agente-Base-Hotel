@@ -18,6 +18,12 @@ cuidado.**
 - `alembic/versions/0001_baseline.py` — la revisión BASELINE:
   - `upgrade()` crea el esquema completo desde `Base.metadata` (`checkfirst=True`, idempotente).
   - Verificado: `alembic upgrade head` en una DB SQLite limpia crea las 36 tablas + `alembic_version`.
+- `alembic/versions/0002_business_profile_contacto.py` — columnas de contacto público
+  (`contact_phone`, `contact_email`, `contact_address`, `instagram`) en `business_profile`.
+  Existía solo el `ensure_column` de `models/business_profile.py`, que **corre únicamente en
+  SQLite**: en la Postgres de Render esas columnas no se crearían y el endpoint público que
+  las lee fallaría. Idempotente (chequea el catálogo) y verificada en los dos escenarios:
+  DB limpia (`upgrade head` desde cero) y DB tipo-producción (tabla vieja + `stamp 0001`).
 
 ---
 
@@ -39,6 +45,11 @@ alembic stamp 0001_baseline
 
 # 3. Verificar: debe existir la tabla alembic_version con version_num = 0001_baseline
 psql "$RENDER_EXTERNAL_DATABASE_URL" -c "SELECT * FROM alembic_version;"
+
+# 4. Aplicar las revisiones POSTERIORES al baseline (hoy: 0002, columnas de contacto).
+#    Sin este paso, /api/public/business-profile falla en Postgres al leer contact_address.
+alembic upgrade head
+psql "$RENDER_EXTERNAL_DATABASE_URL" -c "SELECT * FROM alembic_version;"  # → 0002_bp_contacto
 ```
 
 `stamp` solo escribe la marca de versión; NO ejecuta el `upgrade()` (no toca el esquema).
