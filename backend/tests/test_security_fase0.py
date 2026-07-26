@@ -66,10 +66,66 @@ def test_instagram_firma_valida_pasa(client, monkeypatch):
     assert _post_ig(client, body, "app-secret-real").status_code == 200
 
 
-def test_instagram_sin_secret_fail_open(client, monkeypatch):
+def test_instagram_sin_secret_permisivo_en_dev(client, monkeypatch):
+    """En DEBUG (dev/local) se acepta sin firma, para poder probar con curl/ngrok."""
     monkeypatch.setattr(settings, "INSTAGRAM_APP_SECRET", "")
+    monkeypatch.setattr(settings, "DEBUG", True)
     body = b'{"object": "instagram", "entry": []}'
     assert _post_ig(client, body, None).status_code == 200
+
+
+def test_instagram_sin_secret_fail_closed_en_produccion(client, monkeypatch):
+    """M6: en producción, sin App Secret NO se puede verificar el origen → 403.
+
+    Un webhook abierto deja que cualquiera con la URL inyecte mensajes falsos al agente.
+    """
+    monkeypatch.setattr(settings, "INSTAGRAM_APP_SECRET", "")
+    monkeypatch.setattr(settings, "DEBUG", False)
+    body = b'{"object": "instagram", "entry": []}'
+    assert _post_ig(client, body, None).status_code == 403
+
+
+def test_whatsapp_sin_token_fail_closed_en_produccion(client, monkeypatch):
+    """M6: idem WhatsApp — sin TWILIO_AUTH_TOKEN el webhook rechaza en producción."""
+    monkeypatch.setattr(settings, "TWILIO_AUTH_TOKEN", "")
+    monkeypatch.setattr(settings, "DEBUG", False)
+    r = client.post("/api/whatsapp/webhook",
+                    data={"From": "whatsapp:+5491100000000", "Body": "hola"})
+    assert r.status_code == 403
+
+
+def test_whatsapp_sin_token_permisivo_en_dev(client, monkeypatch):
+    monkeypatch.setattr(settings, "TWILIO_AUTH_TOKEN", "")
+    monkeypatch.setattr(settings, "DEBUG", True)
+    r = client.post("/api/whatsapp/webhook",
+                    data={"From": "whatsapp:+5491100000000", "Body": ""})  # sin body → ignora
+    assert r.status_code == 200
+
+
+def test_public_url_usa_los_headers_del_proxy():
+    """La firma de Twilio se valida contra la URL PÚBLICA, no la interna del contenedor.
+
+    Detrás del proxy de Render, request.url reporta http://host-interno; si firmáramos contra
+    eso, los POST legítimos de Twilio fallarían. Debe reconstruirse con X-Forwarded-*.
+    """
+    from types import SimpleNamespace
+    from app.routers.whatsapp import _public_url
+
+    req = SimpleNamespace(
+        headers={"x-forwarded-proto": "https", "x-forwarded-host": "api.hotel.com"},
+        url=SimpleNamespace(path="/api/whatsapp/webhook", query=""),
+    )
+    assert _public_url(req) == "https://api.hotel.com/api/whatsapp/webhook"
+
+    # Sin headers de proxy (dev local) cae a str(request.url), la URL tal cual la ve la app.
+    class _Url(str):
+        path = "/api/whatsapp/webhook"
+        query = ""
+
+    req_local = SimpleNamespace(
+        headers={}, url=_Url("http://localhost:8010/api/whatsapp/webhook"),
+    )
+    assert _public_url(req_local) == "http://localhost:8010/api/whatsapp/webhook"
 
 
 # ── (c) Routers de backoffice: fail-closed en producción ─────────────────────

@@ -55,14 +55,19 @@ async def verify_webhook(request: Request):
 def _verify_meta_signature(raw_body: bytes, signature_header: str | None) -> bool:
     """Valida X-Hub-Signature-256 (HMAC-SHA256 del body crudo con el App Secret de Meta).
 
-    Mismo criterio que la firma de Twilio (routers/whatsapp.py): si INSTAGRAM_APP_SECRET
-    no está configurado (dev/local), fail-open con warning; si está configurado y la firma
-    falta o no coincide → se rechaza (403).
+    FAIL-CLOSED en producción (mismo criterio que la firma de Twilio): sin el App Secret no
+    hay forma de saber si el POST viene de Meta, y un webhook abierto deja que cualquiera que
+    conozca la URL inyecte mensajes falsos al agente (gastando LLM y creando datos espurios).
+    En DEBUG (dev/local) se permite sin firma para poder probar con curl/ngrok.
     """
     secret = (settings.INSTAGRAM_APP_SECRET or "").strip()
     if not secret:
-        logger.warning("Instagram: INSTAGRAM_APP_SECRET no configurado; webhook sin validación de firma")
-        return True
+        if settings.DEBUG:
+            logger.warning("Instagram: sin INSTAGRAM_APP_SECRET; se acepta por DEBUG (solo dev)")
+            return True
+        logger.error("Instagram: INSTAGRAM_APP_SECRET no configurado en producción; "
+                     "webhook RECHAZADO (seteá la variable para habilitar el canal)")
+        return False
     if not signature_header or not signature_header.startswith("sha256="):
         return False
     expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()

@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # paquete: se escribe acá y este directorio está gitignoreado. En Render apuntar al disco
     # persistente para que el rastro sobreviva al deploy: AUDIT_LOG_DIR=/data/audit
     AUDIT_LOG_DIR: str = "./audit_logs"
+
+    # URL pública del backend (ej. https://api.tu-dominio.com). Solo se usa para validar la
+    # firma de los webhooks detrás de un proxy: Twilio firma la URL pública, no la interna.
+    # Normalmente NO hace falta setearla (se deduce de los headers X-Forwarded-*).
+    PUBLIC_BASE_URL: str = ""
     
     # OpenAI Config
     OPENAI_MODEL: str = "gpt-4o"  # Modelo principal para generación de respuestas

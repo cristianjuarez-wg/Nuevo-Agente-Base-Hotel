@@ -40,7 +40,20 @@ async def lifespan(app: FastAPI):
         logger.critical("JWT_SECRET inseguro en producción: seteá un valor real "
                         "(DEBUG=False + JWT_SECRET default). La app no arranca.")
         raise RuntimeError("JWT_SECRET inseguro en producción (ver logs).")
-    
+
+    # Webhooks sin credencial de firma: en producción se RECHAZAN (fail-closed), porque sin
+    # firma cualquiera con la URL puede inyectar mensajes falsos al agente. No abortamos el
+    # arranque (un hotel puede no usar esos canales), pero avisamos fuerte: si el canal deja
+    # de recibir mensajes, este log dice exactamente qué variable falta.
+    if not settings.DEBUG:
+        for _var, _canal in (("TWILIO_AUTH_TOKEN", "WhatsApp"),
+                             ("INSTAGRAM_APP_SECRET", "Instagram")):
+            if not (getattr(settings, _var, "") or "").strip():
+                logger.critical(
+                    f"{_canal}: {_var} NO configurado en producción → el webhook de {_canal} "
+                    f"rechazará todos los mensajes (403). Seteá {_var} para habilitar el canal.")
+
+
     try:
         # Registrar los modelos de dominio cuyas relationships se declaran por string
         # (Booking→ExtraCharge, HotelTicket→StaffMember), para que el mapper las resuelva.
