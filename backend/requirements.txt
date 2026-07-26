@@ -99,6 +99,10 @@ phonenumbers==9.0.32
 pydantic==2.13.4
 pydantic-settings==2.6.1
 pydantic_core==2.46.4
+# Requerido por pydantic.EmailStr (routers/auth.py valida el email del admin). Sin esto el
+# import de la app falla en produccion: pydantic lo pide de forma perezosa, asi que el error
+# recien aparece al levantar, no al instalar.
+email-validator==2.3.0
 Pygments==2.19.2
 pypdf==5.1.0
 pytz==2024.2
