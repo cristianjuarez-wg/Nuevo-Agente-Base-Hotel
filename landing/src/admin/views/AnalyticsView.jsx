@@ -8,6 +8,7 @@ import {
 import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics, getRestaurantStats } from '../../services/api'
 import { PageHeader, StatCard, Loading, formatUSD } from '../ui'
 import PeriodSelector from '../components/PeriodSelector'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 // Selector de canal: Todos / Web / WhatsApp / Instagram. Filtra funnel + heatmap.
 const CHANNELS = [
@@ -194,6 +195,7 @@ function Panel({ title, subtitle, children }) {
 }
 
 export default function AnalyticsView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [channel, setChannel] = useState('all')
   const [period, setPeriod] = useState('mes')
   const [funnel, setFunnel] = useState(null)
@@ -269,7 +271,7 @@ export default function AnalyticsView() {
           {quality && quality.total_tickets > 0 && (
             <Panel
               title="Calidad del agente · soporte al huésped"
-              subtitle="Qué resuelve Aura sola vs. qué deriva al equipo (consultas de huéspedes con reserva)."
+              subtitle={`Qué resuelve ${agentName} solo vs. qué deriva al equipo (consultas de huéspedes con reserva).`}
             >
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <div className="rounded-xl bg-green-50 px-4 py-3">

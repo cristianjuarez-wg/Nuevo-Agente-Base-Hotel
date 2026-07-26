@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Palette, Plus, Pencil, Trash2, X, Save, Loader2, Pin, ToggleLeft, ToggleRight, AlertTriangle } from 'lucide-react'
 import { listChatThemes, saveChatTheme, patchChatThemeStatus, deleteChatTheme } from '../../../services/api'
 import { PageHeader, Badge, Loading, EmptyState } from '../../ui'
+import { useAgentName } from '../../../hooks/useBusinessProfile'
 
 const MONTHS = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -51,6 +52,7 @@ function isInSeason(t) {
 
 // Preview minimalista del tema — simula el header del chat
 function ThemePreview({ theme }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const hBg = theme.header_bg || '#003f77'
   const hText = theme.header_text || '#ffffff'
   const accent = theme.accent_color || '#005aa9'
@@ -58,7 +60,7 @@ function ThemePreview({ theme }) {
     <div className="mt-2 overflow-hidden rounded-xl border border-brand-100" style={{ width: 160 }}>
       <div className="flex items-center gap-2 px-3 py-2" style={{ background: hBg, color: hText }}>
         <span style={{ fontSize: 16 }}>{theme.emoji || '💬'}</span>
-        <span style={{ fontSize: 11, fontWeight: 600 }}>Aura</span>
+        <span style={{ fontSize: 11, fontWeight: 600 }}>{agentName}</span>
       </div>
       <div className="bg-white px-3 py-2 space-y-1.5">
         <div className="h-2 w-20 rounded-full" style={{ background: '#f0f0f0' }} />
@@ -70,6 +72,7 @@ function ThemePreview({ theme }) {
 }
 
 export default function ThemesView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [themes, setThemes] = useState([])
   const [loading, setLoading] = useState(true)
   const [editTheme, setEditTheme] = useState(null)
@@ -102,7 +105,7 @@ export default function ThemesView() {
     <div>
       <PageHeader
         title="Temas del chat"
-        subtitle="Personalizá los colores del widget de Aura según la época del año: Navidad, ski, verano y más."
+        subtitle={`Personalizá los colores del widget de ${agentName} según la época del año: Navidad, ski, verano y más.`}
         right={
           <button
             onClick={() => setEditTheme({})}

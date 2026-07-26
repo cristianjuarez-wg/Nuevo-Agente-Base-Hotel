@@ -9,6 +9,7 @@ import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
 import ChatTranscript from '../components/ChatTranscript'
 import { useTableControls } from '../hooks/useTableControls'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 // Estado temporal de la estadía (derivado en el backend como stay_status).
 function StayBadge({ stay }) {
@@ -69,6 +70,7 @@ function FilterChips({ value, counts, onChange }) {
 }
 
 export default function BookingsView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
@@ -121,7 +123,7 @@ export default function BookingsView() {
   )
 
   const handleSendCheckin = async (r) => {
-    if (!window.confirm(`¿Enviar el check-in express a ${r.guest_name} por WhatsApp? Recibirá un mensaje de Aura para adelantar su llegada.`)) return
+    if (!window.confirm(`¿Enviar el check-in express a ${r.guest_name} por WhatsApp? Recibirá un mensaje de ${agentName} para adelantar su llegada.`)) return
     setSendingCheckin(r.code)
     try {
       await sendCheckinExpress(r.code)

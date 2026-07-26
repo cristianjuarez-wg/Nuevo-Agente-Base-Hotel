@@ -125,9 +125,15 @@ export default function ChatWidget() {
   // aparte (se veía el texto cortado + el completo). Con id estable cada burbuja es un nodo fijo.
   const msgSeq = useRef(0)
   const sendingRef = useRef(false)   // candado SÍNCRONO anti doble-envío (busy es estado async)
-  // Identidad del negocio para interpolar {businessName}/{city} en los textos del widget (P2).
+  // Identidad del negocio para interpolar {businessName}/{city}/{agentName} en los textos del
+  // widget. `agentName` sale del perfil del backoffice (F3): el nombre del agente no se
+  // hardcodea en la UI — cada instancia usa el suyo.
   const profile = useBusinessProfile()
-  const i18nVars = { businessName: profile.name, city: profile.city }
+  const i18nVars = {
+    businessName: profile.name,
+    city: profile.city,
+    agentName: profile.agentName || 'Aura',
+  }
   const t = getStrings(lang, i18nVars)
 
   // Inyecta una respuesta HUMANA (asesor que tomó la conversación), recibida por WebSocket.

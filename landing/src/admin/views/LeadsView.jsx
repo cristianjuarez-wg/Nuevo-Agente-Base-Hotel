@@ -11,6 +11,7 @@ import ChatTranscript from '../components/ChatTranscript'
 import { FilterChip, FilterGroupLabel, FilterDivider } from '../components/FilterChip'
 import { useTableControls } from '../hooks/useTableControls'
 import KanbanBoard from './KanbanBoard'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 const TYPE_FILTERS = [
   { id: 'all', label: 'Todos' },
@@ -60,13 +61,14 @@ const NEXT_ACTION_LABEL = {
 // (por qué no cierra + qué hacer ahora) con distintivo propio del agente. Se muestra en el
 // drawer del lead. Devuelve null si Aura no dejó nada accionable.
 export function AuraInsight({ lead }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const obstacle = lead.obstacle && lead.obstacle !== 'ninguno' ? OBSTACLE_LABEL[lead.obstacle] : null
   const nextAction = lead.nextAction ? NEXT_ACTION_LABEL[lead.nextAction] : null
   if (!obstacle && !nextAction && !lead.contactReadiness) return null
   return (
     <div className="mx-4 mt-3 rounded-xl border border-forest-200 bg-forest-50/60 px-3.5 py-2.5">
       <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-forest-700">
-        <Sparkles size={13} /> Aura detectó
+        <Sparkles size={13} /> {agentName} detectó
       </div>
       <div className="space-y-1 text-sm text-ink">
         {obstacle && (
@@ -131,6 +133,7 @@ function flatten(lead) {
 }
 
 export default function LeadsView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState(null)
@@ -233,7 +236,7 @@ export default function LeadsView() {
       {r.interest && <p className="text-sm text-slatey">{r.interest}</p>}
       {(r.obstacle && r.obstacle !== 'ninguno') || r.contactReadiness ? (
         <p className="mt-1.5 inline-flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="inline-flex items-center gap-1 font-medium text-forest-700"><Sparkles size={11} /> Aura:</span>
+          <span className="inline-flex items-center gap-1 font-medium text-forest-700"><Sparkles size={11} /> {agentName}:</span>
           {r.obstacle && r.obstacle !== 'ninguno' && <span className="text-slatey">freno {OBSTACLE_LABEL[r.obstacle]?.toLowerCase() || r.obstacle}</span>}
           <ReadyChip ready={r.contactReadiness} />
         </p>

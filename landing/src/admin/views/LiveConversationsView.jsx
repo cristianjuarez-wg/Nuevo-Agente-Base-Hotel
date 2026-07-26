@@ -8,6 +8,7 @@ import { toast } from '../toast'
 import SearchInput from '../components/SearchInput'
 import ChatTranscript from '../components/ChatTranscript'
 import DetailDrawer from '../components/DetailDrawer'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 import { FilterChip } from '../components/FilterChip'
 
 // Filtro por canal de la bandeja (chips arriba de la lista). Lista unificada por defecto
@@ -165,6 +166,7 @@ export default function LiveConversationsView() {
 // Panel de una conversación: header con control humano, transcripto en vivo y, si está
 // tomada, el campo para responder como humano (reemplazando a Aura).
 function ConversationPanel({ conv, onOpenProfile, onDelete }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const controlled = !!conv.takeover?.active
   const needsHuman = !controlled && !!conv.needs_human?.active  // el agente pidió una persona
   // "live" = había atención disponible (tomarla ya); "deferred" = sin atención en vivo, quedó
@@ -196,10 +198,10 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
     try {
       if (controlled) {
         await releaseConversation(conv.session_id)
-        toast.success('Aura retomó la conversación')
+        toast.success(`${agentName} retomó la conversación`)
       } else {
         await takeOverConversation(conv.session_id)
-        toast.success('Tomaste el control — Aura está en pausa')
+        toast.success(`Tomaste el control — ${agentName} está en pausa`)
       }
       // El polling de la lista refrescará el estado en pocos segundos.
     } catch (e) {
@@ -287,7 +289,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
               }`}>
               {busy ? <Loader2 size={15} className="animate-spin" />
                 : controlled ? <Bot size={15} /> : <Hand size={15} />}
-              {controlled ? 'Devolver a Aura' : 'Tomar control'}
+              {controlled ? `Devolver a ${agentName}` : 'Tomar control'}
             </button>
           )}
           <button onClick={removeConversation} disabled={deleting}
@@ -301,7 +303,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
       {needsHuman && (conv.needs_human?.summary || conv.needs_human?.motivo) && (
         <div className={`border-b px-4 py-2.5 ${deferred ? 'border-amber-100 bg-amber-50/60' : 'border-emerald-100 bg-emerald-50/60'}`}>
           <p className={`text-xs font-600 uppercase tracking-wide ${deferred ? 'text-amber-700' : 'text-emerald-700'}`}>
-            {deferred ? 'Aura pidió una persona · pendiente de contacto (sin atención en vivo)' : 'Aura pidió una persona'}
+            {deferred ? `${agentName} pidió una persona · pendiente de contacto (sin atención en vivo)` : `${agentName} pidió una persona`}
           </p>
           <p className="mt-0.5 text-sm text-ink">
             {conv.needs_human.summary || conv.needs_human.motivo}
@@ -330,7 +332,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
             </button>
           </div>
           <p className="mt-1.5 px-1 text-[11px] text-slatey">
-            Tu mensaje se le envía al huésped{conv.channel === 'whatsapp' ? ' por WhatsApp' : conv.channel === 'instagram' ? ' por Instagram' : ''}. Aura no responderá hasta que la liberes.
+            Tu mensaje se le envía al huésped{conv.channel === 'whatsapp' ? ' por WhatsApp' : conv.channel === 'instagram' ? ' por Instagram' : ''}. {agentName} no responderá hasta que la liberes.
           </p>
         </div>
       )}
@@ -340,6 +342,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
 
 // Fila de la lista: nombre/teléfono, canal, punto "en vivo", preview del último mensaje.
 function ConversationRow({ r, active, onClick }) {
+  const agentName = useAgentName('Agente')  // prefijo del preview: no hardcodear el nombre (F3)
   return (
     <button onClick={onClick}
       className={`flex w-full flex-col gap-1 border-b border-mist px-4 py-3 text-left transition hover:bg-brand-50/50 ${
@@ -368,7 +371,7 @@ function ConversationRow({ r, active, onClick }) {
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="truncate text-xs text-slatey">
-          {r.last_message_role === 'user' ? '' : 'Aura: '}{r.last_message_preview || '—'}
+          {r.last_message_role === 'user' ? '' : `${agentName}: `}{r.last_message_preview || '—'}
         </span>
         <ChannelBadge channel={r.channel} phone={r.phone} igUsername={r.ig_username} compact />
       </div>

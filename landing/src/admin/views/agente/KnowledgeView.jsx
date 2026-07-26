@@ -13,6 +13,7 @@ import {
 import { Sparkles, Wand2 } from 'lucide-react'
 import { PageHeader, Loading, Badge } from '../../ui'
 import ImageInput from '../../components/ImageInput'
+import { useAgentName } from '../../../hooks/useBusinessProfile'
 
 // Categorías estructuradas (formularios). Orden = orden de aparición.
 const CATEGORIES = [
@@ -40,6 +41,7 @@ function resolveUrl(url) {
 }
 
 export default function KnowledgeView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [entries, setEntries] = useState([])
   const [places, setPlaces] = useState([])
   const [documents, setDocuments] = useState([])
@@ -77,7 +79,7 @@ export default function KnowledgeView() {
     <div>
       <PageHeader
         title="Base de conocimiento del agente"
-        subtitle="El agente Aura usa esta información para responder. Cada cambio se aplica al instante, sin actualizar el sitio."
+        subtitle={`El agente ${agentName} usa esta información para responder. Cada cambio se aplica al instante, sin actualizar el sitio.`}
       />
 
       {/* Información del hotel — categorías */}

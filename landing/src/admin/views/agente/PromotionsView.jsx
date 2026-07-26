@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Tag, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Save, Loader2 } from 'lucide-react'
 import { listPromotions, savePromotion, patchPromotionStatus, deletePromotion } from '../../../services/api'
 import { PageHeader, Badge, Loading, EmptyState, formatDate } from '../../ui'
+import { useAgentName } from '../../../hooks/useBusinessProfile'
 
 const DISCOUNT_TYPES = [
   { value: 'percentage', label: 'Porcentaje (%)' },
@@ -38,6 +39,7 @@ function formatDateInput(iso) {
 }
 
 export default function PromotionsView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   const [editPromo, setEditPromo] = useState(null)   // null = cerrado, {} = nuevo, {...} = editar
@@ -70,7 +72,7 @@ export default function PromotionsView() {
     <div>
       <PageHeader
         title="Promociones"
-        subtitle="Gestioná las ofertas y descuentos que el agente Aura comunica a los huéspedes."
+        subtitle={`Gestioná las ofertas y descuentos que el agente ${agentName} comunica a los huéspedes.`}
         right={
           <button
             onClick={() => setEditPromo({})}

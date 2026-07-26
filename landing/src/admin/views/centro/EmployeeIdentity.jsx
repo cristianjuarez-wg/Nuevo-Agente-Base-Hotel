@@ -9,6 +9,7 @@ import {
 import { Badge, Loading } from '../../ui'
 import { toast } from '../../toast'
 import { useAdminGate } from '../../components/useAdminGate'
+import { useAgentName } from '../../../hooks/useBusinessProfile'
 
 // Etiqueta legible del rol (atributo del agente, no su identidad).
 const ROLE_LABEL = {
@@ -32,6 +33,7 @@ const ENGINE_LABEL = {
 }
 
 export default function EmployeeIdentity({ agent, go, onChanged }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const { runProtected, gateModal } = useAdminGate()
   const [editing, setEditing] = useState(false)
   const [caps, setCaps] = useState(null)
@@ -127,7 +129,7 @@ export default function EmployeeIdentity({ agent, go, onChanged }) {
           </dl>
           <p className="mt-3 text-xs text-slatey/80">
             {agent.role === 'guest'
-              ? 'Aura es un solo empleado que cambia de contexto según la conversación. El rol lo define el sistema y no se modifica desde acá.'
+              ? `${agentName} es un solo empleado que cambia de contexto según la conversación. El rol lo define el sistema y no se modifica desde acá.`
               : 'El rol es estructural: define qué hace el empleado y lo fija el sistema. No se modifica desde el legajo.'}
           </p>
         </div>

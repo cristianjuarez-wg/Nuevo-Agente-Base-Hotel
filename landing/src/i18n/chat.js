@@ -1,4 +1,6 @@
-// i18n del widget de chat (Aura). Tabla pequeña y acotada a la UI del chat.
+// i18n del widget de chat. Tabla pequeña y acotada a la UI del chat.
+// El nombre del agente NO se escribe literal: se usa el placeholder {agentName}, que
+// ChatWidget interpola desde el perfil del negocio (backoffice). Igual que {businessName}.
 // El agente (LLM) responde en el idioma elegido; esto cubre los textos fijos del front.
 
 export const LANGUAGES = [
@@ -10,18 +12,18 @@ export const LANGUAGES = [
 
 const STRINGS = {
   es: {
-    fab: 'Hablá con Aura',
+    fab: 'Hablá con {agentName}',
     subtitle: 'Concierge virtual · en línea',
     online: 'en línea',
     placeholder: 'Escribí tu mensaje…',
     reset: 'Reiniciar conversación',
-    resetHint: 'Reiniciar conversación · Aura recuerda esta charla por 24 h',
-    sessionHint: 'Aura recuerda esta charla por 24 h. Tocá ↻ arriba para empezar de cero.',
+    resetHint: 'Reiniciar conversación · {agentName} recuerda esta charla por 24 h',
+    sessionHint: '{agentName} recuerda esta charla por 24 h. Tocá ↻ arriba para empezar de cero.',
     close: 'Cerrar chat',
     language: 'Idioma',
     errorReply: 'Disculpá, tuve un problema para responder. ¿Podés intentarlo de nuevo en un momento?',
-    greetingFallback: '¡Hola! Soy Aura, la concierge virtual del {businessName}. ¿En qué puedo ayudarte?',
-    thinking: ['Aura está pensando…', 'Buscando la mejor opción…', 'Un segundito…'],
+    greetingFallback: '¡Hola! Soy {agentName}, la concierge virtual del {businessName}. ¿En qué puedo ayudarte?',
+    thinking: ['{agentName} está pensando…', 'Buscando la mejor opción…', 'Un segundito…'],
     // Date picker
     pickDates: 'Elegí tus fechas',
     checkIn: 'Check-in',
@@ -100,7 +102,7 @@ const STRINGS = {
     voucherErrName: 'Decinos a nombre de quién.',
     voucherError: 'No se pudo emitir el voucher. Intentá de nuevo.',
     voucherIssuedMsg: (code) => `Compré mi voucher ${code}.`,
-    // Modal "¿Qué puede hacer Aura?" (encauza expectativas del visitante)
+    // Modal "¿Qué puede hacer {agentName}?" (encauza expectativas del visitante)
     helpOpen: '¿Qué puedo consultarte?',
     helpTitle: '¿En qué te puedo ayudar?',
     helpIntro: 'Soy la concierge del {businessName}. Te acompaño en todo lo que tenga que ver con tu estadía y con {city}.',
@@ -125,18 +127,18 @@ const STRINGS = {
     helpClose: 'Entendido',
   },
   en: {
-    fab: 'Chat with Aura',
+    fab: 'Chat with {agentName}',
     subtitle: 'Virtual concierge · online',
     online: 'online',
     placeholder: 'Type your message…',
     reset: 'Restart conversation',
-    resetHint: 'Restart conversation · Aura remembers this chat for 24 h',
-    sessionHint: 'Aura remembers this chat for 24 h. Tap ↻ above to start fresh.',
+    resetHint: 'Restart conversation · {agentName} remembers this chat for 24 h',
+    sessionHint: '{agentName} remembers this chat for 24 h. Tap ↻ above to start fresh.',
     close: 'Close chat',
     language: 'Language',
     errorReply: 'Sorry, I had trouble responding. Could you try again in a moment?',
-    greetingFallback: "Hi! I'm Aura, the virtual concierge at {businessName}. How can I help you?",
-    thinking: ['Aura is thinking…', 'Finding the best option…', 'Just a second…'],
+    greetingFallback: "Hi! I'm {agentName}, the virtual concierge at {businessName}. How can I help you?",
+    thinking: ['{agentName} is thinking…', 'Finding the best option…', 'Just a second…'],
     pickDates: 'Choose your dates',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
@@ -232,18 +234,18 @@ const STRINGS = {
     helpClose: 'Got it',
   },
   pt: {
-    fab: 'Fale com a Aura',
+    fab: 'Fale com a {agentName}',
     subtitle: 'Concierge virtual · online',
     online: 'online',
     placeholder: 'Escreva sua mensagem…',
     reset: 'Reiniciar conversa',
-    resetHint: 'Reiniciar conversa · Aura lembra desta conversa por 24 h',
-    sessionHint: 'Aura lembra desta conversa por 24 h. Toque em ↻ acima para começar do zero.',
+    resetHint: 'Reiniciar conversa · {agentName} lembra desta conversa por 24 h',
+    sessionHint: '{agentName} lembra desta conversa por 24 h. Toque em ↻ acima para começar do zero.',
     close: 'Fechar chat',
     language: 'Idioma',
     errorReply: 'Desculpe, tive um problema para responder. Pode tentar de novo em um instante?',
-    greetingFallback: 'Olá! Sou a Aura, a concierge virtual do {businessName}. Como posso ajudar?',
-    thinking: ['A Aura está pensando…', 'Buscando a melhor opção…', 'Um segundinho…'],
+    greetingFallback: 'Olá! Sou a {agentName}, a concierge virtual do {businessName}. Como posso ajudar?',
+    thinking: ['A {agentName} está pensando…', 'Buscando a melhor opção…', 'Um segundinho…'],
     pickDates: 'Escolha suas datas',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
@@ -339,18 +341,18 @@ const STRINGS = {
     helpClose: 'Entendi',
   },
   fr: {
-    fab: 'Discuter avec Aura',
+    fab: 'Discuter avec {agentName}',
     subtitle: 'Concierge virtuelle · en ligne',
     online: 'en ligne',
     placeholder: 'Écrivez votre message…',
     reset: 'Réinitialiser la conversation',
-    resetHint: 'Réinitialiser la conversation · Aura se souvient de cet échange pendant 24 h',
-    sessionHint: 'Aura se souvient de cet échange pendant 24 h. Touchez ↻ en haut pour recommencer.',
+    resetHint: 'Réinitialiser la conversation · {agentName} se souvient de cet échange pendant 24 h',
+    sessionHint: '{agentName} se souvient de cet échange pendant 24 h. Touchez ↻ en haut pour recommencer.',
     close: 'Fermer le chat',
     language: 'Langue',
     errorReply: "Désolé, j'ai eu un problème pour répondre. Pouvez-vous réessayer dans un instant ?",
-    greetingFallback: "Bonjour ! Je suis Aura, la concierge virtuelle du {businessName}. Comment puis-je vous aider ?",
-    thinking: ['Aura réfléchit…', 'Je cherche la meilleure option…', 'Un instant…'],
+    greetingFallback: "Bonjour ! Je suis {agentName}, la concierge virtuelle du {businessName}. Comment puis-je vous aider ?",
+    thinking: ['{agentName} réfléchit…', 'Je cherche la meilleure option…', 'Un instant…'],
     pickDates: 'Choisissez vos dates',
     checkIn: 'Arrivée',
     checkOut: 'Départ',
@@ -447,18 +449,26 @@ const STRINGS = {
   },
 }
 
-// Interpola placeholders {businessName}/{city} en los strings del diccionario con los datos
-// del negocio (P2). Solo toca strings; las funciones-valor (bookRoomMsg, etc.) quedan intactas.
+// Interpola placeholders {businessName}/{city}/{agentName} en los strings del diccionario con
+// los datos del negocio (P2 + F3). Cubre strings Y arrays de strings (ej. `thinking`, que son
+// los mensajes rotativos mientras el agente responde). Las funciones-valor (bookRoomMsg, etc.)
+// quedan intactas.
 // Sin `vars`, devuelve el diccionario tal cual (los placeholders quedan visibles solo si nadie
 // los rellena — por eso ChatWidget siempre pasa el perfil).
+function _fill(s, vars) {
+  return s
+    .replace(/\{businessName\}/g, vars.businessName || '')
+    .replace(/\{city\}/g, vars.city || '')
+    .replace(/\{agentName\}/g, vars.agentName || '')
+}
+
 function _interpolate(dict, vars) {
   if (!vars) return dict
   const out = {}
   for (const [k, v] of Object.entries(dict)) {
-    out[k] = typeof v === 'string'
-      ? v.replace(/\{businessName\}/g, vars.businessName || '')
-         .replace(/\{city\}/g, vars.city || '')
-      : v
+    if (typeof v === 'string') out[k] = _fill(v, vars)
+    else if (Array.isArray(v)) out[k] = v.map((x) => (typeof x === 'string' ? _fill(x, vars) : x))
+    else out[k] = v
   }
   return out
 }

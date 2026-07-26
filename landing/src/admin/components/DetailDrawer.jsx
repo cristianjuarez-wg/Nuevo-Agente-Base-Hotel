@@ -8,6 +8,7 @@ import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getCo
 import { Badge, OriginBadge, Loading, formatDate, formatUSD, occupancyLabel } from '../ui'
 import { toast } from '../toast'
 import ChatTranscript from './ChatTranscript'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 // Datos del check-in express (hora de llegada + documento) si el huésped lo completó.
 function CheckinExpressInfo({ stay }) {
@@ -165,6 +166,7 @@ function Field({ label, hint, children }) {
 }
 
 export default function DetailDrawer({ contactId, onClose }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -434,7 +436,7 @@ export default function DetailDrawer({ contactId, onClose }) {
               {/* Conversaciones con Aura (web y WhatsApp). Cada una abre su transcripción. */}
               <div className="rounded-2xl bg-white p-4 shadow-card">
                 <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
-                  <MessageSquare size={13} /> Conversaciones con Aura
+                  <MessageSquare size={13} /> Conversaciones con {agentName}
                 </h3>
                 {conversations.length === 0 ? (
                   <p className="text-sm text-slatey">Este huésped no tiene conversaciones registradas.</p>
@@ -515,7 +517,7 @@ export default function DetailDrawer({ contactId, onClose }) {
                 <ChevronLeft size={18} />
               </button>
               <div className="min-w-0">
-                <h2 className="truncate font-serif text-base font-700 text-ink">Conversación con Aura</h2>
+                <h2 className="truncate font-serif text-base font-700 text-ink">Conversación con {agentName}</h2>
                 <p className="text-xs text-slatey">
                   {((openChat.channel === 'whatsapp') || (openChat.session_id || '').startsWith('wa_')) ? 'WhatsApp' : 'Chat web'} · {formatDate(openChat.started_at)}
                 </p>

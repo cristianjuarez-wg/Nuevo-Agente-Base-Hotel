@@ -83,7 +83,7 @@ export default function DashboardView({ go }) {
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 p-5 text-white lg:col-span-2">
           <div className="flex items-center gap-2 text-sm font-medium text-white/80">
-            <Bot size={18} /> Impacto del agente Aura
+            <Bot size={18} /> Impacto del agente {HOTEL.agentName || 'digital'}
           </div>
           <div className="mt-4 grid grid-cols-3 gap-4">
             <div>
@@ -106,7 +106,7 @@ export default function DashboardView({ go }) {
           <div className="mt-4 flex items-center gap-2 border-t border-white/20 pt-3 text-sm text-white/85">
             <Sparkles size={15} className="text-white/80" />
             <span>
-              Aura cerró <span className="font-700 tabular-nums">{pc.leads_closed ?? 0}</span> de esos leads
+              {HOTEL.agentName || 'El agente'} cerró <span className="font-700 tabular-nums">{pc.leads_closed ?? 0}</span> de esos leads
               {' · '}<span className="font-700 tabular-nums">{pc.conversion_pct ?? 0}%</span> de conversión
             </span>
             <span className="ml-auto"><Trend value={trends.conversion_trend} /></span>
