@@ -6,7 +6,7 @@ import { getConversation } from '../../services/api'
 import { formatDateTime } from '../ui'
 
 // Burbuja de un mensaje. Mismo lenguaje visual que el chat público (ChatWidget): el huésped
-// a la derecha en azul hilton; Aura a la izquierda en linen, con markdown. Una respuesta de
+// a la derecha en azul brand; Aura a la izquierda en linen, con markdown. Una respuesta de
 // un OPERADOR humano (sent_by_human) se distingue de Aura con etiqueta y color propio.
 function Bubble({ role, content, at, human }) {
   const isUser = role === 'user'
@@ -19,7 +19,7 @@ function Bubble({ role, content, at, human }) {
       )}
       <div
         className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
-          isUser ? 'rounded-br-md bg-hilton-700 text-white'
+          isUser ? 'rounded-br-md bg-brand-700 text-white'
           : human ? 'rounded-bl-md border border-forest-200 bg-forest-50 text-ink'
           : 'rounded-bl-md bg-linen text-ink'
         }`}

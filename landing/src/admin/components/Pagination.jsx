@@ -21,7 +21,7 @@ export default function Pagination({ page, pageSize, total, onPageChange }) {
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           aria-label="Página anterior"
-          className="inline-flex items-center gap-1 rounded-lg border border-hilton-200 px-3 py-1.5 text-slatey transition hover:bg-mist disabled:opacity-40 disabled:hover:bg-transparent"
+          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-3 py-1.5 text-slatey transition hover:bg-mist disabled:opacity-40 disabled:hover:bg-transparent"
         >
           <ChevronLeft size={15} /> Anterior
         </button>
@@ -30,7 +30,7 @@ export default function Pagination({ page, pageSize, total, onPageChange }) {
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
           aria-label="Página siguiente"
-          className="inline-flex items-center gap-1 rounded-lg border border-hilton-200 px-3 py-1.5 text-slatey transition hover:bg-mist disabled:opacity-40 disabled:hover:bg-transparent"
+          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-3 py-1.5 text-slatey transition hover:bg-mist disabled:opacity-40 disabled:hover:bg-transparent"
         >
           Siguiente <ChevronRight size={15} />
         </button>

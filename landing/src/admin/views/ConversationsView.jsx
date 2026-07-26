@@ -52,7 +52,7 @@ export default function ConversationsView() {
 
   const PhoneCell = ({ r }) => (
     <span className="inline-flex items-center gap-1.5 tabular-nums text-ink">
-      <Phone size={13} className="text-hilton-500" />{r.phone || '—'}
+      <Phone size={13} className="text-brand-500" />{r.phone || '—'}
       <WhatsAppDot linked title="Conversación por WhatsApp" />
     </span>
   )
@@ -75,7 +75,7 @@ export default function ConversationsView() {
     { key: 'actions', label: '', render: (r) => (
       <div className="flex items-center justify-end gap-1">
         <button onClick={() => setChat(r)} title="Ver conversación"
-          className="rounded-lg p-1.5 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700">
+          className="rounded-lg p-1.5 text-slatey transition hover:bg-brand-50 hover:text-brand-700">
           <MessageSquare size={15} />
         </button>
         <DeleteBtn r={r} />
@@ -93,7 +93,7 @@ export default function ConversationsView() {
       <div className="mt-2 flex items-center justify-between">
         <span className="text-xs text-slatey">{r.message_count ?? 0} mensajes · {formatDate(r.last_message_at)}</span>
         <div className="flex items-center gap-1">
-          <button onClick={() => setChat(r)} className="rounded-lg p-1.5 text-slatey hover:bg-hilton-50 hover:text-hilton-700"><MessageSquare size={15} /></button>
+          <button onClick={() => setChat(r)} className="rounded-lg p-1.5 text-slatey hover:bg-brand-50 hover:text-brand-700"><MessageSquare size={15} /></button>
           <DeleteBtn r={r} />
         </div>
       </div>
@@ -147,7 +147,7 @@ function ConversationDrawer({ conv, onClose }) {
       <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-card-lg animate-slide-up">
         <div className="flex items-start justify-between border-b border-mist px-5 py-4">
           <div>
-            <p className="font-serif text-lg font-700 text-hilton-700">{conv.name || conv.phone || 'Conversación'}</p>
+            <p className="font-serif text-lg font-700 text-brand-700">{conv.name || conv.phone || 'Conversación'}</p>
             <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slatey">
               {conv.phone}<WhatsAppDot linked title="WhatsApp" /> · Conversación con Aura
             </p>

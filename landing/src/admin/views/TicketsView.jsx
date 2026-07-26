@@ -105,7 +105,7 @@ function PriorityBadge({ priority }) {
 
 function OriginBadge({ origin }) {
   return origin === 'staff'
-    ? <Badge tone="hilton"><User size={11} className="mr-1" /> Equipo</Badge>
+    ? <Badge tone="brand"><User size={11} className="mr-1" /> Equipo</Badge>
     : <Badge tone="gray">Huésped</Badge>
 }
 
@@ -115,7 +115,7 @@ function CategoryBadge({ category }) {
     complaint: 'Reclamo', general: 'General', restaurant: 'Restaurante',
     service_request: 'Servicio',
   }
-  const tone = category === 'restaurant' ? 'hilton' : category === 'service_request' ? 'blue' : 'gray'
+  const tone = category === 'restaurant' ? 'brand' : category === 'service_request' ? 'blue' : 'gray'
   return <Badge tone={tone}>{map[category] || category}</Badge>
 }
 
@@ -139,7 +139,7 @@ function GestionBadge({ events }) {
 // Etiquetas y estilo de cada actor en el timeline.
 const ACTOR_META = {
   agent: { label: 'Aura', icon: Bot, cls: 'text-forest-700 bg-forest-50' },
-  staff: { label: 'Equipo', icon: User, cls: 'text-hilton-700 bg-hilton-50' },
+  staff: { label: 'Equipo', icon: User, cls: 'text-brand-700 bg-brand-50' },
   guest: { label: 'Huésped', icon: User, cls: 'text-slatey bg-mist' },
   human: { label: 'Backoffice', icon: Hand, cls: 'text-amber-700 bg-amber-50' },
 }
@@ -257,7 +257,7 @@ export default function TicketsView() {
     const Btn = ({ onClick, icon: Icon, label, tone = 'forest' }) => (
       <button onClick={onClick} disabled={busy} title={label}
         className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition disabled:opacity-50 ${
-          tone === 'slate' ? 'border-hilton-200 text-slatey hover:bg-hilton-50'
+          tone === 'slate' ? 'border-brand-200 text-slatey hover:bg-brand-50'
           : 'border-forest-200 text-forest-700 hover:bg-forest-50'}`}>
         {busy ? <Loader2 size={13} className="animate-spin" /> : <Icon size={13} />} {label}
       </button>
@@ -276,7 +276,7 @@ export default function TicketsView() {
   }
 
   // Columnas comunes a los dos flujos.
-  const colTicket = { key: 'ticket_number', label: 'Ticket', render: (r) => <span className="font-semibold text-hilton-700">{r.ticket_number}</span> }
+  const colTicket = { key: 'ticket_number', label: 'Ticket', render: (r) => <span className="font-semibold text-brand-700">{r.ticket_number}</span> }
   const colGuest = { key: 'guest_name', label: 'Huésped / origen', render: (r) => (
     <div>
       <p className="font-medium text-ink">{guestLabel(r)}</p>
@@ -292,7 +292,7 @@ export default function TicketsView() {
     <div className="flex items-center justify-end gap-1.5">
       <OpsActions r={r} />
       <button onClick={() => setDetail(r)} title="Ver detalle"
-        className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700">
+        className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-brand-50 hover:text-brand-700">
         <ChevronRight size={15} />
       </button>
       <DeleteButton r={r} />
@@ -335,7 +335,7 @@ export default function TicketsView() {
   const renderCard = (r) => (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-semibold text-hilton-700">{r.ticket_number}</span>
+        <span className="font-semibold text-brand-700">{r.ticket_number}</span>
         <StatusBadge status={r.status} />
       </div>
       <p className="font-medium text-ink">
@@ -355,7 +355,7 @@ export default function TicketsView() {
         <OpsActions r={r} />
         <div className="flex items-center gap-1">
           <button onClick={() => setDetail(r)} title="Ver actividad"
-            className="rounded-lg p-1.5 text-slatey hover:bg-hilton-50 hover:text-hilton-700"><ChevronRight size={15} /></button>
+            className="rounded-lg p-1.5 text-slatey hover:bg-brand-50 hover:text-brand-700"><ChevronRight size={15} /></button>
           <DeleteButton r={r} />
         </div>
       </div>
@@ -408,7 +408,7 @@ export default function TicketsView() {
                 key={w.id}
                 onClick={() => switchWorkflow(w.id)}
                 className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
-                  workflow === w.id ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
+                  workflow === w.id ? 'bg-white text-brand-700 shadow-card' : 'text-slatey hover:text-ink'
                 }`}
               >
                 {w.label} <span className="tabular-nums opacity-70">({wfCounts[w.id] ?? 0})</span>
@@ -523,7 +523,7 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
       {children}
     </label>
   )
-  const selectCls = 'w-full rounded-lg border border-hilton-200 px-3 py-2 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100'
+  const selectCls = 'w-full rounded-lg border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100'
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -531,7 +531,7 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
       <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-card-lg animate-slide-up">
         <div className="flex items-start justify-between border-b border-mist px-5 py-4">
           <div>
-            <p className="font-serif text-lg font-700 text-hilton-700">{ticket.ticket_number}</p>
+            <p className="font-serif text-lg font-700 text-brand-700">{ticket.ticket_number}</p>
             <p className="mt-0.5 text-sm text-slatey">{ticket.subject}</p>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <StatusBadge status={ticket.status} />
@@ -568,7 +568,7 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
                 <p className="mt-1 text-[11px] text-amber-600">No hay personal activo en esta área. Cargalo en Equipo.</p>
               )}
               <button onClick={doAssign} disabled={busy}
-                className="mt-2 inline-flex items-center gap-1 rounded-lg border border-hilton-200 px-3 py-1.5 text-xs font-medium text-hilton-700 transition hover:bg-hilton-50 disabled:opacity-50">
+                className="mt-2 inline-flex items-center gap-1 rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-50 disabled:opacity-50">
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <User size={13} />} Guardar asignación
               </button>
 
@@ -579,7 +579,7 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
                   {PRIORITY_OPTIONS.map((p) => (
                     <button key={p.id} onClick={() => doPriority(p.id)} disabled={busy}
                       className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
-                        ticket.priority === p.id ? 'border-hilton-500 bg-hilton-50 text-hilton-700' : 'border-mist text-slatey hover:bg-mist'
+                        ticket.priority === p.id ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-mist text-slatey hover:bg-mist'
                       }`}>
                       {p.label}
                     </button>
@@ -592,7 +592,7 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
                 <span className="mb-1 block text-xs font-medium text-slatey">Nota de resolución (opcional)</span>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
                   placeholder="Ej.: Reparé el aire, quedó enfriando bien."
-                  className="w-full resize-none rounded-lg border border-hilton-200 px-3 py-2 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+                  className="w-full resize-none rounded-lg border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {(ticket.status === 'asignado' || ticket.status === 'open' || ticket.status === 'in_progress') && (
                     <button onClick={doPreResolve} disabled={busy}
@@ -608,7 +608,7 @@ function ActivityDrawer({ ticket, onClose, onAction, busy }) {
                   )}
                   {ticket.status === 'resuelto' && (
                     <button onClick={doReopen} disabled={busy}
-                      className="inline-flex items-center gap-1 rounded-lg border border-hilton-200 px-3 py-1.5 text-xs font-medium text-slatey transition hover:bg-hilton-50 disabled:opacity-50">
+                      className="inline-flex items-center gap-1 rounded-lg border border-brand-200 px-3 py-1.5 text-xs font-medium text-slatey transition hover:bg-brand-50 disabled:opacity-50">
                       <RotateCcw size={13} /> Reabrir
                     </button>
                   )}

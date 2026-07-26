@@ -23,17 +23,17 @@ function VoucherCheckout({ totalUsd, totalArs, placing, onClose, onConfirm, t })
       <label className="block">
         <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.voucherBuyer}</span>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.tableNamePh}
-          className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+          className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100" />
       </label>
       <label className="mt-2 block">
         <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.voucherPhone}</span>
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+54 9 …"
-          className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+          className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100" />
       </label>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       <div className="mt-3 flex gap-2">
         <button onClick={onClose} className="flex-1 rounded-xl border border-stone-200 px-3 py-2.5 text-sm text-slatey transition hover:bg-mist">{t.voucherBack}</button>
-        <button onClick={submit} disabled={placing} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-hilton-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-700 disabled:opacity-60">
+        <button onClick={submit} disabled={placing} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-60">
           {placing ? <Loader2 size={15} className="animate-spin" /> : <Ticket size={15} />} {t.voucherBuy}
         </button>
       </div>
@@ -125,7 +125,7 @@ export default function MenuOrderCard({ card, onAction, lang = 'es' }) {
             </div>
             <p className="font-display text-base font-600 text-ink">{t.voucherIssued}</p>
             <p className="text-xs text-slatey">{t.code} <strong>{done.code}</strong></p>
-            <p className="mt-2 font-display text-lg font-700 tabular-nums text-hilton-700">{formatUSD(done.total_usd)}</p>
+            <p className="mt-2 font-display text-lg font-700 tabular-nums text-brand-700">{formatUSD(done.total_usd)}</p>
             <p className="mt-1 text-[11px] text-slatey">{t.voucherKeep}</p>
           </div>
         </div>
@@ -142,7 +142,7 @@ export default function MenuOrderCard({ card, onAction, lang = 'es' }) {
           </div>
           <p className="font-display text-base font-600 text-ink">{t.orderConfirmed}</p>
           <p className="text-xs text-slatey">{t.code} <strong>{done.order_code}</strong></p>
-          <p className="mt-2 font-display text-lg font-700 tabular-nums text-hilton-700">{formatUSD(done.total_usd)}</p>
+          <p className="mt-2 font-display text-lg font-700 tabular-nums text-brand-700">{formatUSD(done.total_usd)}</p>
           <p className="text-[11px] text-slatey">{formatARS(done.total_ars)} · {pago}</p>
         </div>
       </div>
@@ -191,7 +191,7 @@ export default function MenuOrderCard({ card, onAction, lang = 'es' }) {
           <button
             key={c.id} onClick={() => setCat(c.id)}
             className={`whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-medium transition ${
-              cat === c.id ? 'bg-hilton-600 text-white' : 'bg-stone-50 text-slatey hover:bg-stone-100'
+              cat === c.id ? 'bg-brand-600 text-white' : 'bg-stone-50 text-slatey hover:bg-stone-100'
             }`}
           >{c.label}</button>
         ))}
@@ -205,7 +205,7 @@ export default function MenuOrderCard({ card, onAction, lang = 'es' }) {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-600 leading-tight text-ink">{m.name}</p>
               <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                <span className="text-xs font-700 tabular-nums text-hilton-700">{formatUSD(m.price_usd)}</span>
+                <span className="text-xs font-700 tabular-nums text-brand-700">{formatUSD(m.price_usd)}</span>
                 {(m.tags || []).map((tg) => <TagBadge key={tg} tag={tg} />)}
               </div>
             </div>
@@ -213,10 +213,10 @@ export default function MenuOrderCard({ card, onAction, lang = 'es' }) {
               <div className="flex items-center gap-1.5">
                 <button onClick={() => sub(m.id)} className="flex h-6 w-6 items-center justify-center rounded-full bg-stone-100 text-ink hover:bg-stone-200"><Minus size={12} /></button>
                 <span className="w-4 text-center text-xs font-600 tabular-nums">{cart[m.id]}</span>
-                <button onClick={() => add(m.id)} className="flex h-6 w-6 items-center justify-center rounded-full bg-hilton-600 text-white hover:bg-hilton-700"><Plus size={12} /></button>
+                <button onClick={() => add(m.id)} className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700"><Plus size={12} /></button>
               </div>
             ) : (
-              <button onClick={() => add(m.id)} className="flex h-6 w-6 items-center justify-center rounded-full bg-hilton-600 text-white hover:bg-hilton-700"><Plus size={12} /></button>
+              <button onClick={() => add(m.id)} className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700"><Plus size={12} /></button>
             )}
           </div>
         ))}
@@ -227,7 +227,7 @@ export default function MenuOrderCard({ card, onAction, lang = 'es' }) {
         {cartCount > 0 && (
           <button
             onClick={() => setStage('checkout')}
-            className="mb-2 flex w-full items-center justify-between rounded-xl bg-hilton-600 px-3.5 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-700 active:scale-[0.99]"
+            className="mb-2 flex w-full items-center justify-between rounded-xl bg-brand-600 px-3.5 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 active:scale-[0.99]"
           >
             <span className="inline-flex items-center gap-1.5">
               <ShoppingCart size={15} />

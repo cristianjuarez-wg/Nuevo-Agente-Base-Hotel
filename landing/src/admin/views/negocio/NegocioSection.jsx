@@ -36,7 +36,7 @@ export default function NegocioSection() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap gap-1 border-b border-hilton-100">
+      <div className="mb-6 flex flex-wrap gap-1 border-b border-brand-100">
         {SUBNAV.map((s) => {
           const Icon = s.icon
           const active = sub === s.id
@@ -45,10 +45,10 @@ export default function NegocioSection() {
               key={s.id}
               onClick={() => go(s.id)}
               className={`-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition ${
-                active ? 'border-hilton-600 text-hilton-700' : 'border-transparent text-slatey hover:text-ink'
+                active ? 'border-brand-600 text-brand-700' : 'border-transparent text-slatey hover:text-ink'
               }`}
             >
-              <Icon size={16} className={active ? 'text-hilton-600' : 'text-slatey'} />
+              <Icon size={16} className={active ? 'text-brand-600' : 'text-slatey'} />
               {s.label}
             </button>
           )

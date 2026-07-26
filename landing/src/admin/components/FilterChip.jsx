@@ -1,4 +1,4 @@
-// Chip de filtro unificado del backoffice: un solo lenguaje visual (activo en hilton-600,
+// Chip de filtro unificado del backoffice: un solo lenguaje visual (activo en brand-600,
 // inactivo blanco con ring). Reemplaza las pills heterogéneas (azul/verde) que se veían
 // recargadas. Lo usan TicketsView y LeadsView para que los filtros sean consistentes.
 // `iconOnly`: muestra solo el ícono + el contador, sin el texto del label (para chips cuyo
@@ -15,12 +15,12 @@ export function FilterChip({ active, onClick, label, count, icon: Icon, iconOnly
         iconOnly ? 'px-2.5' : 'px-3'
       } ${
         active
-          ? 'bg-hilton-600 text-white shadow-card'
+          ? 'bg-brand-600 text-white shadow-card'
           : 'bg-white text-slatey ring-1 ring-mist hover:bg-mist'
       }`}
     >
       {/* El color de marca del ícono (WhatsApp verde, IG rosa…) solo se aplica cuando el chip
-          está INACTIVO: activo el fondo es hilton-600 y el ícono va blanco para contraste. */}
+          está INACTIVO: activo el fondo es brand-600 y el ícono va blanco para contraste. */}
       {Icon && <Icon size={13} className={active ? '' : iconClassName} />}
       {!iconOnly && label}
       {count != null && <span className="tabular-nums opacity-70">({count})</span>}

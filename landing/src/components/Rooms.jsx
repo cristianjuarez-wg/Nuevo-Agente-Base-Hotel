@@ -21,7 +21,7 @@ function RoomCard({ room }) {
           className="h-full w-full object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.06]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/55 via-transparent to-transparent" />
-        <span className="absolute left-4 top-4 rounded-full bg-linen/95 px-3.5 py-1 text-[11px] font-medium uppercase tracking-wide text-hilton-700 backdrop-blur">
+        <span className="absolute left-4 top-4 rounded-full bg-linen/95 px-3.5 py-1 text-[11px] font-medium uppercase tracking-wide text-brand-700 backdrop-blur">
           {room.room_type}
         </span>
         {/* Precio sobre la imagen, abajo */}
@@ -67,7 +67,7 @@ function RoomCard({ room }) {
 
         <a
           href="#reservar"
-          className="group/btn mt-6 inline-flex items-center gap-2 self-start border-b border-hilton/30 pb-0.5 text-sm font-medium text-hilton-700 transition hover:border-hilton"
+          className="group/btn mt-6 inline-flex items-center gap-2 self-start border-b border-brand/30 pb-0.5 text-sm font-medium text-brand-700 transition hover:border-brand"
         >
           Reservar esta habitación
           <ArrowRight size={15} className="transition-transform group-hover/btn:translate-x-1" />

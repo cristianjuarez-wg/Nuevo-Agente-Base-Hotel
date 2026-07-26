@@ -43,7 +43,7 @@ export function Toaster() {
   const tones = {
     success: { bg: 'bg-green-600', Icon: CheckCircle2 },
     error: { bg: 'bg-red-600', Icon: AlertTriangle },
-    info: { bg: 'bg-hilton-700', Icon: CheckCircle2 },
+    info: { bg: 'bg-brand-700', Icon: CheckCircle2 },
   }
 
   return (

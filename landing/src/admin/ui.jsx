@@ -25,9 +25,9 @@ export function PageHeader({ title, subtitle, right }) {
   )
 }
 
-export function StatCard({ icon: Icon, label, value, tone = 'hilton' }) {
+export function StatCard({ icon: Icon, label, value, tone = 'brand' }) {
   const tones = {
-    hilton: 'bg-hilton-50 text-hilton-600',
+    brand: 'bg-brand-50 text-brand-600',
     green: 'bg-green-50 text-green-600',
     amber: 'bg-amber-50 text-amber-600',
     red: 'bg-red-50 text-red-600',
@@ -51,7 +51,7 @@ export function Badge({ children, tone = 'gray' }) {
     green: 'bg-green-100 text-green-700',
     amber: 'bg-amber-100 text-amber-700',
     red: 'bg-red-100 text-red-700',
-    blue: 'bg-hilton-100 text-hilton-700',
+    blue: 'bg-brand-100 text-brand-700',
     pink: 'bg-pink-100 text-pink-700',
   }
   return (
@@ -109,7 +109,7 @@ export function Loading({ label = 'Cargando…' }) {
 
 export function EmptyState({ icon: Icon, title, desc }) {
   return (
-    <div className="rounded-2xl border border-dashed border-hilton-200 bg-white py-16 text-center">
+    <div className="rounded-2xl border border-dashed border-brand-200 bg-white py-16 text-center">
       {Icon && <Icon size={32} className="mx-auto mb-3 text-slatey" />}
       <p className="font-serif text-lg font-600 text-ink">{title}</p>
       {desc && <p className="mt-1 text-sm text-slatey">{desc}</p>}
@@ -137,7 +137,7 @@ export function ResponsiveTable({ columns, rows, renderCard, sort, onSort }) {
                     {c.sortable && onSort ? (
                       <button
                         onClick={() => onSort(sortKey)}
-                        className={`inline-flex items-center transition hover:text-ink ${active ? 'text-hilton-700' : ''}`}
+                        className={`inline-flex items-center transition hover:text-ink ${active ? 'text-brand-700' : ''}`}
                       >
                         {c.label}<span className="tabular-nums opacity-60">{arrow}</span>
                       </button>
@@ -149,7 +149,7 @@ export function ResponsiveTable({ columns, rows, renderCard, sort, onSort }) {
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={row._key ?? i} className="border-b border-mist/60 last:border-0 hover:bg-hilton-50/40">
+              <tr key={row._key ?? i} className="border-b border-mist/60 last:border-0 hover:bg-brand-50/40">
                 {columns.map((c) => (
                   <td key={c.key} className="px-4 py-3.5 align-middle">
                     {c.render ? c.render(row) : row[c.key]}

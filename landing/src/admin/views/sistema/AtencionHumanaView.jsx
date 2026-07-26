@@ -66,7 +66,7 @@ export default function AtencionHumanaView() {
 
       {/* Estado actual */}
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-5 shadow-card">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-hilton-50 text-hilton-600">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
           <Headphones size={18} />
         </span>
         <div className="flex-1">
@@ -86,15 +86,15 @@ export default function AtencionHumanaView() {
             <span className="block text-xs text-slatey">Si está apagada, Aura nunca ofrece pasar con una persona.</span>
           </span>
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)}
-                 className="h-5 w-5 accent-hilton-600" />
+                 className="h-5 w-5 accent-brand-600" />
         </label>
-        <label className="mt-3 flex items-center justify-between gap-4 border-t border-hilton-100 pt-3">
+        <label className="mt-3 flex items-center justify-between gap-4 border-t border-brand-100 pt-3">
           <span>
             <span className="block text-sm font-semibold text-ink">Guardia activa ahora</span>
             <span className="block text-xs text-slatey">Hay alguien de guardia en este momento, sin importar el horario.</span>
           </span>
           <input type="checkbox" checked={onCall} onChange={(e) => setOnCall(e.target.checked)}
-                 disabled={!enabled} className="h-5 w-5 accent-hilton-600 disabled:opacity-40" />
+                 disabled={!enabled} className="h-5 w-5 accent-brand-600 disabled:opacity-40" />
         </label>
       </div>
 
@@ -109,16 +109,16 @@ export default function AtencionHumanaView() {
                 <label className="flex w-32 items-center gap-2">
                   <input type="checkbox" checked={cfg.active} disabled={!enabled}
                          onChange={(e) => setDia(d.k, { active: e.target.checked })}
-                         className="h-4 w-4 accent-hilton-600 disabled:opacity-40" />
+                         className="h-4 w-4 accent-brand-600 disabled:opacity-40" />
                   <span className="text-sm text-ink">{d.label}</span>
                 </label>
                 <input type="time" value={cfg.from} disabled={!enabled || !cfg.active}
                        onChange={(e) => setDia(d.k, { from: e.target.value })}
-                       className="rounded-lg border border-hilton-200 px-2 py-1 text-sm disabled:opacity-40" />
+                       className="rounded-lg border border-brand-200 px-2 py-1 text-sm disabled:opacity-40" />
                 <span className="text-slatey">a</span>
                 <input type="time" value={cfg.to} disabled={!enabled || !cfg.active}
                        onChange={(e) => setDia(d.k, { to: e.target.value })}
-                       className="rounded-lg border border-hilton-200 px-2 py-1 text-sm disabled:opacity-40" />
+                       className="rounded-lg border border-brand-200 px-2 py-1 text-sm disabled:opacity-40" />
                 {!cfg.active && <span className="text-xs text-slatey/60">cerrado</span>}
               </div>
             )
@@ -128,7 +128,7 @@ export default function AtencionHumanaView() {
 
       <div className="mt-5">
         <button onClick={save} disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700 disabled:opacity-50">
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
           <Save size={15} /> {saving ? 'Guardando…' : 'Guardar'}
         </button>
       </div>

@@ -9,6 +9,7 @@ import {
 import { Badge, Loading } from '../../ui'
 import { toast } from '../../toast'
 import { useAdminGate } from '../../components/useAdminGate'
+import { useAgentName } from '../../../hooks/useBusinessProfile'
 
 // Etiqueta legible del rol (atributo del agente, no su identidad).
 const ROLE_LABEL = {
@@ -32,6 +33,7 @@ const ENGINE_LABEL = {
 }
 
 export default function EmployeeIdentity({ agent, go, onChanged }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const { runProtected, gateModal } = useAdminGate()
   const [editing, setEditing] = useState(false)
   const [caps, setCaps] = useState(null)
@@ -75,7 +77,7 @@ export default function EmployeeIdentity({ agent, go, onChanged }) {
       {/* ── ZONA 1 · Así está construido (◉ solo lectura) ── */}
       <div className="rounded-2xl bg-white p-5 shadow-card sm:p-6">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-hilton-600 font-serif text-2xl font-700 text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-600 font-serif text-2xl font-700 text-white">
             {initial}
           </div>
           <div className="min-w-0 flex-1">
@@ -98,7 +100,7 @@ export default function EmployeeIdentity({ agent, go, onChanged }) {
         </div>
 
         {/* Ficha técnica: lo que define el sistema. Fondo tenue + candado = solo lectura, sin disculpas. */}
-        <div className="mt-5 rounded-xl border border-hilton-100 bg-hilton-50/40 p-4">
+        <div className="mt-5 rounded-xl border border-brand-100 bg-brand-50/40 p-4">
           <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey/70">
             <Lock size={12} /> Así está construido
           </div>
@@ -127,7 +129,7 @@ export default function EmployeeIdentity({ agent, go, onChanged }) {
           </dl>
           <p className="mt-3 text-xs text-slatey/80">
             {agent.role === 'guest'
-              ? 'Aura es un solo empleado que cambia de contexto según la conversación. El rol lo define el sistema y no se modifica desde acá.'
+              ? `${agentName} es un solo empleado que cambia de contexto según la conversación. El rol lo define el sistema y no se modifica desde acá.`
               : 'El rol es estructural: define qué hace el empleado y lo fija el sistema. No se modifica desde el legajo.'}
           </p>
         </div>
@@ -145,7 +147,7 @@ export default function EmployeeIdentity({ agent, go, onChanged }) {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {caps.capability_groups.map((g) => (
-              <div key={g.group} className="rounded-xl border border-hilton-100 bg-white p-3.5">
+              <div key={g.group} className="rounded-xl border border-brand-100 bg-white p-3.5">
                 <p className="text-sm font-semibold text-ink">{g.group}</p>
                 <p className="mt-0.5 text-xs leading-relaxed text-slatey">{g.summary}</p>
               </div>
@@ -159,7 +161,7 @@ export default function EmployeeIdentity({ agent, go, onChanged }) {
 
       {/* ── ZONA 3 · Qué configurás vos (✎ editable) ── */}
       <div className="rounded-2xl bg-white p-5 shadow-card sm:p-6">
-        <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hilton-700">
+        <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand-700">
           <Pencil size={12} /> Qué configurás vos
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -206,7 +208,7 @@ export default function EmployeeIdentity({ agent, go, onChanged }) {
       <div className="flex justify-end">
         <button
           onClick={() => setEditing(true)}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-hilton-50 px-3 py-2 text-sm font-medium text-hilton-700 hover:bg-hilton-100"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
         >
           <Pencil size={15} /> Editar nombre y descripción
         </button>
@@ -228,15 +230,15 @@ function ConfigCard({ icon: Icon, title, state, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group flex items-start gap-3 rounded-xl border border-hilton-200 bg-white p-3.5 text-left transition hover:border-hilton-400 hover:bg-hilton-50/40"
+      className="group flex items-start gap-3 rounded-xl border border-brand-200 bg-white p-3.5 text-left transition hover:border-brand-400 hover:bg-brand-50/40"
     >
-      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
         <Icon size={16} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center justify-between gap-1">
           <span className="text-sm font-semibold text-ink">{title}</span>
-          <ChevronRight size={16} className="shrink-0 text-slatey/50 transition group-hover:translate-x-0.5 group-hover:text-hilton-600" />
+          <ChevronRight size={16} className="shrink-0 text-slatey/50 transition group-hover:translate-x-0.5 group-hover:text-brand-600" />
         </span>
         <span className="mt-0.5 block text-xs text-slatey">{state}</span>
       </span>
@@ -263,7 +265,7 @@ function EditIdentityModal({ agent, onClose, onSave }) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mb-4 w-full rounded-xl border border-hilton-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+          className="mb-4 w-full rounded-xl border border-brand-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
 
         <label className="mb-1 block text-sm font-medium text-ink">Descripción</label>
@@ -271,7 +273,7 @@ function EditIdentityModal({ agent, onClose, onSave }) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="mb-5 w-full rounded-xl border border-hilton-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+          className="mb-5 w-full rounded-xl border border-brand-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
 
         <div className="flex justify-end gap-2">
@@ -280,7 +282,7 @@ function EditIdentityModal({ agent, onClose, onSave }) {
           </button>
           <button
             onClick={() => onSave({ name: name.trim(), description: description.trim() })}
-            className="rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700"
+            className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Guardar
           </button>

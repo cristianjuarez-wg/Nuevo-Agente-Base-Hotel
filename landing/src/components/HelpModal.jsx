@@ -25,7 +25,7 @@ export default function HelpModal({ t, onClose, onAsk }) {
         {/* Header */}
         <div className="flex items-start justify-between gap-2 border-b border-stone-100 px-5 py-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-hilton-50 text-hilton-600">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600">
               <Info size={16} />
             </span>
             <h3 className="font-display text-base font-600 text-ink">{t.helpTitle}</h3>
@@ -45,7 +45,7 @@ export default function HelpModal({ t, onClose, onAsk }) {
             <ul className="space-y-1.5">
               {t.helpCan.map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm text-ink">
-                  <Check size={15} className="mt-0.5 shrink-0 text-hilton-600" />
+                  <Check size={15} className="mt-0.5 shrink-0 text-brand-600" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -79,7 +79,7 @@ export default function HelpModal({ t, onClose, onAsk }) {
         <div className="border-t border-stone-100 px-5 py-3">
           <button
             onClick={onClose}
-            className="w-full rounded-xl bg-hilton-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-800"
+            className="w-full rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-800"
           >
             {t.helpClose}
           </button>

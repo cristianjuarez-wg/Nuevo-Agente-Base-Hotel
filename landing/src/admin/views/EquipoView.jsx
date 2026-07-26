@@ -171,7 +171,7 @@ function StaffModal({ member, onClose, onSaved }) {
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-ink">Rol</span>
           <select value={role} onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100">
+                  className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100">
             <option value="staff">Staff (personal)</option>
             <option value="owner">Dueño / Gerente (acceso a métricas)</option>
           </select>
@@ -180,14 +180,14 @@ function StaffModal({ member, onClose, onSaved }) {
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">Área</span>
             <select value={area} onChange={(e) => setArea(e.target.value)}
-                    className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100">
+                    className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100">
               {AREA_OPTIONS.map((a) => <option key={a} value={a}>{AREA_LABELS[a]}</option>)}
             </select>
             <span className="mt-1 block text-xs text-slatey">El agente asigna los pedidos del huésped al área que corresponda.</span>
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 rounded border-hilton-300" />
+          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 rounded border-brand-300" />
           Activo
         </label>
         {error && <p className="text-xs text-red-600">{error}</p>}
@@ -206,7 +206,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            {Icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600"><Icon size={18} /></div>}
+            {Icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Icon size={18} /></div>}
             <h3 className="font-serif text-lg font-700 text-ink">{title}</h3>
           </div>
           <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist"><X size={20} /></button>
@@ -224,7 +224,7 @@ function Field({ label, value, onChange, placeholder }) {
       <input
         type="text" value={value || ''} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
   )

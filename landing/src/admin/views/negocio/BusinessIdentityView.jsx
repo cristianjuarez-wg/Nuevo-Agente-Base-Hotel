@@ -42,7 +42,7 @@ export default function BusinessIdentityView() {
       {/* Ficha de identidad del negocio */}
       <div className="rounded-2xl bg-white p-5 shadow-card sm:p-6">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-hilton-600 font-serif text-2xl font-700 text-white">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-600 font-serif text-2xl font-700 text-white">
             {initial}
           </div>
           <div className="min-w-0 flex-1">
@@ -83,14 +83,14 @@ export default function BusinessIdentityView() {
 
           <button
             onClick={() => setEditing(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-hilton-50 px-3 py-2 text-sm font-medium text-hilton-700 hover:bg-hilton-100"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
           >
             <Pencil size={15} /> Editar
           </button>
         </div>
 
         {/* Hechos del negocio */}
-        <div className="mt-5 border-t border-hilton-100 pt-4">
+        <div className="mt-5 border-t border-brand-100 pt-4">
           <p className="mb-2 text-sm font-medium text-ink">Hechos del negocio</p>
           {(profile.facts || []).length === 0 ? (
             <p className="text-sm text-slatey">
@@ -157,7 +157,7 @@ function EditProfileModal({ profile, onClose, onSave }) {
   const delFact = (i) => setF((prev) => ({ ...prev, facts: prev.facts.filter((_, j) => j !== i) }))
 
   const inputCls =
-    'w-full rounded-xl border border-hilton-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100'
+    'w-full rounded-xl border border-brand-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100'
   const labelCls = 'mb-1 block text-sm font-medium text-ink'
 
   const save = () => {
@@ -257,7 +257,7 @@ function EditProfileModal({ profile, onClose, onSave }) {
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between">
             <label className={labelCls + ' mb-0'}>Hechos del negocio</label>
-            <button onClick={addFact} className="inline-flex items-center gap-1 rounded-lg bg-hilton-50 px-2.5 py-1 text-xs font-medium text-hilton-700 hover:bg-hilton-100">
+            <button onClick={addFact} className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100">
               <Plus size={13} /> Agregar
             </button>
           </div>
@@ -278,7 +278,7 @@ function EditProfileModal({ profile, onClose, onSave }) {
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slatey hover:bg-mist">
             Cancelar
           </button>
-          <button onClick={save} className="rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700">
+          <button onClick={save} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
             Guardar
           </button>
         </div>

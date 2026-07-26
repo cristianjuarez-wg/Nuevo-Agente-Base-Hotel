@@ -92,7 +92,7 @@ export default function Restaurant() {
                   key={c.id}
                   onClick={() => setCat(c.id)}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    cat === c.id ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-stone-100'
+                    cat === c.id ? 'bg-brand-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-stone-100'
                   }`}
                 >
                   {c.label}
@@ -107,13 +107,13 @@ export default function Restaurant() {
                     <p className="text-sm font-600 leading-tight text-ink">{m.name}</p>
                     {m.description && <p className="mt-0.5 line-clamp-2 text-xs text-slatey">{m.description}</p>}
                     <div className="mt-1 flex flex-wrap gap-1">{(m.tags || []).map((t) => <Tag key={t} tag={t} />)}</div>
-                    <span className="mt-auto pt-2 text-sm font-700 tabular-nums text-hilton-700">{formatUSD(m.price_usd)}</span>
+                    <span className="mt-auto pt-2 text-sm font-700 tabular-nums text-brand-700">{formatUSD(m.price_usd)}</span>
                   </div>
                 </RevealItem>
               ))}
             </RevealGroup>
             <div className="mt-8 text-center">
-              <a href="#pedido" className="inline-flex items-center gap-1.5 text-sm font-medium text-hilton-600 hover:text-hilton-700">
+              <a href="#pedido" className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
                 Ver la carta completa y pedir <ArrowRight size={15} />
               </a>
             </div>

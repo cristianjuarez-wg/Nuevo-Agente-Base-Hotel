@@ -94,9 +94,9 @@ export default function PassengersView() {
   const columns = [
     { key: 'name', label: 'Huésped', sortable: true, render: (r) => (
       <div className="flex items-center gap-2">
-        <button onClick={() => setSelected(r.id)} className="font-medium text-hilton-700 hover:underline">{r.name}</button>
+        <button onClick={() => setSelected(r.id)} className="font-medium text-brand-700 hover:underline">{r.name}</button>
         {r.inHouse && <Badge tone="green"><BedDouble size={11} className="mr-1" /> En casa</Badge>}
-        {r.hasSummary && <Sparkles size={13} className="text-hilton-400" title="Tiene resumen IA (ver 360°)" />}
+        {r.hasSummary && <Sparkles size={13} className="text-brand-400" title="Tiene resumen IA (ver 360°)" />}
         {r.ticketsCreated > 0 && (
           <span className="inline-flex items-center gap-1 rounded-full bg-mist px-1.5 py-0.5 text-[11px] text-slatey" title="Consultas/reclamos generados">
             <LifeBuoy size={11} /> {r.ticketsCreated}
@@ -116,7 +116,7 @@ export default function PassengersView() {
     { key: 'last', label: 'Última actividad', sortable: true, render: (r) => formatDate(r.last) },
     { key: 'actions', label: '', render: (r) => (
       <div className="flex items-center justify-end gap-1.5">
-        <button onClick={() => setSelected(r.id)} className="text-xs font-medium text-hilton-600 hover:underline">Ver 360°</button>
+        <button onClick={() => setSelected(r.id)} className="text-xs font-medium text-brand-600 hover:underline">Ver 360°</button>
         <DeleteButton r={r} />
       </div>
     ) },
@@ -176,7 +176,7 @@ export default function PassengersView() {
             <button
               onClick={() => setOnlyInHouse(false)}
               className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
-                !onlyInHouse ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+                !onlyInHouse ? 'bg-brand-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-brand-50'
               }`}
             >
               Todos <span className="tabular-nums opacity-70">({rows.length})</span>
@@ -184,7 +184,7 @@ export default function PassengersView() {
             <button
               onClick={() => setOnlyInHouse(true)}
               className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition ${
-                onlyInHouse ? 'bg-green-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+                onlyInHouse ? 'bg-green-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-brand-50'
               }`}
             >
               <BedDouble size={13} /> Alojados ahora <span className="tabular-nums opacity-70">({inHouseCount})</span>

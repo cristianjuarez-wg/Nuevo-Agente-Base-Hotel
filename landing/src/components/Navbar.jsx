@@ -42,7 +42,7 @@ export default function Navbar() {
         <a href="#inicio" onClick={close} className="flex flex-col leading-none">
           <span
             className={`font-display text-2xl font-600 tracking-wide transition-colors ${
-              solid ? 'text-hilton-700' : 'text-white'
+              solid ? 'text-brand-700' : 'text-white'
             }`}
           >
             {HOTEL.name}
@@ -62,7 +62,7 @@ export default function Navbar() {
             <li key={l.href}>
               <a
                 href={l.href}
-                className={`text-[13px] font-medium tracking-wide transition-colors hover:text-hilton ${
+                className={`text-[13px] font-medium tracking-wide transition-colors hover:text-brand ${
                   solid ? 'text-ink/80' : 'text-white/90'
                 }`}
               >
@@ -75,7 +75,7 @@ export default function Navbar() {
               href="#reservar"
               className={`rounded-full border px-5 py-2 text-[13px] font-medium tracking-wide transition ${
                 solid
-                  ? 'border-hilton bg-hilton text-white hover:bg-hilton-700'
+                  ? 'border-brand bg-brand text-white hover:bg-brand-700'
                   : 'border-white/50 text-white hover:bg-white/10'
               }`}
             >
@@ -87,7 +87,7 @@ export default function Navbar() {
             <a
               href="#admin"
               title="Acceso al panel de gestión (interno)"
-              className={`inline-flex items-center gap-1.5 text-[13px] font-medium tracking-wide transition-colors hover:text-hilton ${
+              className={`inline-flex items-center gap-1.5 text-[13px] font-medium tracking-wide transition-colors hover:text-brand ${
                 solid ? 'text-ink/55' : 'text-white/70'
               }`}
             >
@@ -103,7 +103,7 @@ export default function Navbar() {
           aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
           aria-expanded={open}
           className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors md:hidden ${
-            solid ? 'text-hilton-700 hover:bg-ink/[0.05]' : 'text-white hover:bg-white/10'
+            solid ? 'text-brand-700 hover:bg-ink/[0.05]' : 'text-white hover:bg-white/10'
           }`}
         >
           {open ? <X size={24} /> : <Menu size={24} />}
@@ -119,7 +119,7 @@ export default function Navbar() {
                 <a
                   href={l.href}
                   onClick={close}
-                  className="block border-b border-ink/[0.06] py-4 font-display text-xl text-ink last:border-0 hover:text-hilton"
+                  className="block border-b border-ink/[0.06] py-4 font-display text-xl text-ink last:border-0 hover:text-brand"
                 >
                   {l.label}
                 </a>

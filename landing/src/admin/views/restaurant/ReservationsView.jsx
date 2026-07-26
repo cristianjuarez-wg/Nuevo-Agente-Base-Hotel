@@ -44,7 +44,7 @@ export default function ReservationsView() {
 
   const OriginCell = ({ r }) => (
     r.is_guest
-      ? <span className="inline-flex items-center gap-1 text-xs text-hilton-700"><BedDouble size={13} /> Huésped</span>
+      ? <span className="inline-flex items-center gap-1 text-xs text-brand-700"><BedDouble size={13} /> Huésped</span>
       : <span className="inline-flex items-center gap-1 text-xs text-slatey"><Store size={13} /> Visitante</span>
   )
 
@@ -77,7 +77,7 @@ export default function ReservationsView() {
         ? <span className="inline-flex items-center gap-1 text-xs text-amber-700"><Sparkles size={13} className="shrink-0" /> {r.notes}</span>
         : <span className="text-xs text-slatey">—</span>
     ) },
-    { key: 'code', label: 'Código', render: (r) => <span className="font-semibold text-hilton-700">{r.code}</span> },
+    { key: 'code', label: 'Código', render: (r) => <span className="font-semibold text-brand-700">{r.code}</span> },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'actions', label: '', render: (r) => <Actions r={r} /> },
   ]
@@ -93,7 +93,7 @@ export default function ReservationsView() {
       <div className="mt-1 flex items-center gap-3 text-xs text-slatey">
         <span className="inline-flex items-center gap-1"><Users size={12} /> {r.party_size}</span>
         <OriginCell r={r} />
-        <span className="font-semibold text-hilton-700">{r.code}</span>
+        <span className="font-semibold text-brand-700">{r.code}</span>
       </div>
       {r.notes && (
         <p className="mt-1.5 inline-flex items-start gap-1 text-xs text-amber-700"><Sparkles size={13} className="mt-0.5 shrink-0" /> {r.notes}</p>
@@ -112,7 +112,7 @@ export default function ReservationsView() {
       <PageHeader title="Reservas de mesa" subtitle="Agenda del restaurante, ordenada del próximo turno al más lejano." right={<button onClick={() => load(scope)} className="btn-secondary px-4 py-2 text-xs"><RefreshCw size={14} /> Actualizar</button>} />
       <div className="mb-4 flex flex-wrap gap-2">
         {SCOPES.map((s) => (
-          <button key={s.id} onClick={() => setScope(s.id)} className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${scope === s.id ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'}`}>{s.label}</button>
+          <button key={s.id} onClick={() => setScope(s.id)} className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${scope === s.id ? 'bg-brand-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-brand-50'}`}>{s.label}</button>
         ))}
       </div>
       {loading ? (

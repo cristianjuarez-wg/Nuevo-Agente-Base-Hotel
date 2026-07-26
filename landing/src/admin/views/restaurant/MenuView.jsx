@@ -52,7 +52,7 @@ export default function MenuView() {
         title="Carta del restaurante"
         subtitle={rate ? `Precios en USD. El ARS se calcula con la cotización vigente (${formatARS(rate.rate)}).` : 'Gestioná los platos del restaurante PLAZA.'}
         right={
-          <button onClick={() => setEdit({})} className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700">
+          <button onClick={() => setEdit({})} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700">
             <Plus size={16} /> Nuevo plato
           </button>
         }
@@ -65,7 +65,7 @@ export default function MenuView() {
       ) : (
         <div className="space-y-2.5">
           {filtered.map((it) => (
-            <div key={it.id} className={`flex items-center gap-4 rounded-2xl border border-hilton-100 bg-white p-3 shadow-card ${it.status === 'inactive' ? 'opacity-60' : ''}`}>
+            <div key={it.id} className={`flex items-center gap-4 rounded-2xl border border-brand-100 bg-white p-3 shadow-card ${it.status === 'inactive' ? 'opacity-60' : ''}`}>
               {it.image_url && <img src={it.image_url} alt={it.name} className="h-14 w-14 shrink-0 rounded-xl object-cover" />}
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -82,7 +82,7 @@ export default function MenuView() {
                 )}
                 {it.description && <p className="mt-0.5 line-clamp-1 text-xs text-slatey">{it.description}</p>}
               </div>
-              <span className="shrink-0 text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(it.price_usd)}<span className="ml-1 font-normal text-slatey">/ {formatARS(it.price_ars)}</span></span>
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-brand-700">{formatUSD(it.price_usd)}<span className="ml-1 font-normal text-slatey">/ {formatARS(it.price_ars)}</span></span>
               <div className="flex shrink-0 items-center gap-1">
                 <button onClick={() => toggle(it)} title={it.status === 'active' ? 'Desactivar' : 'Activar'} className={`rounded-lg p-2 transition ${it.status === 'active' ? 'bg-forest-100 text-forest-600 hover:bg-forest-200' : 'text-slatey/50 hover:bg-mist'}`}>
                   {it.status === 'active' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
@@ -137,18 +137,18 @@ function MenuModal({ item, onClose, onSaved }) {
         <Field label="Nombre *" value={name} onChange={setName} placeholder="Ej: Trucha de Alicurá" />
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-ink">Descripción</span>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100 resize-none" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none" />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">Categoría</span>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none">
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none">
               {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">Precio USD *</span>
-            <input type="number" min="0" step="0.01" value={priceUsd} onChange={(e) => setPriceUsd(e.target.value)} className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+            <input type="number" min="0" step="0.01" value={priceUsd} onChange={(e) => setPriceUsd(e.target.value)} className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
           </label>
         </div>
         <div>
@@ -168,8 +168,8 @@ function MenuModal({ item, onClose, onSaved }) {
           </div>
         </div>
         <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={available} onChange={(e) => setAvailable(e.target.checked)} className="h-4 w-4 rounded border-hilton-300 text-hilton-600" /> Hay stock</label>
-          <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={onlyDinner} onChange={(e) => setOnlyDinner(e.target.checked)} className="h-4 w-4 rounded border-hilton-300 text-hilton-600" /> Solo cena</label>
+          <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={available} onChange={(e) => setAvailable(e.target.checked)} className="h-4 w-4 rounded border-brand-300 text-brand-600" /> Hay stock</label>
+          <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={onlyDinner} onChange={(e) => setOnlyDinner(e.target.checked)} className="h-4 w-4 rounded border-brand-300 text-brand-600" /> Solo cena</label>
         </div>
         <div>
           <span className="mb-1 block text-sm font-medium text-ink">Foto</span>
@@ -177,8 +177,8 @@ function MenuModal({ item, onClose, onSaved }) {
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-3 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60">
+          <button onClick={onClose} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60">
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Guardar
           </button>
         </div>
@@ -193,7 +193,7 @@ function ConfirmModal({ title, onCancel, onConfirm }) {
     <Modal title={title} onClose={onCancel}>
       <p className="mb-6 text-sm text-slatey">Esta acción no se puede deshacer.</p>
       <div className="flex justify-end gap-3">
-        <button onClick={onCancel} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
+        <button onClick={onCancel} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
         <button onClick={async () => { setDeleting(true); await onConfirm() }} disabled={deleting} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60">
           {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Eliminar
         </button>
@@ -221,7 +221,7 @@ function Field({ label, value, onChange, placeholder }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-ink">{label}</span>
-      <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+      <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
     </label>
   )
 }

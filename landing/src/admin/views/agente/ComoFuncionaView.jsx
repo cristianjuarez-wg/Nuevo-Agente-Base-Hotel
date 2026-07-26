@@ -14,7 +14,7 @@ function Tag({ kind }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-        editable ? 'bg-hilton-50 text-hilton-700' : 'bg-mist text-slatey'
+        editable ? 'bg-brand-50 text-brand-700' : 'bg-mist text-slatey'
       }`}
     >
       {editable ? <Pencil size={11} /> : <Lock size={11} />}
@@ -25,9 +25,9 @@ function Tag({ kind }) {
 
 function Step({ icon: Icon, n, title, children, tag }) {
   return (
-    <div className="relative rounded-2xl border border-hilton-100 bg-white p-4 shadow-card sm:p-5">
+    <div className="relative rounded-2xl border border-brand-100 bg-white p-4 shadow-card sm:p-5">
       <div className="flex items-start gap-3.5">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-hilton-600 text-white">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">
           <Icon size={18} />
         </span>
         <div className="min-w-0 flex-1">
@@ -46,7 +46,7 @@ function Step({ icon: Icon, n, title, children, tag }) {
 function Arrow() {
   return (
     <div className="flex justify-center py-1.5" aria-hidden="true">
-      <ArrowDown size={18} className="text-hilton-300" />
+      <ArrowDown size={18} className="text-brand-300" />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { getGuestProfile, updateGuestPreferences, getFolio, updateContact, getCo
 import { Badge, OriginBadge, Loading, formatDate, formatUSD, occupancyLabel } from '../ui'
 import { toast } from '../toast'
 import ChatTranscript from './ChatTranscript'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 // Datos del check-in express (hora de llegada + documento) si el huésped lo completó.
 function CheckinExpressInfo({ stay }) {
@@ -68,7 +69,7 @@ function GuestStatusRibbon({ profile, c }) {
   let badge
   if (esProspecto) badge = { label: 'Prospecto · sin reservas', tone: 'bg-amber-100 text-amber-700' }
   else if (recurrente) badge = { label: `Cliente recurrente · ${stays} estadías`, tone: 'bg-forest-100 text-forest-700' }
-  else badge = { label: 'Cliente', tone: 'bg-hilton-100 text-hilton-700' }
+  else badge = { label: 'Cliente', tone: 'bg-brand-100 text-brand-700' }
 
   // Chips de actividad (útiles sobre todo para prospectos, donde las 4 stats están en 0).
   const chips = []
@@ -122,22 +123,22 @@ function PreferenceEditor({ profile, onSave, saving }) {
                placeholder="maní, frutos secos, mariscos" />
       </Field>
       <Field label="Preferencias dietéticas" hint="separadas por coma">
-        <input className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+        <input className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
                value={dietary} onChange={(e) => setDietary(e.target.value)}
                placeholder="vegetariano, sin TACC" />
       </Field>
       <Field label="Servicios que suele usar" hint="separados por coma">
-        <input className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+        <input className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
                value={services} onChange={(e) => setServices(e.target.value)}
                placeholder="guarda-skis, cochera" />
       </Field>
       <Field label="Familia / acompañantes" hint="nombres separados por coma">
-        <input className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+        <input className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
                value={family} onChange={(e) => setFamily(e.target.value)}
                placeholder="María (esposa), Tomás (hijo)" />
       </Field>
       <Field label="Notas del hotel">
-        <textarea className="w-full min-h-[64px] rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+        <textarea className="w-full min-h-[64px] rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
                   value={notes} onChange={(e) => setNotes(e.target.value)}
                   placeholder="Prefiere pisos altos, viaja con mascota…" />
       </Field>
@@ -165,6 +166,7 @@ function Field({ label, hint, children }) {
 }
 
 export default function DetailDrawer({ contactId, onClose }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -228,7 +230,7 @@ export default function DetailDrawer({ contactId, onClose }) {
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
       <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-linen shadow-card-lg animate-slide-up">
-        <header className="flex items-center justify-between border-b border-hilton-100 bg-white px-5 py-4">
+        <header className="flex items-center justify-between border-b border-brand-100 bg-white px-5 py-4">
           <div className="min-w-0">
             <h2 className="truncate font-serif text-lg font-700 text-ink">{name}</h2>
             {profile?.origin && <div className="mt-0.5"><OriginBadge origin={profile.origin} /></div>}
@@ -289,8 +291,8 @@ export default function DetailDrawer({ contactId, onClose }) {
 
               {/* Resumen IA del huésped (lo mismo que usa el agente). Solo si existe. */}
               {c.ai_summary && (
-                <div className="rounded-xl border border-hilton-100 bg-hilton-50/50 px-4 py-3">
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-hilton-700">
+                <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3">
+                  <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand-700">
                     <Sparkles size={13} /> Resumen del huésped
                   </div>
                   <p className="text-sm text-ink">{c.ai_summary}</p>
@@ -378,7 +380,7 @@ export default function DetailDrawer({ contactId, onClose }) {
                           <div>
                             <p className="font-medium text-ink">
                               {s.room_type}
-                              {s.room_number && <span className="ml-1.5 text-xs font-semibold tabular-nums text-hilton-600">N° {s.room_number}</span>}
+                              {s.room_number && <span className="ml-1.5 text-xs font-semibold tabular-nums text-brand-600">N° {s.room_number}</span>}
                             </p>
                             <p className="text-xs text-slatey tabular-nums">
                               {formatDate(s.check_in)} → {formatDate(s.check_out)}
@@ -386,7 +388,7 @@ export default function DetailDrawer({ contactId, onClose }) {
                               {s.promo_name && <span className="ml-1.5 text-forest-600">· {s.promo_name}</span>}
                             </p>
                           </div>
-                          <span className="font-medium tabular-nums text-hilton-700">{formatUSD(s.total_price_usd)}</span>
+                          <span className="font-medium tabular-nums text-brand-700">{formatUSD(s.total_price_usd)}</span>
                         </div>
                         {s.consumo?.length > 0 && (
                           <p className="mt-1 flex items-start gap-1 text-xs text-slatey">
@@ -422,7 +424,7 @@ export default function DetailDrawer({ contactId, onClose }) {
                     ))}
                     <div className="mt-1 flex justify-between border-t border-mist pt-2 font-semibold">
                       <span className="text-ink">Total a pagar</span>
-                      <span className="tabular-nums text-hilton-700">{formatUSD(folio.summary.folio_total_usd)}</span>
+                      <span className="tabular-nums text-brand-700">{formatUSD(folio.summary.folio_total_usd)}</span>
                     </div>
                     {folio.summary.folio_pending_usd > 0 && (
                       <p className="text-xs text-amber-600">Pendiente de cobro: {formatUSD(folio.summary.folio_pending_usd)} (se salda al check-out)</p>
@@ -434,7 +436,7 @@ export default function DetailDrawer({ contactId, onClose }) {
               {/* Conversaciones con Aura (web y WhatsApp). Cada una abre su transcripción. */}
               <div className="rounded-2xl bg-white p-4 shadow-card">
                 <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slatey">
-                  <MessageSquare size={13} /> Conversaciones con Aura
+                  <MessageSquare size={13} /> Conversaciones con {agentName}
                 </h3>
                 {conversations.length === 0 ? (
                   <p className="text-sm text-slatey">Este huésped no tiene conversaciones registradas.</p>
@@ -449,7 +451,7 @@ export default function DetailDrawer({ contactId, onClose }) {
                           className="flex w-full items-center justify-between gap-2 rounded-xl border border-mist px-3 py-2 text-left transition hover:bg-mist/60"
                         >
                           <span className="flex min-w-0 items-center gap-2 text-sm">
-                            <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isWa ? 'bg-green-50 text-green-600' : 'bg-hilton-50 text-hilton-600'}`}>
+                            <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isWa ? 'bg-green-50 text-green-600' : 'bg-brand-50 text-brand-600'}`}>
                               {isWa ? <MessageCircle size={13} /> : <Globe size={13} />}
                             </span>
                             <span className="min-w-0">
@@ -510,12 +512,12 @@ export default function DetailDrawer({ contactId, onClose }) {
         {/* Transcripción de una conversación elegida: se monta sobre el perfil, con volver. */}
         {openChat && (
           <div className="absolute inset-0 flex flex-col bg-linen">
-            <header className="flex items-center gap-2 border-b border-hilton-100 bg-white px-5 py-4">
+            <header className="flex items-center gap-2 border-b border-brand-100 bg-white px-5 py-4">
               <button onClick={() => setOpenChat(null)} aria-label="Volver" className="rounded-lg p-1.5 text-slatey transition hover:bg-mist">
                 <ChevronLeft size={18} />
               </button>
               <div className="min-w-0">
-                <h2 className="truncate font-serif text-base font-700 text-ink">Conversación con Aura</h2>
+                <h2 className="truncate font-serif text-base font-700 text-ink">Conversación con {agentName}</h2>
                 <p className="text-xs text-slatey">
                   {((openChat.channel === 'whatsapp') || (openChat.session_id || '').startsWith('wa_')) ? 'WhatsApp' : 'Chat web'} · {formatDate(openChat.started_at)}
                 </p>
@@ -547,7 +549,7 @@ function TicketDetailDrawer({ ticket, onClose }) {
   const st = ticketStatusBadge(ticket)
   return (
     <div className="absolute inset-0 flex flex-col bg-linen">
-      <header className="flex items-start gap-2 border-b border-hilton-100 bg-white px-5 py-4">
+      <header className="flex items-start gap-2 border-b border-brand-100 bg-white px-5 py-4">
         <button onClick={onClose} aria-label="Volver" className="mt-0.5 rounded-lg p-1.5 text-slatey transition hover:bg-mist">
           <ChevronLeft size={18} />
         </button>
@@ -633,8 +635,8 @@ function EditContactModal({ contact, onClose, onSave }) {
           <PField label="Teléfono" value={phone} onChange={setPhone} placeholder="+54 9 11 …" />
           <p className="text-xs text-slatey">El teléfono identifica al pasajero; debe ser único.</p>
           <div className="flex justify-end gap-3 pt-1">
-            <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
-            <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60">
+            <button onClick={onClose} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
+            <button onClick={submit} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60">
               {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Guardar
             </button>
           </div>
@@ -650,7 +652,7 @@ function PField({ label, value, onChange, placeholder, type = 'text' }) {
       <span className="mb-1 block text-sm font-medium text-ink">{label}</span>
       <input
         type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
   )

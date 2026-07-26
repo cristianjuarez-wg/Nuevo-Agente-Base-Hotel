@@ -34,7 +34,7 @@ function SearchForm({ search, setSearch, onSearch, loading, error }) {
             Check-in
           </label>
           <div className="relative">
-            <CalendarDays size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-hilton-500" />
+            <CalendarDays size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <input
               id="checkIn"
               type="date"
@@ -48,7 +48,7 @@ function SearchForm({ search, setSearch, onSearch, loading, error }) {
                     : search.checkOut
                 setSearch({ ...search, checkIn, checkOut })
               }}
-              className="w-full rounded-xl border border-mist bg-white py-3 pl-10 pr-3 text-sm text-ink focus:border-hilton-400 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-mist bg-white py-3 pl-10 pr-3 text-sm text-ink focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
               required
             />
           </div>
@@ -59,14 +59,14 @@ function SearchForm({ search, setSearch, onSearch, loading, error }) {
             Check-out
           </label>
           <div className="relative">
-            <CalendarDays size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-hilton-500" />
+            <CalendarDays size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <input
               id="checkOut"
               type="date"
               min={search.checkIn ? format(addDays(new Date(search.checkIn), 1), 'yyyy-MM-dd') : tomorrowISO()}
               value={search.checkOut}
               onChange={(e) => setSearch({ ...search, checkOut: e.target.value })}
-              className="w-full rounded-xl border border-mist bg-white py-3 pl-10 pr-3 text-sm text-ink focus:border-hilton-400 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-mist bg-white py-3 pl-10 pr-3 text-sm text-ink focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
               required
             />
           </div>
@@ -77,12 +77,12 @@ function SearchForm({ search, setSearch, onSearch, loading, error }) {
             Huéspedes
           </label>
           <div className="relative">
-            <Users size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-hilton-500" />
+            <Users size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brand-500" />
             <select
               id="guests"
               value={search.guests}
               onChange={(e) => setSearch({ ...search, guests: Number(e.target.value) })}
-              className="w-full appearance-none rounded-xl border border-mist bg-white py-3 pl-10 pr-3 text-sm text-ink focus:border-hilton-400 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full appearance-none rounded-xl border border-mist bg-white py-3 pl-10 pr-3 text-sm text-ink focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
             >
               {[1, 2, 3, 4].map((n) => (
                 <option key={n} value={n}>
@@ -155,7 +155,7 @@ function Results({ rooms, search, onPick, onBack }) {
                 </p>
               </div>
               <div className="text-right sm:w-44">
-                <p className="font-display text-xl font-700 tabular-nums text-hilton-700">
+                <p className="font-display text-xl font-700 tabular-nums text-brand-700">
                   {formatUSD(r.total_price_usd)}
                 </p>
                 <p className="text-xs tabular-nums text-slatey">{formatARS(r.total_price_ars)}</p>
@@ -197,7 +197,7 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
             </p>
           </div>
           <div className="text-right">
-            <p className="font-display text-lg font-700 tabular-nums text-hilton-700">{formatUSD(room.total_price_usd)}</p>
+            <p className="font-display text-lg font-700 tabular-nums text-brand-700">{formatUSD(room.total_price_usd)}</p>
             <p className="text-xs tabular-nums text-slatey">{formatARS(room.total_price_ars)}</p>
           </div>
         </div>
@@ -205,7 +205,7 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label htmlFor="g-name" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slatey">
-              Nombre completo <span className="text-hilton-600">*</span>
+              Nombre completo <span className="text-brand-600">*</span>
             </label>
             <input
               id="g-name"
@@ -213,7 +213,7 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="Tu nombre y apellido"
-              className="w-full rounded-xl border border-mist py-3 px-3 text-sm text-ink focus:border-hilton-400 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-mist py-3 px-3 text-sm text-ink focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
               required
               minLength={2}
             />
@@ -230,7 +230,7 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="tu@email.com"
-                className="w-full rounded-xl border border-mist py-3 px-3 text-sm text-ink focus:border-hilton-400 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                className="w-full rounded-xl border border-mist py-3 px-3 text-sm text-ink focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </div>
             <div>
@@ -244,7 +244,7 @@ function GuestForm({ room, search, onConfirm, onBack, submitting, error }) {
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="+54 …"
-                className="w-full rounded-xl border border-mist py-3 px-3 text-sm text-ink focus:border-hilton-400 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                className="w-full rounded-xl border border-mist py-3 px-3 text-sm text-ink focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </div>
           </div>
@@ -283,9 +283,9 @@ function Confirmation({ booking, onReset }) {
           Te esperamos en {HOTEL.name}, {booking.guest_name}.
         </p>
 
-        <div className="my-6 rounded-xl border border-dashed border-hilton-200 bg-hilton-50 py-4">
+        <div className="my-6 rounded-xl border border-dashed border-brand-200 bg-brand-50 py-4">
           <p className="text-xs uppercase tracking-wide text-slatey">Código de reserva</p>
-          <p className="font-display text-2xl font-700 tracking-wider text-hilton-700">{booking.code}</p>
+          <p className="font-display text-2xl font-700 tracking-wider text-brand-700">{booking.code}</p>
         </div>
 
         <dl className="space-y-2 text-left text-sm">
@@ -303,7 +303,7 @@ function Confirmation({ booking, onReset }) {
           </div>
           <div className="flex justify-between border-t border-mist pt-2">
             <dt className="text-slatey">Total</dt>
-            <dd className="font-semibold tabular-nums text-hilton-700">
+            <dd className="font-semibold tabular-nums text-brand-700">
               {formatUSD(booking.total_price_usd)} / {formatARS(booking.total_price_ars)}
             </dd>
           </div>
@@ -392,9 +392,9 @@ export default function BookingEngine() {
   }
 
   return (
-    <section id="reservar" className="section-pad relative overflow-hidden bg-hilton-900">
+    <section id="reservar" className="section-pad relative overflow-hidden bg-brand-900">
       {/* Textura sutil de fondo */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-hilton-900 via-hilton-800 to-forest-600/40" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-900 via-brand-800 to-forest-600/40" />
       <div className="container-x relative px-6 sm:px-10">
         <header className="mx-auto mb-12 max-w-2xl text-center">
           <p className="eyebrow-light">Reservá tu estadía</p>

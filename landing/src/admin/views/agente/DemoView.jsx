@@ -110,7 +110,7 @@ export default function DemoView() {
       />
 
       {/* Aviso de alcance */}
-      <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-hilton-100 bg-hilton-50 px-4 py-3 text-sm text-hilton-700">
+      <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
         <Info size={16} className="mt-0.5 shrink-0" />
         <span>
           Solo afecta a los <strong>datos de demostración</strong>. Tus reservas reales de prueba y la
@@ -121,7 +121,7 @@ export default function DemoView() {
       {/* Estado actual */}
       <div className="mb-5 rounded-2xl bg-white p-5 shadow-card">
         <div className="mb-4 flex items-center gap-2">
-          <Database size={18} className="text-hilton-600" />
+          <Database size={18} className="text-brand-600" />
           <h2 className="font-serif text-lg font-600 text-ink">Estado actual</h2>
         </div>
         {hasData ? (
@@ -143,7 +143,7 @@ export default function DemoView() {
         <button
           onClick={handlePopulate}
           disabled={busy}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-hilton-600 px-5 py-3 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
         >
           {working === 'populate' ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
           {working === 'populate'
@@ -225,7 +225,7 @@ export default function DemoView() {
               className="mb-5 w-full rounded-xl border border-red-200 px-3.5 py-2.5 text-sm focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-100"
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmReset(false)} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
+              <button onClick={() => setConfirmReset(false)} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
                 Cancelar
               </button>
               <button
@@ -267,7 +267,7 @@ export default function DemoView() {
             </ul>
             <p className="mb-5 text-xs text-slatey">Esta acción no se puede deshacer. Solo se borran los datos demo.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmClear(false)} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
+              <button onClick={() => setConfirmClear(false)} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
                 Cancelar
               </button>
               <button onClick={handleClear} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700">

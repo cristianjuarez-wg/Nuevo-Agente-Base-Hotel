@@ -64,7 +64,7 @@ export default function HabitacionesView() {
         right={
           <button
             onClick={() => setEditRoom({})}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700"
           >
             <Plus size={16} /> Nueva habitación
           </button>
@@ -83,7 +83,7 @@ export default function HabitacionesView() {
             <div
               key={r.id}
               className={`flex flex-col gap-3 rounded-2xl border bg-white p-4 shadow-card sm:flex-row sm:items-center sm:justify-between ${
-                r.status === 'inactive' ? 'border-hilton-100 opacity-60' : 'border-hilton-100'
+                r.status === 'inactive' ? 'border-brand-100 opacity-60' : 'border-brand-100'
               }`}
             >
               <div className="flex gap-4 flex-1 min-w-0">
@@ -91,7 +91,7 @@ export default function HabitacionesView() {
                   <img
                     src={resolveImg(r.images[0])}
                     alt={r.room_type}
-                    className="h-16 w-24 shrink-0 rounded-xl border border-hilton-100 object-cover"
+                    className="h-16 w-24 shrink-0 rounded-xl border border-brand-100 object-cover"
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -116,7 +116,7 @@ export default function HabitacionesView() {
                   )}
                   <p className="mt-1.5 text-sm tabular-nums">
                     {/* Precio en la moneda PRIMARIA configurada (price_primary), con la otra como referencia. */}
-                    <span className="font-semibold text-hilton-700">
+                    <span className="font-semibold text-brand-700">
                       {r.price_primary != null ? formatMoney(r.price_primary, r.primary_currency) : formatUSD(r.base_price_usd)}
                     </span>
                     <span className="text-slatey"> / noche · {r.primary_currency === 'ARS' ? formatUSD(r.base_price_usd) : formatARS(r.base_price_ars)}</span>
@@ -235,7 +235,7 @@ function RoomModal({ room, rate, onClose, onSaved }) {
           <textarea
             value={description} onChange={(e) => setDescription(e.target.value)}
             rows={2} placeholder="Descripción de la habitación…"
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100 resize-none"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none"
           />
         </label>
 
@@ -246,7 +246,7 @@ function RoomModal({ room, rate, onClose, onSaved }) {
               type="number" min="0" step="0.01" inputMode="decimal"
               value={basePriceUsd} onChange={(e) => setBasePriceUsd(e.target.value)}
               placeholder="120"
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
             {arsPreview && <span className="mt-1 block text-xs text-slatey">≈ {arsPreview} (cotización vigente)</span>}
           </label>
@@ -254,7 +254,7 @@ function RoomModal({ room, rate, onClose, onSaved }) {
             <span className="mb-1 block text-sm font-medium text-ink">Capacidad (huéspedes)</span>
             <input
               type="number" min="1" value={capacity} onChange={(e) => setCapacity(e.target.value)}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
         </div>
@@ -264,14 +264,14 @@ function RoomModal({ room, rate, onClose, onSaved }) {
             <span className="mb-1 block text-sm font-medium text-ink">Unidades totales</span>
             <input
               type="number" min="0" value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">Estado</span>
             <select
               value={status} onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             >
               <option value="active">Activa</option>
               <option value="inactive">Inactiva</option>
@@ -287,7 +287,7 @@ function RoomModal({ room, rate, onClose, onSaved }) {
           <textarea
             value={amenitiesText} onChange={(e) => setAmenitiesText(e.target.value)}
             rows={2} placeholder="WiFi gratis, Minibar, Smart TV"
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100 resize-none"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none"
           />
         </label>
 
@@ -299,12 +299,12 @@ function RoomModal({ room, rate, onClose, onSaved }) {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
+          <button onClick={onClose} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
             Cancelar
           </button>
           <button
             onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             Guardar
@@ -325,7 +325,7 @@ function ConfirmModal({ title, message, error, onCancel, onConfirm }) {
       <p className="mb-4 text-sm text-slatey">{message}</p>
       {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <div className="flex justify-end gap-3">
-        <button onClick={onCancel} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
+        <button onClick={onCancel} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
         <button onClick={confirm} disabled={deleting} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60">
           {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Eliminar
         </button>
@@ -343,7 +343,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            {Icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600"><Icon size={18} /></div>}
+            {Icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Icon size={18} /></div>}
             <h3 className="font-serif text-lg font-700 text-ink">{title}</h3>
           </div>
           <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist"><X size={20} /></button>
@@ -361,7 +361,7 @@ function Field({ label, value, onChange, placeholder }) {
       <input
         type="text" value={value || ''} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
   )

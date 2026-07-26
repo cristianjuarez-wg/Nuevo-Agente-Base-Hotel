@@ -8,6 +8,7 @@ import {
 import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics, getRestaurantStats } from '../../services/api'
 import { PageHeader, StatCard, Loading, formatUSD } from '../ui'
 import PeriodSelector from '../components/PeriodSelector'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 // Selector de canal: Todos / Web / WhatsApp / Instagram. Filtra funnel + heatmap.
 const CHANNELS = [
@@ -30,7 +31,7 @@ function ChannelTabs({ value, onChange }) {
             aria-selected={active}
             onClick={() => onChange(c.id)}
             className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-medium transition ${
-              active ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
+              active ? 'bg-white text-brand-700 shadow-card' : 'text-slatey hover:text-ink'
             }`}
           >
             {Icon && <Icon size={14} />}
@@ -81,11 +82,11 @@ function ConversionRates({ rates }) {
     { label: 'Lead → Reserva', value: rates?.lead_to_reservation ?? 0 },
   ]
   return (
-    <div className="mt-5 grid grid-cols-2 gap-3 border-t border-hilton-100 pt-4">
+    <div className="mt-5 grid grid-cols-2 gap-3 border-t border-brand-100 pt-4">
       {items.map((it) => (
         <div key={it.label} className="rounded-xl bg-mist px-4 py-3">
           <p className="text-xs text-slatey">{it.label}</p>
-          <p className="mt-0.5 font-serif text-xl font-700 tabular-nums text-hilton-700">{it.value}%</p>
+          <p className="mt-0.5 font-serif text-xl font-700 tabular-nums text-brand-700">{it.value}%</p>
         </div>
       ))}
     </div>
@@ -100,10 +101,10 @@ const DOW_ORDER = [1, 2, 3, 4, 5, 6, 0]
 function heatColor(count, max) {
   if (!count) return 'bg-mist'
   const ratio = count / max
-  if (ratio > 0.75) return 'bg-hilton-700 text-white'
-  if (ratio > 0.5) return 'bg-hilton-500 text-white'
-  if (ratio > 0.25) return 'bg-hilton-300 text-hilton-900'
-  return 'bg-hilton-100 text-hilton-800'
+  if (ratio > 0.75) return 'bg-brand-700 text-white'
+  if (ratio > 0.5) return 'bg-brand-500 text-white'
+  if (ratio > 0.25) return 'bg-brand-300 text-brand-900'
+  return 'bg-brand-100 text-brand-800'
 }
 
 function Heatmap({ data, maxCount }) {
@@ -147,10 +148,10 @@ function Heatmap({ data, maxCount }) {
         <div className="mt-3 flex items-center gap-2 pl-9 text-[10px] text-slatey">
           <span>Menos</span>
           <div className="h-3 w-4 rounded bg-mist" />
-          <div className="h-3 w-4 rounded bg-hilton-100" />
-          <div className="h-3 w-4 rounded bg-hilton-300" />
-          <div className="h-3 w-4 rounded bg-hilton-500" />
-          <div className="h-3 w-4 rounded bg-hilton-700" />
+          <div className="h-3 w-4 rounded bg-brand-100" />
+          <div className="h-3 w-4 rounded bg-brand-300" />
+          <div className="h-3 w-4 rounded bg-brand-500" />
+          <div className="h-3 w-4 rounded bg-brand-700" />
           <span>Más</span>
         </div>
       </div>
@@ -194,6 +195,7 @@ function Panel({ title, subtitle, children }) {
 }
 
 export default function AnalyticsView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [channel, setChannel] = useState('all')
   const [period, setPeriod] = useState('mes')
   const [funnel, setFunnel] = useState(null)
@@ -254,14 +256,14 @@ export default function AnalyticsView() {
         <div className="space-y-6">
           {/* KPIs del embudo */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={MessageSquare} label="Conversaciones" value={conv} tone="hilton" />
+            <StatCard icon={MessageSquare} label="Conversaciones" value={conv} tone="brand" />
             <StatCard icon={UserPlus} label="Leads captados" value={leads} tone="amber" />
             <StatCard icon={CalendarCheck} label="Reservas" value={reservas} tone="green" />
             <StatCard
               icon={TrendingDown}
               label="Conversión total"
               value={`${conv ? Math.round((reservas / conv) * 100) : 0}%`}
-              tone="hilton"
+              tone="brand"
             />
           </div>
 
@@ -269,7 +271,7 @@ export default function AnalyticsView() {
           {quality && quality.total_tickets > 0 && (
             <Panel
               title="Calidad del agente · soporte al huésped"
-              subtitle="Qué resuelve Aura sola vs. qué deriva al equipo (consultas de huéspedes con reserva)."
+              subtitle={`Qué resuelve ${agentName} solo vs. qué deriva al equipo (consultas de huéspedes con reserva).`}
             >
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <div className="rounded-xl bg-green-50 px-4 py-3">
@@ -278,11 +280,11 @@ export default function AnalyticsView() {
                 </div>
                 <div className="rounded-xl bg-mist px-4 py-3">
                   <p className="text-xs text-slatey">Auto-resueltas</p>
-                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-hilton-700">{quality.auto_resolved_tickets}</p>
+                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-brand-700">{quality.auto_resolved_tickets}</p>
                 </div>
                 <div className="rounded-xl bg-mist px-4 py-3">
                   <p className="text-xs text-slatey">Pedidos al staff</p>
-                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-hilton-700">{quality.service_requests}</p>
+                  <p className="mt-0.5 font-serif text-2xl font-700 tabular-nums text-brand-700">{quality.service_requests}</p>
                 </div>
                 <div className="rounded-xl bg-amber-50 px-4 py-3">
                   <p className="text-xs text-slatey">Escaladas a humano</p>
@@ -337,10 +339,10 @@ export default function AnalyticsView() {
       {fnb && (fnb.orders_total > 0) && (
         <div className="mt-6 rounded-2xl bg-white p-5 shadow-card">
           <div className="mb-4 flex items-center gap-2">
-            <UtensilsCrossed size={18} className="text-hilton-600" />
+            <UtensilsCrossed size={18} className="text-brand-600" />
             <h2 className="font-serif text-lg font-600 text-ink">Restaurante (F&B)</h2>
             <span className="ml-auto text-sm text-slatey">
-              {fnb.orders_total} pedidos · <strong className="text-hilton-700">{formatUSD(fnb.revenue_fnb_usd)}</strong>
+              {fnb.orders_total} pedidos · <strong className="text-brand-700">{formatUSD(fnb.revenue_fnb_usd)}</strong>
             </span>
           </div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slatey">Platos más pedidos</p>
@@ -352,7 +354,7 @@ export default function AnalyticsView() {
                   <span className="w-5 text-right text-xs font-semibold tabular-nums text-slatey">{i + 1}</span>
                   <span className="w-44 truncate text-sm text-ink">{d.name}</span>
                   <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-mist">
-                    <div className="h-full rounded-full bg-hilton-500" style={{ width: `${(d.qty / max) * 100}%` }} />
+                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(d.qty / max) * 100}%` }} />
                   </div>
                   <span className="w-8 text-right text-sm font-medium tabular-nums text-ink">{d.qty}</span>
                 </div>

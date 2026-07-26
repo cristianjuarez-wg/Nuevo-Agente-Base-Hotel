@@ -1,278 +1,230 @@
-# Guía de reúso del agente — usar esta base como plantilla para otros dominios
+# Guía de reúso — construir un agente de OTRO rubro sobre esta base
 
-> **Alcance.** Este documento **no refactoriza** la demo de turismo (Freeway/Kami): describe la
-> frontera entre el **framework del agente** (reutilizable) y la **lógica de dominio**
-> (turismo, a reemplazar), y da una guía paso a paso para arrancar un agente de **otro dominio**
-> (ej. soporte bancario, e-commerce, RRHH) usando esta base como molde.
-> Audiencia: un dev que va a crear un agente nuevo reusando este patrón.
->
-> Las referencias son `archivo:línea` relativas a `backend/`, navegables desde el editor.
-> Última verificación de líneas: 2026-06-19.
+> **Verificado contra el código el 2026-07-26.** Todas las rutas citadas existen. Si encontrás
+> una que no, el documento se desactualizó: arreglalo antes de seguir (la versión anterior de
+> esta guía mandaba a copiar ~20 archivos que ya no existían — hallazgo C1 de la auditoría).
 
----
-
-## 1. Dictamen de reusabilidad (TL;DR)
-
-La base **sirve hoy como scaffold informal**: hay un núcleo de infraestructura 100% genérico y un
-**patrón arquitectónico portable** (Agents SDK + triage + tools por dispatcher + gate
-determinístico + manejo de errores anti-500). La lógica de turismo está **localizada** (prompts,
-tools, modelos, geografía), no dispersa — así que reemplazarla es un trabajo acotado y claro.
-
-**[Fase 2.1] Actualización:** ya EXISTE la separación física `core/` vs `domains/hotel/`.
-La infra genérica vive en `app/core/{llm,rag,channels,observability,security,profile}/` y un
-test permanente (`tests/test_architecture.py`) garantiza que **core/ no importa dominio**. Los
-prompts se parametrizan por perfil (identity_blocks + BusinessProfile, Fase 1). Pendiente: la
-sub-partición fina del dominio por bounded-context (models/services en subcarpetas de
-`domains/hotel/`) — no aporta frontera nueva, se hace incrementalmente.
-
-Semáforo por capa (post Fase 2.1):
-
-| Capa | Estado | Acción al portar |
-|---|---|---|
-| Infra transversal (`core/llm`, `core/rag`, `core/channels`, `core/observability`, `core/security`) | 🟢 genérico, aislado en core/ | Copiar tal cual |
-| Perfil del agente (`core/profile/agent_profile` + BusinessProfile en DB) | 🟢 genérico + configurable | Editar desde el backoffice |
-| Orquestación SDK (patrón `run()`, triage, gate) | 🟡 molde | Clonar y adaptar (2.2: runtime declarativo) |
-| Tools + dispatcher (`execute_tool`) | 🟡 contrato genérico, handlers de dominio | Reescribir handlers |
-| Prompts / textos | 🟡 en `domains/hotel/prompts/`, identidad ya parametrizada | Ajustar textos del vertical |
-| Modelos ORM de negocio | 🟡 en `app/models/` (hotel) | Reescribir por vertical |
-
-Veredicto: **~20% framework genérico reutilizable, ~80% capa de dominio a reescribir.** Es lo
-esperable: esto se construyó como app de turismo, no como librería. El valor de reusar la base es
-**no rehacer el patrón** (SDK loop, ruteo, gate, resiliencia, perfil, infra), que es lo difícil.
+Este repo implementa un "empleado digital" para hoteles. Lo reusable **no es el hotel**: es el
+**runtime declarativo de agentes** (`app/core/agents/`) más la infraestructura alrededor (LLM,
+RAG, canales, seguridad, observabilidad). Un rubro nuevo **declara sus agentes y escribe sus
+tools**; no clona orquestadores.
 
 ---
 
-## 2. El patrón arquitectónico (el molde a reusar)
+## 1. La regla de oro: la frontera core ↔ dominio
 
-Flujo de un turno de conversación:
+`tests/test_architecture.py` falla si un archivo de `app/core/` importa de `app.domains`,
+`app.services`, `app.prompts` o `app.routers`. Única excepción: una whitelist de modelos de
+infraestructura (`app.models.database`, `.schemas`, `.conversation*`, `.admin_user`).
 
-```
-agent_service.chat(db, message, session_id)
-  ├─ validar entrada
-  ├─ rehidratar historial (DB)
-  ├─ ¿estado conversacional multi-paso activo? → handler de captura → return
-  ├─ CORTOCIRCUITOS DUROS (sin LLM):
-  │    código de reserva (regex) | sesión post-venta activa (DB) → post-venta directo
-  ├─ TRIAGE (si no hubo señal dura):
-  │    triage_sdk_orchestrator.route() → casual | pre-venta | post-venta
-  ├─ rama destino:
-  │    casual    → _generate_casual_response()
-  │    post-venta→ run_gate() [determinístico] → postsale_sdk_orchestrator.run()
-  │    pre-venta → agent_sdk_orchestrator.run()
-  └─ cada run(): Agent del SDK + tools + guardrails → Runner.run(max_turns=6)
-                 → extrae tools_used → catch genérico (NUNCA propaga 500)
+**El dominio importa core; core NUNCA importa dominio.** Por eso las tools del dominio se
+*registran* (`register_tool`) en vez de importarse desde core.
+
+Si un cambio te tienta a romper esa regla, estás yendo en la dirección equivocada.
+
+---
+
+## 2. Los 4 pasos para agregar un agente
+
+El ejemplo canónico es el agente más simple del repo: **`hotel_staff`** (3 tools,
+`app/services/staff_orchestrator.py`, ~235 líneas). Ese es el patrón a copiar.
+
+### Paso 1 — Escribir las tools con `@function_tool`
+
+```python
+# app/services/<rubro>_orchestrator.py
+from agents import RunContextWrapper, function_tool
+
+class MiContext:                      # contexto del turno: clase plana propia del dominio
+    def __init__(self, db, usuario, message, session_id=""):
+        self.db, self.usuario, self.message, self.session_id = db, usuario, message, session_id
+
+@function_tool
+async def resolver_algo(ctx: RunContextWrapper[MiContext], referencia: str, nota: str = "") -> str:
+    """El DOCSTRING ES EL PROMPT que ve el modelo: explicá cuándo usar la tool y qué significa
+    cada parámetro. La lógica de negocio NO va acá: delegá a un service."""
+    return mi_service.hacer_algo(ctx.context.db, referencia, nota)
 ```
 
-**Por qué es portable:** `chat()` no depende de FastAPI (recibe una `Session` de SQLAlchemy, no un
-`Request`); las tools están desacopladas detrás de un dispatcher; las acciones sensibles se
-deciden de forma determinística fuera del LLM.
+Referencia real: `app/services/staff_orchestrator.py:56-124` (las 3 tools) y el contexto en `:45-50`.
 
-### Los 4 contratos que un dominio nuevo NO debe romper
+### Paso 2 — Registrar las tools
 
-1. **Entrada:** `async def chat(self, db, message, session_id) -> Dict` — agnóstica de la capa web.
-2. **Dispatcher de tools:** `async def execute_tool(name, args, ctx) -> Dict` — `ctx` es un dict
-   **mutable compartido por turno**; el retorno incluye `{"tool_result": str, ...}`.
-   (`agent_tools.py:249`, `postsale_tools.py:182`)
-3. **Orquestador:** una clase con `async def run(...)` que arma un `Agent` (instrucciones + tools
-   `@function_tool` + guardrails), corre `Runner.run(..., max_turns=6)`, extrae `tools_used` de
-   `result.new_items` y envuelve todo en un `try/except` con respuesta de fallback.
-4. **Gate determinístico:** para acciones sensibles (acceso, dinero, escalación), validar y
-   ejecutar **fuera** del LLM. Patrón: `postsale_service.run_gate()` (`:664`) corre antes del loop;
-   `postsale_orchestrator._apply_ticket_action()` (`:23`) aplica la acción según lo que el LLM
-   *analizó*, pero **el LLM no decide** la acción.
+```python
+_TOOLS = [resolver_algo, otra_tool]
+from app.core.agents.tool_registry import register_tool
+for _t in _TOOLS:
+    register_tool(f"mirubro.{_t.name}", _t)      # convención: "<rol>.<nombre_funcion>"
+```
 
----
+Ver `app/services/owner_orchestrator.py:532-536` (idiom en bucle, el recomendado).
 
-## 3. Mapa de capas: framework genérico vs dominio
+⚠️ **El registro corre como side-effect del import del módulo.** Si nadie importa tu orquestador,
+`resolve_tools` lanza `KeyError: Tools no registradas: [...]`
+(`app/core/agents/tool_registry.py:41-45`). En tests, importá el módulo explícitamente.
 
-| # | Capa | Dónde vive | Naturaleza |
-|---|---|---|---|
-| 1 | Infra transversal | `app/core/` (salvo geografía) | Genérica |
-| 2 | Perfil del agente | `core/agent_profile.py` + `data/agent_profiles/*.json` | Genérico (loader) + dominio (instancias) |
-| 3 | Orquestación SDK | `services/*_sdk_orchestrator.py` | Patrón genérico, prompts de dominio |
-| 4 | Tools + dispatcher | `services/agent_tools.py`, `postsale_tools.py`, `shared_sdk_tools.py` | Contrato genérico, handlers de dominio |
-| 5 | Prompts / textos | `app/prompts/` | Dominio |
-| 6 | Modelos ORM + config | `app/models/*`, `config.py` | Dominio (salvo `conversation*`/`database.py`) |
+### Paso 3 — Declarar la spec (el agente como DATOS)
 
----
+```python
+# app/domains/<rubro>/agent_specs.py
+SPECS = {
+  "mi_agente": AgentSpec(
+      key="mi_agente",
+      display_name="Coordinador",
+      display_role="staff",              # "guest" | "management" | "staff"
+      engine="sdk",                      # "sdk" (con tools) | "completions" (sin tools)
+      model_setting="OPENAI_MODEL",      # NOMBRE del atributo en settings, no el valor
+      temperature=0.4,
+      max_turns=5,
+      max_history=10,
+      tools=("mirubro.resolver_algo", "mirubro.otra_tool"),
+      channels=("whatsapp",),
+  ),
+}
+```
 
-## 4. El patrón pieza por pieza
+Campos completos: `app/core/agents/agent_spec.py:17-37`. Ejemplo real:
+`app/domains/hotel/agent_specs.py:17-29`.
 
-### 4.1 Entry point agnóstico — `services/agent_service.py`
-`chat(db, message, session_id)` orquesta el turno. Los **cortocircuitos duros** (regex de código
-de reserva + consulta de sesión activa) corren antes del LLM y cuestan 0 tokens.
-- **Reusable:** la estructura del dispatcher y los cortocircuitos.
-- **A tocar:** `BOOKING_CODE_PATTERNS` (`:30`) es el formato de Freeway; las frases sociales de
-  fallback (`:269`) dicen "viaje".
+Detalle de diseño: `model_setting`/`temperature_setting` guardan el **nombre del atributo de
+settings**, no el valor — así el modelo no queda hardcodeado en la spec.
 
-### 4.2 Triage por handoffs — `services/triage_sdk_orchestrator.py`
-Una sola pasada del SDK con handoffs desambigua pre/post/casual. **~80% agnóstico**: la mecánica
-(agentes-marcador + `last_agent`) sirve para cualquier dominio; solo los textos
-(`handoff_description` `:57-66` y `_build_triage_instructions` `:71-94`) hablan de "viajes".
-Tiene fallback conservador: si el Runner falla, devuelve pre-venta (`:148`).
+### Paso 4 — Orquestador FINO: componer instructions + llamar `run_agent`
 
-### 4.3 Patrón de orquestador SDK — `agent_sdk_orchestrator.py` / `postsale_sdk_orchestrator.py`
-Estructura común de `run()`: arma instrucciones, registra tools con `@function_tool`, define
-guardrails, corre `Runner.run(max_turns=6)`, extrae `tools_used` con
-`getattr(result, "new_items", [])`, y atrapa toda excepción con un fallback amable.
-- **Reusable:** toda esa estructura (es el "esqueleto" del agente).
-- **A tocar:** las descripciones de tools (`agent_sdk_orchestrator.py:105-126`), los fallbacks de
-  dominio (`:341-351`) y el análisis de lead (`_build_lead_block`).
+```python
+from app.core.agents.sdk_runtime import run_agent, build_input_list
+from app.domains.mirubro.agent_specs import SPECS
 
-### 4.4 Tools + dispatcher — `agent_tools.py`, `postsale_tools.py`
-Las `@function_tool` del orquestador son finas: delegan en handlers vía
-`execute_tool(name, args, ctx)`. El `ctx` lleva `service`, `db`, `message`, `history` y las tools
-escriben ahí lo que el orquestador necesita después (ej. `escalation_analysis`, `flight_issues`).
-- **Reusable:** el dispatcher y el contrato del `ctx`.
-- **A reescribir:** los handlers (`buscar_paquetes`, `consultar_estado_vuelo`, etc.) son turismo.
+async def run(self, db, usuario, message, session_id, history):
+    spec = SPECS["mi_agente"]
+    out = await run_agent(
+        spec,
+        instructions=self._build_instructions(db, usuario),   # tu prompt compuesto
+        context=MiContext(db, usuario, message, session_id=session_id),
+        input_list=build_input_list(history, message, spec.max_history),
+        fallback_response="Disculpá, tuve un problema. ¿Podés repetirlo?",
+    )
+    return {"response": out["response"], "tools_used": out["tools_used"], "usage": out["usage"]}
+```
 
-### 4.5 Gate determinístico — `postsale_service.run_gate()` + `_apply_ticket_action()`
-Antes del loop LLM, `run_gate()` (`:664`) valida acceso (código de reserva, voucher) y devuelve
-`{"handled": True, "result": ...}` (respuesta terminal) o `{"handled": False, "package", "ticket", ...}`
-(seguir al loop). La acción final sobre el ticket la aplica `_apply_ticket_action()` (`:23`) de
-forma **determinística**. Patrón clave para **dominios regulados** (banca, salud): el LLM analiza,
-pero la acción sensible la decide código auditable.
-
-### 4.6 Perfil del agente — `core/agent_profile.py` + `data/agent_profiles/template.json`
-`AgentProfileManager` es 100% genérico: carga y valida JSON, permite `switch_profile()` en runtime.
-Ya hay un `template.json` con placeholders `{agent_name}`, `{domain}`, `{custom_instructions}`,
-`{context}`, `{chat_history}`. **Este es el molde del perfil**: `turismo.json` y `postventa.json`
-son instancias. Campos requeridos: `profile_name`, `domain`, `system_prompt_template`,
-`agent_name`, `greeting_message`, `no_info_response`.
-
-### 4.7 RAG agnóstico — `services/rag_service.py` + `services/vector_store.py`
-El RAG en sí (búsqueda semántica, dedupe, thresholds) es agnóstico. **Solo** el enrichment
-geográfico (`core/geography.py`, `core/intelligent_geography.py`) es turismo. Para otro dominio:
-reusar el RAG, quitar/reemplazar el enricher geográfico.
+Referencia real: `app/services/staff_orchestrator.py:204-232` (el `run()` completo son ~20 líneas).
+**Eso es todo**: el orquestador compone el prompt y adapta el resultado.
 
 ---
 
-## 5. Guía paso a paso: crear un agente de un dominio nuevo
+## 3. Qué te da el runtime (y qué no)
 
-Caso ejemplo: **soporte bancario**. Orden recomendado (cada paso indica qué tocás y qué NO):
+`run_agent` (`app/core/agents/sdk_runtime.py:43`) hace por vos:
 
-1. **Perfil de dominio.** Copiar `data/agent_profiles/template.json` →
-   `data/agent_profiles/banca.json`. Completar `domain`, `agent_name`, `system_prompt_template`,
-   `greeting_message`, `capabilities`, `conversation_starters`. Apuntar `AGENT_PROFILE_PATH`
-   (`config.py:36`) a ese archivo. *NO tocás* `agent_profile.py`.
+- Construye el `Agent` del SDK con tools, modelo, temperatura y guardrails resueltos desde la spec.
+- Corre el loop (`Runner.run` con `max_turns`) **envuelto en el circuit breaker de OpenAI**
+  (`sdk_runtime.py:81-90`): si el proveedor se cae, tras N fallos el circuito abre y los turnos
+  siguientes fallan rápido en lugar de esperar el timeout completo.
+- Extrae `usage` (tokens/costo) y `tools_used`.
+- Catch anti-500 con `fallback_response` + log estructurado.
 
-2. **Config.** En `config.py`: `CHROMA_COLLECTION_NAME` (`:21`, hoy `"travel_documents"`) →
-   colección del dominio; eliminar/ignorar `FLIGHTAPI_API_KEY` (`:7`), `WEATHER_API_KEY` (`:8`),
-   `GEOGRAPHY_DATA_PATH` (`:37`) si no aplican. *NO tocás* los settings de infra (modelo, retries,
-   circuit breaker, logging).
+**Devuelve** `{"response", "tools_used", "usage", "result", "agent_key", "error"}`. `result` es el
+objeto crudo del Runner, para que el orquestador extraiga lo que dejó el contexto.
 
-3. **Modelos de negocio.** Reemplazar `models/postsale.py`, `models/lead.py`, `models/provider.py`
-   por los del dominio (ej. `Account`, `Transaction`, `Case`). *Conservás tal cual*
-   `models/conversation.py`, `models/conversation_message.py`, `models/database.py`.
+**Contrato de excepciones:** si NO pasás `fallback_response`, las excepciones **se propagan**
+(incluida `InputGuardrailTripwireTriggered`) y decidís vos. Así post-venta responde con su propio
+mensaje ante un jailbreak (`app/services/hotel_postsale_orchestrator.py:614-628`).
 
-4. **Tools del dominio.** Crear `services/banca_tools.py` con handlers que respeten el contrato
-   `(args, ctx) -> {"tool_result": ...}` y un `_DISPATCH` + `execute_tool` como en `agent_tools.py`.
-   Ej.: `consultar_saldo`, `ultimos_movimientos`, `bloquear_tarjeta`.
-
-5. **Orquestador(es).** Clonar el patrón de `agent_sdk_orchestrator.py` (y `postsale_sdk_orchestrator.py`
-   si hay flujo "ya cliente"): envolver las nuevas tools con `@function_tool`, mantener
-   `max_turns`, el catch genérico y la extracción de `tools_used`. *NO cambiás* la mecánica del SDK.
-
-6. **Gate determinístico** (banca casi seguro lo necesita). Replicar el patrón `run_gate()` +
-   `_apply_ticket_action()`: validar identidad/autorización antes del LLM y ejecutar acciones
-   sensibles (transferencias, bloqueos) de forma determinística y auditable.
-
-7. **Prompts y textos.** Reescribir `prompts/tool_agent_prompts.py` (`:17-64`),
-   `prompts/postsale_tool_prompts.py` (`:16-52`), `prompts/generation_prompts.py` (`:6`,
-   "Aura Travel"), `prompts/context_blocks.py`. Y los prompts hardcodeados en los orquestadores
-   (ver §7).
-
-8. **Triage.** Editar `handoff_description` (`triage_sdk_orchestrator.py:57-66`) y
-   `_build_triage_instructions` (`:71-94`) con las categorías del dominio (ej. consulta general /
-   gestión de cuenta existente / charla casual).
-
-9. **Guardrails.** Conservar el guardrail de jailbreak (genérico). Reemplazar
-   `paises_disponibles_monitor` (`agent_sdk_orchestrator.py:156`) por el guardrail del dominio
-   (o quitarlo si no aplica).
-
-10. **Verificación.** Recorrer el checklist §7 y hacer un smoke test de un turno por rama
-    (casual / pre / post / gate), levantando el backend y pegando a `POST /api/chat/message`
-    (recordá: `session_id` de ≥ 8 caracteres).
+**NO hace** (queda en tu orquestador): componer el prompt, el post-procesamiento de dominio
+(acciones sobre tickets, flags, charts) y el manejo específico del tripwire.
 
 ---
 
-## 6. Tabla: copiar tal cual vs reescribir
+## 4. El núcleo, módulo por módulo (se copia tal cual)
 
-| Componente | Archivo | Acción |
-|---|---|---|
-| Cliente OpenAI singleton | `core/openai_client.py` | **Copiar tal cual** |
-| Circuit breaker | `core/circuit_breaker.py` | **Copiar tal cual** |
-| Retry config | `core/retry_config.py` | **Copiar tal cual** |
-| Logging | `core/logging_config.py` | **Copiar tal cual** |
-| Profile manager | `core/agent_profile.py` | **Copiar tal cual** |
-| DB setup | `models/database.py` | **Copiar tal cual** |
-| Historial de conversación | `models/conversation.py`, `conversation_message.py` | **Copiar tal cual** |
-| Vector store | `services/vector_store.py` | **Copiar tal cual** |
-| Estado conversacional (FSM) | `services/conversation_state_manager.py` | **Copiar tal cual** |
-| RAG | `services/rag_service.py` | **Copiar** (quitar enricher geográfico) |
-| Entry / dispatcher de chat | `services/agent_service.py` | **Parametrizar** (booking patterns, fallbacks) |
-| Triage | `services/triage_sdk_orchestrator.py` | **Parametrizar** (prompts/handoffs) |
-| Patrón de orquestador | `services/*_sdk_orchestrator.py` | **Molde** (clonar, reescribir tools/prompts) |
-| Gate determinístico | `services/postsale_service.py` (`run_gate`), `postsale_orchestrator.py` (`_apply_ticket_action`) | **Molde** |
-| Perfil JSON | `data/agent_profiles/template.json` | **Molde** (crear instancia del dominio) |
-| Tools del dominio | `services/agent_tools.py`, `postsale_tools.py`, `shared_sdk_tools.py` | **Reescribir** |
-| Prompts | `app/prompts/*` | **Reescribir** |
-| Modelos de negocio | `models/postsale.py`, `lead.py`, `provider.py` | **Reescribir** |
-| Geografía | `core/geography.py`, `core/intelligent_geography.py` | **Reescribir / quitar** |
-| Config de dominio | `config.py` (keys de §5.2) | **Reescribir** |
+| Paquete | Qué provee |
+|---|---|
+| `app/core/agents/` | **La pieza clave.** `agent_spec.py` (AgentSpec), `sdk_runtime.py` (`run_agent`, `build_input_list`), `tool_registry.py` (`register_tool`/`resolve_tools`, guardrails) |
+| `app/core/llm/` | `openai_client.py` (singletons), `circuit_breaker.py`, `retry_config.py`, `sdk_usage.py` (tokens), `token_pricing.py` (costo USD) |
+| `app/core/rag/` | `rag_service.py`, `vector_store.py` (ChromaDB), `embeddings.py` (caché LRU), `text_splitter.py`, `pdf_processor.py`, `llm_metadata_extractor.py`, `knowledge_extractor.py` |
+| `app/core/channels/` | `whatsapp_service.py` (Twilio), `instagram_service.py` (Meta), `ws_hub.py` (WebSocket al widget) |
+| `app/core/profile/` | `agent_profile.py` — carga el JSON de `settings.AGENT_PROFILE_PATH` (los JSON viven en `backend/data/agent_profiles/`) |
+| `app/core/observability/` | `logging_config.py` (structlog), `audit_log.py` (JSONL por turno; escribe en `settings.AUDIT_LOG_DIR`, fuera del paquete porque lleva PII), `otel_setup.py` |
+| `app/core/security/` | `auth.py` (bcrypt + JWT), `admin_auth.py` (`require_admin_key`, fail-closed en producción), `rate_limit.py` |
+| `app/core/origin.py` | Modelo de origen `generated_by` × `channel` (genérico) |
 
 ---
 
-## 7. Checklist de acoplamiento (definition of done al portar)
+## 5. Instanciar para un cliente NUEVO del mismo rubro (sin tocar Python)
 
-- [ ] Prompts turismo: `prompts/tool_agent_prompts.py:17-64`, `prompts/postsale_tool_prompts.py:16-52`, `prompts/generation_prompts.py:6` ("Aura Travel"), `prompts/context_blocks.py`
-- [ ] Prompts en orquestadores: `triage_sdk_orchestrator.py:57-94`, `agent_sdk_orchestrator.py:105-126` y `:341-351`, `postsale_sdk_orchestrator.py:102,263`
-- [ ] Tools: `agent_tools.py`, `postsale_tools.py`, `shared_sdk_tools.py` (`obtener_clima`)
-- [ ] Modelos ORM de negocio: `models/postsale.py`, `models/lead.py`, `models/provider.py`
-- [ ] Geografía: `core/geography.py`, `core/intelligent_geography.py`
-- [ ] Config: `CHROMA_COLLECTION_NAME:21`, `AGENT_PROFILE_PATH:36`, `GEOGRAPHY_DATA_PATH:37`, `FLIGHTAPI_API_KEY:7`, `WEATHER_API_KEY:8`
-- [ ] Guardrail de dominio: `paises_disponibles_monitor` en `agent_sdk_orchestrator.py:156`
-- [ ] `BOOKING_CODE_PATTERNS` (`agent_service.py:30`) y frases sociales de fallback (`:269`)
-- [ ] Perfil JSON nuevo en `data/agent_profiles/` + `AGENT_PROFILE_PATH` apuntando a él
+Distinto de "hacer un rubro nuevo". Mecanismo: `instance/bootstrap_instance.py` + un YAML.
+
+```bash
+python -m instance.bootstrap_instance instance/<cliente>.yaml
+```
+
+Idempotente. Ejemplos: `instance/hampton.yaml` (hotel real, USD/ARS, voseo rioplatense) y
+`instance/demo2.yaml` (**pousada en Brasil, pt_BR, BRL** — la prueba de que se da de alta un
+cliente nuevo sin tocar código). Plantilla comentada: `instance/instance.example.yaml`.
+
+Bloques que configura (mapa en `instance/bootstrap_instance.py:33-52`):
+- **`business:`** → `BusinessProfile`: nombre, marca, nombre del agente, timezone, locale, idioma,
+  dialecto, ciudad, monedas, contacto y `facts` (hechos duros que el agente no puede contradecir).
+- **`rooms:`** → catálogo + unidades físicas + precios por moneda. *Para otro rubro, este bloque se
+  reemplaza por el catálogo que corresponda.*
+- **`admin:`** → usuario admin inicial (la password llega por env `BOOTSTRAP_ADMIN_PASSWORD`,
+  nunca en el YAML).
+
+**Lo que el YAML NO configura** (la línea divisoria): tools, specs, prompts base y lógica de
+negocio. El cliente configura los **bloques que se inyectan** al prompt (tono, política,
+identidad, entrenamiento), no el cerebro.
+
+> Los bloques `flow_variant:` y `channels:` aparecen en los YAML pero `bootstrap_instance`
+> todavía **no los lee** (solo consume `business`, `rooms` y `admin`).
 
 ---
 
-## 8. Qué NO copiar (artefactos de la demo)
+## 6. Qué es hotelero (lo que un rubro nuevo reescribe)
 
-- Datos/persistencia: `*.db` (`documents.db`, `aura_travel.db`), `chroma_db*/`, `vouchers/`,
-  `uploads/`, backups (`*.backup*`).
-- Scripts de la demo: `scripts_archive/`, `reset_demo_2026.py`, `add_missing_providers.py`, seeds.
-- Reportes/diagnósticos específicos: `REPORTE_*`, `ANALISIS_*`, `DIAGNOSTICO_*`, `OBSERVABILIDAD.md`
-  (este último, regenerarlo por dominio).
-- Integraciones externas no portables sin reemplazo: clientes de vuelos/clima
-  (`flightapi_client.py`, `aviationstack_client.py`, `weather_service.py`) y servicios de turismo
-  (`package_service`, `flight_monitor_service`, etc.).
+- `app/domains/hotel/` — `agent_specs.py`, `agent_capabilities.py`, `hotel_location.py`,
+  `prompts/` (10 módulos, ~1.700 líneas) y `services/` (`agent_router.py`, `casual_agent.py`,
+  `knowledge_service.py`).
+- Orquestadores en `app/services/`: `hotel_sdk_orchestrator.py` (pre-venta),
+  `hotel_postsale_orchestrator.py`, `owner_orchestrator.py`, `staff_orchestrator.py` (**empezá
+  leyendo este**) y `triage_sdk_orchestrator.py`.
+- `app/services/hotel_tools_pkg/` — handlers con contrato `(args, ctx) -> {"tool_result": str}`.
+- Modelos de negocio en `app/models/` (`hotel.py`, `restaurant.py`, `promotions.py`, `staff.py`,
+  `lead.py`…) y sus routers en `app/routers/` (`reservations.py`, `restaurant.py`, `checkin.py`…).
+- Los `seed_*.py` de la raíz de `backend/`.
+
+Genéricos y reusables con poca adaptación: `app/routers/{chat,auth,admin,documents,knowledge,
+analytics,usage,whatsapp,instagram,conversations,agents,business_profile,contacts}.py` y los
+servicios transversales (`usage_service`, `skill_service`, `business_profile_service`,
+`conversation_*`, `human_attention_service`, `training_service`…).
 
 ---
 
-## 9. Recomendaciones de desacople futuro (NO ejecutar ahora)
+## 7. Dos advertencias (andamiaje que parece existir y no)
 
-Si en algún momento se quiere convertir esto en un **scaffold formal** (no solo un molde
-documentado), en orden de impacto:
+1. **`prompt_composer` NO está cableado.** El campo existe en `AgentSpec` y las 6 specs lo setean,
+   pero `register_composer`/`resolve_composer` (`tool_registry.py:54,59`) **no se invocan en ningún
+   lado**. Cada orquestador arma su prompt en su propio `_build_instructions`. Para un rubro nuevo:
+   **escribí tu `_build_instructions`**, no registres un composer.
+2. **`app/domains/hotel/{orchestrators,models,tools,seeds}/` están VACÍOS** (solo `__init__.py`).
+   Son el destino planeado de una migración que no se hizo: hoy los orquestadores viven en
+   `app/services/` y los modelos en `app/models/`. No los cites como si tuvieran contenido. Ídem
+   `app/prompts/` (el contenido está en `app/domains/hotel/prompts/`).
 
-1. **Parametrizar prompts y handoffs por perfil.** Hoy es el mayor punto de fricción: los textos
-   viven hardcodeados en los orquestadores. Moverlos a campos del JSON de perfil (descripciones de
-   handoff, descripciones de tools, fallbacks) haría que cambiar de dominio sea casi solo editar
-   JSON.
-2. **Registro de tools por dominio.** Que `execute_tool` resuelva su `_DISPATCH` según el perfil
-   activo, en vez de un módulo de tools fijo por orquestador (patrón plugin).
-3. **Abstraer una interfaz `Gate`.** Extraer "validar acceso + aplicar acción determinística" como
-   interfaz, para que cada dominio implemente la suya sin clonar `postsale_service`.
-4. **Sacar la geografía del core.** Convertirla en un "enricher" opcional inyectable en
-   `rag_service`, no una dependencia del core.
-5. **Agrupar la config de dominio.** Separar en `config.py` un bloque de settings de dominio
-   (colección Chroma, keys externas, paths) del `Settings` base de infra.
-6. **Externalizar `BOOKING_CODE_PATTERNS` y frases sociales** a config/perfil.
-7. **(Opcional) Script de scaffolding** (cookiecutter) que genere `{dominio}_tools.py`,
-   `{dominio}_sdk_orchestrator.py` y `{dominio}.json` desde el molde.
+---
 
-> Estas mejoras son independientes entre sí y se pueden hacer incrementalmente. Ninguna es
-> necesaria para usar la base como plantilla hoy.
+## 8. Checklist al portar a un rubro nuevo
+
+- [ ] `pytest tests/test_architecture.py` verde (no rompiste la frontera core↔dominio).
+- [ ] Tus tools están registradas y el módulo que las registra se importa en el arranque.
+- [ ] `spec.tools` coincide con tu `_TOOLS` real — el patrón de
+      `tests/test_spec_runtime_consistency.py` atrapa ese bug (reincidió 2 veces en este repo).
+- [ ] El orquestador es fino: compone prompt + llama `run_agent`. Si supera ~250 líneas, revisá qué
+      lógica de negocio se te coló ahí.
+- [ ] `start.sh` sigue siendo rubro-agnóstico (migraciones + servidor). Los datos del cliente se
+      cargan con `bootstrap_instance`, nunca en el arranque.
+- [ ] Cero datos reales de un cliente hardcodeados (backend o frontend).
+- [ ] Frontend: usá el token `brand-*` (definido en `landing/theme.config.js`) y el nombre del
+      agente vía `useAgentName()` — nunca literales de marca.
 
 ---
 
@@ -280,16 +232,15 @@ documentado), en orden de impacto:
 
 `app/domains/hotel/models/` existe pero está vacío a propósito. Los modelos (Room, Booking,
 StaffMember, Contact, etc.) viven en `app/models/`, con registro centralizado vía
-`ensure_domain_models_registered()` (`app/models/__init__.py`). El orden de registro es
-sensible (staff → restaurant → hotel → contact...) porque hay FKs cross-módulo declaradas por
-string y `hotel.py` hace `create_all` a nivel de módulo; ya hubo una regresión por esto (ver el
-docstring de `ensure_domain_models_registered`).
+`ensure_domain_models_registered()` (`app/models/__init__.py`). El orden de registro es sensible
+(staff → restaurant → hotel → contact...) porque hay FKs cross-módulo declaradas por string y
+`hotel.py` hace `create_all` a nivel de módulo; ya hubo una regresión por esto (ver el docstring de
+`ensure_domain_models_registered`).
 
-**Decisión (P4.1):** NO se mueven a `domains/hotel/models/`. El beneficio sería estético
-(coherencia con la estructura core/domains de Fase 2.1); el costo es real y alto (mover 10
-modelos con FKs por string uno por uno, reordenar el registro y el barrido del conftest, arriesgar
-otra regresión de mappers). El registro centralizado funciona y está cubierto por
-`test_architecture.py`. Si algún día se mueven, hacerlo con `git mv` uno por vez, import-check
+**Decisión (P4.1):** NO se mueven a `domains/hotel/models/`. El beneficio sería estético; el costo
+es real y alto (mover 10 modelos con FKs por string, reordenar el registro y el barrido del
+conftest, arriesgar otra regresión de mappers). El registro centralizado funciona y está cubierto
+por `test_architecture.py`. Si algún día se mueven, hacerlo con `git mv` uno por vez, import-check
 tras cada uno, y actualizando el orden de registro en el mismo commit del primer movimiento.
 
 ---
@@ -298,8 +249,8 @@ tras cada uno, y actualizando el orden de registro en el mismo commit del primer
 
 Los datos del huésped (Capa 2: estadías, preferencias, recurrencia, gasto, `ai_summary`) se
 inyectan en el prompt del agente a través de un ÚNICO helper con niveles de acceso por rol:
-`guest_context_service.build_guest_context(agent_role, contact_id, db)`. Es el único lugar donde
-se decide qué ve cada rol — la política de privacidad está centralizada, no dispersa.
+`guest_context_service.build_guest_context(agent_role, contact_id, db)`. Es el único lugar donde se
+decide qué ve cada rol — la política de privacidad está centralizada, no dispersa.
 
 | Rol (`display_role`) | Empleado | Qué ve del huésped EN EL PROMPT |
 |---|---|---|
@@ -307,12 +258,12 @@ se decide qué ve cada rol — la política de privacidad está centralizada, no
 | `management` | Asesor | **Nada individual.** `build_guest_context("management", ...)` devuelve `""` siempre. Gerencia trabaja con agregados. |
 | `staff` | Operaciones | **Mínimo:** nombre + habitación del ticket, y alergias (seguridad). Nada comercial (sin gasto, consumo, recurrencia ni preferencias de venta). |
 
-**Precisión de la garantía (importante, no vender de más):** el nivel `management` garantiza que
-el PROMPT del owner **no inyecta datos individuales de forma pasiva**. NO garantiza que gerencia
-no pueda consultar un huésped a propósito: la tool `buscar_huesped` (`owner_orchestrator.py`)
-devuelve nombre/reserva/fechas de una reserva puntual cuando el dueño la invoca. Eso es una
-acción deliberada del dueño (buscar una reserva para operar), no una fuga. El test de privacidad
-valida el prompt, no prohíbe la tool.
+**Precisión de la garantía (importante, no vender de más):** el nivel `management` garantiza que el
+PROMPT del owner **no inyecta datos individuales de forma pasiva**. NO garantiza que gerencia no
+pueda consultar un huésped a propósito: la tool `buscar_huesped` (`owner_orchestrator.py`) devuelve
+nombre/reserva/fechas de una reserva puntual cuando el dueño la invoca. Eso es una acción
+deliberada del dueño (buscar una reserva para operar), no una fuga. El test de privacidad valida el
+prompt, no prohíbe la tool.
 
 **`ai_summary` (Fase 1):** el agente solo LEE el resumen que ya generó el backoffice; no se
 regenera en runtime (evita latencia/costo por turno). La regeneración automática es un posible

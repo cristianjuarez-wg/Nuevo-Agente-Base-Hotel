@@ -102,7 +102,7 @@ export default function DatePickerCard({ card, onAction, lang = 'es' }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-card">
       <div className="flex items-center gap-2 bg-linen px-4 py-2.5">
-        <CalendarDays size={16} className="text-hilton-600" />
+        <CalendarDays size={16} className="text-brand-600" />
         <p className="text-sm font-medium text-ink">{t.pickDates}</p>
       </div>
 
@@ -114,7 +114,7 @@ export default function DatePickerCard({ card, onAction, lang = 'es' }) {
             <input
               type="date" value={checkIn} min={todayISO()}
               onChange={(e) => onCheckIn(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <label className="block">
@@ -122,7 +122,7 @@ export default function DatePickerCard({ card, onAction, lang = 'es' }) {
             <input
               type="date" value={checkOut} min={minOut}
               onChange={(e) => setCheckOut(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
         </div>
@@ -148,7 +148,7 @@ export default function DatePickerCard({ card, onAction, lang = 'es' }) {
 
         <button
           onClick={confirm}
-          className="w-full rounded-xl bg-hilton-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-700 active:scale-[0.99]"
+          className="w-full rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 active:scale-[0.99]"
         >
           {t.seeAvailability}
           {nights > 0 ? ` · ${nights} ${nights === 1 ? t.night : t.nights}` : ''}

@@ -15,6 +15,18 @@ import { MEDIA_BASE as API_BASE } from '../services/api'
  * una sola forma. Cliente nuevo NO edita hotelInfo.js ni rebuildea: la landing —incluido el
  * contacto del footer y la ubicación— se adapta al perfil cargado en el backoffice.
  */
+/**
+ * Nombre del agente para textos de la UI (F3): "Conversaciones con {agentName}", etc.
+ *
+ * El nombre NO se escribe literal en las vistas: sale del perfil que el cliente configura en
+ * el backoffice, así una instancia nueva no arrastra el nombre del agente de otra. Fallback
+ * genérico ("el agente") mientras carga el perfil o si el cliente no le puso nombre.
+ */
+export function useAgentName(fallback = 'el agente') {
+  const profile = useBusinessProfile()
+  return profile.agentName || fallback
+}
+
 export function useBusinessProfile() {
   const [profile, setProfile] = useState(HOTEL)
 

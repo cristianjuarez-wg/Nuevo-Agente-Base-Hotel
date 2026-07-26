@@ -33,11 +33,11 @@
 @layer components {
   /* Botón primario de marca — sobrio, editorial, touch target ≥44px */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-hilton px-7 py-3
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-brand px-7 py-3
            text-sm font-medium tracking-wide text-white transition
-           hover:bg-hilton-700 active:scale-[0.98]
+           hover:bg-brand-700 active:scale-[0.98]
            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-           focus-visible:outline-hilton-400 disabled:cursor-not-allowed disabled:opacity-60;
+           focus-visible:outline-brand-400 disabled:cursor-not-allowed disabled:opacity-60;
     min-height: 44px;
   }
 
@@ -47,7 +47,7 @@
            bg-transparent px-7 py-3 text-sm font-medium tracking-wide text-ink transition
            hover:border-ink/40 hover:bg-ink/[0.03] active:scale-[0.98]
            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-           focus-visible:outline-hilton-400;
+           focus-visible:outline-brand-400;
     min-height: 44px;
   }
 
