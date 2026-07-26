@@ -1,3 +1,9 @@
+# NOTA sobre la provisión de datos (C4): `start.sh` es rubro-agnóstico (solo levanta el
+# servidor). Los datos de la instancia se cargan UNA vez, no en cada deploy:
+#     python -m instance.bootstrap_instance instance/<cliente>.yaml
+#     python ingest_docs.py        # solo cuando cambian los documentos de docsbase/
+# El RAG y la media viven en el disco persistente (/data), así que sobreviven a los deploys.
+# Ver docs/RUNBOOK_NUEVA_INSTANCIA.md.
 services:
   # ── Backend FastAPI ────────────────────────────────────────────────────────
   - type: web
@@ -27,6 +33,8 @@ services:
         value: /data/chroma_db
       - key: MEDIA_DIR
         value: /data/uploads_img
+      - key: AUDIT_LOG_DIR
+        value: /data/audit          # auditoría del chat (PII): al disco, nunca al repo
       - key: AGENT_PROFILE_PATH
         value: ./data/agent_profiles/hotel.json
       - key: TWILIO_ACCOUNT_SID
