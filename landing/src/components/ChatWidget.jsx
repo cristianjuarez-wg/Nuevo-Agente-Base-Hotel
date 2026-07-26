@@ -4,11 +4,9 @@ import remarkGfm from 'remark-gfm'
 import { MessageCircle, X, Send, Sparkles, RotateCcw, Languages, Check, Info } from 'lucide-react'
 import HelpModal from './HelpModal'
 import { getGreeting, sendMessage, clearChat, getChatTheme, chatWsUrl } from '../services/api'
-import RoomCard from './chat/RoomCard'
-import DatePickerCard from './chat/DatePickerCard'
-import MenuCard from './chat/MenuCard'
-import MenuOrderCard from './chat/MenuOrderCard'
-import TableReservationCard from './chat/TableReservationCard'
+// Las cards son del DOMINIO: el shell no las importa una por una, las resuelve por el
+// registry (F4). Para otro rubro se reemplaza cardRegistry.jsx y el widget no cambia.
+import { CARD_REGISTRY } from './chat/cardRegistry'
 import ChatEffects from './chat/ChatEffects'
 import { LANGUAGES, getStrings, detectInitialLang, persistLang } from '../i18n/chat'
 import { useBusinessProfile } from '../hooks/useBusinessProfile'
@@ -553,17 +551,16 @@ export default function ChatWidget() {
                 {m.cards?.length > 0 && (
                   <div className="space-y-2.5">
                     {m.cards.map((card, ci) => {
-                      if (card.type === 'room')
-                        return <RoomCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
-                      if (card.type === 'date_picker')
-                        return <div key={ci} ref={pickerRef}><DatePickerCard card={card} onAction={handleCardAction} lang={lang} /></div>
-                      if (card.type === 'menu_interactive')
-                        return <MenuOrderCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
-                      if (card.type === 'table_reservation')
-                        return <TableReservationCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
-                      if (card.type === 'menu')
-                        return <MenuCard key={ci} card={card} onAction={handleCardAction} lang={lang} />
-                      return null
+                      // El shell no conoce los tipos de card: los resuelve por el registry del
+                      // dominio (components/chat/cardRegistry.jsx). Un tipo desconocido se
+                      // ignora en silencio en vez de romper el render.
+                      const entry = CARD_REGISTRY[card.type]
+                      if (!entry) return null
+                      const { Component, needsRef } = entry
+                      const el = <Component card={card} onAction={handleCardAction} lang={lang} />
+                      return needsRef
+                        ? <div key={ci} ref={pickerRef}>{el}</div>
+                        : <div key={ci}>{el}</div>
                     })}
                   </div>
                 )}
