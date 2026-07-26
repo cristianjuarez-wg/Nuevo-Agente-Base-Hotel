@@ -23,7 +23,7 @@ const EFFECT_OPTIONS = [
 ]
 
 function statusBadge(s) {
-  if (s === 'pinned') return <Badge tone="hilton">fijado</Badge>
+  if (s === 'pinned') return <Badge tone="brand">fijado</Badge>
   if (s === 'active') return <Badge tone="green">activo</Badge>
   return <Badge tone="gray">inactivo</Badge>
 }
@@ -55,7 +55,7 @@ function ThemePreview({ theme }) {
   const hText = theme.header_text || '#ffffff'
   const accent = theme.accent_color || '#005aa9'
   return (
-    <div className="mt-2 overflow-hidden rounded-xl border border-hilton-100" style={{ width: 160 }}>
+    <div className="mt-2 overflow-hidden rounded-xl border border-brand-100" style={{ width: 160 }}>
       <div className="flex items-center gap-2 px-3 py-2" style={{ background: hBg, color: hText }}>
         <span style={{ fontSize: 16 }}>{theme.emoji || '💬'}</span>
         <span style={{ fontSize: 11, fontWeight: 600 }}>Aura</span>
@@ -106,14 +106,14 @@ export default function ThemesView() {
         right={
           <button
             onClick={() => setEditTheme({})}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700"
           >
             <Plus size={16} /> Nuevo tema
           </button>
         }
       />
 
-      <div className="mb-4 rounded-xl bg-hilton-50 border border-hilton-100 px-4 py-3 text-sm text-hilton-700">
+      <div className="mb-4 rounded-xl bg-brand-50 border border-brand-100 px-4 py-3 text-sm text-brand-700">
         <strong>Prioridad:</strong> Un tema <em>fijado</em> siempre anula los demás. Si no hay fijado, se activa el que coincide con la fecha de hoy. Solo puede haber un tema activo a la vez.
       </div>
 
@@ -128,7 +128,7 @@ export default function ThemesView() {
           {themes.map((t) => (
             <div
               key={t.id}
-              className="flex flex-col gap-3 rounded-2xl border border-hilton-100 bg-white p-4 shadow-card sm:flex-row sm:items-start sm:justify-between"
+              className="flex flex-col gap-3 rounded-2xl border border-brand-100 bg-white p-4 shadow-card sm:flex-row sm:items-start sm:justify-between"
             >
               <div className="flex gap-4 flex-1 min-w-0">
                 <ThemePreview theme={t} />
@@ -154,13 +154,13 @@ export default function ThemesView() {
                       { label: 'Acento', color: t.accent_color },
                       { label: 'FAB', color: t.fab_bg },
                     ].filter(c => c.color).map(c => (
-                      <span key={c.label} className="inline-flex items-center gap-1 rounded-full border border-hilton-100 px-2 py-0.5 text-xs text-slatey">
+                      <span key={c.label} className="inline-flex items-center gap-1 rounded-full border border-brand-100 px-2 py-0.5 text-xs text-slatey">
                         <span className="inline-block h-3 w-3 rounded-full border border-black/10" style={{ background: c.color }} />
                         {c.label}
                       </span>
                     ))}
                     {t.effect && t.effect !== 'none' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-hilton-50 px-2 py-0.5 text-xs text-hilton-700">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
                         {EFFECT_OPTIONS.find(e => e.value === t.effect)?.label || t.effect}
                       </span>
                     )}
@@ -173,7 +173,7 @@ export default function ThemesView() {
                   title={t.status === 'inactive' ? 'Activar' : t.status === 'active' ? 'Fijar siempre' : 'Desactivar'}
                   className={`rounded-lg p-2 transition ${
                     t.status === 'pinned'
-                      ? 'bg-hilton-100 text-hilton-700 hover:bg-hilton-200'
+                      ? 'bg-brand-100 text-brand-700 hover:bg-brand-200'
                       : t.status === 'active'
                       ? 'bg-forest-100 text-forest-600 hover:bg-forest-200'
                       : 'text-slatey/50 hover:bg-mist hover:text-slatey'
@@ -290,7 +290,7 @@ function ThemeModal({ theme, onClose, onSaved }) {
           <textarea
             value={description} onChange={(e) => setDescription(e.target.value)}
             rows={2} placeholder="Descripción interna del tema…"
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100 resize-none"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none"
           />
         </label>
 
@@ -328,7 +328,7 @@ function ThemeModal({ theme, onClose, onSaved }) {
           <span className="mb-1 block text-sm font-medium text-ink">Efecto animado</span>
           <select
             value={effect} onChange={(e) => setEffect(e.target.value)}
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
           >
             {EFFECT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -342,7 +342,7 @@ function ThemeModal({ theme, onClose, onSaved }) {
           <span className="mb-1 block text-sm font-medium text-ink">Estado</span>
           <select
             value={status} onChange={(e) => setStatus(e.target.value)}
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
           >
             {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -351,12 +351,12 @@ function ThemeModal({ theme, onClose, onSaved }) {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
+          <button onClick={onClose} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
             Cancelar
           </button>
           <button
             onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             Guardar
@@ -373,14 +373,14 @@ function MonthDay({ month, day, onMonth, onDay }) {
     <div className="flex gap-2">
       <select
         value={month} onChange={(e) => onMonth(e.target.value)}
-        className="flex-1 rounded-xl border border-hilton-200 px-2 py-2 text-sm focus:border-hilton-500 focus:outline-none"
+        className="flex-1 rounded-xl border border-brand-200 px-2 py-2 text-sm focus:border-brand-500 focus:outline-none"
       >
         <option value="">Mes</option>
         {MONTHS.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
       </select>
       <input
         type="number" min="1" max="31" value={day} onChange={(e) => onDay(e.target.value)}
-        placeholder="Día" className="w-16 rounded-xl border border-hilton-200 px-2 py-2 text-sm focus:border-hilton-500 focus:outline-none"
+        placeholder="Día" className="w-16 rounded-xl border border-brand-200 px-2 py-2 text-sm focus:border-brand-500 focus:outline-none"
       />
     </div>
   )
@@ -394,12 +394,12 @@ function ColorField({ label, value, onChange }) {
       <div className="flex items-center gap-2">
         <input
           type="color" value={value || '#000000'} onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border border-hilton-200 p-0.5"
+          className="h-9 w-9 shrink-0 cursor-pointer rounded-lg border border-brand-200 p-0.5"
         />
         <input
           type="text" value={value || ''} onChange={(e) => onChange(e.target.value)}
           placeholder="#rrggbb"
-          className="flex-1 rounded-xl border border-hilton-200 px-2.5 py-2 text-sm font-mono focus:border-hilton-500 focus:outline-none"
+          className="flex-1 rounded-xl border border-brand-200 px-2.5 py-2 text-sm font-mono focus:border-brand-500 focus:outline-none"
         />
       </div>
     </label>
@@ -415,7 +415,7 @@ function ConfirmModal({ title, message, onCancel, onConfirm }) {
     <Modal title={title} icon={Trash2} onClose={onCancel}>
       <p className="mb-6 text-sm text-slatey">{message}</p>
       <div className="flex justify-end gap-3">
-        <button onClick={onCancel} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
+        <button onClick={onCancel} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
         <button onClick={confirm} disabled={deleting} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-60">
           {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Eliminar
         </button>
@@ -433,7 +433,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            {Icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600"><Icon size={18} /></div>}
+            {Icon && <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Icon size={18} /></div>}
             <h3 className="font-serif text-lg font-700 text-ink">{title}</h3>
           </div>
           <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist"><X size={20} /></button>
@@ -451,7 +451,7 @@ function Field({ label, value, onChange, placeholder }) {
       <input
         type="text" value={value || ''} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
   )

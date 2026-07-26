@@ -92,7 +92,7 @@ export default function KnowledgeView() {
               onClick={() => setEditCategory(cat.id)}
               className="flex items-start gap-3 rounded-2xl bg-white p-5 text-left shadow-card transition hover:shadow-card-lg"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-hilton-50 text-hilton-600">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
                 <Icon size={20} />
               </div>
               <div className="min-w-0 flex-1">
@@ -117,14 +117,14 @@ export default function KnowledgeView() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slatey">Lugares y excursiones</h2>
         <button
           onClick={() => setEditPlace({})}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-hilton-600 px-3 py-1.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700"
         >
           <Plus size={15} /> Agregar lugar
         </button>
       </div>
       <div className="mt-3 space-y-2">
         {places.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-hilton-200 bg-white py-10 text-center text-sm text-slatey">
+          <div className="rounded-2xl border border-dashed border-brand-200 bg-white py-10 text-center text-sm text-slatey">
             Todavía no cargaste lugares ni excursiones.
           </div>
         ) : (
@@ -152,7 +152,7 @@ export default function KnowledgeView() {
               {p.maps_url && (
                 <a
                   href={p.maps_url} target="_blank" rel="noreferrer"
-                  className="hidden items-center gap-1 text-xs text-hilton-600 hover:underline sm:inline-flex"
+                  className="hidden items-center gap-1 text-xs text-brand-600 hover:underline sm:inline-flex"
                 >
                   <MapPin size={13} /> Maps
                 </a>
@@ -170,7 +170,7 @@ export default function KnowledgeView() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-slatey">Documentos</h2>
         <button
           onClick={() => setDocModal(true)}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-hilton-600 px-3 py-1.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700"
         >
           <FileUp size={15} /> Subir / pegar
         </button>
@@ -180,7 +180,7 @@ export default function KnowledgeView() {
       </p>
       <div className="mt-3 space-y-2">
         {documents.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-hilton-200 bg-white py-10 text-center text-sm text-slatey">
+          <div className="rounded-2xl border border-dashed border-brand-200 bg-white py-10 text-center text-sm text-slatey">
             Todavía no cargaste documentos.
           </div>
         ) : (
@@ -188,7 +188,7 @@ export default function KnowledgeView() {
             const cat = CATEGORIES.find((c) => c.id === d.category)
             return (
               <div key={d.id} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-card">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                   <FileText size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -317,7 +317,7 @@ function CategoryModal({ category, entries, onClose, onSaved }) {
           <button onClick={onClose} className="text-sm font-medium text-slatey hover:text-ink">Cancelar</button>
           <button
             onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             Guardar
@@ -372,7 +372,7 @@ function PagosForm({ data, setData, content, setContent }) {
               <button
                 key={m} type="button" onClick={() => toggleMedio(m)}
                 className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  on ? 'border-hilton-600 bg-hilton-50 text-hilton-700' : 'border-hilton-200 text-slatey hover:bg-mist'
+                  on ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-brand-200 text-slatey hover:bg-mist'
                 }`}
               >
                 {on ? '✓ ' : ''}{m}
@@ -389,12 +389,12 @@ function PagosForm({ data, setData, content, setContent }) {
         )}
         <div className="space-y-3">
           {cuentas.map((c, i) => (
-            <div key={i} className={`rounded-xl border p-3 ${c.default ? 'border-hilton-300 bg-hilton-50/40' : 'border-hilton-100'}`}>
+            <div key={i} className={`rounded-xl border p-3 ${c.default ? 'border-brand-300 bg-brand-50/40' : 'border-brand-100'}`}>
               <div className="mb-2 flex items-center justify-between">
                 <button
                   type="button" onClick={() => setDefault(i)}
                   className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                    c.default ? 'bg-hilton-600 text-white' : 'border border-hilton-200 text-slatey hover:bg-mist'
+                    c.default ? 'bg-brand-600 text-white' : 'border border-brand-200 text-slatey hover:bg-mist'
                   }`}
                 >
                   {c.default ? '★ Principal' : 'Marcar como principal'}
@@ -412,7 +412,7 @@ function PagosForm({ data, setData, content, setContent }) {
                   <span className="mb-1 block text-sm font-medium text-ink">Moneda</span>
                   <select
                     value={c.moneda || 'ARS'} onChange={(e) => updateCuenta(i, 'moneda', e.target.value)}
-                    className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+                    className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
                   >
                     <option value="ARS">Pesos (ARS)</option>
                     <option value="USD">Dólares (USD)</option>
@@ -422,7 +422,7 @@ function PagosForm({ data, setData, content, setContent }) {
             </div>
           ))}
         </div>
-        <button onClick={addCuenta} className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-hilton-600 hover:text-hilton-700">
+        <button onClick={addCuenta} className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
           <Plus size={15} /> Agregar cuenta
         </button>
       </div>
@@ -432,7 +432,7 @@ function PagosForm({ data, setData, content, setContent }) {
         <textarea
           value={content} onChange={(e) => setContent(e.target.value)} rows={2}
           placeholder="Ej: Se requiere una seña del 30% para confirmar la reserva."
-          className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+          className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
       </div>
     </div>
@@ -454,7 +454,7 @@ function FaqForm({ data, setData }) {
         <p className="text-sm text-slatey">Agregá las preguntas más comunes de tus huéspedes.</p>
       )}
       {items.map((it, i) => (
-        <div key={i} className="rounded-xl border border-hilton-100 p-3">
+        <div key={i} className="rounded-xl border border-brand-100 p-3">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wide text-slatey">Pregunta {i + 1}</span>
             <button onClick={() => remove(i)} className="text-slatey hover:text-red-600"><X size={15} /></button>
@@ -462,16 +462,16 @@ function FaqForm({ data, setData }) {
           <input
             value={it.q} onChange={(e) => update(i, 'q', e.target.value)}
             placeholder="Pregunta…"
-            className="mb-2 w-full rounded-lg border border-hilton-200 px-3 py-2 text-sm focus:border-hilton-500 focus:outline-none"
+            className="mb-2 w-full rounded-lg border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
           />
           <textarea
             value={it.a} onChange={(e) => update(i, 'a', e.target.value)} rows={2}
             placeholder="Respuesta…"
-            className="w-full rounded-lg border border-hilton-200 px-3 py-2 text-sm focus:border-hilton-500 focus:outline-none"
+            className="w-full rounded-lg border border-brand-200 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
           />
         </div>
       ))}
-      <button onClick={add} className="inline-flex items-center gap-1.5 text-sm font-medium text-hilton-600 hover:text-hilton-700">
+      <button onClick={add} className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
         <Plus size={15} /> Agregar pregunta
       </button>
     </div>
@@ -487,7 +487,7 @@ function GenericForm({ title, setTitle, content, setContent, label }) {
         <textarea
           value={content} onChange={(e) => setContent(e.target.value)} rows={6}
           placeholder="Escribí la información que el agente debe conocer…"
-          className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+          className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
       </div>
     </div>
@@ -537,7 +537,7 @@ function PlaceModal({ place, onClose, onSaved }) {
           <Label>Categoría</Label>
           <select
             value={form.category} onChange={(e) => set('category', e.target.value)}
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
           >
             {PLACE_CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
@@ -547,7 +547,7 @@ function PlaceModal({ place, onClose, onSaved }) {
           <textarea
             value={form.description} onChange={(e) => set('description', e.target.value)} rows={3}
             placeholder="Breve descripción del lugar…"
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -559,7 +559,7 @@ function PlaceModal({ place, onClose, onSaved }) {
           <input
             type="url" value={form.maps_url} onChange={(e) => set('maps_url', e.target.value)}
             placeholder="https://maps.google.com/…"
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
         <div>
@@ -568,12 +568,12 @@ function PlaceModal({ place, onClose, onSaved }) {
         </div>
 
         {/* Comercio amigo: acuerdo con descuento + contacto que el agente recomienda */}
-        <div className="rounded-xl border border-hilton-100 bg-hilton-50/40 p-4">
+        <div className="rounded-xl border border-brand-100 bg-brand-50/40 p-4">
           <label className="flex cursor-pointer items-center gap-2.5">
             <input
               type="checkbox" checked={form.is_partner}
               onChange={(e) => set('is_partner', e.target.checked)}
-              className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-500"
+              className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-500"
             />
             <span className="text-sm font-medium text-ink">Es comercio amigo (con acuerdo)</span>
           </label>
@@ -604,7 +604,7 @@ function PlaceModal({ place, onClose, onSaved }) {
           <button onClick={onClose} className="text-sm font-medium text-slatey hover:text-ink">Cancelar</button>
           <button
             onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             Guardar
@@ -654,7 +654,7 @@ function ExtractBar({ category, onExtracted }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mb-4 inline-flex items-center gap-2 rounded-xl border border-hilton-200 bg-hilton-50/50 px-3.5 py-2 text-sm font-medium text-hilton-700 transition hover:bg-hilton-50"
+        className="mb-4 inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-50/50 px-3.5 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
       >
         <Wand2 size={15} /> Completar desde un documento
       </button>
@@ -662,9 +662,9 @@ function ExtractBar({ category, onExtracted }) {
   }
 
   return (
-    <div className="mb-4 rounded-2xl border border-hilton-200 bg-hilton-50/40 p-4">
+    <div className="mb-4 rounded-2xl border border-brand-200 bg-brand-50/40 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-hilton-700">
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-700">
           <Sparkles size={15} /> Completar desde documento
         </span>
         <button onClick={() => setOpen(false)} className="text-slatey hover:text-ink"><X size={16} /></button>
@@ -675,7 +675,7 @@ function ExtractBar({ category, onExtracted }) {
           <button
             key={id} onClick={() => setMode(id)}
             className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-              mode === id ? 'bg-hilton-600 text-white' : 'text-slatey'
+              mode === id ? 'bg-brand-600 text-white' : 'text-slatey'
             }`}
           >
             {label}
@@ -684,7 +684,7 @@ function ExtractBar({ category, onExtracted }) {
       </div>
 
       {mode === 'pdf' ? (
-        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-hilton-300 bg-white px-4 py-3 text-sm text-slatey hover:bg-hilton-50">
+        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-brand-300 bg-white px-4 py-3 text-sm text-slatey hover:bg-brand-50">
           <Upload size={16} />
           {file ? file.name : 'Elegí un archivo (PDF o .md)…'}
           <input type="file" accept=".pdf,.md,.markdown,.txt" onChange={(e) => setFile(e.target.files?.[0] || null)} className="hidden" />
@@ -693,7 +693,7 @@ function ExtractBar({ category, onExtracted }) {
         <textarea
           value={text} onChange={(e) => setText(e.target.value)} rows={4}
           placeholder="Pegá el texto del documento…"
-          className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+          className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
         />
       )}
 
@@ -703,7 +703,7 @@ function ExtractBar({ category, onExtracted }) {
       <div className="mt-3 flex items-center gap-3">
         <button
           onClick={run} disabled={loading}
-          className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
           {loading ? 'Leyendo…' : 'Extraer datos'}
@@ -752,7 +752,7 @@ function DocumentModal({ categories, onClose, onSaved }) {
             <button
               key={id} onClick={() => setMode(id)}
               className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                mode === id ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey'
+                mode === id ? 'bg-white text-brand-700 shadow-card' : 'text-slatey'
               }`}
             >
               {label}
@@ -766,7 +766,7 @@ function DocumentModal({ categories, onClose, onSaved }) {
           <Label>Tema</Label>
           <select
             value={category} onChange={(e) => setCategory(e.target.value)}
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none"
           >
             {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
@@ -775,7 +775,7 @@ function DocumentModal({ categories, onClose, onSaved }) {
         {mode === 'pdf' ? (
           <div>
             <Label>Archivo (PDF o Markdown)</Label>
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-hilton-300 px-4 py-3 text-sm text-slatey hover:bg-hilton-50">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-brand-300 px-4 py-3 text-sm text-slatey hover:bg-brand-50">
               <Upload size={16} />
               {file ? file.name : 'Elegí un archivo (PDF o .md)…'}
               <input
@@ -791,7 +791,7 @@ function DocumentModal({ categories, onClose, onSaved }) {
             <textarea
               value={text} onChange={(e) => setText(e.target.value)} rows={6}
               placeholder="Pegá acá el contenido…"
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </div>
         )}
@@ -803,7 +803,7 @@ function DocumentModal({ categories, onClose, onSaved }) {
         <button onClick={onClose} className="text-sm font-medium text-slatey hover:text-ink">Cancelar</button>
         <button
           onClick={save} disabled={saving}
-          className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
         >
           {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
           Guardar
@@ -824,7 +824,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {Icon && (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Icon size={18} />
               </div>
             )}
@@ -850,7 +850,7 @@ function Field({ label, value, onChange, placeholder }) {
       <span className="mb-1 block text-sm font-medium text-ink">{label}</span>
       <input
         type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
   )

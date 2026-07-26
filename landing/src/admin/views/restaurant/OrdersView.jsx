@@ -64,7 +64,7 @@ export default function OrdersView() {
   })
 
   const columns = [
-    { key: 'order_code', label: 'Pedido', render: (r) => <span className="font-semibold text-hilton-700">{r.order_code}</span> },
+    { key: 'order_code', label: 'Pedido', render: (r) => <span className="font-semibold text-brand-700">{r.order_code}</span> },
     { key: 'guest_name', label: 'Cliente', render: (r) => r.guest_name || '—' },
     { key: 'items', label: 'Detalle', render: (r) => (
       <div className="max-w-[220px] text-xs text-slatey">
@@ -80,13 +80,13 @@ export default function OrdersView() {
       </div>
     ) },
     { key: 'fulfillment', label: 'Destino', render: (r) => <FulfillmentBadge f={r.fulfillment} /> },
-    { key: 'pay', label: 'Pago', render: (r) => <Badge tone={r.payment_mode === 'folio' ? 'hilton' : 'gray'}>{r.payment_mode === 'folio' ? 'A la habitación' : 'Link'}</Badge> },
+    { key: 'pay', label: 'Pago', render: (r) => <Badge tone={r.payment_mode === 'folio' ? 'brand' : 'gray'}>{r.payment_mode === 'folio' ? 'A la habitación' : 'Link'}</Badge> },
     { key: 'total', label: 'Total', sortable: true, render: (r) => <span className="tabular-nums">{formatUSD(r.total_usd)} <span className="text-slatey">/ {formatARS(r.total_ars)}</span></span> },
     { key: 'created_at', label: 'Fecha', sortable: true, render: (r) => formatDate(r.created_at) },
     { key: 'status', label: 'Estado', render: (r) => <StatusBadge status={r.status} /> },
     { key: 'actions', label: '', render: (r) => (
       STATUS_FLOW.indexOf(r.status) >= 0 && STATUS_FLOW.indexOf(r.status) < STATUS_FLOW.length - 1
-        ? <button onClick={() => advance(r)} className="rounded-lg border border-hilton-200 px-2.5 py-1 text-xs font-medium text-hilton-700 transition hover:bg-hilton-50">Avanzar →</button>
+        ? <button onClick={() => advance(r)} className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-50">Avanzar →</button>
         : null
     ) },
   ]
@@ -94,7 +94,7 @@ export default function OrdersView() {
   const renderCard = (r) => (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-semibold text-hilton-700">{r.order_code}</span>
+        <span className="font-semibold text-brand-700">{r.order_code}</span>
         <StatusBadge status={r.status} />
       </div>
       <p className="font-medium text-ink">{r.guest_name || '—'}</p>
@@ -108,7 +108,7 @@ export default function OrdersView() {
       </p>
       {r.notes && <p className="mt-1 text-xs text-amber-700">📝 {r.notes}</p>}
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_usd)}</span>
+        <span className="text-sm font-semibold tabular-nums text-brand-700">{formatUSD(r.total_usd)}</span>
         <FulfillmentBadge f={r.fulfillment} />
       </div>
     </div>
@@ -125,7 +125,7 @@ export default function OrdersView() {
         <>
           <div className="mb-4 flex flex-wrap gap-2">
             {STATUS.map((f) => (
-              <button key={f.id} onClick={() => setFilter(f.id)} className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${filter === f.id ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'}`}>
+              <button key={f.id} onClick={() => setFilter(f.id)} className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${filter === f.id ? 'bg-brand-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-brand-50'}`}>
                 {f.label} <span className="tabular-nums opacity-70">({counts[f.id] ?? 0})</span>
               </button>
             ))}

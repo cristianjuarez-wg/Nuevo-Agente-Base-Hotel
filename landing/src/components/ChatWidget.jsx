@@ -79,7 +79,7 @@ function Bubble({ role, children, accentColor, bubbleBg }) {
           isUser
             ? 'rounded-br-md text-white'
             : 'rounded-bl-md text-ink'
-        }${!isUser && !bubbleBg ? ' bg-linen' : ''}${isUser && !accentColor ? ' bg-hilton-700' : ''}`}
+        }${!isUser && !bubbleBg ? ' bg-linen' : ''}${isUser && !accentColor ? ' bg-brand-700' : ''}`}
         style={isUser && accentColor
           ? { backgroundColor: accentColor }
           : !isUser && bubbleBg
@@ -418,7 +418,7 @@ export default function ChatWidget() {
             backgroundColor: theme?.fab_bg || undefined,
             color: theme?.fab_text || undefined,
           }}
-          className="group fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-full bg-hilton-700 py-3 pl-3 pr-5 text-white shadow-widget transition hover:opacity-90 active:scale-95 sm:bottom-6 sm:right-6"
+          className="group fixed bottom-5 right-5 z-50 flex items-center gap-2.5 rounded-full bg-brand-700 py-3 pl-3 pr-5 text-white shadow-widget transition hover:opacity-90 active:scale-95 sm:bottom-6 sm:right-6"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
             {theme?.emoji
@@ -438,7 +438,7 @@ export default function ChatWidget() {
         <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-white animate-slide-up-widget sm:inset-auto sm:bottom-6 sm:right-6 sm:h-[600px] sm:max-h-[85vh] sm:w-[400px] sm:rounded-2xl sm:shadow-widget">
           {/* Header */}
           <div
-            className={`flex items-center justify-between px-4 py-5 text-white sm:rounded-t-2xl${theme?.header_bg ? '' : ' bg-hilton-800'}`}
+            className={`flex items-center justify-between px-4 py-5 text-white sm:rounded-t-2xl${theme?.header_bg ? '' : ' bg-brand-800'}`}
             style={{
               backgroundColor: theme?.header_bg || undefined,
               color: theme?.header_text || undefined,
@@ -500,10 +500,10 @@ export default function ChatWidget() {
                           key={l.code}
                           role="menuitem"
                           onClick={() => changeLang(l.code)}
-                          className="flex w-full items-center justify-between px-3 py-2 text-sm transition hover:bg-hilton-50"
+                          className="flex w-full items-center justify-between px-3 py-2 text-sm transition hover:bg-brand-50"
                         >
                           <span>{l.label}</span>
-                          {l.code === lang && <Check size={15} className="text-hilton-600" />}
+                          {l.code === lang && <Check size={15} className="text-brand-600" />}
                         </button>
                       ))}
                     </div>
@@ -631,14 +631,14 @@ export default function ChatWidget() {
                 }
               }}
               placeholder={t.placeholder}
-              className="max-h-32 flex-1 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-linen px-4 py-2.5 text-sm leading-relaxed text-ink placeholder:text-slatey focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="max-h-32 flex-1 resize-none overflow-hidden rounded-2xl border border-stone-200 bg-linen px-4 py-2.5 text-sm leading-relaxed text-ink placeholder:text-slatey focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
             <button
               type="submit"
               disabled={!input.trim() || busy}
               aria-label="Enviar mensaje"
               style={{ backgroundColor: theme?.accent_color || undefined }}
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50${!theme?.accent_color ? ' bg-hilton-600' : ''}`}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white transition hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50${!theme?.accent_color ? ' bg-brand-600' : ''}`}
             >
               <Send size={18} />
             </button>

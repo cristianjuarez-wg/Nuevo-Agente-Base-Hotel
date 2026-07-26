@@ -26,7 +26,7 @@ function toDrawerLead(l) {
 
 // Las 4 columnas del tablero, en orden, con su acento (color + texto → no solo color).
 const COLUMNS = [
-  { id: 'new',       label: 'Nuevo',      accent: 'border-t-hilton-400', count: 'text-hilton-700' },
+  { id: 'new',       label: 'Nuevo',      accent: 'border-t-brand-400', count: 'text-brand-700' },
   { id: 'contacted', label: 'Contactado', accent: 'border-t-amber-400',  count: 'text-amber-700' },
   { id: 'won',       label: 'Ganado',     accent: 'border-t-green-500',  count: 'text-green-700' },
   { id: 'lost',      label: 'Perdido',    accent: 'border-t-red-400',    count: 'text-red-700' },
@@ -111,7 +111,7 @@ function Column({ col, index, leads, dragId, dragOver, onDragStart, onDragEnd, o
       onDragOver={(e) => onDragOver(e, col.id)}
       onDrop={(e) => onDrop(e, col.id)}
       className={`w-72 shrink-0 rounded-2xl border-t-2 bg-mist/60 p-3 lg:w-auto lg:flex-1 ${col.accent} ${
-        dragOver === col.id ? 'ring-2 ring-hilton-300' : ''
+        dragOver === col.id ? 'ring-2 ring-brand-300' : ''
       }`}
     >
       <div className="mb-3 flex items-center justify-between px-1">
@@ -232,7 +232,7 @@ export default function KanbanBoard() {
       {stats && (
         <div className="mb-4 flex flex-wrap gap-2">
           <StatChip icon={Inbox} label="Total" value={formatNumber(stats.total_leads, 0)} />
-          <StatChip icon={TrendingUp} label="Conversión" value={`${stats.conversion_rate}%`} tone="text-hilton-700" />
+          <StatChip icon={TrendingUp} label="Conversión" value={`${stats.conversion_rate}%`} tone="text-brand-700" />
           {typeof stats.success_rate === 'number' && (
             <StatChip icon={Target} label="Efectividad" value={`${stats.success_rate}%`} tone="text-forest-700" />
           )}

@@ -44,11 +44,11 @@ export default function EmployeeMetrics({ agent }) {
         <>
           {/* Desempeño (cómo trabajó) */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={MessageCircle} label="Conversaciones atendidas" value={formatNumber(perf.conversations || 0, 0)} tone="hilton" />
+            <StatCard icon={MessageCircle} label="Conversaciones atendidas" value={formatNumber(perf.conversations || 0, 0)} tone="brand" />
             {agent.role === 'guest' && (
               <>
                 <StatCard icon={UserCheck} label="Leads convertidos" value={formatNumber(perf.leads_converted || 0, 0)} tone="green" />
-                <StatCard icon={CheckCircle2} label="Reservas directas" value={formatNumber(perf.bookings_closed || 0, 0)} tone="hilton" />
+                <StatCard icon={CheckCircle2} label="Reservas directas" value={formatNumber(perf.bookings_closed || 0, 0)} tone="brand" />
                 <StatCard icon={PiggyBank} label="Ahorro comisión OTA" value={formatUSD(perf.ota_savings_usd || 0, 0)} tone="green" />
               </>
             )}
@@ -64,7 +64,7 @@ export default function EmployeeMetrics({ agent }) {
           <div className="mt-6 rounded-2xl bg-white p-5 shadow-card">
             <h3 className="mb-4 font-serif text-base font-600 text-ink">Consumo de IA de este agente</h3>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-              <StatCard icon={Coins} label="Tokens" value={formatNumber(cost.tokens || 0, 0)} tone="hilton" />
+              <StatCard icon={Coins} label="Tokens" value={formatNumber(cost.tokens || 0, 0)} tone="brand" />
               <StatCard icon={DollarSign} label="Costo estimado (USD)" value={formatUSD(cost.usd || 0, 2)} tone="amber" />
             </div>
             {cost.by_model?.length > 0 && (
@@ -74,7 +74,7 @@ export default function EmployeeMetrics({ agent }) {
                     <span className="font-medium text-ink">{m.model}</span>
                     <span className="flex items-center gap-4 text-slatey">
                       <span className="tabular-nums">{formatNumber(m.tokens, 0)} tokens</span>
-                      <span className="font-semibold tabular-nums text-hilton-700">{formatUSD(m.usd, 2)}</span>
+                      <span className="font-semibold tabular-nums text-brand-700">{formatUSD(m.usd, 2)}</span>
                     </span>
                   </li>
                 ))}
@@ -118,11 +118,11 @@ function DailyReportCard({ agent }) {
   }
 
   return (
-    <div className="mb-6 rounded-2xl border border-hilton-100 bg-linen p-5 shadow-card">
+    <div className="mb-6 rounded-2xl border border-brand-100 bg-linen p-5 shadow-card">
       {gateModal}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-hilton-600 text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
             <ClipboardList size={18} />
           </div>
           <div className="min-w-0">
@@ -145,7 +145,7 @@ function DailyReportCard({ agent }) {
           <button
             onClick={sendNow}
             disabled={sending}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-hilton-600 px-3 py-2 text-sm font-medium text-white hover:bg-hilton-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
             <Send size={15} /> {sending ? 'Enviando…' : 'Enviar ahora'}
           </button>
@@ -203,7 +203,7 @@ function DailyReportConfigModal({ agent, config, onClose, onSaved, runProtected 
             type="checkbox"
             checked={enabled}
             onChange={(e) => setEnabled(e.target.checked)}
-            className="h-5 w-5 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200"
+            className="h-5 w-5 rounded border-brand-300 text-brand-600 focus:ring-brand-200"
           />
         </label>
 
@@ -221,7 +221,7 @@ function DailyReportConfigModal({ agent, config, onClose, onSaved, runProtected 
                     type="checkbox"
                     checked={selected.includes(s.id)}
                     onChange={() => toggle(s.id)}
-                    className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200"
+                    className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-200"
                   />
                   <span className="font-medium text-ink">{s.name}</span>
                   <span className="ml-auto tabular-nums text-xs text-slatey">{s.phone}</span>
@@ -235,7 +235,7 @@ function DailyReportConfigModal({ agent, config, onClose, onSaved, runProtected 
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slatey hover:bg-mist">
             Cancelar
           </button>
-          <button onClick={save} className="rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700">
+          <button onClick={save} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
             Guardar
           </button>
         </div>

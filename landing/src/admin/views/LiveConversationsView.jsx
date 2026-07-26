@@ -20,7 +20,7 @@ import { FilterChip } from '../components/FilterChip'
 // para que el ícono solo ya sea inequívoco.
 const CHANNEL_FILTERS = [
   { key: 'all', label: 'Todos', icon: null, iconOnly: false, iconClassName: '' },
-  { key: 'web', label: 'Chat web', icon: Globe, iconOnly: true, iconClassName: 'text-hilton-500' },
+  { key: 'web', label: 'Chat web', icon: Globe, iconOnly: true, iconClassName: 'text-brand-500' },
   { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, iconOnly: true, iconClassName: 'text-green-500' },
   { key: 'instagram', label: 'Instagram', icon: InstagramIcon, iconOnly: true, iconClassName: 'text-pink-500' },
 ]
@@ -235,7 +235,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
     <>
       <div className="flex items-center justify-between gap-3 border-b border-mist px-5 py-3">
         <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-2 font-serif text-lg font-700 text-hilton-700">
+          <p className="flex flex-wrap items-center gap-2 font-serif text-lg font-700 text-brand-700">
             {onOpenProfile ? (
               <button onClick={onOpenProfile} className="truncate hover:underline" title="Ver perfil 360°">
                 {title}
@@ -282,7 +282,7 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
             <button onClick={toggleControl} disabled={busy}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-500 transition disabled:opacity-50 ${
                 controlled
-                  ? 'bg-hilton-600 text-white hover:bg-hilton-700'
+                  ? 'bg-brand-600 text-white hover:bg-brand-700'
                   : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
               }`}>
               {busy ? <Loader2 size={15} className="animate-spin" />
@@ -322,10 +322,10 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
               rows={1}
               placeholder="Escribí tu respuesta como humano…"
-              className="max-h-32 min-h-[42px] flex-1 resize-none rounded-xl border border-mist px-3.5 py-2.5 text-sm focus:border-hilton-400 focus:outline-none"
+              className="max-h-32 min-h-[42px] flex-1 resize-none rounded-xl border border-mist px-3.5 py-2.5 text-sm focus:border-brand-400 focus:outline-none"
             />
             <button onClick={send} disabled={!draft.trim() || sending}
-              className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-hilton-600 text-white transition hover:bg-hilton-700 disabled:opacity-50">
+              className="inline-flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-50">
               {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             </button>
           </div>
@@ -342,8 +342,8 @@ function ConversationPanel({ conv, onOpenProfile, onDelete }) {
 function ConversationRow({ r, active, onClick }) {
   return (
     <button onClick={onClick}
-      className={`flex w-full flex-col gap-1 border-b border-mist px-4 py-3 text-left transition hover:bg-hilton-50/50 ${
-        active ? 'bg-hilton-50' : ''
+      className={`flex w-full flex-col gap-1 border-b border-mist px-4 py-3 text-left transition hover:bg-brand-50/50 ${
+        active ? 'bg-brand-50' : ''
       }`}>
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
@@ -396,7 +396,7 @@ function ChannelBadge({ channel, phone, igUsername, compact = false }) {
   }
   return (
     <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slatey">
-      <Globe size={13} className="text-hilton-500" />{!compact && 'Chat web'}
+      <Globe size={13} className="text-brand-500" />{!compact && 'Chat web'}
     </span>
   )
 }

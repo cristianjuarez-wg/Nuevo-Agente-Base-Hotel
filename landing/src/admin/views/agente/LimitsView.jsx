@@ -80,7 +80,7 @@ export default function LimitsView() {
       {/* Topes de gasto */}
       <div className="rounded-2xl bg-white p-5 shadow-card">
         <div className="mb-4 flex items-center gap-2">
-          <Gauge size={18} className="text-hilton-600" />
+          <Gauge size={18} className="text-brand-600" />
           <h2 className="font-serif text-lg font-600 text-ink">Topes de gasto</h2>
           <Badge tone={enabled ? 'green' : 'gray'}>{enabled ? 'Activo' : 'Inactivo'}</Badge>
         </div>
@@ -98,7 +98,7 @@ export default function LimitsView() {
               value={daily}
               onChange={(e) => setDaily(e.target.value)}
               placeholder="Sin tope"
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <label className="block">
@@ -108,7 +108,7 @@ export default function LimitsView() {
               value={monthly}
               onChange={(e) => setMonthly(e.target.value)}
               placeholder="Sin tope"
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
         </div>
@@ -118,7 +118,7 @@ export default function LimitsView() {
             type="checkbox"
             checked={enabled}
             onChange={(e) => setEnabled(e.target.checked)}
-            className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200"
+            className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-200"
           />
           <span className="text-sm text-ink">Activar tope (pausar el agente al superar el límite)</span>
         </label>
@@ -127,7 +127,7 @@ export default function LimitsView() {
           <button
             onClick={save}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
           >
             <Save size={16} />
             {saving ? 'Guardando…' : 'Guardar topes'}
@@ -143,7 +143,7 @@ export default function LimitsView() {
       {/* Rate limit (read-only) */}
       <div className="mt-6 rounded-2xl bg-white p-5 shadow-card">
         <div className="mb-4 flex items-center gap-2">
-          <ShieldCheck size={18} className="text-hilton-600" />
+          <ShieldCheck size={18} className="text-brand-600" />
           <h2 className="font-serif text-lg font-600 text-ink">Protección contra abuso</h2>
           <Badge tone={security?.rate_limit_enabled ? 'green' : 'gray'}>
             {security?.rate_limit_enabled ? 'Activa' : 'Inactiva'}
@@ -225,7 +225,7 @@ function ExchangeRatePanel() {
     <div className="mb-6 rounded-2xl bg-white p-5 shadow-card">
       {gateModal}
       <div className="mb-4 flex items-center gap-2">
-        <DollarSign size={18} className="text-hilton-600" />
+        <DollarSign size={18} className="text-brand-600" />
         <h2 className="font-serif text-lg font-600 text-ink">Tipo de cambio (USD → ARS)</h2>
         {current && (
           <Badge tone={current.mode === 'manual' ? 'amber' : 'green'}>
@@ -260,11 +260,11 @@ function ExchangeRatePanel() {
           )}
 
           {/* Selector de modo */}
-          <div className="mb-4 inline-flex rounded-xl border border-hilton-200 p-1">
+          <div className="mb-4 inline-flex rounded-xl border border-brand-200 p-1">
             <button
               onClick={() => setMode('auto')}
               className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
-                mode === 'auto' ? 'bg-hilton-600 text-white' : 'text-slatey hover:text-ink'
+                mode === 'auto' ? 'bg-brand-600 text-white' : 'text-slatey hover:text-ink'
               }`}
             >
               Automático
@@ -272,7 +272,7 @@ function ExchangeRatePanel() {
             <button
               onClick={() => setMode('manual')}
               className={`rounded-lg px-4 py-1.5 text-sm font-medium transition ${
-                mode === 'manual' ? 'bg-hilton-600 text-white' : 'text-slatey hover:text-ink'
+                mode === 'manual' ? 'bg-brand-600 text-white' : 'text-slatey hover:text-ink'
               }`}
             >
               Manual
@@ -286,7 +286,7 @@ function ExchangeRatePanel() {
                 type="number" min="0" step="0.01" inputMode="decimal"
                 value={manualRate} onChange={(e) => setManualRate(e.target.value)}
                 placeholder="1050"
-                className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </label>
           ) : (
@@ -298,7 +298,7 @@ function ExchangeRatePanel() {
           <div className="mt-5 flex items-center gap-3">
             <button
               onClick={save} disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
             >
               {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
               {saving ? 'Guardando…' : 'Guardar cotización'}
@@ -342,7 +342,7 @@ function CentroSwitchPanel() {
       {gateModal}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-start gap-2.5">
-          <Power size={18} className="mt-0.5 text-hilton-600" />
+          <Power size={18} className="mt-0.5 text-brand-600" />
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-lg font-600 text-ink">Configuración de agentes (Centro)</h2>
@@ -362,7 +362,7 @@ function CentroSwitchPanel() {
           role="switch"
           aria-checked={!!enabled}
           className={`relative inline-flex h-7 w-13 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
-            enabled ? 'bg-hilton-600' : 'bg-stone-300'
+            enabled ? 'bg-brand-600' : 'bg-stone-300'
           }`}
           style={{ width: '3.25rem' }}
         >

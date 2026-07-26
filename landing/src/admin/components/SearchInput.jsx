@@ -13,7 +13,7 @@ export default function SearchInput({ value, onChange, placeholder = 'Buscar…'
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 py-2.5 pl-9 pr-9 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 py-2.5 pl-9 pr-9 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
       {value && (
         <button

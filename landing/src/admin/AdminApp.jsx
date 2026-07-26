@@ -110,7 +110,7 @@ export default function AdminApp() {
       <Toaster />
       <HandoffAlert />
       {/* Sidebar desktop */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-hilton-100 bg-white lg:flex">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-brand-100 bg-white lg:flex">
         <SidebarContent tab={effectiveTab} go={go} nav={nav} me={me} onLogout={onLogout} />
       </aside>
 
@@ -127,15 +127,15 @@ export default function AdminApp() {
       {/* Contenido */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar móvil */}
-        <header className="flex items-center justify-between border-b border-hilton-100 bg-white px-4 py-3 lg:hidden">
+        <header className="flex items-center justify-between border-b border-brand-100 bg-white px-4 py-3 lg:hidden">
           <button
             onClick={() => setNavOpen(true)}
             aria-label="Abrir menú"
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-hilton-700 hover:bg-hilton-50"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-brand-700 hover:bg-brand-50"
           >
             <Menu size={22} />
           </button>
-          <span className="font-serif text-base font-600 text-hilton-700">Backoffice</span>
+          <span className="font-serif text-base font-600 text-brand-700">Backoffice</span>
           <a href="#inicio" className="flex h-10 w-10 items-center justify-center rounded-lg text-slatey hover:bg-mist" aria-label="Ver sitio">
             <ExternalLink size={18} />
           </a>
@@ -177,13 +177,13 @@ function SidebarContent({ tab, go, nav = NAV, me, onLogout, onClose }) {
   const HOTEL = useBusinessProfile()
   return (
     <>
-      <div className="flex items-center justify-between border-b border-hilton-100 px-5 py-4">
+      <div className="flex items-center justify-between border-b border-brand-100 px-5 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-600 text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
             <Hotel size={18} />
           </div>
           <div className="leading-tight">
-            <p className="font-serif text-sm font-700 text-hilton-700">{HOTEL.name}</p>
+            <p className="font-serif text-sm font-700 text-brand-700">{HOTEL.name}</p>
             <p className="text-[10px] uppercase tracking-wide text-slatey">Backoffice</p>
           </div>
         </div>
@@ -211,11 +211,11 @@ function SidebarContent({ tab, go, nav = NAV, me, onLogout, onClose }) {
                 onClick={() => go(n.id)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
                   active
-                    ? 'bg-hilton-600 text-white shadow-card'
-                    : 'text-ink hover:bg-hilton-50'
+                    ? 'bg-brand-600 text-white shadow-card'
+                    : 'text-ink hover:bg-brand-50'
                 }`}
               >
-                <Icon size={18} className={active ? 'text-white' : 'text-hilton-500'} />
+                <Icon size={18} className={active ? 'text-white' : 'text-brand-500'} />
                 {n.label}
               </button>
             </div>
@@ -223,7 +223,7 @@ function SidebarContent({ tab, go, nav = NAV, me, onLogout, onClose }) {
         })}
       </nav>
 
-      <div className="border-t border-hilton-100 p-3">
+      <div className="border-t border-brand-100 p-3">
         {me && (
           <div className="mb-1 flex items-center justify-between gap-2 px-3.5 py-1.5">
             <div className="min-w-0 leading-tight">
@@ -235,7 +235,7 @@ function SidebarContent({ tab, go, nav = NAV, me, onLogout, onClose }) {
                 onClick={onLogout}
                 aria-label="Cerrar sesión"
                 title="Cerrar sesión"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slatey hover:bg-hilton-50 hover:text-hilton-700"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slatey hover:bg-brand-50 hover:text-brand-700"
               >
                 <LogOut size={16} />
               </button>

@@ -38,7 +38,7 @@ export function ScoreBar({ score }) {
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-mist">
-        <div className="h-full rounded-full bg-hilton-500" style={{ width: `${s * 10}%` }} />
+        <div className="h-full rounded-full bg-brand-500" style={{ width: `${s * 10}%` }} />
       </div>
       <span className="text-xs tabular-nums text-slatey">{s}/10</span>
     </div>
@@ -183,7 +183,7 @@ export default function LeadsView() {
     <button
       onClick={() => setChatLead(r)}
       title="Ver conversación"
-      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-brand-50 hover:text-brand-700"
     >
       <MessageSquare size={15} />
     </button>
@@ -276,7 +276,7 @@ export default function LeadsView() {
         right={
           <div className="inline-flex rounded-xl bg-mist p-1">
             <button
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-sm font-medium text-hilton-700 shadow-card transition">
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-sm font-medium text-brand-700 shadow-card transition">
               <UserPlus size={14} /> Leads
             </button>
             <button onClick={() => { window.location.hash = 'admin/conversaciones' }}
@@ -294,7 +294,7 @@ export default function LeadsView() {
         <button
           onClick={() => setViewMode('board')}
           className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-            viewMode === 'board' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
+            viewMode === 'board' ? 'bg-white text-brand-700 shadow-card' : 'text-slatey hover:text-ink'
           }`}
         >
           <LayoutGrid size={14} /> Tablero
@@ -302,7 +302,7 @@ export default function LeadsView() {
         <button
           onClick={() => setViewMode('list')}
           className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-            viewMode === 'list' ? 'bg-white text-hilton-700 shadow-card' : 'text-slatey hover:text-ink'
+            viewMode === 'list' ? 'bg-white text-brand-700 shadow-card' : 'text-slatey hover:text-ink'
           }`}
         >
           <List size={14} /> Lista
@@ -382,7 +382,7 @@ export function LeadChatDrawer({ lead, onClose, onEdit }) {
       <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-card-lg animate-slide-up">
         <div className="flex items-start justify-between border-b border-mist px-5 py-4">
           <div>
-            <p className="font-serif text-lg font-700 text-hilton-700">{lead.name}</p>
+            <p className="font-serif text-lg font-700 text-brand-700">{lead.name}</p>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <TypeBadge type={lead.type} />
               <WonBadge status={lead.status} stage={lead.kanbanStage} />
@@ -432,7 +432,7 @@ function TabButton({ active, onClick, icon: Icon, children }) {
   return (
     <button onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium transition ${
-        active ? 'border-b-2 border-hilton-600 text-hilton-700' : 'text-slatey hover:text-ink'
+        active ? 'border-b-2 border-brand-600 text-brand-700' : 'text-slatey hover:text-ink'
       }`}>
       <Icon size={15} />{children}
     </button>
@@ -442,7 +442,7 @@ function TabButton({ active, onClick, icon: Icon, children }) {
 // Metadata visual por actor y por acción de Aura (íconos/colores + etiqueta legible).
 const LEAD_ACTOR_META = {
   aura: { label: 'Aura', icon: Bot, cls: 'text-forest-700 bg-forest-50' },
-  human: { label: 'Equipo', icon: UserCheck, cls: 'text-hilton-700 bg-hilton-50' },
+  human: { label: 'Equipo', icon: UserCheck, cls: 'text-brand-700 bg-brand-50' },
   system: { label: 'Sistema', icon: Activity, cls: 'text-slatey bg-mist' },
 }
 const LEAD_ACTION_ICON = {
@@ -504,7 +504,7 @@ function LeadActivity({ leadId }) {
         <span className="text-xs font-medium uppercase tracking-wide text-slatey">Bitácora</span>
         <button onClick={summarize} disabled={summarizing}
           title="Generar un resumen de la charla con IA"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-hilton-200 px-2.5 py-1.5 text-xs font-medium text-hilton-700 transition hover:bg-hilton-50 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 px-2.5 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-50 disabled:opacity-50">
           {summarizing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Resumir con IA
         </button>
       </div>
@@ -548,10 +548,10 @@ function LeadActivity({ leadId }) {
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
             rows={1}
             placeholder="Agregar seguimiento (llamada, nota…)"
-            className="max-h-28 min-h-[40px] flex-1 resize-none rounded-xl border border-mist px-3 py-2 text-sm focus:border-hilton-400 focus:outline-none"
+            className="max-h-28 min-h-[40px] flex-1 resize-none rounded-xl border border-mist px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
           />
           <button onClick={submit} disabled={!draft.trim() || sending}
-            className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-xl bg-hilton-600 text-white transition hover:bg-hilton-700 disabled:opacity-50">
+            className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition hover:bg-brand-700 disabled:opacity-50">
             {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>
@@ -599,8 +599,8 @@ export function EditLeadModal({ lead, onClose, onSaved }) {
         <Field label="Teléfono" value={phone} onChange={setPhone} placeholder="+54 9 11 …" />
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-3 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
-          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60">
+          <button onClick={onClose} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">Cancelar</button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60">
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Guardar
           </button>
         </div>
@@ -630,7 +630,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
       <span className="mb-1 block text-sm font-medium text-ink">{label}</span>
       <input
         type={type} value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
   )

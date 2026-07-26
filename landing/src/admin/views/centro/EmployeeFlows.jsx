@@ -83,7 +83,7 @@ export default function EmployeeFlows({ agent }) {
                 <div key={row.skill.id} className="rounded-2xl bg-white p-5 shadow-card">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <Workflow size={17} className="text-hilton-600" />
+                      <Workflow size={17} className="text-brand-600" />
                       <p className="font-serif text-base font-600 text-ink">{row.skill.name}</p>
                     </div>
                     <Badge tone="green">Activo</Badge>
@@ -92,7 +92,7 @@ export default function EmployeeFlows({ agent }) {
                   {variante && currentOpt && (
                     <p className="mt-2 text-sm">
                       <span className="text-slatey">Estilo: </span>
-                      <span className="font-semibold text-hilton-700">{currentOpt.label}</span>
+                      <span className="font-semibold text-brand-700">{currentOpt.label}</span>
                     </p>
                   )}
 
@@ -103,7 +103,7 @@ export default function EmployeeFlows({ agent }) {
 
                   <button
                     onClick={() => setEditing(row)}
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-hilton-50 px-3.5 py-2 text-sm font-medium text-hilton-700 hover:bg-hilton-100"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-brand-50 px-3.5 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
                   >
                     <Settings2 size={15} /> Configurar
                   </button>
@@ -163,7 +163,7 @@ function FlowConfigModal({ agent, row, onClose, onSaved, runProtected }) {
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
         <header className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <Workflow size={18} />
             </div>
             <h3 className="font-serif text-lg font-700 text-ink">{row.skill.name}</h3>
@@ -181,7 +181,7 @@ function FlowConfigModal({ agent, row, onClose, onSaved, runProtected }) {
               <select
                 value={values[variante.key]}
                 onChange={(e) => setVal(variante.key, e.target.value)}
-                className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
               >
                 {variante.options.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -223,7 +223,7 @@ function FlowConfigModal({ agent, row, onClose, onSaved, runProtected }) {
                                 const cur = values[p.key] || []
                                 setVal(p.key, selected ? cur.filter((c) => c !== opt) : [...cur, opt])
                               }}
-                              className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200"
+                              className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-200"
                             />
                             {opt === 'web' ? 'Chat web' : opt.charAt(0).toUpperCase() + opt.slice(1)}
                           </label>
@@ -242,7 +242,7 @@ function FlowConfigModal({ agent, row, onClose, onSaved, runProtected }) {
                       type="checkbox"
                       checked={!!values[p.key]}
                       onChange={(e) => setVal(p.key, e.target.checked)}
-                      className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200"
+                      className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-200"
                     />
                     Activado
                   </label>
@@ -256,7 +256,7 @@ function FlowConfigModal({ agent, row, onClose, onSaved, runProtected }) {
                       if (ceiling != null && v !== '' && v > ceiling) v = ceiling
                       setVal(p.key, v)
                     }}
-                    className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                    className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
                   />
                 )}
               </div>
@@ -275,7 +275,7 @@ function FlowConfigModal({ agent, row, onClose, onSaved, runProtected }) {
             <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slatey hover:bg-mist">
               Cancelar
             </button>
-            <button onClick={save} className="rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700">
+            <button onClick={save} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
               Guardar
             </button>
           </div>

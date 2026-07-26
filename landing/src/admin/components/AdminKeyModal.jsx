@@ -30,7 +30,7 @@ export default function AdminKeyModal({ onConfirm, onClose, error }) {
       <div className="relative w-full max-w-sm rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <LockKeyhole size={18} />
             </div>
             <h3 className="font-serif text-lg font-700 text-ink">Acción protegida</h3>
@@ -49,17 +49,17 @@ export default function AdminKeyModal({ onConfirm, onClose, error }) {
           onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
           placeholder="Clave de administración"
           autoFocus
-          className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+          className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
         />
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
         <div className="mt-5 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
+          <button onClick={onClose} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
             Cancelar
           </button>
           <button
             onClick={submit}
             disabled={busy || !key.trim()}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 disabled:opacity-50"
           >
             {busy ? <Loader2 size={15} className="animate-spin" /> : <LockKeyhole size={15} />} Continuar
           </button>

@@ -33,7 +33,7 @@ export default function MenuCard({ card, onAction, lang = 'es' }) {
         <div className="px-3.5 pb-3.5">
           <button
             onClick={() => onAction?.(action)}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-hilton-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-700 active:scale-[0.99]"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 active:scale-[0.99]"
           >
             {action.label} <ArrowRight size={15} />
           </button>

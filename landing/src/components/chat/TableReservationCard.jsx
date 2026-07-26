@@ -94,7 +94,7 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-card">
       <div className="flex items-center gap-2 bg-linen px-4 py-2.5">
-        <CalendarClock size={16} className="text-hilton-600" />
+        <CalendarClock size={16} className="text-brand-600" />
         <p className="text-sm font-medium text-ink">{t.tableTitle}</p>
       </div>
 
@@ -103,7 +103,7 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.tableDay}</span>
           <input type="date" value={fecha} min={todayISO()} onChange={(e) => setFecha(e.target.value)}
-            className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+            className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100" />
         </label>
 
         {/* Turno: almuerzo / cena */}
@@ -113,7 +113,7 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
             {Object.keys(slots).map((f) => (
               <button key={f} onClick={() => { setFranja(f); setHora('') }}
                 className={`flex-1 rounded-xl px-3 py-1.5 text-xs font-medium transition ${
-                  franja === f ? 'bg-hilton-600 text-white' : 'bg-stone-50 text-slatey hover:bg-stone-100'
+                  franja === f ? 'bg-brand-600 text-white' : 'bg-stone-50 text-slatey hover:bg-stone-100'
                 }`}>{t.tableShiftName(f)}</button>
             ))}
           </div>
@@ -124,7 +124,7 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
           {horarios.map((h) => (
             <button key={h} onClick={() => setHora(h)}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium tabular-nums transition ${
-                hora === h ? 'bg-hilton-600 text-white' : 'bg-stone-50 text-slatey hover:bg-stone-100'
+                hora === h ? 'bg-brand-600 text-white' : 'bg-stone-50 text-slatey hover:bg-stone-100'
               }`}>{h}</button>
           ))}
         </div>
@@ -138,7 +138,7 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.tableName}</span>
           <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder={t.tableNamePh}
-            className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+            className="w-full rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100" />
         </label>
 
         {/* Reserva del huésped: si ya reservó en la sesión, está vinculada (no se pide código).
@@ -155,7 +155,7 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
             </button>
             {isGuest && (
               <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="HTL-XXXX"
-                className="w-full rounded-xl border border-hilton-200 px-2.5 py-2 text-sm uppercase focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+                className="w-full rounded-xl border border-brand-200 px-2.5 py-2 text-sm uppercase focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
             )}
           </>
         )}
@@ -164,13 +164,13 @@ export default function TableReservationCard({ card, onAction, lang = 'es' }) {
         <label className="block">
           <span className="mb-1 block text-[11px] uppercase tracking-wide text-slatey">{t.tableNotes}</span>
           <textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} placeholder={t.tableNotesPh}
-            className="w-full resize-none rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-hilton-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+            className="w-full resize-none rounded-xl border border-stone-200 bg-linen px-2.5 py-2 text-sm text-ink focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100" />
         </label>
 
         {error && <p className="text-xs text-red-600">{error}</p>}
 
         <button onClick={confirm} disabled={saving}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-hilton-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-hilton-700 active:scale-[0.99] disabled:opacity-60">
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-brand-700 active:scale-[0.99] disabled:opacity-60">
           {saving ? <Loader2 size={15} className="animate-spin" /> : <CalendarClock size={15} />} {t.tableReserve}
         </button>
       </div>

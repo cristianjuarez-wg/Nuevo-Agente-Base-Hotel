@@ -66,8 +66,8 @@ export default function DashboardView({ go }) {
           value={today.rooms_occupied ?? 0}
           tone="green"
         />
-        <StatCard icon={Percent} label="Ocupación del período" value={`${pc.occupancy_pct ?? 0}%`} tone="hilton" />
-        <StatCard icon={CalendarCheck} label="Reservas" value={pc.bookings_count ?? 0} tone="hilton" />
+        <StatCard icon={Percent} label="Ocupación del período" value={`${pc.occupancy_pct ?? 0}%`} tone="brand" />
+        <StatCard icon={CalendarCheck} label="Reservas" value={pc.bookings_count ?? 0} tone="brand" />
         <StatCard icon={DollarSign} label="Ingresos (USD)" value={formatUSD(pc.revenue_usd || 0)} tone="green" />
         <StatCard
           icon={UtensilsCrossed}
@@ -76,12 +76,12 @@ export default function DashboardView({ go }) {
           tone="amber"
         />
         <StatCard icon={UserPlus} label="Leads captados" value={pc.leads ?? 0} tone="amber" />
-        <StatCard icon={LifeBuoy} label="Tickets soporte" value={pc.tickets_total ?? 0} tone="hilton" />
+        <StatCard icon={LifeBuoy} label="Tickets soporte" value={pc.tickets_total ?? 0} tone="brand" />
       </div>
 
       {/* Insight del agente */}
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl bg-gradient-to-br from-hilton-700 to-hilton-500 p-5 text-white lg:col-span-2">
+        <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 p-5 text-white lg:col-span-2">
           <div className="flex items-center gap-2 text-sm font-medium text-white/80">
             <Bot size={18} /> Impacto del agente Aura
           </div>
@@ -132,7 +132,7 @@ export default function DashboardView({ go }) {
       <div className="mt-6 rounded-2xl bg-white p-5 shadow-card">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-serif text-lg font-600 text-ink">Reservas recientes</h2>
-          <button onClick={() => go('reservas')} className="inline-flex items-center gap-1 text-sm font-medium text-hilton-600 hover:text-hilton-700">
+          <button onClick={() => go('reservas')} className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700">
             Ver todas <ArrowRight size={15} />
           </button>
         </div>
@@ -151,7 +151,7 @@ export default function DashboardView({ go }) {
                     {b.code} · {b.room_type} · {formatDate(b.check_in)}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(b.total_price_usd)}</span>
+                <span className="shrink-0 text-sm font-semibold tabular-nums text-brand-700">{formatUSD(b.total_price_usd)}</span>
               </li>
             ))}
           </ul>

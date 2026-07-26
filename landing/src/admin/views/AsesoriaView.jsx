@@ -94,8 +94,8 @@ export default function AsesoriaView() {
   const columns = [
     { key: 'filename', label: 'Documento', render: (r) => (
       <button onClick={() => setViewDoc(r)} title="Ver contenido"
-              className="flex items-center gap-2 text-left font-medium text-ink transition hover:text-hilton-700">
-        <FileText size={15} className="text-hilton-500" />
+              className="flex items-center gap-2 text-left font-medium text-ink transition hover:text-brand-700">
+        <FileText size={15} className="text-brand-500" />
         <span className="underline-offset-2 hover:underline">{r.filename}</span>
       </button>
     ) },
@@ -114,7 +114,7 @@ export default function AsesoriaView() {
     { key: 'actions', label: '', render: (r) => (
       <div className="flex items-center justify-end gap-1">
         <button onClick={() => setViewDoc(r)} title="Ver contenido"
-                className="rounded-lg p-2 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700">
+                className="rounded-lg p-2 text-slatey transition hover:bg-brand-50 hover:text-brand-700">
           <Eye size={15} />
         </button>
         <button onClick={() => remove(r)} disabled={busy === r.filename} title="Eliminar"
@@ -128,8 +128,8 @@ export default function AsesoriaView() {
   const renderCard = (r) => (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <button onClick={() => setViewDoc(r)} className="flex items-center gap-2 text-left font-medium text-ink hover:text-hilton-700">
-          <FileText size={15} className="text-hilton-500" /><span className="hover:underline">{r.filename}</span>
+        <button onClick={() => setViewDoc(r)} className="flex items-center gap-2 text-left font-medium text-ink hover:text-brand-700">
+          <FileText size={15} className="text-brand-500" /><span className="hover:underline">{r.filename}</span>
         </button>
         {r.uploaded_at && r.uploaded_at !== 'unknown' && (
           <span className="text-xs text-slatey tabular-nums">{formatDate(r.uploaded_at)}</span>
@@ -140,7 +140,7 @@ export default function AsesoriaView() {
           {r.status === 'active' ? <Badge tone="green">Activo</Badge> : <Badge tone="gray">Inactivo</Badge>}
         </button>
         <div className="flex items-center gap-1">
-          <button onClick={() => setViewDoc(r)} className="rounded-lg p-2 text-slatey hover:bg-hilton-50 hover:text-hilton-700">
+          <button onClick={() => setViewDoc(r)} className="rounded-lg p-2 text-slatey hover:bg-brand-50 hover:text-brand-700">
             <Eye size={15} />
           </button>
           <button onClick={() => remove(r)} disabled={busy === r.filename}
@@ -179,10 +179,10 @@ export default function AsesoriaView() {
       )}
 
       {/* Memoria del asesor: el vínculo de largo plazo con el CEO (historial + planes). */}
-      <div className="mt-8 rounded-2xl border border-hilton-100 bg-white p-5 shadow-card">
+      <div className="mt-8 rounded-2xl border border-brand-100 bg-white p-5 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <BrainCircuit size={18} />
             </div>
             <div>
@@ -251,7 +251,7 @@ function DocViewerDrawer({ doc, onClose }) {
       <aside className="relative flex h-full w-full max-w-2xl flex-col bg-white shadow-card-lg animate-slide-up">
         <div className="flex items-start justify-between border-b border-mist px-5 py-4">
           <div className="flex items-center gap-2">
-            <FileText size={18} className="text-hilton-500" />
+            <FileText size={18} className="text-brand-500" />
             <div>
               <p className="font-serif text-base font-700 text-ink">{doc.filename}</p>
               <p className="text-xs text-slatey">Material de entrenamiento del asesor</p>

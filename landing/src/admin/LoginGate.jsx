@@ -43,13 +43,13 @@ function LoginScreen({ onSuccess }) {
   }
 
   const inputCls =
-    'w-full rounded-xl border border-hilton-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100'
+    'w-full rounded-xl border border-brand-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100'
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-mist px-4">
       <form onSubmit={submit} className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-card">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-hilton-600 text-white">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-white">
             <Lock size={24} />
           </div>
           <h1 className="font-serif text-xl font-700 text-ink">Backoffice</h1>
@@ -70,7 +70,7 @@ function LoginScreen({ onSuccess }) {
 
         <button
           type="submit" disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-hilton-700 disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
         >
           <LogIn size={16} /> {loading ? 'Ingresando…' : 'Ingresar'}
         </button>

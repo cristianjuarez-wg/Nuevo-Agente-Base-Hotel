@@ -13,7 +13,7 @@ export default function Footer() {
             {/* F3: copy de instancia — reemplazar por cliente */}
             Te esperamos en {HOTEL.tagline}.
           </p>
-          <a href="#reservar" className="btn-primary mt-7 bg-white text-hilton-700 hover:bg-white/90">
+          <a href="#reservar" className="btn-primary mt-7 bg-white text-brand-700 hover:bg-white/90">
             Reservar estadía
           </a>
         </div>

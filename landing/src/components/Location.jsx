@@ -59,23 +59,23 @@ export default function Location() {
 
             <Reveal className="space-y-4 rounded-2xl border border-stone-200 bg-white p-7" delay={0.1}>
               <div className="flex items-start gap-3">
-                <MapPin size={18} strokeWidth={1.6} className="mt-0.5 shrink-0 text-hilton-600" />
+                <MapPin size={18} strokeWidth={1.6} className="mt-0.5 shrink-0 text-brand-600" />
                 <p className="text-sm text-ink">{HOTEL.address}</p>
               </div>
               <div className="flex items-center gap-3">
-                <Phone size={18} strokeWidth={1.6} className="shrink-0 text-hilton-600" />
-                <a href={`tel:${HOTEL.phone}`} className="text-sm text-ink transition hover:text-hilton">
+                <Phone size={18} strokeWidth={1.6} className="shrink-0 text-brand-600" />
+                <a href={`tel:${HOTEL.phone}`} className="text-sm text-ink transition hover:text-brand">
                   {HOTEL.phone}
                 </a>
               </div>
               <div className="flex items-center gap-3">
-                <Mail size={18} strokeWidth={1.6} className="shrink-0 text-hilton-600" />
-                <a href={`mailto:${HOTEL.email}`} className="text-sm text-ink transition hover:text-hilton">
+                <Mail size={18} strokeWidth={1.6} className="shrink-0 text-brand-600" />
+                <a href={`mailto:${HOTEL.email}`} className="text-sm text-ink transition hover:text-brand">
                   {HOTEL.email}
                 </a>
               </div>
               <div className="flex items-center gap-3 border-t border-stone-200 pt-4">
-                <Clock size={18} strokeWidth={1.6} className="shrink-0 text-hilton-600" />
+                <Clock size={18} strokeWidth={1.6} className="shrink-0 text-brand-600" />
                 <p className="text-sm text-ink">
                   Check-in <span className="font-semibold">{HOTEL.checkIn}</span> · Check-out{' '}
                   <span className="font-semibold">{HOTEL.checkOut}</span>

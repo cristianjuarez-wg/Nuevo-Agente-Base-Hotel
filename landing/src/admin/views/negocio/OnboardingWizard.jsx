@@ -52,13 +52,13 @@ export default function OnboardingWizard() {
               key={s.id}
               onClick={() => setStep(i)}
               className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${
-                active ? 'bg-hilton-600 text-white shadow-card'
-                : done ? 'bg-hilton-50 text-hilton-700'
+                active ? 'bg-brand-600 text-white shadow-card'
+                : done ? 'bg-brand-50 text-brand-700'
                 : 'text-slatey hover:bg-mist'
               }`}
             >
               <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
-                active ? 'bg-white/20' : done ? 'bg-hilton-600 text-white' : 'bg-hilton-100 text-hilton-700'
+                active ? 'bg-white/20' : done ? 'bg-brand-600 text-white' : 'bg-brand-100 text-brand-700'
               }`}>
                 {done ? <Check size={13} /> : i + 1}
               </span>
@@ -70,12 +70,12 @@ export default function OnboardingWizard() {
       </div>
 
       {/* Ayuda del paso */}
-      <div className="mb-4 rounded-xl border border-hilton-100 bg-hilton-50/40 px-4 py-3 text-sm text-ink">
+      <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50/40 px-4 py-3 text-sm text-ink">
         <span className="font-medium">Paso {step + 1} · {current.label}.</span> {current.help}
       </div>
 
       {/* Contenido del paso: la vista existente, embebida */}
-      <div className="rounded-2xl border border-hilton-100 bg-white p-1 sm:p-2">
+      <div className="rounded-2xl border border-brand-100 bg-white p-1 sm:p-2">
         {current.id === 'identidad' && <BusinessIdentityView />}
         {current.id === 'catalogo' && <HabitacionesView />}
         {current.id === 'conocimiento' && <KnowledgeView />}
@@ -95,14 +95,14 @@ export default function OnboardingWizard() {
         {step < STEPS.length - 1 ? (
           <button
             onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
-            className="flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700"
+            className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Siguiente <ArrowRight size={16} />
           </button>
         ) : (
           <a
             href="#admin/dashboard"
-            className="flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700"
+            className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             <Check size={16} /> Finalizar
           </a>
@@ -129,7 +129,7 @@ function TestStep() {
       <ul className="mb-5 space-y-2">
         {CHECKS.map((c, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-slatey">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-hilton-200 text-[11px] text-hilton-700">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand-200 text-[11px] text-brand-700">
               {i + 1}
             </span>
             {c}
@@ -140,7 +140,7 @@ function TestStep() {
         href="#inicio"
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-hilton-700"
+        className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700"
       >
         <MessageCircle size={16} /> Abrir el sitio y probar el chat
       </a>

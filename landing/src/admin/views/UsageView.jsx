@@ -77,15 +77,15 @@ export default function UsageView() {
       )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon={Coins} label="Tokens hoy" value={formatTokens(today.tokens)} tone="hilton" />
+        <StatCard icon={Coins} label="Tokens hoy" value={formatTokens(today.tokens)} tone="brand" />
         <StatCard icon={DollarSign} label="USD hoy (estimado)" value={formatUsd(today.usd)} tone="green" />
-        <StatCard icon={CalendarDays} label="Tokens este mes" value={formatTokens(month.tokens)} tone="hilton" />
+        <StatCard icon={CalendarDays} label="Tokens este mes" value={formatTokens(month.tokens)} tone="brand" />
         <StatCard icon={DollarSign} label="USD este mes (estimado)" value={formatUsd(month.usd)} tone="amber" />
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <StatCard icon={MessageCircle} label="Conversaciones hoy" value={formatNumber(today.conversations, 0)} tone="hilton" />
-        <StatCard icon={MessageCircle} label="Conversaciones este mes" value={formatNumber(month.conversations, 0)} tone="hilton" />
+        <StatCard icon={MessageCircle} label="Conversaciones hoy" value={formatNumber(today.conversations, 0)} tone="brand" />
+        <StatCard icon={MessageCircle} label="Conversaciones este mes" value={formatNumber(month.conversations, 0)} tone="brand" />
         <StatCard
           icon={DollarSign}
           label="Costo por conversación (mes)"
@@ -116,7 +116,7 @@ export default function UsageView() {
                 <span className="font-medium text-ink">{m.model}</span>
                 <span className="flex items-center gap-4 text-slatey">
                   <span className="tabular-nums">{formatTokens(m.tokens)} tokens</span>
-                  <span className="font-semibold tabular-nums text-hilton-700">{formatUsd(m.usd)}</span>
+                  <span className="font-semibold tabular-nums text-brand-700">{formatUsd(m.usd)}</span>
                 </span>
               </li>
             ))}

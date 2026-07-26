@@ -88,7 +88,7 @@ export default function EmployeeTraining({ agent }) {
           </button>
           <button
             onClick={() => setModal({ mode: 'new' })}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-hilton-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-hilton-700"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             <Plus size={15} /> Nuevo entrenamiento
           </button>
@@ -129,7 +129,7 @@ export default function EmployeeTraining({ agent }) {
                           onClick={() => toggleActive(doc)}
                           role="switch" aria-checked={doc.active}
                           className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
-                            doc.active ? 'bg-hilton-600' : 'bg-stone-300'
+                            doc.active ? 'bg-brand-600' : 'bg-stone-300'
                           }`}
                         >
                           <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
@@ -267,7 +267,7 @@ function TrainingModal({ agent, schemas, modal, onClose, onSaved, runProtected }
       <div className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
         <header className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <GraduationCap size={18} />
             </div>
             <h3 className="font-serif text-lg font-700 text-ink">
@@ -286,7 +286,7 @@ function TrainingModal({ agent, schemas, modal, onClose, onSaved, runProtected }
             <select
               value={category}
               onChange={(e) => { setCategory(e.target.value); setData({}); setExtracted(false) }}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
             >
               {schemas.order.map((c) => (
                 <option key={c} value={c}>{schemas.schemas[c].label}</option>
@@ -299,7 +299,7 @@ function TrainingModal({ agent, schemas, modal, onClose, onSaved, runProtected }
         {/* Upload: archivo/texto → IA propone los campos */}
         {isUpload && !extracted && (
           <div className="space-y-3">
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-hilton-300 px-4 py-3 text-sm text-slatey hover:bg-hilton-50">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-brand-300 px-4 py-3 text-sm text-slatey hover:bg-brand-50">
               <Upload size={16} />
               {file ? file.name : 'Elegí un archivo (PDF, .md o .txt)…'}
               <input type="file" accept=".pdf,.md,.markdown,.txt"
@@ -308,11 +308,11 @@ function TrainingModal({ agent, schemas, modal, onClose, onSaved, runProtected }
             <textarea
               value={text} onChange={(e) => setText(e.target.value)} rows={4}
               placeholder="…o pegá el texto acá"
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
             <button
               onClick={runExtract} disabled={extracting}
-              className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-hilton-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
             >
               {extracting ? <Loader2 size={15} className="animate-spin" /> : <FileUp size={15} />}
               {extracting ? 'Interpretando…' : 'Interpretar con IA'}
@@ -324,7 +324,7 @@ function TrainingModal({ agent, schemas, modal, onClose, onSaved, runProtected }
         {showForm && (
           <div className="space-y-4">
             {extracted && (
-              <p className="rounded-xl bg-hilton-50 px-3.5 py-2.5 text-sm text-hilton-700">
+              <p className="rounded-xl bg-brand-50 px-3.5 py-2.5 text-sm text-brand-700">
                 Campos propuestos por la IA a partir del documento. Revisá y corregí antes de guardar.
               </p>
             )}
@@ -341,7 +341,7 @@ function TrainingModal({ agent, schemas, modal, onClose, onSaved, runProtected }
             <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slatey hover:bg-mist">Cancelar</button>
             <button
               onClick={save} disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-hilton-700 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
             >
               {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
               Guardar
@@ -356,7 +356,7 @@ function TrainingModal({ agent, schemas, modal, onClose, onSaved, runProtected }
 // ───────────────────────────────────────────────────────────────────────────
 // Renderizador genérico de campos (text / textarea / select / bool / tags / list)
 // ───────────────────────────────────────────────────────────────────────────
-const inputCls = 'w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100'
+const inputCls = 'w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100'
 
 function FieldRenderer({ field, value, onChange }) {
   if (field.type === 'text') {
@@ -390,7 +390,7 @@ function FieldRenderer({ field, value, onChange }) {
       <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
         <input type="checkbox" checked={value ?? field.default ?? false}
                onChange={(e) => onChange(e.target.checked)}
-               className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200" />
+               className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-200" />
         {field.label}
       </label>
     )

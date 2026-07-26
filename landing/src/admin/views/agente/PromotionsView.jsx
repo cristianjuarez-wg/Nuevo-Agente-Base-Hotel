@@ -74,7 +74,7 @@ export default function PromotionsView() {
         right={
           <button
             onClick={() => setEditPromo({})}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700"
           >
             <Plus size={16} /> Nueva promoción
           </button>
@@ -92,7 +92,7 @@ export default function PromotionsView() {
           {promos.map((p) => (
             <div
               key={p.id}
-              className="flex flex-col gap-3 rounded-2xl border border-hilton-100 bg-white p-4 shadow-card sm:flex-row sm:items-start sm:justify-between"
+              className="flex flex-col gap-3 rounded-2xl border border-brand-100 bg-white p-4 shadow-card sm:flex-row sm:items-start sm:justify-between"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -102,7 +102,7 @@ export default function PromotionsView() {
                     <Badge tone="amber">{p.discount_value}% off</Badge>
                   )}
                   {p.discount_type === 'free_night' && p.discount_value != null && (
-                    <Badge tone="hilton">{p.discount_value} noche(s) gratis</Badge>
+                    <Badge tone="brand">{p.discount_value} noche(s) gratis</Badge>
                   )}
                 </div>
                 <p className="text-sm text-slatey line-clamp-2">{p.description}</p>
@@ -222,7 +222,7 @@ function PromoModal({ promo, onClose, onSaved }) {
           <textarea
             value={description} onChange={(e) => setDescription(e.target.value)}
             rows={3} placeholder="Descripción completa que el agente comunicará al huésped…"
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100 resize-none"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none"
           />
         </label>
 
@@ -231,7 +231,7 @@ function PromoModal({ promo, onClose, onSaved }) {
           <textarea
             value={conditions} onChange={(e) => setConditions(e.target.value)}
             rows={2} placeholder="Restricciones, requisitos, mínimo de noches…"
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100 resize-none"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none"
           />
         </label>
 
@@ -240,7 +240,7 @@ function PromoModal({ promo, onClose, onSaved }) {
             <span className="mb-1 block text-sm font-medium text-ink">Tipo de descuento</span>
             <select
               value={discountType} onChange={(e) => setDiscountType(e.target.value)}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             >
               {DISCOUNT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -257,7 +257,7 @@ function PromoModal({ promo, onClose, onSaved }) {
                 type="number" min="0" step={discountType === 'percentage' ? '1' : '1'}
                 value={discountValue} onChange={(e) => setDiscountValue(e.target.value)}
                 placeholder={discountType === 'percentage' ? '20' : '1'}
-                className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
               />
             </label>
           )}
@@ -270,7 +270,7 @@ function PromoModal({ promo, onClose, onSaved }) {
               type="number" min="1"
               value={minNights} onChange={(e) => setMinNights(e.target.value)}
               placeholder={discountType === 'free_night' ? 'Ej: 4 (para 4x3)' : 'Sin mínimo'}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
             <span className="mt-1 block text-xs text-slatey/70">
               Estadía mínima para que la promo aplique. El agente la usa para calcular el precio.
@@ -283,14 +283,14 @@ function PromoModal({ promo, onClose, onSaved }) {
             <span className="mb-1 block text-sm font-medium text-ink">Válida desde</span>
             <input
               type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">Válida hasta</span>
             <input
               type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
-              className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+              className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
             />
           </label>
         </div>
@@ -299,7 +299,7 @@ function PromoModal({ promo, onClose, onSaved }) {
           <span className="mb-1 block text-sm font-medium text-ink">Estado</span>
           <select
             value={status} onChange={(e) => setStatus(e.target.value)}
-            className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+            className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
           >
             <option value="active">Activa</option>
             <option value="inactive">Inactiva</option>
@@ -309,12 +309,12 @@ function PromoModal({ promo, onClose, onSaved }) {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
+          <button onClick={onClose} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
             Cancelar
           </button>
           <button
             onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-hilton-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-hilton-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-card transition hover:bg-brand-700 disabled:opacity-60"
           >
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
             Guardar
@@ -337,7 +337,7 @@ function ConfirmModal({ title, message, onCancel, onConfirm }) {
     <Modal title={title} icon={Trash2} onClose={onCancel}>
       <p className="mb-6 text-sm text-slatey">{message}</p>
       <div className="flex justify-end gap-3">
-        <button onClick={onCancel} className="rounded-xl border border-hilton-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
+        <button onClick={onCancel} className="rounded-xl border border-brand-200 px-4 py-2.5 text-sm text-slatey transition hover:bg-mist">
           Cancelar
         </button>
         <button
@@ -362,7 +362,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {Icon && (
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
                 <Icon size={18} />
               </div>
             )}
@@ -385,7 +385,7 @@ function Field({ label, value, onChange, placeholder }) {
       <input
         type="text" value={value || ''} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+        className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
       />
     </label>
   )

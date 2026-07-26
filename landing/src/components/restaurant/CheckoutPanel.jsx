@@ -87,8 +87,8 @@ function CheckoutBody({ totalUsd, totalArs, placing, validated, setValidated, on
       {!mode && (
         <div className="space-y-3">
           <p className="text-sm font-medium text-ink">¿Estás alojado en el hotel?</p>
-          <button onClick={() => setMode('guest')} className="flex w-full items-center gap-3 rounded-xl border border-hilton-200 px-4 py-3 text-left transition hover:bg-hilton-50">
-            <BedDouble size={20} className="text-hilton-600" />
+          <button onClick={() => setMode('guest')} className="flex w-full items-center gap-3 rounded-xl border border-brand-200 px-4 py-3 text-left transition hover:bg-brand-50">
+            <BedDouble size={20} className="text-brand-600" />
             <div><p className="text-sm font-medium text-ink">Sí, soy huésped</p><p className="text-xs text-slatey">Cargá el pedido a tu habitación</p></div>
           </button>
           <button onClick={() => setMode('visitor')} className="flex w-full items-center gap-3 rounded-xl border border-stone-200 px-4 py-3 text-left transition hover:bg-stone-50">
@@ -105,7 +105,7 @@ function CheckoutBody({ totalUsd, totalArs, placing, validated, setValidated, on
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">Código de reserva</span>
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="HTL-XXXX"
-                   className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm uppercase focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100" />
+                   className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm uppercase focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
           </label>
           {vError && (
             <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -129,7 +129,7 @@ function CheckoutBody({ totalUsd, totalArs, placing, validated, setValidated, on
           </div>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">¿Dónde lo querés?</span>
-            <select value={fulfillment} onChange={(e) => setFulfillment(e.target.value)} className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:border-hilton-500 focus:outline-none">
+            <select value={fulfillment} onChange={(e) => setFulfillment(e.target.value)} className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none">
               <option value="room_service">A mi habitación</option>
               <option value="salon">En el salón</option>
               <option value="retiro">Para retirar</option>
@@ -147,7 +147,7 @@ function CheckoutBody({ totalUsd, totalArs, placing, validated, setValidated, on
           <button onClick={() => setMode(null)} className="text-xs text-slatey hover:text-ink">← Volver</button>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">¿Dónde lo querés?</span>
-            <select value={fulfillment} onChange={(e) => setFulfillment(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3.5 py-2.5 text-sm focus:border-hilton-400 focus:outline-none">
+            <select value={fulfillment} onChange={(e) => setFulfillment(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3.5 py-2.5 text-sm focus:border-brand-400 focus:outline-none">
               <option value="salon">En el salón</option>
               <option value="retiro">Para retirar</option>
             </select>

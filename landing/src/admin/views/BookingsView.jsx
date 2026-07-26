@@ -57,7 +57,7 @@ function FilterChips({ value, counts, onChange }) {
             aria-selected={active}
             onClick={() => onChange(f.id)}
             className={`rounded-full px-3.5 py-2 text-xs font-medium transition ${
-              active ? 'bg-hilton-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-hilton-50'
+              active ? 'bg-brand-600 text-white shadow-card' : 'bg-white text-slatey hover:bg-brand-50'
             }`}
           >
             {f.label} <span className="tabular-nums opacity-70">({n})</span>
@@ -114,7 +114,7 @@ export default function BookingsView() {
     <button
       onClick={() => setChatBooking(r)}
       title="Ver conversación"
-      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-hilton-50 hover:text-hilton-700"
+      className="inline-flex items-center justify-center rounded-lg p-1.5 text-slatey transition hover:bg-brand-50 hover:text-brand-700"
     >
       <MessageSquare size={15} />
     </button>
@@ -186,7 +186,7 @@ export default function BookingsView() {
 
   const GuestName = ({ r }) =>
     r.contact_id ? (
-      <button onClick={() => goToProfile(r.contact_id)} className="font-medium text-hilton-700 hover:underline">
+      <button onClick={() => goToProfile(r.contact_id)} className="font-medium text-brand-700 hover:underline">
         {r.guest_name}
       </button>
     ) : (
@@ -194,12 +194,12 @@ export default function BookingsView() {
     )
 
   const columns = [
-    { key: 'code', label: 'Código', render: (r) => <span className="font-semibold text-hilton-700">{r.code}</span> },
+    { key: 'code', label: 'Código', render: (r) => <span className="font-semibold text-brand-700">{r.code}</span> },
     { key: 'guest_name', label: 'Huésped', render: (r) => <GuestName r={r} /> },
     { key: 'room_type', label: 'Habitación', render: (r) => (
       <span>
         {r.room_type}
-        {r.room_number && <span className="ml-1.5 rounded bg-hilton-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-hilton-700">N° {r.room_number}</span>}
+        {r.room_number && <span className="ml-1.5 rounded bg-brand-50 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-brand-700">N° {r.room_number}</span>}
       </span>
     ) },
     { key: 'stay', label: 'Estadía', sortable: true, sortKey: 'check_in', render: (r) => (
@@ -231,13 +231,13 @@ export default function BookingsView() {
   const renderCard = (r) => (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-semibold text-hilton-700">{r.code}</span>
+        <span className="font-semibold text-brand-700">{r.code}</span>
         <StayBadge stay={r.stay_status} />
       </div>
       <GuestName r={r} />
       <p className="text-sm text-slatey">
         {r.room_type}
-        {r.room_number && <span className="ml-1.5 font-semibold tabular-nums text-hilton-700">· N° {r.room_number}</span>}
+        {r.room_number && <span className="ml-1.5 font-semibold tabular-nums text-brand-700">· N° {r.room_number}</span>}
       </p>
       <p className="mt-1 text-xs text-slatey">
         {formatDate(r.check_in)} → {formatDate(r.check_out)} · {r.nights} noche(s)
@@ -246,7 +246,7 @@ export default function BookingsView() {
       {r.promo_name && <p className="mt-0.5 text-xs text-forest-600">{r.promo_name}</p>}
       <div className="mt-1.5"><CheckinBadge pre={r.pre_checkin} stay={r.stay_status} /></div>
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-sm font-semibold tabular-nums text-hilton-700">{formatUSD(r.total_price_usd)}</span>
+        <span className="text-sm font-semibold tabular-nums text-brand-700">{formatUSD(r.total_price_usd)}</span>
         <div className="flex items-center gap-1.5">
           <OriginBadge origin={r.origin} />
           <CheckinButton r={r} />
@@ -310,7 +310,7 @@ function BookingChatDrawer({ booking, onClose }) {
       <aside className="relative flex h-full w-full max-w-md flex-col bg-white shadow-card-lg animate-slide-up">
         <div className="flex items-start justify-between border-b border-mist px-5 py-4">
           <div className="min-w-0">
-            <p className="font-serif text-lg font-700 text-hilton-700">{booking.code}</p>
+            <p className="font-serif text-lg font-700 text-brand-700">{booking.code}</p>
             <p className="mt-0.5 text-sm text-slatey">{booking.guest_name} · {booking.room_type}</p>
           </div>
           <button onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-slatey hover:bg-mist">

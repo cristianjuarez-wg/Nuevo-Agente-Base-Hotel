@@ -64,7 +64,7 @@ export default function EmployeeSkills({ agent }) {
                   role="switch"
                   aria-checked={row.enabled}
                   className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
-                    row.enabled ? 'bg-hilton-600' : 'bg-stone-300'
+                    row.enabled ? 'bg-brand-600' : 'bg-stone-300'
                   }`}
                 >
                   <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
@@ -125,7 +125,7 @@ function PolicyModal({ agent, row, onClose, onSaved, runProtected }) {
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-card-lg animate-slide-up sm:rounded-3xl">
         <header className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-hilton-50 text-hilton-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
               <Wrench size={18} />
             </div>
             <h3 className="font-serif text-lg font-700 text-ink">Políticas · {row.skill.name}</h3>
@@ -155,7 +155,7 @@ function PolicyModal({ agent, row, onClose, onSaved, runProtected }) {
                       type="checkbox"
                       checked={!!values[p.key]}
                       onChange={(e) => setVal(p.key, e.target.checked)}
-                      className="h-4 w-4 rounded border-hilton-300 text-hilton-600 focus:ring-hilton-200"
+                      className="h-4 w-4 rounded border-brand-300 text-brand-600 focus:ring-brand-200"
                     />
                     Activado
                   </label>
@@ -170,14 +170,14 @@ function PolicyModal({ agent, row, onClose, onSaved, runProtected }) {
                       if (ceiling != null && v !== '' && v > ceiling) v = ceiling
                       setVal(p.key, v)
                     }}
-                    className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                    className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
                   />
                 ) : (
                   <input
                     type="text"
                     value={values[p.key]}
                     onChange={(e) => setVal(p.key, e.target.value)}
-                    className="w-full rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-hilton-100"
+                    className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100"
                   />
                 )}
               </div>
@@ -189,7 +189,7 @@ function PolicyModal({ agent, row, onClose, onSaved, runProtected }) {
           <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slatey hover:bg-mist">
             Cancelar
           </button>
-          <button onClick={save} className="rounded-xl bg-hilton-600 px-4 py-2 text-sm font-medium text-white hover:bg-hilton-700">
+          <button onClick={save} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
             Guardar
           </button>
         </div>

@@ -44,7 +44,7 @@ export default function ImageInput({ value, onChange }) {
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             placeholder="Pegá una URL de imagen…"
-            className="w-full rounded-xl border border-hilton-200 py-2.5 pl-9 pr-3 text-sm focus:border-hilton-500 focus:outline-none focus:ring-2 focus:ring-hilton-100"
+            className="w-full rounded-xl border border-brand-200 py-2.5 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
           />
         </div>
         <span className="text-center text-xs text-slatey">o</span>
@@ -52,7 +52,7 @@ export default function ImageInput({ value, onChange }) {
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-hilton-200 px-3.5 py-2.5 text-sm font-medium text-hilton-700 transition hover:bg-hilton-50 disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm font-medium text-brand-700 transition hover:bg-brand-50 disabled:opacity-60"
         >
           {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
           {uploading ? 'Subiendo…' : 'Subir archivo'}
@@ -73,7 +73,7 @@ export default function ImageInput({ value, onChange }) {
           <img
             src={resolveUrl(value)}
             alt="Vista previa"
-            className="h-28 w-auto rounded-xl border border-hilton-100 object-cover"
+            className="h-28 w-auto rounded-xl border border-brand-100 object-cover"
           />
           <button
             type="button"

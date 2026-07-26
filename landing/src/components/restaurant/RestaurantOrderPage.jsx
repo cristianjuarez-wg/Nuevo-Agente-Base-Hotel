@@ -88,7 +88,7 @@ export default function RestaurantOrderPage() {
               </div>
             ))}
           </div>
-          <p className="mt-4 font-display text-xl font-700 tabular-nums text-hilton-700">{formatUSD(done.total_usd)}</p>
+          <p className="mt-4 font-display text-xl font-700 tabular-nums text-brand-700">{formatUSD(done.total_usd)}</p>
           <p className="text-xs text-slatey">{formatARS(done.total_ars)} · {pago}</p>
           <button onClick={backToChat} className="btn-primary mt-6 w-full">Volver al chat con Aura</button>
         </div>
@@ -117,7 +117,7 @@ export default function RestaurantOrderPage() {
               key={c.id}
               onClick={() => setCat(c.id)}
               className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
-                cat === c.id ? 'bg-hilton-600 text-white' : 'bg-white text-slatey hover:bg-stone-50'
+                cat === c.id ? 'bg-brand-600 text-white' : 'bg-white text-slatey hover:bg-stone-50'
               }`}
             >
               {c.label}
@@ -141,15 +141,15 @@ export default function RestaurantOrderPage() {
                   {(m.tags || []).map((t) => <TagBadge key={t} tag={t} />)}
                 </div>
                 <div className="mt-auto flex items-center justify-between pt-2">
-                  <span className="text-sm font-700 tabular-nums text-hilton-700">{formatUSD(m.price_usd)}</span>
+                  <span className="text-sm font-700 tabular-nums text-brand-700">{formatUSD(m.price_usd)}</span>
                   {cart[m.id] > 0 ? (
                     <div className="flex items-center gap-2">
                       <button onClick={() => sub(m.id)} className="flex h-7 w-7 items-center justify-center rounded-full bg-stone-100 text-ink hover:bg-stone-200"><Minus size={14} /></button>
                       <span className="w-5 text-center text-sm font-600 tabular-nums">{cart[m.id]}</span>
-                      <button onClick={() => add(m.id)} className="flex h-7 w-7 items-center justify-center rounded-full bg-hilton-600 text-white hover:bg-hilton-700"><Plus size={14} /></button>
+                      <button onClick={() => add(m.id)} className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700"><Plus size={14} /></button>
                     </div>
                   ) : (
-                    <button onClick={() => add(m.id)} className="flex h-7 w-7 items-center justify-center rounded-full bg-hilton-600 text-white hover:bg-hilton-700"><Plus size={14} /></button>
+                    <button onClick={() => add(m.id)} className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white hover:bg-brand-700"><Plus size={14} /></button>
                   )}
                 </div>
               </div>
@@ -163,9 +163,9 @@ export default function RestaurantOrderPage() {
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white px-5 py-3 shadow-widget">
           <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-hilton-50 text-hilton-700">
+              <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-700">
                 <ShoppingCart size={18} />
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-hilton-600 text-[11px] font-bold text-white">{cartCount}</span>
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">{cartCount}</span>
               </span>
               <div>
                 <p className="font-display text-lg font-700 tabular-nums text-ink">{formatUSD(totalUsd)}</p>
