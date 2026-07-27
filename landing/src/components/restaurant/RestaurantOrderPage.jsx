@@ -5,6 +5,7 @@ import { formatUSD, formatARS } from '../../lib/format'
 import { CATEGORIES, MENU_FALLBACK_IMG as FALLBACK, TagBadge } from './menuShared'
 import { useCart } from './useCart'
 import CheckoutPanel from './CheckoutPanel'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 function sessionFromHash() {
   const m = window.location.hash.match(/session=([^&]+)/)
@@ -12,6 +13,7 @@ function sessionFromHash() {
 }
 
 export default function RestaurantOrderPage() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [menu, setMenu] = useState([])
   const [loading, setLoading] = useState(true)
   const [cat, setCat] = useState('tapas')
@@ -90,7 +92,7 @@ export default function RestaurantOrderPage() {
           </div>
           <p className="mt-4 font-display text-xl font-700 tabular-nums text-brand-700">{formatUSD(done.total_usd)}</p>
           <p className="text-xs text-slatey">{formatARS(done.total_ars)} · {pago}</p>
-          <button onClick={backToChat} className="btn-primary mt-6 w-full">Volver al chat con Aura</button>
+          <button onClick={backToChat} className="btn-primary mt-6 w-full">Volver al chat con {agentName}</button>
         </div>
       </div>
     )

@@ -81,6 +81,8 @@ class ServiceHealth(BaseModel):
 class HealthResponse(BaseModel):
     status: HealthStatus
     vector_store: ServiceHealth
+    # LEGACY: el servicio de geografía se retiró en la Fase 0.2. Se conserva la clave
+    # (Optional, default None) solo por compat del contrato; ya nunca se setea.
     geography_service: Optional[Dict[str, Any]] = None
     agent_profile: Optional[Dict[str, Any]] = None
     documents_count: int

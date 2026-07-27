@@ -2,6 +2,11 @@
 // El nombre del agente NO se escribe literal: se usa el placeholder {agentName}, que
 // ChatWidget interpola desde el perfil del negocio (backoffice). Igual que {businessName}.
 // El agente (LLM) responde en el idioma elegido; esto cubre los textos fijos del front.
+import { migrateStorageKey } from '../lib/storageKeys'
+
+// Key de idioma con nombre neutro (higiene #12); la vieja 'aura_lang' se migra una sola vez.
+const LANG_KEY = 'agent_lang'
+migrateStorageKey(localStorage, 'aura_lang', LANG_KEY)
 
 export const LANGUAGES = [
   { code: 'es', label: 'Español', short: 'ES' },
@@ -480,7 +485,7 @@ export function getStrings(lang, vars) {
 // Idioma inicial: localStorage > navegador (si en/pt/fr) > es.
 export function detectInitialLang() {
   try {
-    const saved = localStorage.getItem('aura_lang')
+    const saved = localStorage.getItem(LANG_KEY)
     if (saved && STRINGS[saved]) return saved
   } catch { /* ignore */ }
   const nav = (navigator.language || 'es').slice(0, 2).toLowerCase()
@@ -488,5 +493,5 @@ export function detectInitialLang() {
 }
 
 export function persistLang(lang) {
-  try { localStorage.setItem('aura_lang', lang) } catch { /* ignore */ }
+  try { localStorage.setItem(LANG_KEY, lang) } catch { /* ignore */ }
 }

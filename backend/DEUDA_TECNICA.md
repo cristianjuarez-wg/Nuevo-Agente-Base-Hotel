@@ -4,6 +4,27 @@ Registro de deuda técnica conocida y decisiones de no-hacer-ahora, surgido de l
 profunda del sistema. Lo ya resuelto está marcado; lo pendiente queda especificado para
 encararlo cuando corresponda (sin re-investigar).
 
+## RESUELTO — tandas de extracción (2026-07-26)
+Cierres de las tandas recientes sobre la auditoría pre-extracción:
+- **C2** — auth de los GETs del backoffice + whitelist pública explícita en `main.py`.
+- **C3** — circuit breaker real (no solo el flag).
+- **C4** — arranque sin seeds Hampton de `start.sh`; el seed residual del BusinessProfile
+  quedó documentado (ver `ensure_seeded` y RUNBOOK_NUEVA_INSTANCIA Paso 4).
+- **I5** — revisión del contacto de prueba `0002` + runbook `DEPLOY_RENDER.md`.
+- **I7** — test anti doble-booking (`tests/test_double_booking.py`).
+- **I8** — audit log del chat fuera del paquete (`AUDIT_LOG_DIR`, gitignoreado).
+- **M6** — webhooks de WhatsApp/Instagram fail-closed en producción sin credencial de firma.
+- **F7** — contacto público (dirección/Instagram) editable desde el backoffice.
+- **C1** — `AGENT_REUSE.md` reescrito (fronteras core/dominio actuales).
+- **email-validator** agregado a requirements (lo exige el EmailStr de auth).
+- **M1** — metadata de marca fuera de `main.py`: título/descripción parametrizados
+  (`APP_NAME`/`APP_DESCRIPTION` con default neutro), health sin `geography_service`
+  hardcodeado (campo legacy Optional), métricas `/metrics` renombradas
+  `travel_agent_*` → `empleado_digital_*`.
+- **#12 (backend)** — limpieza: borrado `app/scripts/001_create_postsale_tables.py`
+  (tablas de turismo muertas) y el paquete vacío `app/prompts/`; `.env.example` rehecho
+  sin `FLIGHTAPI_API_KEY` ni el `DATABASE_URL` de `travel_agent`.
+
 ## Resuelto en la auditoría
 - **P0** — personalización del huésped en el saludo, captación de lead en el cierre,
   post-venta que informa políticas (RAG) en vez de escalar, `except:` desnudos logueados.
@@ -66,7 +87,8 @@ La Fase 1 parametrizó desde el BusinessProfile lo de mayor impacto: los ENCABEZ
 identidad de los 5 prompts de agente, el timezone, y la moneda mostrada en las cards.
 Quedan menciones de marca hardcodeadas de MENOR impacto, a barrer en la fase de instancia
 (Fase 3) o cuando se onboardee el primer cliente real:
-- **App metadata** (`main.py`: título FastAPI, logs de arranque, `/` root) — cosmético.
+- **App metadata** (`main.py`: título FastAPI, logs de arranque, `/` root) — ✅ RESUELTO
+  (2026-07-26): parametrizado vía `APP_NAME`/`APP_DESCRIPTION` con default neutro.
 - **Fallbacks de error** (`agent_service.py:595`, `hotel_sdk_orchestrator`, `hotel_postsale_orchestrator`)
   con "Hampton" — solo se ven ante un error; parametrizar desde el perfil.
 - **Saludos i18n EN/PT/FR** (`chat.py:_GREETINGS`) con la marca embebida.
@@ -105,10 +127,11 @@ tienen create_all a nivel de módulo + FKs entre sí, así que moverlos requiere
 
 ## agent_service.py y el objetivo "<400 líneas" de Fase 2.3
 El plan (2.3) fijó como meta dejar `agent_service.py` en <400 líneas. Tras cerrar la deuda de
-Fase 2 quedó en **933**, y ESO es lo correcto, no un incumplimiento:
+Fase 2 y el trabajo posterior quedó en **974**, y ESO es lo correcto, no un incumplimiento:
 - Se retiró el código muerto de turismo (`_handle_conversation_state`, captura de leads de
   eventos, inalcanzable en el hotel): 1202 → 1071.
-- Se extrajo el agente casual a `domains/hotel/services/casual_agent.py`: 1071 → 933.
+- Se extrajo el agente casual a `domains/hotel/services/casual_agent.py`: 1071 → 933
+  (con el trabajo posterior, hoy 974).
 - El **store de historial** (rehidratación/persistencia, ~190 líneas) NO se extrajo a propósito:
   está acoplado a la API pública que consumen 3 módulos externos (`chat.py`, `agent_router`,
   `conversations`) vía `agent_service.conversation_history` / `_save_message_to_db`. Extraerlo
@@ -210,7 +233,10 @@ BD limpia). Suite verificada: 261 passed, 0 flaky, en 5 corridas consecutivas.
 
 ## Otros ítems menores (de la auditoría, no bloqueantes)
 - Refactor de `agent_service.chat()` (función larga, imports diferidos) — legibilidad.
-- Cobertura de tests en hot-path (orquestadores, reservation_service).
+- Cobertura de tests en hot-path (orquestadores, reservation_service) — **parcialmente
+  cubierto** por `test_double_booking.py` (lock anti doble-booking del reservation_service)
+  y `test_security_fase0.py` (whitelist/auth de endpoints); falta aún sobre los
+  orquestadores del SDK.
 - Guardrail semántico de relevancia (hoy off-topic se maneja post-hoc) y tratar el contenido
   RAG como no confiable (anti prompt-injection).
 - Pydantic `@validator` → `@field_validator` (V2).

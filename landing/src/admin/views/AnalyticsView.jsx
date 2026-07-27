@@ -9,6 +9,7 @@ import { getFunnel, getHeatmap, getChannelStats, getAgentQualityMetrics, getRest
 import { PageHeader, StatCard, Loading, formatUSD } from '../ui'
 import PeriodSelector from '../components/PeriodSelector'
 import { useAgentName } from '../../hooks/useBusinessProfile'
+import { brand } from '../../../theme.config.js'
 
 // Selector de canal: Todos / Web / WhatsApp / Instagram. Filtra funnel + heatmap.
 const CHANNELS = [
@@ -44,7 +45,7 @@ function ChannelTabs({ value, onChange }) {
 }
 
 // ── Embudo de conversión: barras horizontales decrecientes + tasas ───────────
-const FUNNEL_COLORS = ['#005aa9', '#2b82c9', '#62a8dd']
+const FUNNEL_COLORS = [brand.DEFAULT, '#2b82c9', '#62a8dd']
 
 function FunnelChart({ stages }) {
   const max = Math.max(...stages.map((s) => s.count), 1)
@@ -161,7 +162,7 @@ function Heatmap({ data, maxCount }) {
 
 // ── Distribución por canal (barras, no pie: solo 2 categorías) ────────────────
 function ChannelBars({ channels }) {
-  const colorFor = (key) => (key === 'whatsapp' ? '#16a34a' : key === 'instagram' ? '#db2777' : '#005aa9')
+  const colorFor = (key) => (key === 'whatsapp' ? '#16a34a' : key === 'instagram' ? '#db2777' : brand.DEFAULT)
   return (
     <ResponsiveContainer width="100%" height={140}>
       <BarChart data={channels} layout="vertical" margin={{ left: 8, right: 24 }}>

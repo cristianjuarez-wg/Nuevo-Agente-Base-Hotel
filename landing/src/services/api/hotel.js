@@ -14,6 +14,40 @@ export async function getRooms() {
   return data.rooms ?? data
 }
 
+export async function getAvailability({ checkIn, checkOut, guests }) {
+  const { data } = await client.get('/api/reservations/availability', {
+    params: { check_in: checkIn, check_out: checkOut, guests },
+  })
+  return data.available_rooms ?? data.rooms ?? data
+}
+
+export async function createBooking(payload) {
+  // payload: { room_id, check_in, check_out, guest_name, guest_email, guest_phone, guests }
+  const { data } = await client.post('/api/reservations/bookings', payload)
+  return data.booking ?? data
+}
+
+export async function getBooking(code) {
+  const { data } = await client.get(`/api/reservations/bookings/${code}`)
+  return data.booking ?? data
+}
+
+export async function deleteBooking(code) {
+  const { data } = await client.delete(`/api/reservations/bookings/${code}`)
+  return data
+}
+
+export async function listBookings() {
+  const { data } = await client.get('/api/reservations/bookings')
+  return data.bookings ?? data
+}
+
+// Check-in express: dispara el flujo por WhatsApp para una reserva (acción protegida).
+export async function sendCheckinExpress(code) {
+  const { data } = await client.post(`/api/checkin/${encodeURIComponent(code)}/send`)
+  return data
+}
+
 // ── Promociones ─────────────────────────────────────────────────────────────
 
 export async function listPromotions() {
@@ -278,5 +312,32 @@ export async function getVoucher(code) {
 
 export async function redeemVoucher(code) {
   const { data } = await client.post(`/api/restaurant/vouchers/${code}/redeem`)
+  return data
+}
+
+// ── Lugares / excursiones (conocimiento de dominio: qué recomendar cerca) ────
+export async function listPlaces(category) {
+  const { data } = await client.get('/api/knowledge/places', {
+    params: category ? { category } : {},
+  })
+  return data.places ?? data
+}
+
+export async function savePlace(payload, id) {
+  if (id) {
+    const { data } = await client.put(`/api/knowledge/places/${id}`, payload)
+    return data
+  }
+  const { data } = await client.post('/api/knowledge/places', payload)
+  return data
+}
+
+export async function setPlaceStatus(id, status) {
+  const { data } = await client.patch(`/api/knowledge/places/${id}/status`, { status })
+  return data
+}
+
+export async function deletePlace(id) {
+  const { data } = await client.delete(`/api/knowledge/places/${id}`)
   return data
 }

@@ -77,6 +77,10 @@ Esto (idempotente — se puede repetir):
 - Crea el **admin bootstrap** con `BOOTSTRAP_ADMIN_EMAIL` (password de `BOOTSTRAP_ADMIN_PASSWORD`)
   **solo si la tabla de admins está vacía**.
 
+> **Ojo (C4):** en una DB vacía, el primer arranque del backend ya sembró el perfil con la
+> identidad DEMO del Hampton (`ensure_seeded`, deliberado). Este paso la SOBRESCRIBE con los
+> datos del cliente — correrlo ANTES de exponer la instancia al público.
+
 Verificación rápida: entrar al backoffice (`/#admin`), loguearse con el admin bootstrap, y
 confirmar en "Identidad del negocio" que los datos son los del cliente.
 

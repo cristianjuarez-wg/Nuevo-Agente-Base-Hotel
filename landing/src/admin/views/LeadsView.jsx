@@ -442,9 +442,10 @@ function TabButton({ active, onClick, icon: Icon, children }) {
   )
 }
 
-// Metadata visual por actor y por acción de Aura (íconos/colores + etiqueta legible).
+// Metadata visual por actor y por acción del agente (íconos/colores + etiqueta legible).
+// El nombre del agente NO es literal: se resuelve con useAgentName en el render (F3).
 const LEAD_ACTOR_META = {
-  aura: { label: 'Aura', icon: Bot, cls: 'text-forest-700 bg-forest-50' },
+  aura: { icon: Bot, cls: 'text-forest-700 bg-forest-50' },
   human: { label: 'Equipo', icon: UserCheck, cls: 'text-brand-700 bg-brand-50' },
   system: { label: 'Sistema', icon: Activity, cls: 'text-slatey bg-mist' },
 }
@@ -459,6 +460,7 @@ const LEAD_ACTION_ICON = {
 
 // Línea de tiempo de actividad del lead + campo para dejar un seguimiento humano.
 function LeadActivity({ leadId }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
@@ -522,6 +524,7 @@ function LeadActivity({ leadId }) {
           <ol className="space-y-2.5">
             {events.map((e) => {
               const meta = LEAD_ACTOR_META[e.actor_type] || LEAD_ACTOR_META.aura
+              const label = meta === LEAD_ACTOR_META.aura ? agentName : meta.label
               const Icon = LEAD_ACTION_ICON[e.action] || meta.icon
               return (
                 <li key={e.id} className="flex items-start gap-2.5 text-sm">
@@ -530,7 +533,7 @@ function LeadActivity({ leadId }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-ink">
-                      <span className="font-medium">{e.actor_name || meta.label}</span>{' '}
+                      <span className="font-medium">{e.actor_name || label}</span>{' '}
                       <span className="text-slatey">{e.summary || e.note}</span>
                     </p>
                     {e.summary && e.note && <p className="text-slatey">{e.note}</p>}

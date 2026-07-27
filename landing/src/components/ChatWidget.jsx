@@ -10,6 +10,12 @@ import { CARD_REGISTRY } from './chat/cardRegistry'
 import ChatEffects from './chat/ChatEffects'
 import { LANGUAGES, getStrings, detectInitialLang, persistLang } from '../i18n/chat'
 import { useBusinessProfile } from '../hooks/useBusinessProfile'
+import { migrateStorageKey } from '../lib/storageKeys'
+
+// Sesión persistente por navegador (sobrevive recargas durante la demo). Key neutra (sin
+// marca); la vieja 'hampton_chat_session' se migra una sola vez para no perder la sesión.
+const CHAT_SESSION_KEY = 'agent_chat_session'
+migrateStorageKey(localStorage, 'hampton_chat_session', CHAT_SESSION_KEY)
 
 // Convierte los tokens de un tema en un objeto de estilos CSS inline.
 // Solo sobreescribe los que vienen definidos en el tema.
@@ -25,13 +31,11 @@ function buildThemeStyles(theme) {
   }
 }
 
-// Session persistente por navegador (sobrevive recargas durante la demo).
 function getSessionId() {
-  const KEY = 'hampton_chat_session'
-  let id = localStorage.getItem(KEY)
+  let id = localStorage.getItem(CHAT_SESSION_KEY)
   if (!id) {
     id = 'web-' + Math.random().toString(36).slice(2) + Date.now().toString(36)
-    localStorage.setItem(KEY, id)
+    localStorage.setItem(CHAT_SESSION_KEY, id)
   }
   return id
 }
@@ -130,7 +134,7 @@ export default function ChatWidget() {
   const i18nVars = {
     businessName: profile.name,
     city: profile.city,
-    agentName: profile.agentName || 'Aura',
+    agentName: profile.agentName || 'el agente',
   }
   const t = getStrings(lang, i18nVars)
 
@@ -384,9 +388,8 @@ export default function ChatWidget() {
     try {
       await clearChat(sessionId.current)
     } catch { /* ignorar error — el frontend se resetea igual */ }
-    const KEY = 'hampton_chat_session'
     const newId = 'web-' + Math.random().toString(36).slice(2) + Date.now().toString(36)
-    localStorage.setItem(KEY, newId)
+    localStorage.setItem(CHAT_SESSION_KEY, newId)
     sessionId.current = newId
     setMessages([])
     setStarters([])
@@ -456,7 +459,7 @@ export default function ChatWidget() {
                   : <Sparkles size={20} strokeWidth={1.5} />}
               </div>
               <div>
-                <p className="font-display text-base font-600 tracking-wide leading-none">Aura</p>
+                <p className="font-display text-base font-600 tracking-wide leading-none">{i18nVars.agentName}</p>
                 <p className="mt-1 text-xs text-white/60 leading-none">{t.subtitle}</p>
                 <p className="mt-1.5 flex items-center gap-1.5 text-xs text-white/80 leading-none">
                   <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_1px_rgba(52,211,153,0.7)]" />

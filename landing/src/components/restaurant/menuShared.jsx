@@ -1,7 +1,8 @@
 import { Leaf, WheatOff } from 'lucide-react'
 
-// Categorías de la carta (orden de presentación). Compartido por la pantalla #pedido
-// y la card interactiva del chat.
+// Categorías de la carta (orden de presentación). ÚNICA FUENTE compartida por la pantalla
+// #pedido, la card interactiva del chat y el backoffice (MenuView) — antes había dos listas
+// duplicadas y divergentes ('bebida' solo existía en una).
 export const CATEGORIES = [
   { id: 'tapas', label: 'Tapas' },
   { id: 'plato', label: 'Platos' },
@@ -14,6 +15,7 @@ export const CATEGORIES = [
   { id: 'vino', label: 'Vinos' },
   { id: 'cafeteria', label: 'Café' },
   { id: 'merienda', label: 'Merienda' },
+  { id: 'bebida', label: 'Bebidas' },
 ]
 
 // Imagen de respaldo cuando un plato no tiene foto cargada.

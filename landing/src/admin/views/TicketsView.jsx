@@ -16,6 +16,7 @@ import Pagination from '../components/Pagination'
 import ChatTranscript from '../components/ChatTranscript'
 import { FilterChip, FilterGroupLabel } from '../components/FilterChip'
 import { useTableControls } from '../hooks/useTableControls'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 // Dos flujos distintos conviven en la misma tabla: OPERACIONES (pedidos de servicio que se
 // asignan al equipo) y CONSULTAS (post-venta informativa que el agente responde o escala).
@@ -136,9 +137,10 @@ function GestionBadge({ events }) {
   return <Badge tone="green"><Bot size={11} className="mr-1" /> Agente</Badge>
 }
 
-// Etiquetas y estilo de cada actor en el timeline.
+// Etiquetas y estilo de cada actor en el timeline. El nombre del agente NO es literal:
+// se resuelve con useAgentName en el render (F3); el resto de actores tiene etiqueta fija.
 const ACTOR_META = {
-  agent: { label: 'Aura', icon: Bot, cls: 'text-forest-700 bg-forest-50' },
+  agent: { icon: Bot, cls: 'text-forest-700 bg-forest-50' },
   staff: { label: 'Equipo', icon: User, cls: 'text-brand-700 bg-brand-50' },
   guest: { label: 'Huésped', icon: User, cls: 'text-slatey bg-mist' },
   human: { label: 'Backoffice', icon: Hand, cls: 'text-amber-700 bg-amber-50' },
@@ -150,6 +152,7 @@ const ACTION_LABELS = {
 }
 
 function TicketTimeline({ events }) {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   if (!events || events.length === 0) {
     return <p className="px-4 py-3 text-xs text-slatey">Sin actividad registrada todavía.</p>
   }
@@ -157,6 +160,7 @@ function TicketTimeline({ events }) {
     <ol className="space-y-2 px-4 py-3">
       {events.map((e) => {
         const meta = ACTOR_META[e.actor_type] || ACTOR_META.agent
+        const label = meta === ACTOR_META.agent ? agentName : meta.label
         const Icon = meta.icon
         return (
           <li key={e.id} className="flex items-start gap-2.5 text-sm">
@@ -168,7 +172,7 @@ function TicketTimeline({ events }) {
             </span>
             <div className="min-w-0">
               <p className="text-ink">
-                <span className="font-medium">{e.actor_name || meta.label}</span>{' '}
+                <span className="font-medium">{e.actor_name || label}</span>{' '}
                 <span className="text-slatey">{ACTION_LABELS[e.action] || e.action}</span>
                 {e.note && <span className="text-slatey"> · {e.note}</span>}
               </p>
@@ -388,7 +392,7 @@ export default function TicketsView() {
     <div>
       <PageHeader
         title="Operaciones"
-        subtitle="Pedidos y consultas que gestiona Aura. Los pedidos de servicio se asignan al equipo por área y se cierran con validación del huésped."
+        subtitle={`Pedidos y consultas que gestiona ${agentName}. Los pedidos de servicio se asignan al equipo por área y se cierran con validación del huésped.`}
         right={
           <button onClick={load} className="btn-secondary px-4 py-2 text-xs">
             <RefreshCw size={14} /> Actualizar

@@ -4,6 +4,7 @@ import { getHumanAttention, updateHumanAttention } from '../../../services/api'
 import { PageHeader, Loading, Badge } from '../../ui'
 import { useAdminGate } from '../../components/useAdminGate'
 import { toast } from '../../toast'
+import { useAgentName } from '../../../hooks/useBusinessProfile'
 
 // 0 = lunes … 6 = domingo (coincide con datetime.weekday() del backend).
 const DIAS = [
@@ -14,6 +15,7 @@ const DIAS = [
 const _defDia = () => ({ active: false, from: '09:00', to: '18:00' })
 
 export default function AtencionHumanaView() {
+  const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [enabled, setEnabled] = useState(false)
@@ -60,7 +62,7 @@ export default function AtencionHumanaView() {
     <div>
       <PageHeader
         title="Atención humana"
-        subtitle="Cuándo hay una persona para tomar conversaciones en vivo. Aura solo ofrece pasar con alguien si hay atención disponible."
+        subtitle={`Cuándo hay una persona para tomar conversaciones en vivo. ${agentName} solo ofrece pasar con alguien si hay atención disponible.`}
       />
       {gateModal}
 
@@ -83,7 +85,7 @@ export default function AtencionHumanaView() {
         <label className="flex items-center justify-between gap-4 py-1">
           <span>
             <span className="block text-sm font-semibold text-ink">Función activada</span>
-            <span className="block text-xs text-slatey">Si está apagada, Aura nunca ofrece pasar con una persona.</span>
+            <span className="block text-xs text-slatey">Si está apagada, {agentName} nunca ofrece pasar con una persona.</span>
           </span>
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)}
                  className="h-5 w-5 accent-brand-600" />

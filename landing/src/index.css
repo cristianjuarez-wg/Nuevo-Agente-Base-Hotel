@@ -99,7 +99,7 @@
   .prose-chat ol { margin: 0.35rem 0; padding-left: 1.2rem; list-style: decimal; }
   .prose-chat li { margin: 0.15rem 0; }
   .prose-chat strong { font-weight: 600; }
-  .prose-chat a { color: #005aa9; text-decoration: underline; }
+  .prose-chat a { @apply text-brand-600 underline; }
   .prose-chat code {
     background: #e8f2fb; padding: 0.05rem 0.3rem; border-radius: 0.3rem; font-size: 0.85em;
   }
@@ -117,7 +117,7 @@
   .prose-doc ol { margin: 0.7rem 0; padding-left: 1.4rem; list-style: decimal; }
   .prose-doc li { margin: 0.3rem 0; }
   .prose-doc strong { font-weight: 600; color: #0f172a; }
-  .prose-doc a { color: #005aa9; text-decoration: underline; }
+  .prose-doc a { @apply text-brand-600 underline; }
   .prose-doc blockquote { border-left: 3px solid #cbd5e1; padding-left: 0.9rem; margin: 0.8rem 0; color: #475569; font-style: italic; }
   .prose-doc hr { border: 0; border-top: 1px solid #e2e8f0; margin: 1.4rem 0; }
   .prose-doc code { background: #f1f5f9; padding: 0.1rem 0.35rem; border-radius: 0.3rem; font-size: 0.85em; }

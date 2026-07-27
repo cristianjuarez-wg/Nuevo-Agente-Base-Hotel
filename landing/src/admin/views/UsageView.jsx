@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Coins, DollarSign, CalendarDays, ShieldAlert, MessageCircle } from 'lucide-react'
 import { getUsageSummary } from '../../services/api'
 import { PageHeader, StatCard, Loading, formatNumber, formatUSD } from '../ui'
+import { useAgentName } from '../../hooks/useBusinessProfile'
 
 const formatTokens = (n) => formatNumber(n, 0)
 const formatUsd = (n) => formatUSD(n, 2)
@@ -33,6 +34,7 @@ function LimitBar({ label, spent, limit }) {
 }
 
 export default function UsageView() {
+  const agentName = useAgentName('tu agente')  // nombre del backoffice, no hardcodeado (F3)
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -61,7 +63,7 @@ export default function UsageView() {
     <div>
       <PageHeader
         title="Consumo IA"
-        subtitle="Tokens y costo estimado del agente Aura. Los topes de gasto se configuran en Límites y seguridad."
+        subtitle={`Tokens y costo estimado de ${agentName}. Los topes de gasto se configuran en Límites y seguridad.`}
       />
 
       {blocked && (

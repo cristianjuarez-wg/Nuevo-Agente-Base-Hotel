@@ -2,6 +2,12 @@ from pydantic_settings import BaseSettings
 from typing import Optional, List
 
 class Settings(BaseSettings):
+    # Metadata neutra de la app (docs de FastAPI, /info, logs de arranque). La identidad
+    # del negocio que ve el huésped sale del BusinessProfile, NO de acá: esto es solo el
+    # nombre del servicio para operadores (metadata, no vale leer el perfil con sesión de DB).
+    APP_NAME: str = "Empleado Digital API"
+    APP_DESCRIPTION: str = "API del Empleado Digital (RAG + agente)"
+
     # API Keys
     OPENAI_API_KEY: str
 

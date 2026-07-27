@@ -30,7 +30,7 @@ app_start_time = time.time()
 async def lifespan(app: FastAPI):
     """Maneja el ciclo de vida de la aplicación"""
     # Startup
-    logger.info("🚀 Hampton Bariloche Concierge API starting up",
+    logger.info(f"🚀 {settings.APP_NAME} starting up",
                environment="production" if not settings.DEBUG else "development",
                log_level=settings.LOG_LEVEL)
 
@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
                    profile_name=profile_info.get("profile_name"),
                    agent_name=profile_info.get("agent_name"))
         
-        logger.info("✅ Hampton Bariloche Concierge API startup completed successfully")
+        logger.info(f"✅ {settings.APP_NAME} startup completed successfully")
         
     except Exception as e:
         logger.error("❌ Startup error", error=str(e))
@@ -126,12 +126,12 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("🛑 Hampton Bariloche Concierge API shutting down")
+    logger.info(f"🛑 {settings.APP_NAME} shutting down")
 
 # Crear aplicación FastAPI
 app = FastAPI(
-    title="Hampton Bariloche Concierge API",
-    description="API del concierge virtual del Hampton by Hilton Bariloche (RAG + agente)",
+    title=settings.APP_NAME,
+    description=settings.APP_DESCRIPTION,
     version="1.1.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
@@ -280,7 +280,8 @@ async def log_requests(request: Request, call_next):
 #     GET orders|vouchers/{code}, validate-booking/{code}
 #                       → carta pública y flujo de pedido del comensal (por código).
 #   · business_profile: /public/business-profile → subset seguro que consume la landing.
-#   · "/" , /metrics, /media/* → health, scraping de métricas y media pública.
+#   · "/" , /metrics, /media/*, /vouchers/* → health, scraping de métricas, media pública
+#     y los PDFs de vouchers del restaurante (el huésped los abre por link).
 # Todo lo demás (costos, config, entrenamiento, PII, perfil completo) EXIGE credencial.
 _admin_dep = [Depends(require_admin_key)]
 app.include_router(chat.router)                                            # público (widget)
@@ -382,11 +383,9 @@ async def health_check():
                 healthy=vs_healthy,
                 message=vs_msg
             ),
-            geography_service={
-                "healthy": True,  # Geography service es local, siempre funciona
-                "continents_count": len(profile_manager.current_profile.get("capabilities", [])),
-                "message": "Servicio de geografía funcionando"
-            },
+            # geography_service ya NO se setea: el servicio de geografía se retiró en la
+            # Fase 0.2 y reportarlo "healthy" hardcodeado mentía. El campo queda en el
+            # schema (Optional, default None) solo por compat del contrato.
             agent_profile={
                 "healthy": profile_healthy,
                 "message": profile_msg
@@ -412,15 +411,14 @@ async def get_app_info():
     uptime_seconds = time.time() - app_start_time
     
     return {
-        "name": "Hampton Bariloche Concierge",
+        "name": settings.APP_NAME,
         "version": "1.1.0",
-        "description": "Concierge virtual del Hampton by Hilton Bariloche con sistema RAG",
+        "description": settings.APP_DESCRIPTION,
         "uptime_seconds": uptime_seconds,
         "uptime_formatted": f"{uptime_seconds/3600:.1f} horas",
         "environment": "development" if settings.DEBUG else "production",
         "features": [
             "Sistema RAG con ChromaDB",
-            "Análisis geográfico inteligente",
             "Procesamiento de PDFs",
             "Circuit breakers y retry logic",
             "Logging estructurado",
@@ -463,18 +461,19 @@ async def get_metrics():
         
         uptime = time.time() - app_start_time
         
-        # Formato básico de métricas
-        metrics = f"""# HELP travel_agent_documents_total Total documents in vector store
-# TYPE travel_agent_documents_total gauge
-travel_agent_documents_total {doc_count}
+        # Formato básico de métricas. Nombres neutros `empleado_digital_*`
+        # (renombrados de los legacy `travel_agent_*` de turismo; sin consumidores conocidos).
+        metrics = f"""# HELP empleado_digital_documents_total Total documents in vector store
+# TYPE empleado_digital_documents_total gauge
+empleado_digital_documents_total {doc_count}
 
-# HELP travel_agent_active_sessions Active chat sessions
-# TYPE travel_agent_active_sessions gauge
-travel_agent_active_sessions {active_sessions}
+# HELP empleado_digital_active_sessions Active chat sessions
+# TYPE empleado_digital_active_sessions gauge
+empleado_digital_active_sessions {active_sessions}
 
-# HELP travel_agent_uptime_seconds Application uptime in seconds
-# TYPE travel_agent_uptime_seconds counter
-travel_agent_uptime_seconds {uptime}
+# HELP empleado_digital_uptime_seconds Application uptime in seconds
+# TYPE empleado_digital_uptime_seconds counter
+empleado_digital_uptime_seconds {uptime}
 """
         
         return Response(content=metrics, media_type="text/plain")
@@ -486,7 +485,7 @@ travel_agent_uptime_seconds {uptime}
 if __name__ == "__main__":
     import uvicorn
     
-    logger.info("Starting Hampton Bariloche Concierge API",
+    logger.info(f"Starting {settings.APP_NAME}",
                host=settings.HOST,
                port=settings.PORT,
                debug=settings.DEBUG)

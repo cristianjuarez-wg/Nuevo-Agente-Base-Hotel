@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CreditCard, Clock, XCircle, Dog, BellRing, HelpCircle, FileText,
   MapPin, Plus, Pencil, Trash2, X, Save, Loader2, Upload, FileUp,
@@ -8,7 +8,7 @@ import {
   listPlaces, savePlace, deletePlace, MEDIA_BASE,
   listKnowledgeDocuments, uploadKnowledgeDocument, uploadKnowledgeTextDocument,
   setKnowledgeEntryStatus, deleteKnowledgeEntry as deleteDoc,
-  extractFromDocument,
+  extractFromDocument, getTrainingSchemas,
 } from '../../../services/api'
 import { Sparkles, Wand2 } from 'lucide-react'
 import { PageHeader, Loading, Badge } from '../../ui'
@@ -26,6 +26,8 @@ const CATEGORIES = [
   { id: 'general', label: 'Información general', icon: FileText, hint: 'Otra info para el agente' },
 ]
 
+// Categorías de lugares. Hoy el backend no expone un endpoint de schemas para places
+// (solo valida PLACE_CATEGORIES al guardar): quedan locales como fallback de diseño (F5).
 const PLACE_CATEGORIES = [
   { id: 'excursion', label: 'Excursión' },
   { id: 'gastronomia', label: 'Gastronomía' },
@@ -62,6 +64,27 @@ export default function KnowledgeView() {
   }
   useEffect(load, [])
 
+  // F5: las categorías se ENRIQUECEN desde el backend (`/api/agents/training-schemas`, el
+  // mismo endpoint que consume EmployeeTraining) con FALLBACK total a la lista local: si el
+  // endpoint falla, viene vacío o no trae una categoría conocida, la vista se comporta
+  // exactamente igual que con la lista hardcodeada. Solo se toman label/hint de ids que
+  // coinciden con las categorías de conocimiento: el backend valida KNOWLEDGE_CATEGORIES al
+  // guardar, así que ids ajenos (entrenamiento del agente) no se mezclan acá. El icono
+  // queda local (el schema del backend no lo define).
+  const [remoteSchemas, setRemoteSchemas] = useState(null)
+  useEffect(() => {
+    getTrainingSchemas().then(setRemoteSchemas).catch(() => {})
+  }, [])
+
+  const categories = useMemo(() => {
+    const remote = remoteSchemas?.schemas
+    if (!remote) return CATEGORIES
+    return CATEGORIES.map((c) => {
+      const r = remote[c.id]
+      return r ? { ...c, label: r.label || c.label, hint: r.hint || c.hint } : c
+    })
+  }, [remoteSchemas])
+
   const removeDocument = async (id) => {
     await deleteDoc(id)
     load()
@@ -85,7 +108,7 @@ export default function KnowledgeView() {
       {/* Información del hotel — categorías */}
       <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slatey">Información del hotel</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {CATEGORIES.map((cat) => {
+        {categories.map((cat) => {
           const Icon = cat.icon
           const count = entriesByCategory(cat.id).length
           return (
@@ -187,7 +210,7 @@ export default function KnowledgeView() {
           </div>
         ) : (
           documents.map((d) => {
-            const cat = CATEGORIES.find((c) => c.id === d.category)
+            const cat = categories.find((c) => c.id === d.category)
             return (
               <div key={d.id} className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-card">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
@@ -217,14 +240,14 @@ export default function KnowledgeView() {
       {/* Modales */}
       {docModal && (
         <DocumentModal
-          categories={CATEGORIES}
+          categories={categories}
           onClose={() => setDocModal(false)}
           onSaved={() => { setDocModal(false); load() }}
         />
       )}
       {editCategory && (
         <CategoryModal
-          category={CATEGORIES.find((c) => c.id === editCategory)}
+          category={categories.find((c) => c.id === editCategory)}
           entries={entriesByCategory(editCategory)}
           onClose={() => setEditCategory(null)}
           onSaved={() => { setEditCategory(null); load() }}

@@ -104,6 +104,11 @@ def ensure_seeded(db: Session) -> None:
 
     Paridad: con estos valores de fábrica, el agente se comporta igual que antes de la
     Fase 1. No pisa un perfil ya editado por el cliente.
+
+    ATENCIÓN (C4, deliberado): siembra la identidad DEMO del Hampton en TODA DB vacía
+    (arranca con algo razonable para la demo, en vez de sin perfil). Una instancia nueva
+    la sobrescribe con `python -m instance.bootstrap_instance <cliente>.yaml` (ver
+    docs/RUNBOOK_NUEVA_INSTANCIA.md, Paso 4) ANTES de exponerse al público.
     """
     try:
         existing = db.query(BusinessProfile).filter(BusinessProfile.id == 1).first()

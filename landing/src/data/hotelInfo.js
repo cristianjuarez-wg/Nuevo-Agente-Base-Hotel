@@ -20,7 +20,9 @@ export const HOTEL = {
   mapsQuery: '',
 }
 
-// Servicios destacados (lucide icon names resueltos en el componente)
+// Servicios destacados (lucide icon names resueltos en el componente).
+// Contenido de DOMINIO de la instancia actual (criterio F2): la landing pública se rehace
+// por proyecto, así que SERVICES/HIGHLIGHTS NO se parametrizan ni se mueven al núcleo.
 export const SERVICES = [
   {
     icon: 'UtensilsCrossed',

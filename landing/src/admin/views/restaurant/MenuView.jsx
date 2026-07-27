@@ -5,11 +5,9 @@ import { PageHeader, Badge, Loading, EmptyState, formatUSD, formatARS } from '..
 import ImageInput from '../../components/ImageInput'
 import { toast } from '../../toast'
 import SearchInput from '../../components/SearchInput'
+// Única fuente de categorías de la carta (compartida con la pantalla #pedido y la card del chat).
+import { CATEGORIES } from '../../../components/restaurant/menuShared'
 
-const CATEGORIES = [
-  'tapas', 'plato', 'sandwich', 'ensalada', 'pizza', 'postre',
-  'cerveza', 'trago', 'vino', 'cafeteria', 'merienda', 'bebida',
-]
 const TAG_OPTIONS = ['vegetariano', 'vegano', 'sin_tacc', 'picante']
 const ALLERGEN_OPTIONS = ['gluten', 'lacteos', 'frutos_secos', 'huevo', 'pescado', 'mariscos']
 
@@ -70,7 +68,7 @@ export default function MenuView() {
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-ink">{it.name}</span>
-                  <Badge tone="gray">{it.category}</Badge>
+                  <Badge tone="gray">{CATEGORIES.find((c) => c.id === it.category)?.label || it.category}</Badge>
                   {(it.tags || []).map((t) => <Badge key={t} tone="green">{t}</Badge>)}
                   {it.only_dinner && <Badge tone="blue"><Moon size={11} className="mr-1" /> Solo cena</Badge>}
                   {!it.available && <Badge tone="amber">sin stock</Badge>}
@@ -143,7 +141,7 @@ function MenuModal({ item, onClose, onSaved }) {
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-ink">Categoría</span>
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:border-brand-500 focus:outline-none">
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
           </label>
           <label className="block">

@@ -9,6 +9,7 @@
  * consumidores sigan importando de un solo lugar.
  */
 import axios from 'axios'
+import { migrateStorageKey } from '../../lib/storageKeys'
 
 // Base del backend del hotel (puerto 8010). Configurable por env para el deploy.
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8010'
@@ -40,7 +41,10 @@ export const client = axios.create({
 // Se guarda en sessionStorage (se borra al cerrar el navegador). El interceptor la
 // adjunta como header X-Admin-Key en cada request; el backend solo la exige en los
 // endpoints críticos (topes, cotización, reset/demo). El resto la ignora.
-const ADMIN_KEY_STORAGE = 'hampton_admin_key'
+const ADMIN_KEY_STORAGE = 'agent_admin_key'
+// Migración suave desde la key vieja con marca (higiene #12): se copia y se borra la vieja
+// una sola vez, así un admin logueado NO se desloguea tras el cambio.
+migrateStorageKey(sessionStorage, 'hampton_admin_key', ADMIN_KEY_STORAGE)
 
 export function setAdminKey(key) {
   if (key) sessionStorage.setItem(ADMIN_KEY_STORAGE, key)
@@ -56,7 +60,8 @@ export function clearAdminKey() {
 // El login devuelve un JWT que se guarda en sessionStorage; el interceptor lo adjunta
 // como Authorization: Bearer en cada request. Si el backend responde 401 (token
 // ausente/expirado), se limpia y se emite un evento para que la UI muestre el login.
-const AUTH_TOKEN_STORAGE = 'hampton_auth_token'
+const AUTH_TOKEN_STORAGE = 'agent_auth_token'
+migrateStorageKey(sessionStorage, 'hampton_auth_token', AUTH_TOKEN_STORAGE)
 
 export function setAuthToken(token) {
   if (token) sessionStorage.setItem(AUTH_TOKEN_STORAGE, token)
@@ -118,36 +123,7 @@ export async function updateBusinessProfile(payload) {
   return data
 }
 
-export async function getAvailability({ checkIn, checkOut, guests }) {
-  const { data } = await client.get('/api/reservations/availability', {
-    params: { check_in: checkIn, check_out: checkOut, guests },
-  })
-  return data.available_rooms ?? data.rooms ?? data
-}
-
-export async function createBooking(payload) {
-  // payload: { room_id, check_in, check_out, guest_name, guest_email, guest_phone, guests }
-  const { data } = await client.post('/api/reservations/bookings', payload)
-  return data.booking ?? data
-}
-
-export async function getBooking(code) {
-  const { data } = await client.get(`/api/reservations/bookings/${code}`)
-  return data.booking ?? data
-}
-
-export async function deleteBooking(code) {
-  const { data } = await client.delete(`/api/reservations/bookings/${code}`)
-  return data
-}
-
-// Check-in express: dispara el flujo por WhatsApp para una reserva (acción protegida).
-export async function sendCheckinExpress(code) {
-  const { data } = await client.post(`/api/checkin/${encodeURIComponent(code)}/send`)
-  return data
-}
-
-// ── Chat del agente (Aura) ───────────────────────────────────────────────────
+// ── Chat del agente ────────────────────────────────────────────────────────
 export async function getGreeting(lang = 'es') {
   const { data } = await client.get('/api/chat/greeting', { params: { lang } })
   return data
@@ -168,11 +144,6 @@ export async function clearChat(sessionId) {
 }
 
 // ── Backoffice ───────────────────────────────────────────────────────────────
-export async function listBookings() {
-  const { data } = await client.get('/api/reservations/bookings')
-  return data.bookings ?? data
-}
-
 export async function listLeads(includeUnnamed = false, includeConverted = false) {
   // includeUnnamed=true suma los contactos crudos (teléfono sin nombre, ej. WhatsApp que consultó).
   // includeConverted=true suma los leads ya ganados/convertidos (que reservaron) — la lista los
@@ -357,32 +328,7 @@ export async function deleteKnowledgeEntry(id) {
   return data
 }
 
-// Lugares / excursiones
-export async function listPlaces(category) {
-  const { data } = await client.get('/api/knowledge/places', {
-    params: category ? { category } : {},
-  })
-  return data.places ?? data
-}
-
-export async function savePlace(payload, id) {
-  if (id) {
-    const { data } = await client.put(`/api/knowledge/places/${id}`, payload)
-    return data
-  }
-  const { data } = await client.post('/api/knowledge/places', payload)
-  return data
-}
-
-export async function setPlaceStatus(id, status) {
-  const { data } = await client.patch(`/api/knowledge/places/${id}/status`, { status })
-  return data
-}
-
-export async function deletePlace(id) {
-  const { data } = await client.delete(`/api/knowledge/places/${id}`)
-  return data
-}
+// Lugares / excursiones: el CRUD vive en `api/hotel.js` (dominio) — ver F6.
 
 // Subida de imagen → devuelve { url } (ruta /media/...). Se prefija con API_BASE para mostrarla.
 export async function uploadKnowledgeImage(file) {

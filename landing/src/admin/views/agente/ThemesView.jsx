@@ -3,6 +3,7 @@ import { Palette, Plus, Pencil, Trash2, X, Save, Loader2, Pin, ToggleLeft, Toggl
 import { listChatThemes, saveChatTheme, patchChatThemeStatus, deleteChatTheme } from '../../../services/api'
 import { PageHeader, Badge, Loading, EmptyState } from '../../ui'
 import { useAgentName } from '../../../hooks/useBusinessProfile'
+import { brand } from '../../../theme.config.js'
 
 const MONTHS = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -55,7 +56,7 @@ function ThemePreview({ theme }) {
   const agentName = useAgentName('el agente')  // nombre del backoffice, no hardcodeado (F3)
   const hBg = theme.header_bg || '#003f77'
   const hText = theme.header_text || '#ffffff'
-  const accent = theme.accent_color || '#005aa9'
+  const accent = theme.accent_color || brand.DEFAULT
   return (
     <div className="mt-2 overflow-hidden rounded-xl border border-brand-100" style={{ width: 160 }}>
       <div className="flex items-center gap-2 px-3 py-2" style={{ background: hBg, color: hText }}>
@@ -233,7 +234,7 @@ function ThemeModal({ theme, onClose, onSaved }) {
   const [untilDay, setUntilDay] = useState(theme.active_until_day ?? '')
   const [headerBg, setHeaderBg] = useState(theme.header_bg || '#003f77')
   const [headerText, setHeaderText] = useState(theme.header_text || '#ffffff')
-  const [accentColor, setAccentColor] = useState(theme.accent_color || '#005aa9')
+  const [accentColor, setAccentColor] = useState(theme.accent_color || brand.DEFAULT)
   const [bubbleBg, setBubbleBg] = useState(theme.bubble_bg || '#f7f4ee')
   const [fabBg, setFabBg] = useState(theme.fab_bg || '#003f77')
   const [fabText, setFabText] = useState(theme.fab_text || '#ffffff')

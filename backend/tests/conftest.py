@@ -8,7 +8,8 @@ from sqlalchemy.pool import StaticPool
 # Usar BD en memoria para tests (nunca toca documents.db)
 os.environ.setdefault("DEBUG", "true")  # entorno de test → admin_auth permite sin token (Fase 2.5)
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-key")
-os.environ.setdefault("FLIGHTAPI_API_KEY", "test-flight-key")
+# (FLIGHTAPI_API_KEY se quitó: la integración de vuelos se retiró en Fase 0.2 y ya
+#  ningún código la lee; config.py ignora extras igualmente).
 os.environ.setdefault("SQLITE_DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("CHROMA_PERSIST_DIRECTORY", "/tmp/chroma_test")
