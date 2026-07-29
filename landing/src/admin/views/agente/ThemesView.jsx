@@ -3,7 +3,7 @@ import { Palette, Plus, Pencil, Trash2, X, Save, Loader2, Pin, ToggleLeft, Toggl
 import { listChatThemes, saveChatTheme, patchChatThemeStatus, deleteChatTheme } from '../../../services/api'
 import { PageHeader, Badge, Loading, EmptyState } from '../../ui'
 import { useAgentName } from '../../../hooks/useBusinessProfile'
-import { brand } from '../../../theme.config.js'
+import { brand } from '../../../../theme.config.js'
 
 const MONTHS = [
   '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
