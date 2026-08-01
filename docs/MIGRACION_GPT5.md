@@ -49,6 +49,30 @@ Conclusión: no alcanza con mirar el precio de lista. Hay que medir el consumo r
 
 `python -m evals.run_evals --handoff-gate` (12 escenarios, 22 turnos).
 
+### RESULTADO FINAL (tras los tres fixes)
+
+| Configuración | c1 | c2 | c3 | Costo 10k turnos |
+|---|---|---|---|---|
+| gpt-4o + 4o-mini (hoy) | **23/23** | — | — | $620 |
+| **gpt-5-mini + nano** | **23/23** | **23/23** | **23/23** | **$139 (−78%)** |
+
+**gpt-5-mini iguala a gpt-4o de forma consistente.** Criterio cumplido: la PEOR
+de tres corridas es perfecta, no el promedio.
+
+Los tres fixes que lo hicieron posible (ninguno es un parche para GPT-5; los tres
+son mejoras reales que aplican también a gpt-4o):
+
+1. **Piso de tokens** — el clasificador de escalación se quedaba sin presupuesto
+   razonando y su fail-safe escalaba (ver §3.1).
+2. **Contradicción del prompt de post-venta** — `analizar_escalacion` decía
+   ESCALAR ante un desperfecto y el huésped quedaba sin ticket.
+3. **Confirmación redundante en `crear_reserva`** — "llamala SOLO cuando tengas
+   CONFIRMADOS los datos" se leía como "hacé que el huésped confirme", así que
+   ante un pedido completo el agente repreguntaba en vez de reservar. Aparecía en
+   1 de cada 4 corridas y tumbaba el escenario entero por cascada.
+
+---
+
 Mediciones válidas = corrida única, sin procesos concurrentes, con las versiones
 de `requirements.txt`, y con `database is locked` en 0.
 
@@ -178,34 +202,41 @@ Antes de cualquier medición:
 
 ## 4. Recomendación
 
-### Descartado: gpt-5
+### ✅ Migrar a gpt-5-mini — habilitado
 
-Cuesta **+10% que gpt-4o** y rinde peor (20/22, 18/22), con la varianza más alta
-de los tres. No hay ningún argumento a favor.
+Iguala a gpt-4o (23/23 en tres corridas consecutivas) y cuesta **78% menos**.
+Cambiar de modelo es editar el `.env`:
 
-### Candidato real: gpt-5-mini (−78%)
+```
+OPENAI_MODEL=gpt-5-mini
+OPENAI_MODEL_CLASSIFIER=gpt-5-nano
+OPENAI_MODEL_FAST=gpt-5-nano
+```
 
-**No migrar tal cual, pero vale la pena el intento de cerrarlo.**
+**Antes de activarlo en producción**, correr el gate una vez contra el entorno
+real (Render usa PostgreSQL, no SQLite; las mediciones de acá son locales).
 
-Rinde 20/22 y 21/22 contra los 22/22 estables de gpt-4o. La diferencia es de 1-2
-turnos, siempre en post-venta, y por causas de criterio que un prompt puede
-corregir. Contra eso, el ahorro es de **$481 cada 10.000 turnos** ($620 → $139).
+Traducido a operación (~5 turnos por conversación):
 
-Plan sugerido, en orden:
+| Conversaciones/día | gpt-4o (hoy) | gpt-5-mini | Ahorro/año |
+|---|---|---|---|
+| 30 | $279/mes | $63/mes | **$2.594** |
+| 100 | $930/mes | $209/mes | **$8.647** |
 
-1. **Ajustar el prompt de post-venta** con dos instrucciones explícitas: cuándo
-   registrar un pedido de servicio (`solicitar_servicio`) y cuándo NO escalar a
-   un humano si el ticket ya quedó registrado.
-2. **Correr el gate 3+ veces** con gpt-5-mini. El criterio de aceptación es que
-   la *peor* corrida sea 22/22, no el promedio: con esta varianza, una sola
-   pasada verde no prueba nada.
-3. **Si no se cierra**, quedarse en gpt-4o. El trabajo de compatibilidad ya está
-   hecho y no caduca: sirve para el próximo modelo que salga.
+El costo por conversación pasa de **$0,31 a $0,07**. Para un hotel solo el ahorro
+es modesto; el impacto real está en el modelo multi-instancia, donde baja el costo
+variable por cliente.
+
+### ❌ Descartado: gpt-5
+
+Cuesta **+10% que gpt-4o** y rendía peor (20/22, 18/22), con la varianza más alta
+de los tres. Esas mediciones son previas a los tres fixes — si se quisiera
+reconsiderar habría que re-medirlo, pero el caso económico sigue sin cerrar.
 
 ### Siempre válido: quedarse en gpt-4o
 
-Pasa el gate de forma estable y cuesta menos que gpt-5. No hay urgencia técnica
-para migrar; la decisión es puramente económica y puede tomarse cuando convenga.
+Pasa el gate de forma estable. No hay urgencia técnica para migrar; la decisión
+es puramente económica.
 
 **No se recomienda** una migración parcial (agentes en gpt-5, triage en gpt-4o-mini)
 sin correr el gate completo: el triage decide el ruteo y es donde empiezan las
