@@ -34,8 +34,12 @@ from agents import (
 from app.config import settings
 from app.core.profile.agent_profile import profile_manager
 from app.core.observability.logging_config import get_logger
+from app.core.llm.circuit_breaker import openai_circuit_breaker
+from app.core.llm.model_compat import is_restricted_family
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
+from app.core.agents.agent_spec import resolve_model_name, resolve_temperature
+from app.domains.hotel.agent_specs import SPECS
 
 logger = get_logger(__name__)
 
@@ -158,9 +162,14 @@ class TriageSDKOrchestrator:
     """Ruteo pre/post/casual sobre el SDK. Devuelve la ruta; no ejecuta el agente destino."""
 
     def __init__(self):
-        self._model_name = settings.OPENAI_MODEL_CLASSIFIER
+        # El modelo y la temperatura salen de SPECS["triage"], no de literales acá:
+        # antes estaban duplicados y editar la spec no tenía ningún efecto sobre el
+        # ruteo real. `model_setting` de la spec apunta a OPENAI_MODEL_CLASSIFIER
+        # (modelo barato: el triage solo clasifica, no redacta).
+        self._spec = SPECS["triage"]
+        self._model_name = resolve_model_name(self._spec, settings)
         self._model = OpenAIChatCompletionsModel(
-            model=settings.OPENAI_MODEL_CLASSIFIER,  # gpt-4o-mini: ruteo barato
+            model=self._model_name,
             openai_client=_sdk_client,
         )
 
@@ -186,18 +195,29 @@ class TriageSDKOrchestrator:
         start = time.time()
         usage = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "model": self._model_name}
 
+        # Igual que sdk_runtime: la familia GPT-5 rechaza temperature != 1 (400).
+        model_settings = (
+            ModelSettings()
+            if is_restricted_family(self._model_name)
+            else ModelSettings(temperature=resolve_temperature(self._spec, settings))
+        )
         triage_agent = Agent(
             name="triage",
             instructions=_build_triage_instructions(),
             model=self._model,
-            model_settings=ModelSettings(temperature=0),
+            model_settings=model_settings,
             handoffs=[_PREVENTA_MARKER, _POSTVENTA_MARKER],
         )
 
         input_list = self._build_input_list(history, message)
 
         try:
-            result = await Runner.run(triage_agent, input=input_list, max_turns=3)
+            # Bajo el circuit breaker, como el resto de las llamadas al LLM: el triage
+            # corre en CADA turno, así que si OpenAI se cae era el único camino que
+            # seguía esperando el timeout completo en vez de fallar rápido.
+            result = await openai_circuit_breaker.acall(
+                Runner.run, triage_agent, input=input_list, max_turns=self._spec.max_turns,
+            )
             usage = extract_usage(result, model=self._model_name)
             last_agent_name = getattr(result.last_agent, "name", "triage")
 

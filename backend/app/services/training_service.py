@@ -20,6 +20,7 @@ from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models.training_document import TrainingDocument
 from app.core.observability.logging_config import get_logger
 
@@ -314,10 +315,12 @@ def render_training(category: str, data: Dict) -> str:
 
 # ---------------------------------------------------------------------------
 # EXTRACCIÓN con IA — el cliente sube un documento y la IA propone los CAMPOS
-# (patrón calcado de knowledge_extractor: GPT-4o-mini, JSON estricto, el
+# (patrón calcado de knowledge_extractor: modelo económico, JSON estricto, el
 # cliente SIEMPRE revisa antes de guardar).
 # ---------------------------------------------------------------------------
-_EXTRACT_MODEL = "gpt-4o-mini"
+# Sale de settings (no hardcodeado): cambiar de familia de modelo debe ser una
+# variable de entorno, no una edición de código.
+_EXTRACT_MODEL = settings.OPENAI_MODEL_FAST
 
 _EXTRACT_SCHEMAS = {
     "tono_marca": (

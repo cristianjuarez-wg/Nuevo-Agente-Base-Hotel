@@ -1,23 +1,25 @@
 """
-Extracción de campos de formulario desde un documento, con GPT-4o-mini.
+Extracción de campos de formulario desde un documento, con el modelo económico.
 
 El cliente sube un documento (PDF o texto) y el sistema extrae los campos de la categoría
 correspondiente para PRE-RELLENAR el formulario. El cliente SIEMPRE revisa y corrige antes
 de guardar (sobre todo en pagos: un CBU mal leído sería grave).
 
-Se usa gpt-4o-mini (≈16x más barato que gpt-4o) porque la tarea es de extracción simple.
-Cada categoría tiene su propio "esquema de extracción" (qué campos pedir).
+Usa OPENAI_MODEL_FAST (mucho más barato que el modelo principal) porque la tarea es de
+extracción simple. Cada categoría tiene su propio "esquema de extracción" (qué campos pedir).
 """
 import json
 from typing import Dict
 
+from app.config import settings
 from app.core.llm.openai_client import get_sync_openai
 from app.core.observability.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-# Modelo económico para extracción.
-_MODEL = "gpt-4o-mini"
+# Modelo económico para extracción. Sale de settings (no hardcodeado): así cambiar de
+# familia de modelo es una variable de entorno y no una cacería por el código.
+_MODEL = settings.OPENAI_MODEL_FAST
 
 # Instrucción de extracción por categoría: qué forma de JSON debe devolver el modelo.
 # El modelo devuelve SOLO los campos que encuentra; lo que no esté, lo deja vacío.

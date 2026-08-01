@@ -11,9 +11,20 @@ para no subestimar el gasto).
 from typing import Dict
 
 # USD por 1M tokens: (input, output).
+#
+# ATENCIÓN al orden de las claves más específicas: el match por prefijo (ver
+# _rates_for) recorre este dict, así que "gpt-5-mini" DEBE ir antes que "gpt-5",
+# o "gpt-5-mini" matchearía contra "gpt-5" y se facturaría 5x de más.
 _PRICE_PER_1M: Dict[str, tuple[float, float]] = {
-    "gpt-4o": (2.50, 10.00),
+    # Familia GPT-5 (de más específico a más genérico).
+    "gpt-5-nano": (0.05, 0.40),
+    "gpt-5-mini": (0.25, 2.00),
+    "gpt-5.2": (1.75, 14.00),
+    "gpt-5.1": (1.25, 10.00),
+    "gpt-5": (1.25, 10.00),
+    # Familia GPT-4.
     "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4o": (2.50, 10.00),
     # Embeddings: solo "input"; el output se considera 0.
     "text-embedding-3-small": (0.02, 0.0),
     "text-embedding-3-large": (0.13, 0.0),
@@ -29,9 +40,11 @@ def _rates_for(model: str | None) -> tuple[float, float]:
     # Match exacto o por prefijo (ej. "gpt-4o-2024-08-06" → "gpt-4o").
     if model in _PRICE_PER_1M:
         return _PRICE_PER_1M[model]
-    for known in _PRICE_PER_1M:
-        if model.startswith(known):
-            return _PRICE_PER_1M[known]
+    # Gana el prefijo MÁS LARGO, no el primero del dict: "gpt-5-mini-2025-08-07"
+    # matchea contra "gpt-5-mini" y no contra "gpt-5" (que costaría 5x más).
+    matches = [k for k in _PRICE_PER_1M if model.startswith(k)]
+    if matches:
+        return _PRICE_PER_1M[max(matches, key=len)]
     return _PRICE_PER_1M[_FALLBACK_MODEL]
 
 

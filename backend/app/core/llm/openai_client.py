@@ -17,16 +17,45 @@ set_default_openai_client (ver hotel_sdk_orchestrator / triage / hotel_postsale_
 """
 from openai import AsyncOpenAI, OpenAI
 from app.config import settings
+from app.core.llm.model_compat import adapt_params, ensure_json_hint
 
 _async_client: AsyncOpenAI | None = None
 _sync_client: OpenAI | None = None
+
+
+def _install_compat(client):
+    """Envuelve `chat.completions.create` para sanear params según el modelo.
+
+    Punto único de compatibilidad: todos los servicios usan estos dos clientes,
+    así que adaptar acá cubre los ~40 call sites sin tocarlos. Cada llamada pasa
+    su propio `model=...`, por eso la decisión se toma por llamada y no al
+    construir el cliente. Ver app/core/llm/model_compat.py para el criterio.
+
+    Con un modelo GPT-4 el wrapper es un passthrough exacto.
+    """
+    completions = client.chat.completions
+    original = completions.create
+
+    def _prepare(kwargs: dict) -> dict:
+        model = kwargs.get("model")
+        return ensure_json_hint(model, adapt_params(model, kwargs))
+
+    if isinstance(client, AsyncOpenAI):
+        async def create(*args, **kwargs):
+            return await original(*args, **_prepare(kwargs))
+    else:
+        def create(*args, **kwargs):
+            return original(*args, **_prepare(kwargs))
+
+    completions.create = create
+    return client
 
 
 def get_async_openai() -> AsyncOpenAI:
     """Devuelve el cliente AsyncOpenAI compartido (lo crea la primera vez)."""
     global _async_client
     if _async_client is None:
-        _async_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        _async_client = _install_compat(AsyncOpenAI(api_key=settings.OPENAI_API_KEY))
     return _async_client
 
 
@@ -34,5 +63,5 @@ def get_sync_openai() -> OpenAI:
     """Devuelve el cliente OpenAI (sync) compartido (lo crea la primera vez)."""
     global _sync_client
     if _sync_client is None:
-        _sync_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        _sync_client = _install_compat(OpenAI(api_key=settings.OPENAI_API_KEY))
     return _sync_client

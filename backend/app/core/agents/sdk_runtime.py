@@ -19,6 +19,7 @@ from agents import Agent, ModelSettings, OpenAIChatCompletionsModel, Runner
 
 from app.config import settings
 from app.core.llm.circuit_breaker import openai_circuit_breaker
+from app.core.llm.model_compat import is_restricted_family
 from app.core.llm.openai_client import get_async_openai
 from app.core.llm.sdk_usage import extract_usage
 from app.core.observability.logging_config import get_logger
@@ -66,12 +67,20 @@ async def run_agent(
     # tools_override: para agentes cuya lista se FILTRA por sesión (config del Centro,
     # ej. pre-venta con filter_tools_for_session). La spec declara el catálogo completo;
     # el override aplica el subconjunto habilitado en esta sesión.
+    # La familia GPT-5 (y o1/o3) rechaza `temperature` != 1: mandarla es un 400 y el
+    # agente no responde. Se omite el parámetro en vez de forzar 1.0 — el default del
+    # servidor ya es 1.0. Los modelos GPT-4 conservan su temperatura de siempre.
+    model_settings = (
+        ModelSettings()
+        if is_restricted_family(model_name)
+        else ModelSettings(temperature=resolve_temperature(spec, settings))
+    )
     agent = Agent(
         name=display_name or spec.display_name,
         instructions=instructions,
         tools=tools_override if tools_override is not None else resolve_tools(spec.tools),
         model=OpenAIChatCompletionsModel(model=model_name, openai_client=_sdk_client),
-        model_settings=ModelSettings(temperature=resolve_temperature(spec, settings)),
+        model_settings=model_settings,
         input_guardrails=resolve_guardrails(spec.input_guardrails),
     )
 
