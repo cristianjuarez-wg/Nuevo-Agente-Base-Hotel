@@ -822,10 +822,27 @@ SCENARIOS = [
         "turns": [
             {"user": f"Reservá la Twin del {CI_INHOUSE} al {CO_INHOUSE} para 2 adultos. Soy Ana López, tel 1133334444.",
              "expect": {"tool_called": "crear_reserva"}},
+            # Este escenario acepta DOS caminos igual de válidos:
+            #   (a) registrar de una con lo que ya dijo el huésped, o
+            #   (b) repreguntar un detalle ("¿de baño o de mano?") y registrar después.
+            # (b) es buen servicio de concierge y no debe contar como fallo. Por eso el
+            # turno del pedido solo exige NO derivar a un humano.
             {"user": "hola! me podés mandar una toalla limpia a la habitación?",
-             "expect": {"tool_called": "solicitar_servicio",
-                        "tool_not_called": "derivar_a_humano"}},
+             "expect": {"tool_not_called": "derivar_a_humano"}},
+            # Turno de cierre: el huésped responde el detalle. Acá NO se exige la tool —
+            # si ya registró en el turno anterior (camino a), volver a llamarla duplicaría
+            # el ticket, y no llamarla es lo correcto. Lo que sí se exige siempre es no
+            # derivar. La garantía de que el pedido quedó registrado la da el chequeo de
+            # abajo sobre el escenario completo.
+            {"user": "de baño porfa, gracias!",
+             "expect": {"tool_not_called": "derivar_a_humano"}},
         ],
+        # Lo innegociable, sin importar el camino: el pedido quedó registrado y en
+        # ningún momento se derivó a una persona por una toalla.
+        "expect_scenario": {
+            "tool_called_alguna_vez": "solicitar_servicio",
+            "tool_nunca_llamada": "derivar_a_humano",
+        },
     },
     {
         "id": "S57",

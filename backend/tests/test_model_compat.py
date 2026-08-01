@@ -10,7 +10,12 @@ el agente no responde ningún turno. Verificado contra la API real:
 """
 import pytest
 
-from app.core.llm.model_compat import adapt_params, ensure_json_hint, is_restricted_family
+from app.core.llm.model_compat import (
+    RESTRICTED_MIN_COMPLETION_TOKENS,
+    adapt_params,
+    ensure_json_hint,
+    is_restricted_family,
+)
 from app.core.llm.token_pricing import cost_usd
 
 
@@ -35,13 +40,50 @@ class TestAdaptacionDeParams:
         assert "temperature" not in out
 
     def test_gpt5_renombra_max_tokens(self):
+        """El parámetro cambia de nombre. El VALOR puede elevarse — ver
+        TestPresupuestoDeRazonamiento para por qué 150 no se conserva."""
         out = adapt_params("gpt-5-mini", {"max_tokens": 150})
         assert "max_tokens" not in out
-        assert out["max_completion_tokens"] == 150
+        assert "max_completion_tokens" in out
 
     def test_gpt5_no_pisa_max_completion_tokens_existente(self):
         out = adapt_params("gpt-5", {"max_tokens": 150, "max_completion_tokens": 999})
-        assert out["max_completion_tokens"] == 999
+        # 999 < el piso, así que se eleva; lo que NO debe hacer es tomar el 150.
+        assert out["max_completion_tokens"] >= 999
+        assert out["max_completion_tokens"] != 150
+
+
+class TestPresupuestoDeRazonamiento:
+    """Regresión medida: con presupuestos chicos, GPT-5 gasta todo razonando y
+    devuelve contenido VACÍO. El llamador hace json.loads("") -> ValueError -> cae
+    en su except. En hotel_postsale ese except escala por seguridad, así que el
+    agente derivaba a un humano en vez de registrar el pedido de servicio.
+    Evidencia: "Expecting value: line 1 column 1 (char 0)" en 2 de 2 corridas de
+    evals con gpt-5-mini; 0 con gpt-4o.
+    """
+
+    @pytest.mark.parametrize("budget", [10, 20, 50, 120, 140, 150, 200, 220, 300, 500, 600])
+    def test_presupuestos_reales_del_codigo_se_elevan(self, budget):
+        """Los valores de max_tokens que realmente existen en app/ (10..600)."""
+        out = adapt_params("gpt-5-mini", {"max_tokens": budget})
+        assert out["max_completion_tokens"] >= RESTRICTED_MIN_COMPLETION_TOKENS
+
+    def test_el_clasificador_de_escalacion_no_queda_ahogado(self):
+        """hotel_postsale.py:345 — el sitio exacto que producía el fallo."""
+        out = adapt_params("gpt-5-nano", {"max_tokens": 150, "response_format": {"type": "json_object"}})
+        assert out["max_completion_tokens"] >= 2000
+
+    def test_presupuesto_holgado_se_respeta(self):
+        """No inflar lo que ya alcanza: se factura por token generado, pero un
+        presupuesto es también un límite de gasto deliberado del llamador."""
+        out = adapt_params("gpt-5", {"max_tokens": 16000})
+        assert out["max_completion_tokens"] == 16000
+
+    def test_gpt4_conserva_su_presupuesto_exacto(self):
+        """El camino de producción no se toca: 150 sigue siendo 150."""
+        out = adapt_params("gpt-4o-mini", {"max_tokens": 150})
+        assert out["max_tokens"] == 150
+        assert "max_completion_tokens" not in out
 
     def test_gpt4_no_se_toca(self):
         """El camino viejo debe quedar EXACTAMENTE igual: sin regresiones."""

@@ -17,6 +17,7 @@ límite de dominio) viven en base_blocks y se COMPONEN acá a nivel de módulo.
 """
 from app.domains.hotel.prompts.base_blocks import (
     HONESTIDAD_BLOCK,
+    PRECISION_BLOCK,
     ANTI_INJECTION_BLOCK,
     ANTI_INVENCION_PERSONAS_BLOCK,
     DATOS_BANCARIOS_BLOCK,
@@ -46,6 +47,8 @@ BREVE y cerrá lindo, sin re-abrir la conversación ni ofrecer un menú de ayuda
 {naturalidad_block}
 
 """ + HONESTIDAD_BLOCK + """
+
+""" + PRECISION_BLOCK + """
 
 """ + ANTI_INJECTION_BLOCK + """
 
@@ -164,6 +167,16 @@ hablar con una persona / que lo atienda alguien, o INSISTE tras ofrecerle resolv
 DIRECTO (esa es la tool que avisa a una persona y deja el pedido registrado). NO uses `analizar_escalacion` \
 para un pedido de persona: `analizar_escalacion` es solo para clasificar una CONSULTA ambigua (si la \
 podés responder vos o si amerita un asesor), no para cuando ya te pidieron una persona.
+UN DESPERFECTO NO ES UNA CONSULTA AMBIGUA: si el huésped alojado reporta algo que no funciona \
+(aire/TV/WiFi/luz/agua) o pide un servicio, NO llames `analizar_escalacion` — andá derecho a \
+`solicitar_servicio`. `analizar_escalacion` es solo para CONSULTAS (dudas, reclamos, cambios de \
+reserva); su veredicto ESCALAR está pensado para esas, y aplicarlo a un pedido de servicio deja al \
+huésped SIN ticket: para un desperfecto, el ticket YA es la vía correcta. Tras registrar con \
+`solicitar_servicio`, NO llames además `derivar_a_humano`: el pedido ya quedó avisado al equipo y \
+sumar la derivación duplica el aviso. Solo derivá si el huésped INSISTE después de que le \
+confirmaste el pedido.
+(Repreguntar un detalle antes de registrar —"¿la toalla de baño o de mano?"— está BIEN y es buen \
+servicio: registrás en el turno siguiente, cuando te responda.)
 
 {multi_intent_block}
 

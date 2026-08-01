@@ -26,6 +26,18 @@ from typing import Any, Dict
 # Prefijos, no nombres exactos: cubre gpt-5, gpt-5-mini, gpt-5.4-nano, o1-preview…
 _RESTRICTED_PREFIXES = ("gpt-5", "o1", "o3", "o4")
 
+# Piso de `max_completion_tokens` para la familia restringida.
+#
+# En estos modelos el presupuesto cubre RAZONAMIENTO + respuesta, y el razonamiento
+# va primero: un presupuesto pensado para GPT-4 (donde solo contaba la respuesta) se
+# agota razonando y devuelve contenido vacío. El código tiene presupuestos de 10 a
+# 600 tokens, calibrados para GPT-4.
+#
+# 2000 deja margen cómodo para el razonamiento de las tareas cortas del proyecto
+# (clasificar, extraer un nombre, un rating) sin ser un cheque en blanco. No encarece
+# lo que no se usa: se factura por token GENERADO, no por el presupuesto reservado.
+RESTRICTED_MIN_COMPLETION_TOKENS = 2000
+
 
 def is_restricted_family(model: str | None) -> bool:
     """True si el modelo pertenece a una familia con parámetros restringidos.
@@ -45,12 +57,30 @@ def adapt_params(model: str | None, params: Dict[str, Any]) -> Dict[str, Any]:
     - temperature: se ELIMINA si el modelo no la soporta. No se fuerza a 1.0
       porque 1.0 ya es el default del servidor; mandarlo explícito no aporta y
       solo agrega superficie de error si mañana también lo rechazan.
-    - max_tokens -> max_completion_tokens (sin pisar uno ya presente).
+    - max_tokens -> max_completion_tokens, AMPLIADO (ver abajo).
     - top_p / frequency_penalty / presence_penalty: mismo tratamiento que
       temperature (la familia restringida también los rechaza).
 
     Para un modelo GPT-4 devuelve los params intactos: el camino viejo no cambia
     de comportamiento.
+
+    ── Por qué se amplía el presupuesto ──────────────────────────────────────
+    `max_tokens` y `max_completion_tokens` NO son equivalentes: en la familia
+    GPT-5 los tokens de RAZONAMIENTO salen del mismo presupuesto que la
+    respuesta, y se consumen PRIMERO. Traducir el nombre conservando el número
+    es correcto sintácticamente y erróneo en la práctica.
+
+    Con presupuestos chicos el modelo gasta todo razonando, corta con
+    finish_reason="length" y devuelve contenido VACÍO. El llamador hace
+    json.loads("") -> ValueError -> cae en su `except`. Medido: el clasificador
+    de escalación de post-venta (max_tokens=150) fallaba así en cada corrida de
+    evals con gpt-5-mini ("Expecting value: line 1 column 1 (char 0)"), y su
+    fail-safe escala por seguridad -> el agente derivaba a un humano en vez de
+    registrar el pedido de servicio. Con gpt-4o: 0 fallos.
+
+    Por eso se aplica un piso (RESTRICTED_MIN_COMPLETION_TOKENS) que deja lugar
+    al razonamiento. El presupuesto original del llamador se respeta cuando ya
+    es holgado; solo se eleva el que quedaría ahogado.
     """
     if not is_restricted_family(model):
         return params
@@ -64,6 +94,10 @@ def adapt_params(model: str | None, params: Dict[str, Any]) -> Dict[str, Any]:
         value = out.pop("max_tokens")
         # Si el llamador ya especificó el nombre nuevo, respetarlo.
         out.setdefault("max_completion_tokens", value)
+
+    budget = out.get("max_completion_tokens")
+    if isinstance(budget, int) and budget < RESTRICTED_MIN_COMPLETION_TOKENS:
+        out["max_completion_tokens"] = RESTRICTED_MIN_COMPLETION_TOKENS
 
     return out
 

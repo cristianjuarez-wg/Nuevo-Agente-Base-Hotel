@@ -15,7 +15,11 @@ Placeholders:
 Fase 0.1: honestidad y límite de dominio (hueco #7 — el staff no tenía ninguno)
 vienen del baseline compartido en base_blocks.
 """
-from app.domains.hotel.prompts.base_blocks import HONESTIDAD_BLOCK, limite_dominio_block
+from app.domains.hotel.prompts.base_blocks import (
+    HONESTIDAD_BLOCK,
+    PRECISION_BLOCK,
+    limite_dominio_block,
+)
 
 STAFF_AGENT_SYSTEM = """\
 Sos {nombre_agente}, el coordinador de operaciones del {business_name}, hablando \
@@ -53,6 +57,8 @@ toallas/limpieza/amenities → housekeeping; llave/llamada/checkout/equipaje →
 claro, usá "general".
 
 """ + HONESTIDAD_BLOCK + """
+
+""" + PRECISION_BLOCK + """
 
 """ + limite_dominio_block("staff") + """
 

@@ -420,6 +420,28 @@ async def _run_scenario(sc: dict) -> dict:
                 "n": i, "user": msg, "route": route, "tools": tools,
                 "cards": cards, "response": response, "fails": fails,
             })
+
+        # Expectativas sobre el ESCENARIO COMPLETO, no sobre un turno puntual.
+        #
+        # Necesario cuando el agente tiene más de un camino válido para llegar al mismo
+        # resultado. Ej. S56: ante "mandame una toalla" puede registrar el pedido de una,
+        # o repreguntar "¿de baño o de mano?" y registrarlo en el turno siguiente. Las dos
+        # son correctas (repreguntar es buen servicio), y exigir la tool en un turno FIJO
+        # castiga una de ellas. Lo que sí es innegociable es que el pedido termine
+        # registrado en ALGÚN momento de la conversación — eso se afirma acá.
+        scenario_expect = sc.get("expect_scenario") or {}
+        if scenario_expect:
+            all_tools = [t for tr in turn_results for t in tr["tools"]]
+            scenario_fails = []
+            for tool in _as_list(scenario_expect.get("tool_called_alguna_vez", [])):
+                if tool not in all_tools:
+                    scenario_fails.append(
+                        f"tool {tool!r} no se llamó en NINGÚN turno (tools del escenario={all_tools})")
+            for tool in _as_list(scenario_expect.get("tool_nunca_llamada", [])):
+                if tool in all_tools:
+                    scenario_fails.append(f"tool {tool!r} NO debía llamarse en ningún turno")
+            if scenario_fails and turn_results:
+                turn_results[-1]["fails"].extend(scenario_fails)
     finally:
         db.close()
     return {"id": sc["id"], "name": sc["name"], "session_id": session_id, "turns": turn_results}
