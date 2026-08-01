@@ -75,31 +75,59 @@ distribución, no un número.
 > descartadas. Los costos sí siguen válidos: salen del consumo de tokens que
 > reporta la API, que no depende de la versión del SDK.
 
-### Qué falla realmente
+### CAUSA RAÍZ: el presupuesto de tokens, no el criterio del modelo
 
-**Con el SDK correcto, `gpt-5-mini` sí crea las reservas.** El diagnóstico previo
-("no ejecuta `crear_reserva`") era artefacto de `openai-agents 0.3.3`. Con 0.17.5
-el T1 pasa con `['consultar_disponibilidad', 'crear_reserva']`.
+Los fallos NO eran del modelo. Eran un defecto de la capa de compatibilidad.
 
-Los fallos que quedan son de **post-venta**, y son de dos tipos:
+**`max_tokens` y `max_completion_tokens` no son equivalentes.** En GPT-5 los tokens
+de RAZONAMIENTO salen del mismo presupuesto que la respuesta, y se consumen
+primero. Traducir el nombre conservando el número es correcto sintácticamente y
+erróneo en la práctica.
 
-| Tipo | Ejemplo | Gravedad |
+La cadena completa, verificada en los logs:
+
+1. `analizar_escalacion` llama al clasificador con **`max_tokens=150`**
+   (`hotel_postsale.py:345`)
+2. `gpt-5-nano` gasta los 150 razonando → contenido **vacío**
+3. `json.loads("")` → `Expecting value: line 1 column 1 (char 0)`
+4. El `except` (`hotel_postsale.py:358`) hace **fail-safe: escala por seguridad**
+5. El orquestador obedece → `derivar_a_humano` **sin registrar el ticket**
+
+Evidencia cuantitativa:
+
+| Corrida | `escalation analysis failed` | Turnos fallados |
 |---|---|---|
-| **No registra el pedido** | S56 T2: *"mandame una toalla limpia"* → `tools=[]`. No queda ticket. | Alta: el pedido se pierde |
-| **Escala de más** | S57/S29 T2: *"el aire no anda"* → llama `solicitar_servicio` **y también** `derivar_a_humano`, que el escenario prohíbe | Baja: registra el ticket igual, solo avisa a una persona de más |
+| gpt-4o | **0** | 0 |
+| gpt-5-mini (1) | **2** | 2 |
+| gpt-5-mini (2) | **2** | 1 |
 
-El segundo tipo es casi cosmético (hace el trabajo y además escala). El primero sí
-importa.
+El error aparece solo con GPT-5 y en la misma cantidad que los fallos.
 
-Ambos son de **criterio**, no técnicos, así que son plausibles de cerrar con
-instrucciones explícitas en el prompt de post-venta: cuándo registrar un pedido
-de servicio, y cuándo NO escalar a un humano.
+**Fix:** piso de 2000 tokens (`RESTRICTED_MIN_COMPLETION_TOKENS`) en
+`model_compat.py`. Respeta el presupuesto del llamador cuando ya es holgado; solo
+eleva el que quedaría ahogado. No encarece nada: se factura por token GENERADO,
+no por el reservado.
+
+### Barrido del resto de la app
+
+El mismo problema estaba latente en toda la app: **15 presupuestos entre 10 y 600
+tokens**, todos calibrados para GPT-4, y **9 sitios que parsean JSON del LLM**.
+
+Cubierto por arquitectura: **ningún módulo crea su propio cliente OpenAI**, así que
+el piso los alcanza a todos vía `openai_client` (el Agents SDK y los evals también
+lo usan). `tests/test_llm_budget_coverage.py` escanea el repo y falla si alguien
+crea un cliente propio o agrega un presupuesto que quedaría ahogado.
+
+De los 9 parseos, los 9 degradan con gracia (devuelven `{}` / `None`).
+**`hotel_postsale` era el único cuyo fail-safe cambia el comportamiento del
+agente** — por eso el síntoma apareció justo ahí.
 
 ### Sobre gpt-5 (no gpt-5-mini)
 
 Muestra la varianza más alta (20/22 y 18/22) y falla en escenarios distintos cada
-vez, incluyendo la creación de reservas. Combinado con costar **+10% que gpt-4o**,
-no tiene caso de negocio: más caro y menos confiable.
+vez. Combinado con costar **+10% que gpt-4o**, no tiene caso de negocio: más caro
+y menos confiable. (Estas mediciones son PREVIAS al fix del presupuesto; si se
+quisiera reconsiderar, habría que re-medirlo.)
 
 ### Cómo correr los evals sin invalidar el resultado
 
@@ -201,6 +229,52 @@ OPENAI_MODEL_FAST=gpt-5-nano python -m evals.run_evals --handoff-gate
 Para medir el costo real de un turno, interceptar `httpx.AsyncClient.send` y leer
 `usage` de las respuestas a `chat/completions` (el `usage` no vuelve en el
 retorno de `agent_service.chat`).
+
+---
+
+## 5.1. PRECISION_BLOCK — repreguntar en vez de asumir
+
+Durante la evaluación se observó a Aura repreguntar *"¿preferís una toalla de baño
+o una de mano?"* antes de registrar el pedido. El eval lo contaba como fallo (medía
+un solo turno), pero **es el comportamiento correcto**: es lo que haría un
+recepcionista de verdad.
+
+Se generalizó a todos los agentes con un bloque compartido nuevo en `base_blocks.py`,
+al lado de `HONESTIDAD_BLOCK`. La guía estaba muy despareja entre agentes
+(menciones de preguntar/confirmar/aclarar): preventa 46, post-venta 27, **staff 5**.
+
+`PRECISION_BLOCK` marca las **dos** direcciones del riesgo, porque exagerar hacia
+cualquiera de los lados hace daño:
+
+| Riesgo | Regla |
+|---|---|
+| **Sub-preguntar** → inventa el dato faltante | *"Nunca completes un dato que no te dieron ni lo des por supuesto"* |
+| **Sobre-preguntar** → interrogatorio, fricción, pedidos que se pierden | *"Preguntá SOLO lo que cambia lo que vas a hacer… una pregunta por vez, con la opción más probable sugerida, nunca un cuestionario"* |
+
+División de responsabilidades: `HONESTIDAD_BLOCK` cubre qué **decís** (no afirmar lo
+no verificado); `PRECISION_BLOCK` cubre qué **hacés** cuando falta un dato para
+actuar.
+
+### El eval también tenía que cambiar
+
+Al conectar el bloque, gpt-4o bajó a 22/23 — pero el fallo era del **eval**: el
+agente había registrado el ticket en el turno anterior y no lo duplicó, que es lo
+correcto.
+
+Se agregó `expect_scenario` al framework (`run_evals.py`), que permite afirmar
+sobre la conversación completa en vez de un turno fijo:
+
+```python
+"expect_scenario": {
+    "tool_called_alguna_vez": "solicitar_servicio",   # el pedido quedó registrado
+    "tool_nunca_llamada": "derivar_a_humano",         # nunca se derivó por una toalla
+}
+```
+
+Así S56 acepta los dos caminos válidos (registrar de una, o repreguntar y registrar
+después) sin dejar de exigir lo innegociable. **Lección general: cuando un eval
+castiga un comportamiento que un humano haría bien, revisar el eval antes que el
+agente.**
 
 ---
 
